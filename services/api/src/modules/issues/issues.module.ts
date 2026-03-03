@@ -7,6 +7,7 @@ import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 import { EventsModule } from '../../websocket/events.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { EventsModule } from '../../websocket/events.module';
     TypeOrmModule.forFeature([Issue, IssueStatus, WorkLog]),
     ProjectsModule,
     NotificationsModule,
+    PermissionsModule,
     EventsModule,
   ],
   controllers: [IssuesController],

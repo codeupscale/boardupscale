@@ -204,3 +204,27 @@ export interface PaginatedResponse<T> {
 export interface ApiResponse<T> {
   data: T
 }
+
+export interface Permission {
+  id: string
+  resource: string
+  action: string
+  description?: string
+  createdAt: string
+}
+
+export interface Role {
+  id: string
+  organizationId: string | null
+  name: string
+  description?: string
+  isSystem: boolean
+  permissions: Permission[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserPermission {
+  resource: string
+  action: string
+}

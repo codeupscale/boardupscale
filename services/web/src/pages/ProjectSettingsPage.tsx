@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Edit2, AlertTriangle } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Plus, Trash2, Edit2, AlertTriangle, Shield } from 'lucide-react'
 import {
   useProject,
   useUpdateProject,
@@ -10,12 +10,15 @@ import {
 } from '@/hooks/useProjects'
 import { useBoard, useCreateStatus, useUpdateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
+import { useMe } from '@/hooks/useAuth'
+import { useRoles, useAssignRole } from '@/hooks/usePermissions'
 import { IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Tabs, TabContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { LoadingPage } from '@/components/ui/spinner'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -117,6 +120,7 @@ export function ProjectSettingsPage() {
             { id: 'general', label: 'General' },
             { id: 'members', label: 'Members' },
             { id: 'workflow', label: 'Workflow' },
+            { id: 'roles', label: 'Roles & Permissions' },
             { id: 'danger', label: 'Danger Zone' },
           ]}
           activeTab={activeTab}
@@ -208,6 +212,31 @@ export function ProjectSettingsPage() {
                     No statuses configured.
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Roles & Permissions */}
+          {activeTab === 'roles' && (
+            <div className="max-w-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Roles & Permissions</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage organization-wide roles or assign roles to project members.
+                  </p>
+                </div>
+                <Link to="/settings/roles">
+                  <Button size="sm" variant="outline">
+                    <Shield className="h-4 w-4" />
+                    Manage Roles
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Assign roles to members inline */}
+              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+                <MemberRoleList projectId={projectId!} />
               </div>
             </div>
           )}
@@ -353,5 +382,64 @@ export function ProjectSettingsPage() {
         isLoading={deleteProject.isPending}
       />
     </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  MemberRoleList: inline role assignment for project members                */
+/* -------------------------------------------------------------------------- */
+
+function MemberRoleList({ projectId }: { projectId: string }) {
+  const { data: me } = useMe()
+  const { data: members = [] } = useProjectMembers(projectId)
+  const { data: roles = [] } = useRoles(me?.organizationId)
+  const assignRole = useAssignRole()
+
+  if (members.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-gray-400">
+        No members in this project.
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {members.map((member) => (
+        <div key={member.id} className="flex items-center gap-3 px-4 py-3">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium text-gray-900">
+              {member.user?.displayName || member.userId}
+            </span>
+            <span className="text-xs text-gray-400 ml-2">
+              {member.user?.email}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{member.role}</Badge>
+            <select
+              className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              value={(member as any).roleId || ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  assignRole.mutate({
+                    projectId,
+                    memberId: member.id,
+                    roleId: e.target.value,
+                  })
+                }
+              }}
+            >
+              <option value="">Assign role...</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} {r.isSystem ? '(system)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ))}
+    </>
   )
 }

@@ -6,11 +6,13 @@ import { Sprint } from './entities/sprint.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { ProjectsModule } from '../projects/projects.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Sprint, Issue, IssueStatus]),
     ProjectsModule,
+    PermissionsModule,
   ],
   controllers: [SprintsController],
   providers: [SprintsService],
