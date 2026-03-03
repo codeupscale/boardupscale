@@ -19,6 +19,9 @@ import { SearchModule } from './modules/search/search.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { HealthModule } from './modules/health/health.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
+import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
+import { ComponentsModule } from './modules/components/components.module';
+import { VersionsModule } from './modules/versions/versions.module';
 import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
@@ -38,6 +41,12 @@ import { Permission } from './modules/permissions/entities/permission.entity';
 import { Role } from './modules/permissions/entities/role.entity';
 import { Webhook } from './modules/webhooks/entities/webhook.entity';
 import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.entity';
+import { CustomFieldDefinition } from './modules/custom-fields/entities/custom-field-definition.entity';
+import { CustomFieldValue } from './modules/custom-fields/entities/custom-field-value.entity';
+import { Component } from './modules/components/entities/component.entity';
+import { IssueComponent } from './modules/components/entities/issue-component.entity';
+import { Version } from './modules/versions/entities/version.entity';
+import { IssueVersion } from './modules/versions/entities/issue-version.entity';
 
 @Module({
   imports: [
@@ -68,6 +77,12 @@ import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.en
           Role,
           Webhook,
           WebhookDelivery,
+          CustomFieldDefinition,
+          CustomFieldValue,
+          Component,
+          IssueComponent,
+          Version,
+          IssueVersion,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -110,6 +125,9 @@ import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.en
     SearchModule,
     HealthModule,
     PermissionsModule,
+    CustomFieldsModule,
+    ComponentsModule,
+    VersionsModule,
     EventsModule,
     WebhooksModule,
   ],

@@ -13,6 +13,14 @@ import { useAuthStore } from '@/store/auth.store'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import {
+  useCustomFieldDefinitions,
+  useIssueCustomFields,
+  useSetIssueCustomFields,
+} from '@/hooks/useCustomFields'
+import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
+import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
+import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
+import {
   IssueType,
   IssuePriority,
   Comment,
@@ -133,6 +141,15 @@ export function IssueDetailPage() {
   const { data: workLogs } = useWorkLogs(issueId!)
   const { data: board } = useBoard(issue?.projectId || '')
   const { data: sprints } = useSprints(issue?.projectId || '')
+  const { data: customFieldDefs } = useCustomFieldDefinitions(issue?.projectId || '')
+  const { data: customFieldValues } = useIssueCustomFields(issueId!)
+  const setCustomFields = useSetIssueCustomFields()
+  const { data: projectComponents } = useComponents(issue?.projectId || '')
+  const { data: issueComponents } = useIssueComponents(issueId!)
+  const setIssueComponents = useSetIssueComponents()
+  const { data: projectVersions } = useVersions(issue?.projectId || '')
+  const { data: issueVersions } = useIssueVersions(issueId!)
+  const setIssueVersions = useSetIssueVersions()
 
   const updateIssue = useUpdateIssue()
   const deleteIssue = useDeleteIssue()
@@ -579,6 +596,221 @@ export function IssueDetailPage() {
               </Button>
             </div>
           </div>
+
+          {/* Components */}
+          {projectComponents && projectComponents.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Components
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {(issueComponents || []).map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs"
+                  >
+                    {c.name}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIssueComponents.mutate({
+                          issueId: issue.id,
+                          componentIds: (issueComponents || [])
+                            .filter((ic) => ic.id !== c.id)
+                            .map((ic) => ic.id),
+                        })
+                      }
+                      className="hover:text-purple-900"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const current = (issueComponents || []).map((c) => c.id)
+                    if (!current.includes(e.target.value)) {
+                      setIssueComponents.mutate({
+                        issueId: issue.id,
+                        componentIds: [...current, e.target.value],
+                      })
+                    }
+                  }
+                }}
+              >
+                <option value="">Add component...</option>
+                {projectComponents
+                  ?.filter(
+                    (c) => !(issueComponents || []).find((ic) => ic.id === c.id),
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {/* Fix Version */}
+          {projectVersions && projectVersions.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Fix Version
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {(issueVersions || [])
+                  .filter((iv) => iv.relationType === 'fix')
+                  .map((iv) => (
+                    <span
+                      key={iv.versionId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs"
+                    >
+                      {iv.version?.name || iv.versionId}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = (issueVersions || [])
+                            .filter((v) => v.relationType === 'fix' && v.versionId !== iv.versionId)
+                            .map((v) => v.versionId)
+                          setIssueVersions.mutate({
+                            issueId: issue.id,
+                            versionIds: current,
+                            relationType: 'fix',
+                          })
+                        }}
+                        className="hover:text-green-900"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const current = (issueVersions || [])
+                      .filter((v) => v.relationType === 'fix')
+                      .map((v) => v.versionId)
+                    if (!current.includes(e.target.value)) {
+                      setIssueVersions.mutate({
+                        issueId: issue.id,
+                        versionIds: [...current, e.target.value],
+                        relationType: 'fix',
+                      })
+                    }
+                  }
+                }}
+              >
+                <option value="">Add fix version...</option>
+                {projectVersions
+                  ?.filter(
+                    (v) =>
+                      !(issueVersions || []).find(
+                        (iv) => iv.versionId === v.id && iv.relationType === 'fix',
+                      ),
+                  )
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {/* Affects Version */}
+          {projectVersions && projectVersions.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                Affects Version
+              </label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {(issueVersions || [])
+                  .filter((iv) => iv.relationType === 'affects')
+                  .map((iv) => (
+                    <span
+                      key={iv.versionId}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs"
+                    >
+                      {iv.version?.name || iv.versionId}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = (issueVersions || [])
+                            .filter(
+                              (v) => v.relationType === 'affects' && v.versionId !== iv.versionId,
+                            )
+                            .map((v) => v.versionId)
+                          setIssueVersions.mutate({
+                            issueId: issue.id,
+                            versionIds: current,
+                            relationType: 'affects',
+                          })
+                        }}
+                        className="hover:text-orange-900"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+              </div>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const current = (issueVersions || [])
+                      .filter((v) => v.relationType === 'affects')
+                      .map((v) => v.versionId)
+                    if (!current.includes(e.target.value)) {
+                      setIssueVersions.mutate({
+                        issueId: issue.id,
+                        versionIds: [...current, e.target.value],
+                        relationType: 'affects',
+                      })
+                    }
+                  }
+                }}
+              >
+                <option value="">Add affects version...</option>
+                {projectVersions
+                  ?.filter(
+                    (v) =>
+                      !(issueVersions || []).find(
+                        (iv) => iv.versionId === v.id && iv.relationType === 'affects',
+                      ),
+                  )
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+
+          {/* Custom Fields */}
+          {customFieldDefs && customFieldDefs.length > 0 && (
+            <div className="pt-2 border-t border-gray-200">
+              <CustomFieldsForm
+                definitions={customFieldDefs}
+                values={customFieldValues || []}
+                onChange={(fieldId, value) => {
+                  setCustomFields.mutate({
+                    issueId: issue.id,
+                    values: [{ fieldId, value }],
+                  })
+                }}
+              />
+            </div>
+          )}
 
           {/* Dates */}
           <div className="pt-2 border-t border-gray-200 space-y-1">
