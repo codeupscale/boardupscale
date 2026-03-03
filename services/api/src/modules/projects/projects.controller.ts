@@ -16,13 +16,15 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 
 @ApiTags('projects')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('projects')
 export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}
@@ -54,6 +56,7 @@ export class ProjectsController {
   }
 
   @Patch(':id')
+  @RequirePermission('project', 'update')
   @ApiOperation({ summary: 'Update a project' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -64,6 +67,7 @@ export class ProjectsController {
   }
 
   @Delete(':id')
+  @RequirePermission('project', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Archive a project (soft delete)' })
   async archive(
@@ -84,6 +88,7 @@ export class ProjectsController {
   }
 
   @Post(':id/members')
+  @RequirePermission('member', 'create')
   @ApiOperation({ summary: 'Add a member to the project' })
   async addMember(
     @Param('id', ParseUUIDPipe) id: string,
@@ -94,6 +99,7 @@ export class ProjectsController {
   }
 
   @Delete(':id/members/:userId')
+  @RequirePermission('member', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a member from the project' })
   async removeMember(

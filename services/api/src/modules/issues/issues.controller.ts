@@ -17,14 +17,16 @@ import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { CreateWorkLogDto } from './dto/create-work-log.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('issues')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('issues')
 export class IssuesController {
   constructor(private issuesService: IssuesService) {}
@@ -73,6 +75,7 @@ export class IssuesController {
   }
 
   @Post()
+  @RequirePermission('issue', 'create')
   @ApiOperation({ summary: 'Create a new issue' })
   async create(
     @Body() dto: CreateIssueDto,
@@ -92,6 +95,7 @@ export class IssuesController {
   }
 
   @Patch(':id')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Update an issue' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -103,6 +107,7 @@ export class IssuesController {
   }
 
   @Delete(':id')
+  @RequirePermission('issue', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete an issue' })
   async delete(

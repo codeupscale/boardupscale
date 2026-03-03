@@ -13,6 +13,7 @@ import { IssueDetailPage } from '@/pages/IssueDetailPage'
 import { MyIssuesPage } from '@/pages/MyIssuesPage'
 import { NotificationsPage } from '@/pages/NotificationsPage'
 import { UserSettingsPage } from '@/pages/UserSettingsPage'
+import { RoleManagementPage } from '@/pages/RoleManagementPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/issues/:id" element={<IssueDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<UserSettingsPage />} />
+        <Route path="/settings/roles" element={<RoleManagementPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

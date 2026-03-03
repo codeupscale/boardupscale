@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Project } from './project.entity';
 import { User } from '../../users/entities/user.entity';
+import { Role } from '../../permissions/entities/role.entity';
 
 @Entity('project_members')
 export class ProjectMember {
@@ -30,6 +31,13 @@ export class ProjectMember {
 
   @Column({ type: 'varchar', length: 50, default: 'developer' })
   role: string;
+
+  @Column({ name: 'role_id', type: 'uuid', nullable: true })
+  roleId: string | null;
+
+  @ManyToOne(() => Role, { nullable: true, eager: true })
+  @JoinColumn({ name: 'role_id' })
+  assignedRole: Role;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

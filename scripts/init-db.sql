@@ -230,6 +230,44 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_logs(organization_id);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type, entity_id);
 
+-- Permissions (resource + action combinations)
+CREATE TABLE IF NOT EXISTS permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    resource VARCHAR(50) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(resource, action)
+);
+
+-- Roles (system and custom, scoped to organization)
+CREATE TABLE IF NOT EXISTS roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID REFERENCES organizations(id),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_system BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(organization_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_roles_org ON roles(organization_id);
+
+-- Role-permission join table
+CREATE TABLE IF NOT EXISTS role_permissions (
+    role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role_id);
+CREATE INDEX IF NOT EXISTS idx_role_permissions_perm ON role_permissions(permission_id);
+
+-- Add role_id reference to project_members
+ALTER TABLE project_members ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES roles(id);
+CREATE INDEX IF NOT EXISTS idx_project_members_role ON project_members(role_id);
+
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)
 RETURNS INT AS $$
@@ -242,3 +280,89 @@ BEGIN
     RETURN v_next;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Seed default permissions
+INSERT INTO permissions (resource, action, description) VALUES
+    ('project', 'create', 'Create new projects'),
+    ('project', 'read', 'View project details'),
+    ('project', 'update', 'Update project settings'),
+    ('project', 'delete', 'Delete/archive projects'),
+    ('project', 'manage', 'Full project management including settings'),
+    ('issue', 'create', 'Create new issues'),
+    ('issue', 'read', 'View issues'),
+    ('issue', 'update', 'Update issues'),
+    ('issue', 'delete', 'Delete issues'),
+    ('issue', 'assign', 'Assign issues to members'),
+    ('board', 'read', 'View boards'),
+    ('board', 'update', 'Modify board configuration'),
+    ('board', 'manage', 'Full board management'),
+    ('sprint', 'create', 'Create sprints'),
+    ('sprint', 'read', 'View sprints'),
+    ('sprint', 'update', 'Update sprints'),
+    ('sprint', 'delete', 'Delete sprints'),
+    ('sprint', 'manage', 'Start and complete sprints'),
+    ('comment', 'create', 'Create comments'),
+    ('comment', 'read', 'View comments'),
+    ('comment', 'update', 'Update own comments'),
+    ('comment', 'delete', 'Delete comments'),
+    ('worklog', 'create', 'Log work on issues'),
+    ('worklog', 'read', 'View work logs'),
+    ('worklog', 'update', 'Update own work logs'),
+    ('worklog', 'delete', 'Delete work logs'),
+    ('member', 'create', 'Add project members'),
+    ('member', 'read', 'View project members'),
+    ('member', 'update', 'Update member roles'),
+    ('member', 'delete', 'Remove project members'),
+    ('organization', 'manage', 'Manage organization settings')
+ON CONFLICT (resource, action) DO NOTHING;
+
+-- Seed system roles (org_id NULL = global system roles)
+INSERT INTO roles (organization_id, name, description, is_system) VALUES
+    (NULL, 'Admin', 'Full access to all resources and settings', true),
+    (NULL, 'Manager', 'Manage projects, issues, sprints, and members', true),
+    (NULL, 'Member', 'Create and manage own issues, comments, and work logs', true),
+    (NULL, 'Viewer', 'Read-only access to all resources', true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- Assign all permissions to Admin role
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Admin' AND r.is_system = true AND r.organization_id IS NULL
+ON CONFLICT DO NOTHING;
+
+-- Assign Manager permissions (everything except organization manage)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Manager' AND r.is_system = true AND r.organization_id IS NULL
+  AND NOT (p.resource = 'organization' AND p.action = 'manage')
+ON CONFLICT DO NOTHING;
+
+-- Assign Member permissions
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Member' AND r.is_system = true AND r.organization_id IS NULL
+  AND (
+    (p.resource = 'issue' AND p.action IN ('create', 'read', 'update'))
+    OR (p.resource = 'comment' AND p.action IN ('create', 'read', 'update'))
+    OR (p.resource = 'worklog' AND p.action IN ('create', 'read', 'update'))
+    OR (p.resource = 'board' AND p.action = 'read')
+    OR (p.resource = 'sprint' AND p.action = 'read')
+    OR (p.resource = 'project' AND p.action = 'read')
+    OR (p.resource = 'member' AND p.action = 'read')
+  )
+ON CONFLICT DO NOTHING;
+
+-- Assign Viewer permissions (read-only everything)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Viewer' AND r.is_system = true AND r.organization_id IS NULL
+  AND p.action = 'read'
+ON CONFLICT DO NOTHING;

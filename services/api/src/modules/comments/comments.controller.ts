@@ -16,13 +16,15 @@ import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 
 @ApiTags('comments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('comments')
 export class CommentsController {
   constructor(private commentsService: CommentsService) {}
@@ -36,6 +38,7 @@ export class CommentsController {
   }
 
   @Post()
+  @RequirePermission('comment', 'create')
   @ApiOperation({ summary: 'Create a comment on an issue' })
   async create(
     @Body() dto: CreateCommentDto,
@@ -56,6 +59,7 @@ export class CommentsController {
   }
 
   @Delete(':id')
+  @RequirePermission('comment', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a comment (soft delete)' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

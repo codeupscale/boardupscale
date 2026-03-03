@@ -16,6 +16,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
+import { PermissionsModule } from './modules/permissions/permissions.module';
 import { EventsModule } from './websocket/events.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
@@ -30,6 +31,8 @@ import { Comment } from './modules/comments/entities/comment.entity';
 import { Attachment } from './modules/files/entities/attachment.entity';
 import { Notification } from './modules/notifications/entities/notification.entity';
 import { WorkLog } from './modules/issues/entities/work-log.entity';
+import { Permission } from './modules/permissions/entities/permission.entity';
+import { Role } from './modules/permissions/entities/role.entity';
 
 @Module({
   imports: [
@@ -56,6 +59,8 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
           Attachment,
           Notification,
           WorkLog,
+          Permission,
+          Role,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -85,6 +90,7 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
     FilesModule,
     SearchModule,
     HealthModule,
+    PermissionsModule,
     EventsModule,
   ],
 })

@@ -16,12 +16,14 @@ import { SprintsService } from './sprints.service';
 import { CreateSprintDto } from './dto/create-sprint.dto';
 import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 
 @ApiTags('sprints')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sprints')
 export class SprintsController {
   constructor(private sprintsService: SprintsService) {}
@@ -38,6 +40,7 @@ export class SprintsController {
   }
 
   @Post()
+  @RequirePermission('sprint', 'create')
   @ApiOperation({ summary: 'Create a new sprint' })
   async create(@Body() dto: CreateSprintDto, @OrgId() organizationId: string) {
     return this.sprintsService.create(dto, organizationId);
@@ -50,6 +53,7 @@ export class SprintsController {
   }
 
   @Patch(':id')
+  @RequirePermission('sprint', 'update')
   @ApiOperation({ summary: 'Update a sprint' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,6 +64,7 @@ export class SprintsController {
   }
 
   @Post(':id/start')
+  @RequirePermission('sprint', 'manage')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Start a sprint' })
   async start(
@@ -70,6 +75,7 @@ export class SprintsController {
   }
 
   @Post(':id/complete')
+  @RequirePermission('sprint', 'manage')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete a sprint (moves incomplete issues to backlog)' })
   async complete(
@@ -80,6 +86,7 @@ export class SprintsController {
   }
 
   @Delete(':id')
+  @RequirePermission('sprint', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a sprint' })
   async delete(
