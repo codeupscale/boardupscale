@@ -6,12 +6,14 @@ import { Comment } from './entities/comment.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EventsModule } from '../../websocket/events.module';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Comment, Issue]),
     NotificationsModule,
     EventsModule,
+    WebhooksModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

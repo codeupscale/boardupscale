@@ -8,6 +8,7 @@ import { WorkLog } from './entities/work-log.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EventsModule } from '../../websocket/events.module';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EventsModule } from '../../websocket/events.module';
     ProjectsModule,
     NotificationsModule,
     EventsModule,
+    WebhooksModule,
   ],
   controllers: [IssuesController],
   providers: [IssuesService],

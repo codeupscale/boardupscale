@@ -11,6 +11,8 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { CreateSprintDto } from './dto/create-sprint.dto';
 import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { WebhookEventType } from '../webhooks/webhook-events.constants';
 
 @Injectable()
 export class SprintsService {
@@ -22,6 +24,7 @@ export class SprintsService {
     @InjectRepository(IssueStatus)
     private issueStatusRepository: Repository<IssueStatus>,
     private projectsService: ProjectsService,
+    private webhookEventEmitter: WebhookEventEmitter,
   ) {}
 
   async findAll(projectId: string, organizationId: string): Promise<Sprint[]> {
@@ -80,7 +83,16 @@ export class SprintsService {
     if (!sprint.startDate) {
       sprint.startDate = new Date().toISOString().split('T')[0];
     }
-    return this.sprintRepository.save(sprint);
+    const saved = await this.sprintRepository.save(sprint);
+
+    this.webhookEventEmitter.emit(
+      organizationId,
+      sprint.projectId,
+      WebhookEventType.SPRINT_STARTED,
+      { sprint: saved, projectId: sprint.projectId },
+    );
+
+    return saved;
   }
 
   async complete(id: string, organizationId: string): Promise<Sprint> {
@@ -116,7 +128,16 @@ export class SprintsService {
 
     sprint.status = 'completed';
     sprint.completedAt = new Date();
-    return this.sprintRepository.save(sprint);
+    const saved = await this.sprintRepository.save(sprint);
+
+    this.webhookEventEmitter.emit(
+      organizationId,
+      sprint.projectId,
+      WebhookEventType.SPRINT_COMPLETED,
+      { sprint: saved, projectId: sprint.projectId, incompleteIssueCount: incompleteIssues.length },
+    );
+
+    return saved;
   }
 
   async delete(id: string, organizationId: string): Promise<void> {

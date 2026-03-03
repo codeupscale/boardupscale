@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Edit2, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Edit2, AlertTriangle, Globe } from 'lucide-react'
 import {
   useProject,
   useUpdateProject,
@@ -117,6 +117,7 @@ export function ProjectSettingsPage() {
             { id: 'general', label: 'General' },
             { id: 'members', label: 'Members' },
             { id: 'workflow', label: 'Workflow' },
+            { id: 'webhooks', label: 'Webhooks' },
             { id: 'danger', label: 'Danger Zone' },
           ]}
           activeTab={activeTab}
@@ -208,6 +209,27 @@ export function ProjectSettingsPage() {
                     No statuses configured.
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Webhooks */}
+          {activeTab === 'webhooks' && (
+            <div className="max-w-lg">
+              <div className="flex items-start gap-3">
+                <Globe className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-gray-900 mb-1">Webhooks</h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Configure webhooks to receive real-time HTTP callbacks when events occur in this project.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/projects/${projectId}/webhooks`)}
+                  >
+                    Manage Webhooks
+                  </Button>
+                </div>
               </div>
             </div>
           )}

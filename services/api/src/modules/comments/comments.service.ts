@@ -11,6 +11,8 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { WebhookEventType } from '../webhooks/webhook-events.constants';
 
 @Injectable()
 export class CommentsService {
@@ -21,6 +23,7 @@ export class CommentsService {
     private issueRepository: Repository<Issue>,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
+    private webhookEventEmitter: WebhookEventEmitter,
   ) {}
 
   async findAll(issueId: string): Promise<Comment[]> {
@@ -55,6 +58,13 @@ export class CommentsService {
       ...full,
       issueId: dto.issueId,
     });
+
+    this.webhookEventEmitter.emit(
+      organizationId,
+      issue.projectId,
+      WebhookEventType.COMMENT_CREATED,
+      { comment: full, issueId: dto.issueId, issueKey: issue.key },
+    );
 
     if (issue.reporterId && issue.reporterId !== userId) {
       await this.notificationsService.create({
@@ -95,7 +105,19 @@ export class CommentsService {
     }
     comment.content = dto.content;
     comment.editedAt = new Date();
-    return this.commentRepository.save(comment);
+    const saved = await this.commentRepository.save(comment);
+
+    const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
+    if (issue) {
+      this.webhookEventEmitter.emit(
+        issue.organizationId,
+        issue.projectId,
+        WebhookEventType.COMMENT_UPDATED,
+        { comment: saved, issueId: comment.issueId, issueKey: issue.key },
+      );
+    }
+
+    return saved;
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -109,5 +131,15 @@ export class CommentsService {
       throw new ForbiddenException('You can only delete your own comments');
     }
     await this.commentRepository.update(id, { deletedAt: new Date() });
+
+    const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
+    if (issue) {
+      this.webhookEventEmitter.emit(
+        issue.organizationId,
+        issue.projectId,
+        WebhookEventType.COMMENT_DELETED,
+        { commentId: id, issueId: comment.issueId, issueKey: issue.key },
+      );
+    }
   }
 }

@@ -13,6 +13,8 @@ import { CreateWorkLogDto } from './dto/create-work-log.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { WebhookEventType } from '../webhooks/webhook-events.constants';
 
 @Injectable()
 export class IssuesService {
@@ -26,6 +28,7 @@ export class IssuesService {
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
+    private webhookEventEmitter: WebhookEventEmitter,
   ) {}
 
   async findAll(filters: {
@@ -138,6 +141,13 @@ export class IssuesService {
 
     this.eventsGateway.emitToOrg(organizationId, 'issue:created', fullIssue);
 
+    this.webhookEventEmitter.emit(
+      organizationId,
+      dto.projectId,
+      WebhookEventType.ISSUE_CREATED,
+      { issue: fullIssue },
+    );
+
     if (dto.assigneeId && dto.assigneeId !== userId) {
       await this.notificationsService.create({
         userId: dto.assigneeId,
@@ -154,12 +164,38 @@ export class IssuesService {
   async update(id: string, organizationId: string, dto: UpdateIssueDto, userId: string): Promise<Issue> {
     const issue = await this.findById(id, organizationId);
     const prevAssigneeId = issue.assigneeId;
+    const prevStatusId = issue.statusId;
 
     Object.assign(issue, dto);
     await this.issueRepository.save(issue);
 
     const updatedIssue = await this.findById(id, organizationId);
     this.eventsGateway.emitToOrg(organizationId, 'issue:updated', updatedIssue);
+
+    this.webhookEventEmitter.emit(
+      organizationId,
+      updatedIssue.projectId,
+      WebhookEventType.ISSUE_UPDATED,
+      { issue: updatedIssue },
+    );
+
+    if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
+      this.webhookEventEmitter.emit(
+        organizationId,
+        updatedIssue.projectId,
+        WebhookEventType.ISSUE_ASSIGNED,
+        { issue: updatedIssue, assigneeId: dto.assigneeId, previousAssigneeId: prevAssigneeId },
+      );
+    }
+
+    if (dto.statusId && dto.statusId !== prevStatusId) {
+      this.webhookEventEmitter.emit(
+        organizationId,
+        updatedIssue.projectId,
+        WebhookEventType.ISSUE_STATUS_CHANGED,
+        { issue: updatedIssue, statusId: dto.statusId, previousStatusId: prevStatusId },
+      );
+    }
 
     if (dto.assigneeId && dto.assigneeId !== prevAssigneeId && dto.assigneeId !== userId) {
       await this.notificationsService.create({
@@ -178,6 +214,13 @@ export class IssuesService {
     const issue = await this.findById(id, organizationId);
     await this.issueRepository.update(id, { deletedAt: new Date() });
     this.eventsGateway.emitToOrg(organizationId, 'issue:deleted', { id });
+
+    this.webhookEventEmitter.emit(
+      organizationId,
+      issue.projectId,
+      WebhookEventType.ISSUE_DELETED,
+      { issue: { id: issue.id, key: issue.key, title: issue.title, projectId: issue.projectId } },
+    );
   }
 
   async addWatcher(id: string, organizationId: string, userId: string): Promise<Issue> {
