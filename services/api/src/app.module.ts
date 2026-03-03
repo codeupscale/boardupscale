@@ -15,6 +15,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { HealthModule } from './modules/health/health.module';
 import { EventsModule } from './websocket/events.module';
 
@@ -83,6 +84,7 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
     CommentsModule,
     NotificationsModule,
     FilesModule,
+    ReportsModule,
     SearchModule,
     HealthModule,
     EventsModule,
