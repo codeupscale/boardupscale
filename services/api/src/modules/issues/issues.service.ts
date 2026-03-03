@@ -1,15 +1,20 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, In, Not } from 'typeorm';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { CreateWorkLogDto } from './dto/create-work-log.dto';
+import { BulkUpdateIssuesDto } from './dto/bulk-update-issues.dto';
+import { BulkMoveIssuesDto } from './dto/bulk-move-issues.dto';
+import { BulkDeleteIssuesDto } from './dto/bulk-delete-issues.dto';
+import { BulkTransitionIssuesDto } from './dto/bulk-transition-issues.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
@@ -40,8 +45,9 @@ export class IssuesService {
     page?: number;
     limit?: number;
     backlog?: boolean;
+    deleted?: boolean;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog } = filters;
+    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted } = filters;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
@@ -49,8 +55,13 @@ export class IssuesService {
       .leftJoinAndSelect('issue.assignee', 'assignee')
       .leftJoinAndSelect('issue.reporter', 'reporter')
       .leftJoinAndSelect('issue.sprint', 'sprint')
-      .where('issue.organization_id = :organizationId', { organizationId })
-      .andWhere('issue.deleted_at IS NULL');
+      .where('issue.organization_id = :organizationId', { organizationId });
+
+    if (deleted) {
+      qb.andWhere('issue.deleted_at IS NOT NULL');
+    } else {
+      qb.andWhere('issue.deleted_at IS NULL');
+    }
 
     if (projectId) {
       qb.andWhere('issue.project_id = :projectId', { projectId });
@@ -219,5 +230,154 @@ export class IssuesService {
       relations: ['user'],
       order: { loggedAt: 'DESC' },
     });
+  }
+
+  async bulkUpdate(organizationId: string, dto: BulkUpdateIssuesDto): Promise<{ affected: number }> {
+    if (!dto.issueIds || dto.issueIds.length === 0) {
+      throw new BadRequestException('issueIds must not be empty');
+    }
+
+    const updateFields: Partial<Issue> = {};
+    if (dto.assigneeId !== undefined) updateFields.assigneeId = dto.assigneeId;
+    if (dto.statusId !== undefined) updateFields.statusId = dto.statusId;
+    if (dto.sprintId !== undefined) updateFields.sprintId = dto.sprintId;
+    if (dto.type !== undefined) updateFields.type = dto.type;
+    if (dto.priority !== undefined) updateFields.priority = dto.priority;
+    if (dto.labels !== undefined) updateFields.labels = dto.labels;
+    if (dto.storyPoints !== undefined) updateFields.storyPoints = dto.storyPoints;
+
+    if (Object.keys(updateFields).length === 0) {
+      throw new BadRequestException('At least one field to update must be provided');
+    }
+
+    const result = await this.issueRepository
+      .createQueryBuilder()
+      .update(Issue)
+      .set(updateFields)
+      .where('id IN (:...ids)', { ids: dto.issueIds })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+
+    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-updated', {
+      issueIds: dto.issueIds,
+    });
+
+    return { affected: result.affected || 0 };
+  }
+
+  async bulkMove(organizationId: string, dto: BulkMoveIssuesDto): Promise<{ affected: number }> {
+    if (!dto.issueIds || dto.issueIds.length === 0) {
+      throw new BadRequestException('issueIds must not be empty');
+    }
+
+    const targetProject = await this.projectsService.findById(dto.targetProjectId, organizationId);
+
+    let targetStatusId = dto.targetStatusId;
+    if (!targetStatusId) {
+      const defaultStatus = await this.issueStatusRepository.findOne({
+        where: { projectId: dto.targetProjectId, isDefault: true },
+        order: { position: 'ASC' },
+      });
+      if (defaultStatus) {
+        targetStatusId = defaultStatus.id;
+      } else {
+        const firstStatus = await this.issueStatusRepository.findOne({
+          where: { projectId: dto.targetProjectId },
+          order: { position: 'ASC' },
+        });
+        if (firstStatus) targetStatusId = firstStatus.id;
+      }
+    }
+
+    // Re-key each issue with the target project's key prefix
+    const issues = await this.issueRepository.find({
+      where: { id: In(dto.issueIds), organizationId, deletedAt: IsNull() },
+    });
+
+    let affected = 0;
+    for (const issue of issues) {
+      const issueNumber = await this.projectsService.getNextIssueNumber(dto.targetProjectId);
+      const newKey = `${targetProject.key}-${issueNumber}`;
+      await this.issueRepository.update(issue.id, {
+        projectId: dto.targetProjectId,
+        key: newKey,
+        number: issueNumber,
+        statusId: targetStatusId || issue.statusId,
+        sprintId: null as any, // Clear sprint when moving projects
+      });
+      affected++;
+    }
+
+    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-moved', {
+      issueIds: dto.issueIds,
+      targetProjectId: dto.targetProjectId,
+    });
+
+    return { affected };
+  }
+
+  async bulkDelete(organizationId: string, dto: BulkDeleteIssuesDto): Promise<{ affected: number }> {
+    if (!dto.issueIds || dto.issueIds.length === 0) {
+      throw new BadRequestException('issueIds must not be empty');
+    }
+
+    const result = await this.issueRepository
+      .createQueryBuilder()
+      .update(Issue)
+      .set({ deletedAt: new Date() })
+      .where('id IN (:...ids)', { ids: dto.issueIds })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+
+    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-deleted', {
+      issueIds: dto.issueIds,
+    });
+
+    return { affected: result.affected || 0 };
+  }
+
+  async bulkRestore(organizationId: string, issueIds: string[]): Promise<{ affected: number }> {
+    if (!issueIds || issueIds.length === 0) {
+      throw new BadRequestException('issueIds must not be empty');
+    }
+
+    const result = await this.issueRepository
+      .createQueryBuilder()
+      .update(Issue)
+      .set({ deletedAt: null as any })
+      .where('id IN (:...ids)', { ids: issueIds })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('deleted_at IS NOT NULL')
+      .execute();
+
+    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-restored', {
+      issueIds,
+    });
+
+    return { affected: result.affected || 0 };
+  }
+
+  async bulkTransition(organizationId: string, dto: BulkTransitionIssuesDto): Promise<{ affected: number }> {
+    if (!dto.issueIds || dto.issueIds.length === 0) {
+      throw new BadRequestException('issueIds must not be empty');
+    }
+
+    const result = await this.issueRepository
+      .createQueryBuilder()
+      .update(Issue)
+      .set({ statusId: dto.statusId })
+      .where('id IN (:...ids)', { ids: dto.issueIds })
+      .andWhere('organization_id = :organizationId', { organizationId })
+      .andWhere('deleted_at IS NULL')
+      .execute();
+
+    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-transitioned', {
+      issueIds: dto.issueIds,
+      statusId: dto.statusId,
+    });
+
+    return { affected: result.affected || 0 };
   }
 }
