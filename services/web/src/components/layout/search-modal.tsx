@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/ui.store'
 import { useSearch } from '@/hooks/useSearch'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { Issue } from '@/types'
 
 export function SearchModal() {
+  const { t } = useTranslation()
   const { isSearchOpen, setSearchOpen } = useUiStore()
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -62,7 +64,7 @@ export function SearchModal() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search issues, projects..."
+            placeholder={t('search.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 text-sm text-gray-900 placeholder:text-gray-400 outline-none bg-transparent"
@@ -84,20 +86,20 @@ export function SearchModal() {
         <div className="max-h-80 overflow-y-auto">
           {isLoading && query.length >= 2 && (
             <div className="flex items-center justify-center py-8 text-sm text-gray-500">
-              Searching...
+              {t('search.searching')}
             </div>
           )}
 
           {!isLoading && query.length >= 2 && issues.length === 0 && (
             <div className="py-8 text-center text-sm text-gray-500">
-              No results found for "{query}"
+              {t('search.noResultsFor', { query })}
             </div>
           )}
 
           {issues.length > 0 && (
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                Issues
+                {t('search.issues')}
               </div>
               {issues.map((issue) => (
                 <button
@@ -115,7 +117,7 @@ export function SearchModal() {
 
           {!query && (
             <div className="py-8 text-center text-sm text-gray-400">
-              Start typing to search...
+              {t('search.startTyping')}
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, MessageCircle, GitMerge, AlertCircle, Info } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   useNotifications,
   useMarkRead,
@@ -78,6 +79,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
 }
 
 export function NotificationsPage() {
+  const { t } = useTranslation()
   const { data: notifications, isLoading } = useNotifications()
   const markAllRead = useMarkAllRead()
 
@@ -86,7 +88,7 @@ export function NotificationsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Notifications"
+        title={t('notifications.title')}
         actions={
           unreadCount > 0 ? (
             <Button
@@ -96,7 +98,7 @@ export function NotificationsPage() {
               onClick={() => markAllRead.mutate()}
             >
               <CheckCheck className="h-4 w-4" />
-              Mark All Read
+              {t('notifications.markAllRead')}
             </Button>
           ) : undefined
         }
@@ -108,8 +110,8 @@ export function NotificationsPage() {
         ) : !notifications || notifications.length === 0 ? (
           <EmptyState
             icon={<Bell className="h-12 w-12" />}
-            title="No notifications"
-            description="You're all caught up! Notifications will appear here."
+            title={t('notifications.noNotifications')}
+            description={t('notifications.noNotificationsDesc')}
           />
         ) : (
           <div className="bg-white divide-y divide-gray-100 max-w-3xl">
@@ -117,7 +119,7 @@ export function NotificationsPage() {
             {unreadCount > 0 && (
               <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Unread ({unreadCount})
+                  {t('notifications.unread', { count: unreadCount })}
                 </p>
               </div>
             )}
@@ -132,7 +134,7 @@ export function NotificationsPage() {
               <>
                 <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Earlier
+                    {t('notifications.earlier')}
                   </p>
                 </div>
                 {notifications

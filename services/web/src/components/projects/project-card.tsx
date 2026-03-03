@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Project, ProjectType } from '@/types'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +34,7 @@ function getProjectColor(key: string) {
 }
 
 export function ProjectCard({ project, memberCount, issueCount }: ProjectCardProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const colorClass = getProjectColor(project.key)
 
@@ -63,7 +65,7 @@ export function ProjectCard({ project, memberCount, issueCount }: ProjectCardPro
                 typeColors[project.type],
               )}
             >
-              {project.type === ProjectType.SCRUM ? 'Scrum' : 'Kanban'}
+              {project.type === ProjectType.SCRUM ? t('projects.scrum') : t('projects.kanban')}
             </span>
           </div>
         </div>
@@ -79,13 +81,17 @@ export function ProjectCard({ project, memberCount, issueCount }: ProjectCardPro
         {memberCount !== undefined && (
           <span className="flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />
-            {memberCount} member{memberCount !== 1 ? 's' : ''}
+            {memberCount !== 1
+              ? t('projects.members_count_plural', { count: memberCount })
+              : t('projects.members_count', { count: memberCount })}
           </span>
         )}
         {issueCount !== undefined && (
           <span className="flex items-center gap-1">
             <Layers className="h-3.5 w-3.5" />
-            {issueCount} issue{issueCount !== 1 ? 's' : ''}
+            {issueCount !== 1
+              ? t('projects.issues_count_plural', { count: issueCount })
+              : t('projects.issues_count', { count: issueCount })}
           </span>
         )}
       </div>

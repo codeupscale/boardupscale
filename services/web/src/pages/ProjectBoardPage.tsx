@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { DragDropContext, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useBoard, useReorderIssues } from '@/hooks/useBoard'
 import { useProject } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
@@ -18,6 +19,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData } from '@/types'
 
 export function ProjectBoardPage() {
+  const { t } = useTranslation()
   const { id: projectId } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -96,16 +98,16 @@ export function ProjectBoardPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title={project?.name || 'Board'}
+        title={project?.name || t('board.title')}
         breadcrumbs={[
-          { label: 'Projects', href: '/projects' },
+          { label: t('nav.projects'), href: '/projects' },
           { label: project?.name || '...', href: `/projects/${projectId}/board` },
-          { label: 'Board' },
+          { label: t('nav.board') },
         ]}
         actions={
           <Button size="sm" onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4" />
-            Create Issue
+            {t('issues.createIssue')}
           </Button>
         }
       />
@@ -113,10 +115,10 @@ export function ProjectBoardPage() {
       {activeSprints.length > 0 && (
         <div className="px-6 py-2 bg-blue-50 border-b border-blue-100">
           <p className="text-sm text-blue-700">
-            Active sprint: <span className="font-semibold">{activeSprints[0].name}</span>
+            {t('board.activeSprint', { name: activeSprints[0].name })}
             {activeSprints[0].endDate && (
               <span className="text-blue-500 ml-2">
-                — ends {new Date(activeSprints[0].endDate).toLocaleDateString()}
+                {t('board.endsOn', { date: new Date(activeSprints[0].endDate).toLocaleDateString() })}
               </span>
             )}
           </p>
@@ -126,10 +128,10 @@ export function ProjectBoardPage() {
       {/* Navigation Tabs */}
       <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 bg-white">
         {[
-          { label: 'Board', href: `/projects/${projectId}/board` },
-          { label: 'Backlog', href: `/projects/${projectId}/backlog` },
-          { label: 'Issues', href: `/projects/${projectId}/issues` },
-          { label: 'Settings', href: `/projects/${projectId}/settings` },
+          { label: t('nav.board'), href: `/projects/${projectId}/board` },
+          { label: t('nav.backlog'), href: `/projects/${projectId}/backlog` },
+          { label: t('nav.issues'), href: `/projects/${projectId}/issues` },
+          { label: t('nav.settings'), href: `/projects/${projectId}/settings` },
         ].map((tab) => (
           <Link
             key={tab.href}
@@ -144,8 +146,8 @@ export function ProjectBoardPage() {
       {/* Board */}
       {!board || board.statuses.length === 0 ? (
         <EmptyState
-          title="No columns configured"
-          description="Go to project settings to configure workflow statuses."
+          title={t('board.noColumns')}
+          description={t('board.noColumnsDesc')}
         />
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -178,7 +180,7 @@ export function ProjectBoardPage() {
             setCreateStatusId(undefined)
           }}
         >
-          <DialogTitle>Create Issue</DialogTitle>
+          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm

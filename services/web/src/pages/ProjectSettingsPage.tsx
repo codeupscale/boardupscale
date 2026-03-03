@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Plus, Trash2, Edit2, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   useProject,
   useUpdateProject,
@@ -30,6 +31,7 @@ const STATUS_COLORS = [
 ]
 
 export function ProjectSettingsPage() {
+  const { t } = useTranslation()
   const { id: projectId } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('general')
@@ -103,21 +105,21 @@ export function ProjectSettingsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Project Settings"
+        title={t('nav.projectSettings')}
         breadcrumbs={[
-          { label: 'Projects', href: '/projects' },
+          { label: t('nav.projects'), href: '/projects' },
           { label: project?.name || '...', href: `/projects/${projectId}/board` },
-          { label: 'Settings' },
+          { label: t('nav.settings') },
         ]}
       />
 
       <div className="p-6">
         <Tabs
           tabs={[
-            { id: 'general', label: 'General' },
-            { id: 'members', label: 'Members' },
-            { id: 'workflow', label: 'Workflow' },
-            { id: 'danger', label: 'Danger Zone' },
+            { id: 'general', label: t('settings.general') },
+            { id: 'members', label: t('projects.members') },
+            { id: 'workflow', label: t('settings.workflow') },
+            { id: 'danger', label: t('settings.dangerZone') },
           ]}
           activeTab={activeTab}
           onChange={setActiveTab}
@@ -127,7 +129,7 @@ export function ProjectSettingsPage() {
           {/* General */}
           {activeTab === 'general' && project && (
             <div className="max-w-lg">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">General Settings</h2>
+              <h2 className="text-base font-semibold text-gray-900 mb-4">{t('settings.generalSettings')}</h2>
               <ProjectForm
                 project={project}
                 onSubmit={(values) =>
@@ -135,7 +137,7 @@ export function ProjectSettingsPage() {
                 }
                 onCancel={() => {}}
                 isLoading={updateProject.isPending}
-                submitLabel="Save Changes"
+                submitLabel={t('settings.saveChanges')}
               />
             </div>
           )}
@@ -144,10 +146,10 @@ export function ProjectSettingsPage() {
           {activeTab === 'members' && (
             <div className="max-w-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">Project Members</h2>
+                <h2 className="text-base font-semibold text-gray-900">{t('projects.projectMembers')}</h2>
                 <Button size="sm" onClick={() => setShowAddMember(true)}>
                   <Plus className="h-4 w-4" />
-                  Add Member
+                  {t('projects.addMember')}
                 </Button>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 px-4">
@@ -160,7 +162,7 @@ export function ProjectSettingsPage() {
           {activeTab === 'workflow' && (
             <div className="max-w-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">Issue Statuses</h2>
+                <h2 className="text-base font-semibold text-gray-900">{t('settings.issueStatuses')}</h2>
                 <Button
                   size="sm"
                   onClick={() => {
@@ -172,7 +174,7 @@ export function ProjectSettingsPage() {
                   }}
                 >
                   <Plus className="h-4 w-4" />
-                  Add Status
+                  {t('settings.addStatus')}
                 </Button>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -205,7 +207,7 @@ export function ProjectSettingsPage() {
                 ))}
                 {(!board?.statuses || board.statuses.length === 0) && (
                   <div className="py-8 text-center text-sm text-gray-400">
-                    No statuses configured.
+                    {t('settings.noStatusesConfigured')}
                   </div>
                 )}
               </div>
@@ -220,18 +222,17 @@ export function ProjectSettingsPage() {
                   <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <h3 className="text-sm font-semibold text-red-800 mb-1">
-                      Delete Project
+                      {t('settings.deleteProject')}
                     </h3>
                     <p className="text-sm text-red-700 mb-4">
-                      Permanently delete this project and all its issues, sprints, and data. This action
-                      cannot be undone.
+                      {t('settings.deleteProjectDesc')}
                     </p>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => setShowDeleteProject(true)}
                     >
-                      Delete Project
+                      {t('settings.deleteProject')}
                     </Button>
                   </div>
                 </div>
@@ -244,27 +245,27 @@ export function ProjectSettingsPage() {
       {/* Add Member Dialog */}
       <Dialog open={showAddMember} onClose={() => setShowAddMember(false)} className="max-w-sm">
         <DialogHeader onClose={() => setShowAddMember(false)}>
-          <DialogTitle>Add Member</DialogTitle>
+          <DialogTitle>{t('projects.addMember')}</DialogTitle>
         </DialogHeader>
         <DialogContent className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">User</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.user')}</label>
             <UserSelect value={newMemberId} onChange={setNewMemberId} />
           </div>
           <Select
-            label="Role"
+            label={t('settings.role')}
             options={[
-              { value: 'viewer', label: 'Viewer' },
-              { value: 'member', label: 'Member' },
-              { value: 'manager', label: 'Manager' },
-              { value: 'admin', label: 'Admin' },
+              { value: 'viewer', label: t('settings.viewer') },
+              { value: 'member', label: t('projects.member') },
+              { value: 'manager', label: t('settings.manager') },
+              { value: 'admin', label: t('settings.admin') },
             ]}
             value={newMemberRole}
             onChange={(e) => setNewMemberRole(e.target.value)}
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAddMember(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               disabled={!newMemberId}
@@ -277,7 +278,7 @@ export function ProjectSettingsPage() {
                 )
               }}
             >
-              Add Member
+              {t('projects.addMember')}
             </Button>
           </div>
         </DialogContent>
@@ -286,27 +287,27 @@ export function ProjectSettingsPage() {
       {/* Add/Edit Status Dialog */}
       <Dialog open={showAddStatus} onClose={() => setShowAddStatus(false)} className="max-w-sm">
         <DialogHeader onClose={() => setShowAddStatus(false)}>
-          <DialogTitle>{editStatus ? 'Edit Status' : 'Add Status'}</DialogTitle>
+          <DialogTitle>{editStatus ? t('settings.editStatus') : t('settings.addStatus')}</DialogTitle>
         </DialogHeader>
         <DialogContent className="space-y-4">
           <Input
-            label="Status Name"
+            label={t('settings.statusName')}
             placeholder="e.g. In Review"
             value={statusName}
             onChange={(e) => setStatusName(e.target.value)}
           />
           <Select
-            label="Category"
+            label={t('settings.category')}
             options={[
-              { value: IssueStatusCategory.TODO, label: 'To Do' },
-              { value: IssueStatusCategory.IN_PROGRESS, label: 'In Progress' },
-              { value: IssueStatusCategory.DONE, label: 'Done' },
+              { value: IssueStatusCategory.TODO, label: t('settings.toDo') },
+              { value: IssueStatusCategory.IN_PROGRESS, label: t('settings.inProgress') },
+              { value: IssueStatusCategory.DONE, label: t('settings.done') },
             ]}
             value={statusCategory}
             onChange={(e) => setStatusCategory(e.target.value as IssueStatusCategory)}
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.color')}</label>
             <div className="flex gap-2 flex-wrap">
               {STATUS_COLORS.map((c) => (
                 <button
@@ -324,14 +325,14 @@ export function ProjectSettingsPage() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddStatus(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               isLoading={createStatus.isPending || updateStatus.isPending}
               onClick={handleStatusSubmit}
               disabled={!statusName}
             >
-              {editStatus ? 'Save' : 'Add'}
+              {editStatus ? t('common.save') : t('common.add')}
             </Button>
           </div>
         </DialogContent>
@@ -346,9 +347,9 @@ export function ProjectSettingsPage() {
             onSuccess: () => navigate('/projects'),
           })
         }
-        title="Delete Project"
-        description={`Are you sure you want to delete "${project?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete Project"
+        title={t('settings.deleteProject')}
+        description={t('settings.deleteProjectConfirm', { name: project?.name })}
+        confirmLabel={t('settings.deleteProject')}
         destructive
         isLoading={deleteProject.isPending}
       />

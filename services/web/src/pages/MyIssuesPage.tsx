@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIssues } from '@/hooks/useIssues'
 import { useAuthStore } from '@/store/auth.store'
 import { useBoard } from '@/hooks/useBoard'
@@ -11,6 +12,7 @@ import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { CircleDot } from 'lucide-react'
 
 export function MyIssuesPage() {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const [filterPriority, setFilterPriority] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
@@ -34,18 +36,18 @@ export function MyIssuesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="My Issues" />
+      <PageHeader title={t('nav.myIssues')} />
 
       <div className="p-6 space-y-4">
         {/* Filters */}
         <div className="flex gap-3">
           <Select
             options={[
-              { value: '', label: 'All Priorities' },
-              { value: IssuePriority.CRITICAL, label: 'Critical' },
-              { value: IssuePriority.HIGH, label: 'High' },
-              { value: IssuePriority.MEDIUM, label: 'Medium' },
-              { value: IssuePriority.LOW, label: 'Low' },
+              { value: '', label: t('issues.allPriorities') },
+              { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
+              { value: IssuePriority.HIGH, label: t('priorities.high') },
+              { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
+              { value: IssuePriority.LOW, label: t('priorities.low') },
             ]}
             value={filterPriority}
             onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
@@ -54,10 +56,10 @@ export function MyIssuesPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Statuses' },
-              { value: IssueStatusCategory.TODO, label: 'To Do' },
-              { value: IssueStatusCategory.IN_PROGRESS, label: 'In Progress' },
-              { value: IssueStatusCategory.DONE, label: 'Done' },
+              { value: '', label: t('issues.allStatuses') },
+              { value: IssueStatusCategory.TODO, label: t('settings.toDo') },
+              { value: IssueStatusCategory.IN_PROGRESS, label: t('settings.inProgress') },
+              { value: IssueStatusCategory.DONE, label: t('settings.done') },
             ]}
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
@@ -68,19 +70,19 @@ export function MyIssuesPage() {
         {/* Issue stats */}
         <div className="flex gap-4">
           {[
-            { label: 'Total', count: total, color: 'text-gray-700' },
+            { label: t('common.title').replace(t('common.title'), 'Total'), count: total, color: 'text-gray-700' },
             {
-              label: 'To Do',
+              label: t('settings.toDo'),
               count: issues.filter((i) => i.status?.category === IssueStatusCategory.TODO).length,
               color: 'text-gray-600',
             },
             {
-              label: 'In Progress',
+              label: t('settings.inProgress'),
               count: issues.filter((i) => i.status?.category === IssueStatusCategory.IN_PROGRESS).length,
               color: 'text-blue-600',
             },
             {
-              label: 'Done',
+              label: t('settings.done'),
               count: issues.filter((i) => i.status?.category === IssueStatusCategory.DONE).length,
               color: 'text-green-600',
             },
@@ -104,11 +106,11 @@ export function MyIssuesPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">Title</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Priority</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">Assignee</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Due Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('issues.dueDate')}</th>
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">SP</th>
                 </tr>
               </thead>
@@ -123,7 +125,7 @@ export function MyIssuesPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                 <span className="text-sm text-gray-500">
-                  Page {page} of {totalPages} ({total} issues)
+                  {t('common.pageOf', { page, totalPages, total })}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -131,14 +133,14 @@ export function MyIssuesPage() {
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
-                    Previous
+                    {t('common.previous')}
                   </button>
                   <button
                     className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next
+                    {t('common.next')}
                   </button>
                 </div>
               </div>
@@ -147,8 +149,8 @@ export function MyIssuesPage() {
         ) : (
           <EmptyState
             icon={<CircleDot className="h-12 w-12" />}
-            title="No issues assigned to you"
-            description="Issues assigned to you across all projects will appear here."
+            title={t('dashboard.noIssuesAssigned')}
+            description={t('dashboard.issuesAssignedAppear')}
           />
         )}
       </div>

@@ -1,5 +1,6 @@
 import { Droppable } from '@hello-pangea/dnd'
 import { Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { BoardColumn as BoardColumnType } from '@/types'
 import { cn } from '@/lib/utils'
 import { BoardCard } from './board-card'
@@ -10,6 +11,8 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({ column, onAddIssue }: BoardColumnProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex flex-col w-72 flex-shrink-0">
       {/* Column Header */}
@@ -30,7 +33,7 @@ export function BoardColumn({ column, onAddIssue }: BoardColumnProps) {
           <button
             onClick={() => onAddIssue(column.id)}
             className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            title="Add issue"
+            title={t('issues.addIssue')}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -54,7 +57,7 @@ export function BoardColumn({ column, onAddIssue }: BoardColumnProps) {
             {provided.placeholder}
             {column.issues.length === 0 && !snapshot.isDraggingOver && (
               <div className="flex items-center justify-center h-20 text-xs text-gray-400">
-                No issues
+                {t('issues.noIssuesBoard')}
               </div>
             )}
           </div>

@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateLanguageDto } from './dto/update-language.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -41,6 +42,15 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   async updateMe(@CurrentUser() user: any, @Body() dto: UpdateUserDto) {
     return this.usersService.update(user.id, dto);
+  }
+
+  @Patch('me/language')
+  @ApiOperation({ summary: 'Update current user preferred language' })
+  async updateLanguage(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateLanguageDto,
+  ) {
+    return this.usersService.update(user.id, { language: dto.language });
   }
 
   @Get(':id')

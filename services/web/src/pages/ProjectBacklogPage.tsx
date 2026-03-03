@@ -8,6 +8,7 @@ import {
   CheckCircle,
   Trash2,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useProject } from '@/hooks/useProjects'
 import { useSprints, useCreateSprint, useStartSprint, useCompleteSprint, useDeleteSprint } from '@/hooks/useSprints'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
@@ -38,6 +39,7 @@ function SprintSection({
   statuses: any[]
   allSprints: any[]
 }) {
+  const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false)
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
@@ -68,11 +70,11 @@ function SprintSection({
           <h3 className="text-sm font-semibold text-gray-900">{sprint.name}</h3>
           {isActive && (
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-              Active
+              {t('sprints.active')}
             </span>
           )}
           <span className="text-xs text-gray-400">
-            ({issues.length} issue{issues.length !== 1 ? 's' : ''})
+            ({issues.length} {issues.length !== 1 ? t('nav.issues').toLowerCase() : t('projects.issue')})
           </span>
           {sprint.startDate && sprint.endDate && (
             <span className="text-xs text-gray-400">
@@ -87,13 +89,13 @@ function SprintSection({
           {sprint.status === SprintStatus.PLANNED && (
             <Button size="sm" variant="outline" onClick={() => setShowConfirm('start')}>
               <Play className="h-3.5 w-3.5" />
-              Start Sprint
+              {t('sprints.startSprint')}
             </Button>
           )}
           {isActive && (
             <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
               <CheckCircle className="h-3.5 w-3.5" />
-              Complete
+              {t('sprints.complete')}
             </Button>
           )}
           <Button
@@ -120,7 +122,7 @@ function SprintSection({
             </table>
           ) : (
             <div className="py-6 text-center text-sm text-gray-400">
-              No issues in this sprint. Drag issues here from the backlog.
+              {t('issues.noIssuesInSprint')}
             </div>
           )}
         </div>
@@ -133,24 +135,24 @@ function SprintSection({
         className="max-w-sm"
       >
         <DialogHeader onClose={() => setShowConfirm(null)}>
-          <DialogTitle>Start Sprint</DialogTitle>
+          <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
         </DialogHeader>
         <DialogContent className="space-y-3">
           <Input
-            label="Start Date"
+            label={t('sprints.startDate')}
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
           <Input
-            label="End Date"
+            label={t('sprints.endDate')}
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowConfirm(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               isLoading={startSprint.isPending}
@@ -161,7 +163,7 @@ function SprintSection({
                 )
               }
             >
-              Start
+              {t('sprints.start')}
             </Button>
           </div>
         </DialogContent>
@@ -176,9 +178,9 @@ function SprintSection({
             { onSuccess: () => setShowConfirm(null) },
           )
         }
-        title="Complete Sprint"
-        description="Are you sure you want to complete this sprint? Incomplete issues will be moved to the backlog."
-        confirmLabel="Complete Sprint"
+        title={t('sprints.completeSprint')}
+        description={t('sprints.completeSprintConfirm')}
+        confirmLabel={t('sprints.completeSprint')}
         isLoading={completeSprint.isPending}
       />
 
@@ -191,9 +193,9 @@ function SprintSection({
             { onSuccess: () => setShowConfirm(null) },
           )
         }
-        title="Delete Sprint"
-        description="This will delete the sprint. Issues will be moved to the backlog."
-        confirmLabel="Delete"
+        title={t('sprints.deleteSprint')}
+        description={t('sprints.deleteSprintConfirm')}
+        confirmLabel={t('common.delete')}
         destructive
         isLoading={deleteSprint.isPending}
       />
@@ -202,6 +204,7 @@ function SprintSection({
 }
 
 export function ProjectBacklogPage() {
+  const { t } = useTranslation()
   const { id: projectId } = useParams<{ id: string }>()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
@@ -228,21 +231,21 @@ export function ProjectBacklogPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Backlog"
+        title={t('nav.backlog')}
         breadcrumbs={[
-          { label: 'Projects', href: '/projects' },
+          { label: t('nav.projects'), href: '/projects' },
           { label: project?.name || '...', href: `/projects/${projectId}/board` },
-          { label: 'Backlog' },
+          { label: t('nav.backlog') },
         ]}
         actions={
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
               <Plus className="h-4 w-4" />
-              Create Sprint
+              {t('sprints.createSprint')}
             </Button>
             <Button size="sm" onClick={() => setShowCreateIssue(true)}>
               <Plus className="h-4 w-4" />
-              Create Issue
+              {t('issues.createIssue')}
             </Button>
           </div>
         }
@@ -265,9 +268,9 @@ export function ProjectBacklogPage() {
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-900">
-              Backlog{' '}
+              {t('sprints.backlog')}{' '}
               <span className="text-gray-400 font-normal">
-                ({backlogIssues.length} issue{backlogIssues.length !== 1 ? 's' : ''})
+                ({backlogIssues.length} {backlogIssues.length !== 1 ? t('nav.issues').toLowerCase() : t('projects.issue')})
               </span>
             </h3>
           </div>
@@ -281,9 +284,9 @@ export function ProjectBacklogPage() {
             </table>
           ) : (
             <EmptyState
-              title="Backlog is empty"
-              description="Issues without a sprint will appear here."
-              action={{ label: 'Create Issue', onClick: () => setShowCreateIssue(true) }}
+              title={t('sprints.backlogEmpty')}
+              description={t('sprints.backlogEmptyDesc')}
+              action={{ label: t('issues.createIssue'), onClick: () => setShowCreateIssue(true) }}
             />
           )}
         </div>
@@ -296,18 +299,18 @@ export function ProjectBacklogPage() {
         className="max-w-sm"
       >
         <DialogHeader onClose={() => setShowCreateSprint(false)}>
-          <DialogTitle>Create Sprint</DialogTitle>
+          <DialogTitle>{t('sprints.createSprint')}</DialogTitle>
         </DialogHeader>
         <DialogContent className="space-y-3">
           <Input
-            label="Sprint Name"
+            label={t('sprints.sprintName')}
             placeholder={`Sprint ${(sprints?.length || 0) + 1}`}
             value={sprintName}
             onChange={(e) => setSprintName(e.target.value)}
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               isLoading={createSprint.isPending}
@@ -326,7 +329,7 @@ export function ProjectBacklogPage() {
                 )
               }
             >
-              Create
+              {t('common.create')}
             </Button>
           </div>
         </DialogContent>
@@ -339,7 +342,7 @@ export function ProjectBacklogPage() {
         className="max-w-2xl"
       >
         <DialogHeader onClose={() => setShowCreateIssue(false)}>
-          <DialogTitle>Create Issue</DialogTitle>
+          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm

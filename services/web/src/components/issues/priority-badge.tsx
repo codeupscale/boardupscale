@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowUp, Minus, ArrowDown, Minus as DashIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { IssuePriority } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -8,41 +9,46 @@ interface PriorityBadgeProps {
   className?: string
 }
 
-const config = {
+const iconConfig = {
   [IssuePriority.CRITICAL]: {
     icon: AlertTriangle,
-    label: 'Critical',
     color: 'text-red-600',
     bg: 'bg-red-50',
   },
   [IssuePriority.HIGH]: {
     icon: ArrowUp,
-    label: 'High',
     color: 'text-orange-600',
     bg: 'bg-orange-50',
   },
   [IssuePriority.MEDIUM]: {
     icon: Minus,
-    label: 'Medium',
     color: 'text-yellow-600',
     bg: 'bg-yellow-50',
   },
   [IssuePriority.LOW]: {
     icon: ArrowDown,
-    label: 'Low',
     color: 'text-blue-600',
     bg: 'bg-blue-50',
   },
   [IssuePriority.NONE]: {
     icon: DashIcon,
-    label: 'None',
     color: 'text-gray-400',
     bg: 'bg-gray-50',
   },
 }
 
+const labelKeys: Record<IssuePriority, string> = {
+  [IssuePriority.CRITICAL]: 'priorities.critical',
+  [IssuePriority.HIGH]: 'priorities.high',
+  [IssuePriority.MEDIUM]: 'priorities.medium',
+  [IssuePriority.LOW]: 'priorities.low',
+  [IssuePriority.NONE]: 'priorities.none',
+}
+
 export function PriorityBadge({ priority, showLabel = true, className }: PriorityBadgeProps) {
-  const { icon: Icon, label, color, bg } = config[priority] || config[IssuePriority.NONE]
+  const { t } = useTranslation()
+  const { icon: Icon, color, bg } = iconConfig[priority] || iconConfig[IssuePriority.NONE]
+  const label = t(labelKeys[priority] || 'priorities.none')
 
   return (
     <span

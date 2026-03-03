@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router-dom'
 import { Zap } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useRegister } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const register_ = useRegister()
   const {
     register,
@@ -50,28 +52,28 @@ export function RegisterPage() {
             <Zap className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ProjectFlow</h1>
-          <p className="text-sm text-gray-500 mt-1">Create your account</p>
+          <p className="text-sm text-gray-500 mt-1">{t('auth.registerSubtitle')}</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
-              label="Organization Name"
+              label={t('auth.orgName')}
               placeholder="Acme Corp"
               error={errors.organizationName?.message}
               {...register('organizationName')}
             />
 
             <Input
-              label="Display Name"
+              label={t('auth.displayName')}
               placeholder="John Doe"
               error={errors.displayName?.message}
               {...register('displayName')}
             />
 
             <Input
-              label="Email"
+              label={t('common.email')}
               type="email"
               placeholder="you@example.com"
               autoComplete="email"
@@ -80,7 +82,7 @@ export function RegisterPage() {
             />
 
             <Input
-              label="Password"
+              label={t('common.password')}
               type="password"
               placeholder="Min. 8 characters"
               autoComplete="new-password"
@@ -89,7 +91,7 @@ export function RegisterPage() {
             />
 
             <Input
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type="password"
               placeholder="Repeat your password"
               autoComplete="new-password"
@@ -101,7 +103,7 @@ export function RegisterPage() {
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                 <p className="text-sm text-red-600">
                   {(register_.error as any)?.response?.data?.error?.message ||
-                    'Registration failed. Please try again.'}
+                    t('auth.registrationFailed')}
                 </p>
               </div>
             )}
@@ -112,16 +114,16 @@ export function RegisterPage() {
               size="lg"
               isLoading={register_.isPending}
             >
-              Create account
+              {t('auth.createAccount')}
             </Button>
           </form>
         </div>
 
         {/* Login link */}
         <p className="text-center text-sm text-gray-500 mt-4">
-          Already have an account?{' '}
+          {t('auth.hasAccount')}{' '}
           <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Sign in
+            {t('auth.signIn')}
           </Link>
         </p>
       </div>

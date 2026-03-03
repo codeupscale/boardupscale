@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { ProjectMember, UserRole } from '@/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -11,12 +12,12 @@ interface MemberListProps {
   members: ProjectMember[]
 }
 
-const roleOptions = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'member', label: 'Member' },
-  { value: 'viewer', label: 'Viewer' },
-]
+const roleKeys: Record<string, string> = {
+  admin: 'settings.admin',
+  manager: 'settings.manager',
+  member: 'projects.member',
+  viewer: 'settings.viewer',
+}
 
 const roleColors: Record<string, string> = {
   admin: 'bg-red-100 text-red-700',
@@ -26,12 +27,13 @@ const roleColors: Record<string, string> = {
 }
 
 export function MemberList({ projectId, members }: MemberListProps) {
+  const { t } = useTranslation()
   const removeMember = useRemoveProjectMember()
   const currentUser = useAuthStore((s) => s.user)
 
   if (members.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500 text-sm">No members yet.</div>
+      <div className="text-center py-8 text-gray-500 text-sm">{t('projects.noMembers')}</div>
     )
   }
 
@@ -50,7 +52,7 @@ export function MemberList({ projectId, members }: MemberListProps) {
               roleColors[member.role] || roleColors.member,
             )}
           >
-            {member.role}
+            {t(roleKeys[member.role] || 'projects.member')}
           </span>
           {currentUser?.id !== member.userId && (
             <Button

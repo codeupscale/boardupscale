@@ -2,6 +2,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Project, ProjectType } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -35,8 +36,9 @@ export function ProjectForm({
   onSubmit,
   onCancel,
   isLoading,
-  submitLabel = 'Create Project',
+  submitLabel,
 }: ProjectFormProps) {
+  const { t } = useTranslation()
   const {
     register,
     handleSubmit,
@@ -66,17 +68,17 @@ export function ProjectForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
-        label="Project Name"
+        label={t('projects.projectName')}
         placeholder="My Awesome Project"
         error={errors.name?.message}
         {...register('name')}
       />
 
       <Input
-        label="Project Key"
+        label={t('projects.projectKey')}
         placeholder="MAP"
         error={errors.key?.message}
-        helperText="Short unique identifier (auto-generated from name)"
+        helperText={t('projects.projectKeyHelper')}
         {...register('key')}
         onChange={(e) => {
           e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -85,8 +87,8 @@ export function ProjectForm({
       />
 
       <Textarea
-        label="Description"
-        placeholder="What is this project about?"
+        label={t('common.description')}
+        placeholder={t('projects.whatIsProject')}
         rows={3}
         {...register('description')}
       />
@@ -96,10 +98,10 @@ export function ProjectForm({
         control={control}
         render={({ field }) => (
           <Select
-            label="Project Type"
+            label={t('projects.projectType')}
             options={[
-              { value: ProjectType.SCRUM, label: 'Scrum' },
-              { value: ProjectType.KANBAN, label: 'Kanban' },
+              { value: ProjectType.SCRUM, label: t('projects.scrum') },
+              { value: ProjectType.KANBAN, label: t('projects.kanban') },
             ]}
             {...field}
           />
@@ -108,10 +110,10 @@ export function ProjectForm({
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" isLoading={isLoading}>
-          {submitLabel}
+          {submitLabel || t('projects.createProject')}
         </Button>
       </div>
     </form>
