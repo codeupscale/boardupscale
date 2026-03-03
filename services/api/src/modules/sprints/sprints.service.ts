@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +13,7 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { CreateSprintDto } from './dto/create-sprint.dto';
 import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 
 @Injectable()
 export class SprintsService {
@@ -22,6 +25,8 @@ export class SprintsService {
     @InjectRepository(IssueStatus)
     private issueStatusRepository: Repository<IssueStatus>,
     private projectsService: ProjectsService,
+    @Optional() @Inject(AutomationEngineService)
+    private automationEngine?: AutomationEngineService,
   ) {}
 
   async findAll(projectId: string, organizationId: string): Promise<Sprint[]> {
@@ -80,7 +85,16 @@ export class SprintsService {
     if (!sprint.startDate) {
       sprint.startDate = new Date().toISOString().split('T')[0];
     }
-    return this.sprintRepository.save(sprint);
+    const saved = await this.sprintRepository.save(sprint);
+
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(sprint.projectId, 'sprint.started', {
+        sprintId: id,
+      });
+    }
+
+    return saved;
   }
 
   async complete(id: string, organizationId: string): Promise<Sprint> {
@@ -116,7 +130,16 @@ export class SprintsService {
 
     sprint.status = 'completed';
     sprint.completedAt = new Date();
-    return this.sprintRepository.save(sprint);
+    const saved = await this.sprintRepository.save(sprint);
+
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(sprint.projectId, 'sprint.completed', {
+        sprintId: id,
+      });
+    }
+
+    return saved;
   }
 
   async delete(id: string, organizationId: string): Promise<void> {

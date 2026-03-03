@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
 import configuration from './config/configuration';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -17,6 +18,7 @@ import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
 import { EventsModule } from './websocket/events.module';
+import { AutomationModule } from './modules/automation/automation.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -30,6 +32,8 @@ import { Comment } from './modules/comments/entities/comment.entity';
 import { Attachment } from './modules/files/entities/attachment.entity';
 import { Notification } from './modules/notifications/entities/notification.entity';
 import { WorkLog } from './modules/issues/entities/work-log.entity';
+import { AutomationRule } from './modules/automation/entities/automation-rule.entity';
+import { AutomationLog } from './modules/automation/entities/automation-log.entity';
 
 @Module({
   imports: [
@@ -56,6 +60,8 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
           Attachment,
           Notification,
           WorkLog,
+          AutomationRule,
+          AutomationLog,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -73,6 +79,17 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
       },
     ]),
 
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('redis.host'),
+          port: configService.get<number>('redis.port'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
     AuthModule,
     UsersModule,
     OrganizationsModule,
@@ -86,6 +103,7 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
     SearchModule,
     HealthModule,
     EventsModule,
+    AutomationModule,
   ],
 })
 export class AppModule {}

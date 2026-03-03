@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
@@ -11,6 +13,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 
 @Injectable()
 export class CommentsService {
@@ -21,6 +24,8 @@ export class CommentsService {
     private issueRepository: Repository<Issue>,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
+    @Optional() @Inject(AutomationEngineService)
+    private automationEngine?: AutomationEngineService,
   ) {}
 
   async findAll(issueId: string): Promise<Comment[]> {
@@ -77,6 +82,15 @@ export class CommentsService {
         title: `New comment on ${issue.key}`,
         body: dto.content.substring(0, 200),
         data: { issueId: dto.issueId, commentId: saved.id },
+      });
+    }
+
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(issue.projectId, 'comment.added', {
+        issueId: dto.issueId,
+        userId,
+        commentId: saved.id,
       });
     }
 

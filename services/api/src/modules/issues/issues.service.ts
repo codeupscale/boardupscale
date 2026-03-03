@@ -1,6 +1,8 @@
 import {
   Injectable,
   NotFoundException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
@@ -13,6 +15,7 @@ import { CreateWorkLogDto } from './dto/create-work-log.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 
 @Injectable()
 export class IssuesService {
@@ -26,6 +29,8 @@ export class IssuesService {
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
+    @Optional() @Inject(AutomationEngineService)
+    private automationEngine?: AutomationEngineService,
   ) {}
 
   async findAll(filters: {
@@ -148,12 +153,22 @@ export class IssuesService {
       });
     }
 
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(dto.projectId, 'issue.created', {
+        issueId: saved.id,
+        userId,
+      });
+    }
+
     return fullIssue;
   }
 
   async update(id: string, organizationId: string, dto: UpdateIssueDto, userId: string): Promise<Issue> {
     const issue = await this.findById(id, organizationId);
     const prevAssigneeId = issue.assigneeId;
+    const prevStatusId = issue.statusId;
+    const prevPriority = issue.priority;
 
     Object.assign(issue, dto);
     await this.issueRepository.save(issue);
@@ -169,6 +184,29 @@ export class IssuesService {
         body: issue.title,
         data: { issueId: id, projectId: issue.projectId },
       });
+    }
+
+    // Trigger automation rules
+    if (this.automationEngine) {
+      const context = {
+        issueId: id,
+        userId,
+        previousValues: { assigneeId: prevAssigneeId, statusId: prevStatusId, priority: prevPriority },
+      };
+
+      // General update trigger
+      this.automationEngine.processTrigger(issue.projectId, 'issue.updated', context);
+
+      // Specific triggers for field changes
+      if (dto.statusId && dto.statusId !== prevStatusId) {
+        this.automationEngine.processTrigger(issue.projectId, 'issue.status_changed', context);
+      }
+      if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
+        this.automationEngine.processTrigger(issue.projectId, 'issue.assigned', context);
+      }
+      if (dto.priority && dto.priority !== prevPriority) {
+        this.automationEngine.processTrigger(issue.projectId, 'issue.priority_changed', context);
+      }
     }
 
     return updatedIssue;
