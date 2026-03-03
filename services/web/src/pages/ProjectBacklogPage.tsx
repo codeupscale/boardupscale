@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ChevronDown,
@@ -8,10 +8,12 @@ import {
   CheckCircle,
   Trash2,
 } from 'lucide-react'
-import { useProject } from '@/hooks/useProjects'
+import { useProject, useProjects } from '@/hooks/useProjects'
 import { useSprints, useCreateSprint, useStartSprint, useCompleteSprint, useDeleteSprint } from '@/hooks/useSprints'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
+import { useUsers } from '@/hooks/useUsers'
+import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
@@ -21,6 +23,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/u
 import { IssueForm } from '@/components/issues/issue-form'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
+import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
@@ -47,7 +50,14 @@ function SprintSection({
   const completeSprint = useCompleteSprint()
   const deleteSprint = useDeleteSprint()
 
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const selectAll = useSelectionStore((s) => s.selectAll)
+
   const isActive = sprint.status === SprintStatus.ACTIVE
+
+  const issueIds = issues.map((i) => i.id)
+  const allSelected = issueIds.length > 0 && issueIds.every((id) => selectedIssueIds.has(id))
+  const someSelected = issueIds.some((id) => selectedIssueIds.has(id))
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
@@ -112,9 +122,25 @@ function SprintSection({
         <div>
           {issues.length > 0 ? (
             <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="px-4 py-2 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected && !allSelected
+                      }}
+                      onChange={() => selectAll(issueIds)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
+                  <th colSpan={6} />
+                </tr>
+              </thead>
               <tbody>
                 {issues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} />
+                  <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
               </tbody>
             </table>
@@ -208,11 +234,17 @@ export function ProjectBacklogPage() {
   const [sprintName, setSprintName] = useState('')
 
   const { data: project } = useProject(projectId!)
+  const { data: projects } = useProjects()
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectId!)
   const { data: board } = useBoard(projectId!)
+  const { data: users } = useUsers()
   const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectId! })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
+
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const selectAll = useSelectionStore((s) => s.selectAll)
+  const clearSelection = useSelectionStore((s) => s.clearSelection)
 
   const allIssues = issuesData?.data || []
 
@@ -222,6 +254,15 @@ export function ProjectBacklogPage() {
     allIssues.filter((i) => i.sprintId === sprintId)
 
   const backlogIssues = allIssues.filter((i) => !i.sprintId)
+
+  const backlogIds = backlogIssues.map((i) => i.id)
+  const allBacklogSelected = backlogIds.length > 0 && backlogIds.every((id) => selectedIssueIds.has(id))
+  const someBacklogSelected = backlogIds.some((id) => selectedIssueIds.has(id))
+
+  // Clear selection on unmount
+  useEffect(() => {
+    return () => clearSelection()
+  }, [clearSelection])
 
   if (sprintsLoading || issuesLoading) return <LoadingPage />
 
@@ -273,9 +314,25 @@ export function ProjectBacklogPage() {
           </div>
           {backlogIssues.length > 0 ? (
             <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="px-4 py-2 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allBacklogSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
+                      }}
+                      onChange={() => selectAll(backlogIds)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
+                  <th colSpan={6} />
+                </tr>
+              </thead>
               <tbody>
                 {backlogIssues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} />
+                  <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
               </tbody>
             </table>
@@ -288,6 +345,15 @@ export function ProjectBacklogPage() {
           )}
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        statuses={board?.statuses}
+        users={users}
+        projects={projects}
+        sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+        projectId={projectId}
+      />
 
       {/* Create Sprint Dialog */}
       <Dialog

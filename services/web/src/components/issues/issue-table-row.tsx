@@ -5,25 +5,55 @@ import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from './issue-type-icon'
 import { PriorityBadge } from './priority-badge'
 import { StatusBadge } from './status-badge'
+import { useSelectionStore } from '@/store/selection.store'
 
 interface IssueTableRowProps {
   issue: Issue
   className?: string
+  selectable?: boolean
+  showDeletedAt?: boolean
 }
 
-export function IssueTableRow({ issue, className }: IssueTableRowProps) {
+export function IssueTableRow({ issue, className, selectable = false, showDeletedAt = false }: IssueTableRowProps) {
   const navigate = useNavigate()
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const toggleIssue = useSelectionStore((s) => s.toggleIssue)
+  const isSelected = selectedIssueIds.has(issue.id)
 
   return (
     <tr
-      onClick={() => navigate(`/issues/${issue.id}`)}
+      onClick={() => {
+        if (!selectable) {
+          navigate(`/issues/${issue.id}`)
+        }
+      }}
       className={cn(
         'hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0',
+        selectable && isSelected && 'bg-blue-50 hover:bg-blue-50',
         className,
       )}
     >
+      {/* Checkbox */}
+      {selectable && (
+        <td className="px-4 py-3 w-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation()
+              toggleIssue(issue.id)
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          />
+        </td>
+      )}
+
       {/* Type + Key */}
-      <td className="px-4 py-3 w-32">
+      <td
+        className="px-4 py-3 w-32"
+        onClick={() => navigate(`/issues/${issue.id}`)}
+      >
         <div className="flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} />
           <span className="text-xs font-mono text-blue-600 font-medium">{issue.key}</span>
@@ -31,7 +61,10 @@ export function IssueTableRow({ issue, className }: IssueTableRowProps) {
       </td>
 
       {/* Title */}
-      <td className="px-4 py-3">
+      <td
+        className="px-4 py-3"
+        onClick={() => navigate(`/issues/${issue.id}`)}
+      >
         <span className="text-sm text-gray-900 font-medium line-clamp-1">{issue.title}</span>
       </td>
 
@@ -54,12 +87,18 @@ export function IssueTableRow({ issue, className }: IssueTableRowProps) {
         )}
       </td>
 
-      {/* Due Date */}
+      {/* Due Date or Deleted At */}
       <td className="px-4 py-3 w-28">
-        {issue.dueDate ? (
+        {showDeletedAt ? (
+          issue.deletedAt ? (
+            <span className="text-xs text-red-500">{formatDate(issue.deletedAt)}</span>
+          ) : (
+            <span className="text-xs text-gray-300">--</span>
+          )
+        ) : issue.dueDate ? (
           <span className="text-xs text-gray-500">{formatDate(issue.dueDate)}</span>
         ) : (
-          <span className="text-xs text-gray-300">—</span>
+          <span className="text-xs text-gray-300">--</span>
         )}
       </td>
 
@@ -70,7 +109,7 @@ export function IssueTableRow({ issue, className }: IssueTableRowProps) {
             {issue.storyPoints}
           </span>
         ) : (
-          <span className="text-xs text-gray-300">—</span>
+          <span className="text-xs text-gray-300">--</span>
         )}
       </td>
     </tr>

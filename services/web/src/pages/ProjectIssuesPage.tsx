@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
+import { useProjects } from '@/hooks/useProjects'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
+import { useSelectionStore } from '@/store/selection.store'
 import { IssueType, IssuePriority } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
@@ -16,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { IssueForm } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
+import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 
 export function ProjectIssuesPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -29,6 +32,7 @@ export function ProjectIssuesPage() {
   const [page, setPage] = useState(1)
 
   const { data: project } = useProject(projectId!)
+  const { data: projects } = useProjects()
   const { data: board } = useBoard(projectId!)
   const { data: sprints } = useSprints(projectId!)
   const { data: users } = useUsers()
@@ -45,9 +49,22 @@ export function ProjectIssuesPage() {
   })
   const createIssue = useCreateIssue()
 
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const selectAll = useSelectionStore((s) => s.selectAll)
+  const clearSelection = useSelectionStore((s) => s.clearSelection)
+
   const issues = issuesData?.data || []
   const total = issuesData?.total || 0
   const totalPages = Math.ceil(total / 25)
+
+  const allIssueIds = issues.map((i) => i.id)
+  const allSelected = allIssueIds.length > 0 && allIssueIds.every((id) => selectedIssueIds.has(id))
+  const someSelected = allIssueIds.some((id) => selectedIssueIds.has(id))
+
+  // Clear selection when page or filters change
+  useEffect(() => {
+    clearSelection()
+  }, [page, filterType, filterPriority, filterStatus, filterAssignee, filterSprint, search, clearSelection])
 
   return (
     <div className="flex flex-col h-full">
@@ -148,6 +165,17 @@ export function ProjectIssuesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="px-4 py-2.5 w-10">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected && !allSelected
+                      }}
+                      onChange={() => selectAll(allIssueIds)}
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">Title</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Priority</th>
@@ -159,7 +187,7 @@ export function ProjectIssuesPage() {
               </thead>
               <tbody>
                 {issues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} />
+                  <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
               </tbody>
             </table>
@@ -168,7 +196,7 @@ export function ProjectIssuesPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                 <span className="text-sm text-gray-500">
-                  Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, total)} of {total}
+                  Showing {(page - 1) * 25 + 1}--{Math.min(page * 25, total)} of {total}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -199,6 +227,15 @@ export function ProjectIssuesPage() {
           />
         )}
       </div>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        statuses={board?.statuses}
+        users={users}
+        projects={projects}
+        sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+        projectId={projectId}
+      />
 
       <Dialog open={showCreate} onClose={() => setShowCreate(false)} className="max-w-2xl">
         <DialogHeader onClose={() => setShowCreate(false)}>

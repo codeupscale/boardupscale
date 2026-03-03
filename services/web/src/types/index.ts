@@ -136,6 +136,7 @@ export interface Issue {
   reporter?: User
   parent?: Issue
   sprint?: Sprint
+  deletedAt?: string
   createdAt: string
   updatedAt: string
 }

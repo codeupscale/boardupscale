@@ -13,6 +13,7 @@ interface IssueFilters {
   search?: string
   page?: number
   limit?: number
+  deleted?: boolean
 }
 
 export function useIssues(filters: IssueFilters = {}) {
