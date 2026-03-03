@@ -204,3 +204,92 @@ export interface PaginatedResponse<T> {
 export interface ApiResponse<T> {
   data: T
 }
+
+// Custom Fields
+export type CustomFieldType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'multi_select'
+  | 'url'
+  | 'checkbox'
+  | 'user'
+
+export interface CustomFieldOption {
+  label: string
+  value: string
+  color?: string
+}
+
+export interface CustomFieldDefinition {
+  id: string
+  organizationId: string
+  projectId?: string
+  name: string
+  fieldKey: string
+  fieldType: CustomFieldType
+  description?: string
+  isRequired: boolean
+  defaultValue?: any
+  options?: CustomFieldOption[]
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CustomFieldValue {
+  id: string
+  issueId: string
+  fieldId: string
+  value: any
+  field?: CustomFieldDefinition
+  createdAt: string
+  updatedAt: string
+}
+
+// Components
+export interface ProjectComponent {
+  id: string
+  projectId: string
+  name: string
+  description?: string
+  leadId?: string
+  lead?: User
+  createdAt: string
+  updatedAt: string
+}
+
+// Versions
+export enum VersionStatus {
+  UNRELEASED = 'unreleased',
+  RELEASED = 'released',
+  ARCHIVED = 'archived',
+}
+
+export interface ProjectVersion {
+  id: string
+  projectId: string
+  name: string
+  description?: string
+  status: string
+  startDate?: string
+  releaseDate?: string
+  releasedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface IssueVersion {
+  issueId: string
+  versionId: string
+  relationType: string
+  version?: ProjectVersion
+}
+
+export interface VersionProgress {
+  total: number
+  done: number
+  inProgress: number
+  todo: number
+}

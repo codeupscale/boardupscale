@@ -3,12 +3,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { IssueType, IssuePriority, Issue } from '@/types'
+import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { UserSelect } from '@/components/common/user-select'
+import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
@@ -30,6 +31,9 @@ interface IssueFormProps {
   projectId: string
   statuses?: Array<{ id: string; name: string }>
   sprints?: Array<{ id: string; name: string }>
+  customFieldDefs?: CustomFieldDefinition[]
+  components?: ProjectComponent[]
+  versions?: ProjectVersion[]
   defaultValues?: Partial<FormValues>
   onSubmit: (values: FormValues) => void
   onCancel: () => void
@@ -41,6 +45,9 @@ export function IssueForm({
   projectId,
   statuses = [],
   sprints = [],
+  customFieldDefs = [],
+  components = [],
+  versions = [],
   defaultValues,
   onSubmit,
   onCancel,
@@ -49,6 +56,9 @@ export function IssueForm({
 }: IssueFormProps) {
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([])
+  const [selectedFixVersions, setSelectedFixVersions] = useState<string[]>([])
 
   const {
     register,
@@ -75,7 +85,15 @@ export function IssueForm({
   const removeLabel = (l: string) => setLabels(labels.filter((x) => x !== l))
 
   const handleFormSubmit = (values: FormValues) => {
-    onSubmit({ ...values, labels } as any)
+    onSubmit({
+      ...values,
+      labels,
+      customFieldValues: Object.entries(customFieldValues)
+        .filter(([, v]) => v !== null && v !== undefined && v !== '')
+        .map(([fieldId, value]) => ({ fieldId, value })),
+      componentIds: selectedComponents,
+      fixVersionIds: selectedFixVersions,
+    } as any)
   }
 
   return (
@@ -240,6 +258,121 @@ export function IssueForm({
           </Button>
         </div>
       </div>
+
+      {/* Components */}
+      {components.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Components</label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {selectedComponents.map((cId) => {
+              const comp = components.find((c) => c.id === cId)
+              return (
+                <span
+                  key={cId}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs"
+                >
+                  {comp?.name || cId}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedComponents(selectedComponents.filter((id) => id !== cId))
+                    }
+                    className="hover:text-purple-900"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+          <select
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value=""
+            onChange={(e) => {
+              if (e.target.value && !selectedComponents.includes(e.target.value)) {
+                setSelectedComponents([...selectedComponents, e.target.value])
+              }
+            }}
+          >
+            <option value="">Add component...</option>
+            {components
+              .filter((c) => !selectedComponents.includes(c.id))
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+
+      {/* Fix Version */}
+      {versions.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Fix Version</label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {selectedFixVersions.map((vId) => {
+              const ver = versions.find((v) => v.id === vId)
+              return (
+                <span
+                  key={vId}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs"
+                >
+                  {ver?.name || vId}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedFixVersions(selectedFixVersions.filter((id) => id !== vId))
+                    }
+                    className="hover:text-green-900"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )
+            })}
+          </div>
+          <select
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value=""
+            onChange={(e) => {
+              if (e.target.value && !selectedFixVersions.includes(e.target.value)) {
+                setSelectedFixVersions([...selectedFixVersions, e.target.value])
+              }
+            }}
+          >
+            <option value="">Add version...</option>
+            {versions
+              .filter((v) => v.status !== 'archived' && !selectedFixVersions.includes(v.id))
+              .map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+
+      {/* Custom Fields */}
+      {customFieldDefs.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
+          <CustomFieldsForm
+            definitions={customFieldDefs}
+            values={Object.entries(customFieldValues).map(([fieldId, value]) => ({
+              id: fieldId,
+              issueId: '',
+              fieldId,
+              value,
+              createdAt: '',
+              updatedAt: '',
+            }))}
+            onChange={(fieldId, value) =>
+              setCustomFieldValues((prev) => ({ ...prev, [fieldId]: value }))
+            }
+          />
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>

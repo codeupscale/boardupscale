@@ -22,6 +22,9 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { MemberList } from '@/components/projects/member-list'
 import { UserSelect } from '@/components/common/user-select'
 import { ProjectForm } from '@/components/projects/project-form'
+import { CustomFieldSettings } from '@/components/projects/custom-field-settings'
+import { ComponentList } from '@/components/projects/component-list'
+import { VersionList } from '@/components/projects/version-list'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS = [
@@ -117,6 +120,9 @@ export function ProjectSettingsPage() {
             { id: 'general', label: 'General' },
             { id: 'members', label: 'Members' },
             { id: 'workflow', label: 'Workflow' },
+            { id: 'custom-fields', label: 'Custom Fields' },
+            { id: 'components', label: 'Components' },
+            { id: 'versions', label: 'Versions' },
             { id: 'danger', label: 'Danger Zone' },
           ]}
           activeTab={activeTab}
@@ -209,6 +215,27 @@ export function ProjectSettingsPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Custom Fields */}
+          {activeTab === 'custom-fields' && (
+            <div className="max-w-2xl">
+              <CustomFieldSettings projectId={projectId!} />
+            </div>
+          )}
+
+          {/* Components */}
+          {activeTab === 'components' && (
+            <div className="max-w-2xl">
+              <ComponentList projectId={projectId!} />
+            </div>
+          )}
+
+          {/* Versions */}
+          {activeTab === 'versions' && (
+            <div className="max-w-2xl">
+              <VersionList projectId={projectId!} />
             </div>
           )}
 

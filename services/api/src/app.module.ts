@@ -16,6 +16,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
+import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
+import { ComponentsModule } from './modules/components/components.module';
+import { VersionsModule } from './modules/versions/versions.module';
 import { EventsModule } from './websocket/events.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
@@ -30,6 +33,12 @@ import { Comment } from './modules/comments/entities/comment.entity';
 import { Attachment } from './modules/files/entities/attachment.entity';
 import { Notification } from './modules/notifications/entities/notification.entity';
 import { WorkLog } from './modules/issues/entities/work-log.entity';
+import { CustomFieldDefinition } from './modules/custom-fields/entities/custom-field-definition.entity';
+import { CustomFieldValue } from './modules/custom-fields/entities/custom-field-value.entity';
+import { Component } from './modules/components/entities/component.entity';
+import { IssueComponent } from './modules/components/entities/issue-component.entity';
+import { Version } from './modules/versions/entities/version.entity';
+import { IssueVersion } from './modules/versions/entities/issue-version.entity';
 
 @Module({
   imports: [
@@ -56,6 +65,12 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
           Attachment,
           Notification,
           WorkLog,
+          CustomFieldDefinition,
+          CustomFieldValue,
+          Component,
+          IssueComponent,
+          Version,
+          IssueVersion,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -85,6 +100,9 @@ import { WorkLog } from './modules/issues/entities/work-log.entity';
     FilesModule,
     SearchModule,
     HealthModule,
+    CustomFieldsModule,
+    ComponentsModule,
+    VersionsModule,
     EventsModule,
   ],
 })

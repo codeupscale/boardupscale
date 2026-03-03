@@ -227,6 +227,87 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_org ON audit_logs(organization_id);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type, entity_id);
 
+-- Custom field definitions
+CREATE TABLE IF NOT EXISTS custom_field_definitions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    project_id UUID REFERENCES projects(id),  -- null = org-wide
+    name VARCHAR(255) NOT NULL,
+    field_key VARCHAR(100) NOT NULL,
+    field_type VARCHAR(50) NOT NULL,  -- text, number, date, select, multi_select, url, checkbox, user
+    description TEXT,
+    is_required BOOLEAN DEFAULT false,
+    default_value JSONB,
+    options JSONB,  -- for select/multi_select: [{label, value, color}]
+    position INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(organization_id, project_id, field_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_field_defs_org ON custom_field_definitions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_custom_field_defs_project ON custom_field_definitions(project_id);
+
+-- Custom field values
+CREATE TABLE IF NOT EXISTS custom_field_values (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    field_id UUID NOT NULL REFERENCES custom_field_definitions(id) ON DELETE CASCADE,
+    value JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(issue_id, field_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_field_values_issue ON custom_field_values(issue_id);
+CREATE INDEX IF NOT EXISTS idx_custom_field_values_field ON custom_field_values(field_id);
+
+-- Components
+CREATE TABLE IF NOT EXISTS components (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    lead_id UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_components_project ON components(project_id);
+
+-- Versions
+CREATE TABLE IF NOT EXISTS versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'unreleased',  -- unreleased, released, archived
+    start_date DATE,
+    release_date DATE,
+    released_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(project_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_versions_project ON versions(project_id);
+
+-- Issue-Component junction table
+CREATE TABLE IF NOT EXISTS issue_components (
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    component_id UUID NOT NULL REFERENCES components(id) ON DELETE CASCADE,
+    PRIMARY KEY (issue_id, component_id)
+);
+
+-- Issue-Version junction table
+CREATE TABLE IF NOT EXISTS issue_versions (
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    version_id UUID NOT NULL REFERENCES versions(id) ON DELETE CASCADE,
+    relation_type VARCHAR(20) DEFAULT 'fix',  -- fix, affects
+    PRIMARY KEY (issue_id, version_id, relation_type)
+);
+
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)
 RETURNS INT AS $$
