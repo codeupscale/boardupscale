@@ -86,6 +86,48 @@ export class UsersService {
     await this.usersRepository.update(id, { lastLoginAt: new Date() });
   }
 
+  async findByOAuth(provider: string, oauthId: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { oauthProvider: provider, oauthId },
+    });
+  }
+
+  async linkOAuthProvider(
+    userId: string,
+    provider: string,
+    oauthId: string,
+  ): Promise<void> {
+    await this.usersRepository.update(userId, {
+      oauthProvider: provider,
+      oauthId,
+      emailVerified: true,
+    });
+  }
+
+  async createOAuthUser(data: {
+    organizationId: string;
+    email: string;
+    displayName: string;
+    avatarUrl?: string;
+    oauthProvider: string;
+    oauthId: string;
+    role?: string;
+  }): Promise<User> {
+    const user = this.usersRepository.create({
+      organizationId: data.organizationId,
+      email: data.email,
+      displayName: data.displayName,
+      avatarUrl: data.avatarUrl,
+      oauthProvider: data.oauthProvider,
+      oauthId: data.oauthId,
+      role: data.role || 'owner',
+      isActive: true,
+      emailVerified: true,
+    });
+
+    return this.usersRepository.save(user);
+  }
+
   async deactivate(id: string, organizationId: string): Promise<void> {
     const user = await this.usersRepository.findOne({
       where: { id, organizationId },

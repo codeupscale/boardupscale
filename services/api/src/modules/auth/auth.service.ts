@@ -151,6 +151,63 @@ export class AuthService {
     }
   }
 
+  async findOrCreateOAuthUser(
+    provider: string,
+    profile: {
+      oauthId: string;
+      email: string;
+      displayName: string;
+      avatarUrl?: string;
+    },
+  ) {
+    // First try to find by OAuth provider + id
+    const existingOAuth = await this.usersService.findByOAuth(
+      provider,
+      profile.oauthId,
+    );
+    if (existingOAuth) {
+      await this.usersService.updateLastLogin(existingOAuth.id);
+      return existingOAuth;
+    }
+
+    // Then try to find by email and link the OAuth account
+    const existingEmail = await this.usersService.findByEmail(profile.email);
+    if (existingEmail) {
+      await this.usersService.linkOAuthProvider(
+        existingEmail.id,
+        provider,
+        profile.oauthId,
+      );
+      await this.usersService.updateLastLogin(existingEmail.id);
+      return existingEmail;
+    }
+
+    // Create a new user with a default personal organization
+    const slug = this.generateSlug(profile.displayName);
+    const existingSlug = await this.organizationRepository.findOne({
+      where: { slug },
+    });
+    const finalSlug = existingSlug ? `${slug}-${Date.now()}` : slug;
+
+    const organization = this.organizationRepository.create({
+      name: `${profile.displayName}'s Workspace`,
+      slug: finalSlug,
+    });
+    const savedOrg = await this.organizationRepository.save(organization);
+
+    const user = await this.usersService.createOAuthUser({
+      organizationId: savedOrg.id,
+      email: profile.email,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl || null,
+      oauthProvider: provider,
+      oauthId: profile.oauthId,
+      role: 'owner',
+    });
+
+    return user;
+  }
+
   hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   }

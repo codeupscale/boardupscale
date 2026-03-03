@@ -5,15 +5,19 @@ import {
   Body,
   UseGuards,
   Request,
+  Response,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GithubAuthGuard } from './guards/github-auth.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -23,6 +27,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    private configService: ConfigService,
   ) {}
 
   @Post('register')
@@ -69,5 +74,61 @@ export class AuthController {
   async me(@CurrentUser() user: any) {
     const fullUser = await this.usersService.findById(user.id);
     return { data: fullUser };
+  }
+
+  // ── Google OAuth ──────────────────────────────────────────────────
+
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  async googleAuth() {
+    // Guard redirects to Google
+  }
+
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google OAuth callback' })
+  async googleCallback(@Request() req: any, @Response() res: any) {
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const tokens = await this.authService.generateTokens(
+      req.user,
+      ipAddress,
+      userAgent,
+    );
+    const frontendUrl = this.configService.get<string>('app.frontendUrl');
+    const params = new URLSearchParams({
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+    return res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+  }
+
+  // ── GitHub OAuth ──────────────────────────────────────────────────
+
+  @Get('github')
+  @UseGuards(GithubAuthGuard)
+  @ApiOperation({ summary: 'Initiate GitHub OAuth login' })
+  async githubAuth() {
+    // Guard redirects to GitHub
+  }
+
+  @Get('github/callback')
+  @UseGuards(GithubAuthGuard)
+  @ApiOperation({ summary: 'GitHub OAuth callback' })
+  async githubCallback(@Request() req: any, @Response() res: any) {
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const tokens = await this.authService.generateTokens(
+      req.user,
+      ipAddress,
+      userAgent,
+    );
+    const frontendUrl = this.configService.get<string>('app.frontendUrl');
+    const params = new URLSearchParams({
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+    return res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
   }
 }

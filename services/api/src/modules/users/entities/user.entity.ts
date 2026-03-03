@@ -50,6 +50,12 @@ export class User {
   @Column({ type: 'varchar', length: 10, default: 'en' })
   language: string;
 
+  @Column({ name: 'oauth_provider', type: 'varchar', length: 50, nullable: true })
+  oauthProvider: string;
+
+  @Column({ name: 'oauth_id', type: 'varchar', length: 255, nullable: true })
+  oauthId: string;
+
   @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
   lastLoginAt: Date;
 

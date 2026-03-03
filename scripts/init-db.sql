@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(50) DEFAULT 'member',
     is_active BOOLEAN DEFAULT true,
     email_verified BOOLEAN DEFAULT false,
+    oauth_provider VARCHAR(50),
+    oauth_id VARCHAR(255),
     last_login_at TIMESTAMPTZ,
     notification_preferences JSONB DEFAULT '{"email":true,"inApp":true}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_org ON users(organization_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider IS NOT NULL AND oauth_id IS NOT NULL;
 
 -- Refresh tokens
 CREATE TABLE IF NOT EXISTS refresh_tokens (

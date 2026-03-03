@@ -32,6 +32,22 @@ export default () => ({
     bucket: process.env.MINIO_BUCKET || 'projectflow',
     useSSL: process.env.MINIO_USE_SSL === 'true',
   },
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      callbackUrl:
+        process.env.GOOGLE_CALLBACK_URL ||
+        `http://localhost:4000/api/auth/google/callback`,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+      callbackUrl:
+        process.env.GITHUB_CALLBACK_URL ||
+        `http://localhost:4000/api/auth/github/callback`,
+    },
+  },
   smtp: {
     host: process.env.SMTP_HOST || 'localhost',
     port: parseInt(process.env.SMTP_PORT, 10) || 1025,
