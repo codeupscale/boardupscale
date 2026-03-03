@@ -15,6 +15,7 @@ import {
   BarChart3,
   Settings2,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
@@ -22,19 +23,20 @@ import { useProjects } from '@/hooks/useProjects'
 import { Avatar } from '@/components/ui/avatar'
 import { Tooltip } from '@/components/ui/tooltip'
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: FolderOpen, label: 'Projects', href: '/projects' },
-  { icon: CircleDot, label: 'My Issues', href: '/issues' },
-  { icon: Bell, label: 'Notifications', href: '/notifications' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
-]
-
 export function Sidebar() {
+  const { t } = useTranslation()
   const location = useLocation()
   const { isSidebarOpen, toggleSidebar } = useUiStore()
   const user = useAuthStore((s) => s.user)
   const { data: projects } = useProjects()
+
+  const navItems = [
+    { icon: LayoutDashboard, label: t('nav.dashboard'), href: '/dashboard' },
+    { icon: FolderOpen, label: t('nav.projects'), href: '/projects' },
+    { icon: CircleDot, label: t('nav.myIssues'), href: '/issues' },
+    { icon: Bell, label: t('nav.notifications'), href: '/notifications' },
+    { icon: Settings, label: t('nav.settings'), href: '/settings' },
+  ]
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return location.pathname === href
@@ -146,7 +148,7 @@ export function Sidebar() {
         {isSidebarOpen && projects && projects.length > 0 && (
           <div className="mt-4 px-4">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Recent Projects
+              {t('nav.recentProjects')}
             </p>
             <div className="space-y-0.5">
               {projects.slice(0, 5).map((project) => (
@@ -202,7 +204,7 @@ export function Sidebar() {
           {isSidebarOpen ? (
             <>
               <ChevronLeft className="h-4 w-4" />
-              <span>Collapse</span>
+              <span>{t('common.collapse')}</span>
             </>
           ) : (
             <ChevronRight className="h-4 w-4" />

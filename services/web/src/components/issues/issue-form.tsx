@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -52,8 +53,9 @@ export function IssueForm({
   onSubmit,
   onCancel,
   isLoading,
-  submitLabel = 'Create Issue',
+  submitLabel,
 }: IssueFormProps) {
+  const { t } = useTranslation()
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
@@ -99,15 +101,15 @@ export function IssueForm({
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <Input
-        label="Title"
-        placeholder="Issue title"
+        label={t('common.title')}
+        placeholder={t('issues.issueTitle')}
         error={errors.title?.message}
         {...register('title')}
       />
 
       <Textarea
-        label="Description"
-        placeholder="Describe the issue..."
+        label={t('common.description')}
+        placeholder={t('issues.describeIssue')}
         rows={4}
         {...register('description')}
       />
@@ -118,13 +120,13 @@ export function IssueForm({
           control={control}
           render={({ field }) => (
             <Select
-              label="Type"
+              label={t('common.type')}
               options={[
-                { value: IssueType.EPIC, label: 'Epic' },
-                { value: IssueType.STORY, label: 'Story' },
-                { value: IssueType.TASK, label: 'Task' },
-                { value: IssueType.BUG, label: 'Bug' },
-                { value: IssueType.SUBTASK, label: 'Subtask' },
+                { value: IssueType.EPIC, label: t('issues.epic') },
+                { value: IssueType.STORY, label: t('issues.story') },
+                { value: IssueType.TASK, label: t('issues.task') },
+                { value: IssueType.BUG, label: t('issues.bug') },
+                { value: IssueType.SUBTASK, label: t('issues.subtask') },
               ]}
               {...field}
             />
@@ -136,13 +138,13 @@ export function IssueForm({
           control={control}
           render={({ field }) => (
             <Select
-              label="Priority"
+              label={t('common.priority')}
               options={[
-                { value: IssuePriority.CRITICAL, label: 'Critical' },
-                { value: IssuePriority.HIGH, label: 'High' },
-                { value: IssuePriority.MEDIUM, label: 'Medium' },
-                { value: IssuePriority.LOW, label: 'Low' },
-                { value: IssuePriority.NONE, label: 'None' },
+                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
+                { value: IssuePriority.HIGH, label: t('priorities.high') },
+                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
+                { value: IssuePriority.LOW, label: t('priorities.low') },
+                { value: IssuePriority.NONE, label: t('priorities.none') },
               ]}
               {...field}
             />
@@ -156,8 +158,8 @@ export function IssueForm({
           control={control}
           render={({ field }) => (
             <Select
-              label="Status"
-              placeholder="Select status..."
+              label={t('common.status')}
+              placeholder={t('common.status') + '...'}
               options={statuses.map((s) => ({ value: s.id, label: s.name }))}
               {...field}
             />
@@ -170,11 +172,11 @@ export function IssueForm({
         control={control}
         render={({ field }) => (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.assignee')}</label>
             <UserSelect
               value={field.value || null}
               onChange={(id) => field.onChange(id)}
-              placeholder="Unassigned"
+              placeholder={t('issues.unassigned')}
             />
           </div>
         )}
@@ -186,8 +188,8 @@ export function IssueForm({
           control={control}
           render={({ field }) => (
             <Select
-              label="Sprint"
-              placeholder="No sprint"
+              label={t('issues.sprint')}
+              placeholder={t('common.noSprint')}
               options={sprints.map((s) => ({ value: s.id, label: s.name }))}
               {...field}
             />
@@ -197,12 +199,12 @@ export function IssueForm({
 
       <div className="grid grid-cols-2 gap-4">
         <Input
-          label="Due Date"
+          label={t('issues.dueDate')}
           type="date"
           {...register('dueDate')}
         />
         <Input
-          label="Story Points"
+          label={t('issues.storyPoints')}
           type="number"
           min="0"
           max="100"
@@ -212,7 +214,7 @@ export function IssueForm({
       </div>
 
       <Input
-        label="Time Estimate (minutes)"
+        label={t('issues.timeEstimateMinutes')}
         type="number"
         min="0"
         placeholder="e.g. 120"
@@ -221,7 +223,7 @@ export function IssueForm({
 
       {/* Labels */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Labels</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">{t('issues.labels')}</label>
         <div className="flex flex-wrap gap-2 mb-2">
           {labels.map((l) => (
             <span
@@ -250,11 +252,11 @@ export function IssueForm({
                 addLabel()
               }
             }}
-            placeholder="Add label and press Enter"
+            placeholder={t('issues.addLabelEnter')}
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <Button type="button" variant="secondary" size="sm" onClick={addLabel}>
-            Add
+            {t('common.add')}
           </Button>
         </div>
       </div>
@@ -376,10 +378,10 @@ export function IssueForm({
 
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="submit" isLoading={isLoading}>
-          {submitLabel}
+          {submitLabel || t('issues.createIssue')}
         </Button>
       </div>
     </form>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { IssueStatus, IssueStatusCategory } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,8 @@ const categoryColors: Record<IssueStatusCategory, string> = {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+  const { t } = useTranslation()
+
   if (!status) {
     return (
       <span
@@ -21,7 +24,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
           className,
         )}
       >
-        No Status
+        {t('common.noStatus')}
       </span>
     )
   }

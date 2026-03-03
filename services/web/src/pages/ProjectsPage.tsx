@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useProjects, useCreateProject } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/projects/project-card'
 import { ProjectForm } from '@/components/projects/project-form'
@@ -12,6 +13,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { FolderOpen } from 'lucide-react'
 
 export function ProjectsPage() {
+  const { t } = useTranslation()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const { data: projects, isLoading } = useProjects()
@@ -26,11 +28,11 @@ export function ProjectsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Projects"
+        title={t('projects.title')}
         actions={
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4" />
-            New Project
+            {t('projects.newProject')}
           </Button>
         }
       />
@@ -39,7 +41,7 @@ export function ProjectsPage() {
         {/* Search */}
         <div className="max-w-sm">
           <Input
-            placeholder="Search projects..."
+            placeholder={t('projects.searchProjects')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -57,15 +59,15 @@ export function ProjectsPage() {
         ) : (
           <EmptyState
             icon={<FolderOpen className="h-12 w-12" />}
-            title={search ? 'No projects match your search' : 'No projects yet'}
+            title={search ? t('projects.noProjectsMatch') : t('projects.noProjects')}
             description={
               search
-                ? 'Try a different search term'
-                : 'Create your first project to start tracking work.'
+                ? t('projects.tryDifferentSearch')
+                : t('projects.createFirstProject')
             }
             action={
               !search
-                ? { label: 'Create Project', onClick: () => setShowCreate(true) }
+                ? { label: t('projects.createProject'), onClick: () => setShowCreate(true) }
                 : undefined
             }
           />
@@ -75,7 +77,7 @@ export function ProjectsPage() {
       {/* Create Project Dialog */}
       <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
         <DialogHeader onClose={() => setShowCreate(false)}>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <ProjectForm

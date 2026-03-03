@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth.store'
 import { useMe, useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
@@ -39,16 +40,18 @@ const timezoneOptions = [
   'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney',
 ].map((tz) => ({ value: tz, label: tz }))
 
-const languageOptions = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-]
-
 function ProfileTab() {
+  const { t, i18n } = useTranslation()
   const { data: me, isLoading } = useMe()
   const updateProfile = useUpdateProfile()
+
+  const languageOptions = [
+    { value: 'en', label: t('languages.en') },
+    { value: 'es', label: t('languages.es') },
+    { value: 'fr', label: t('languages.fr') },
+    { value: 'de', label: t('languages.de') },
+    { value: 'ja', label: t('languages.ja') },
+  ]
 
   const {
     register,
@@ -69,13 +72,21 @@ function ProfileTab() {
 
   if (isLoading) return <LoadingPage />
 
+  const handleProfileSubmit = (data: ProfileValues) => {
+    // Change i18n language when user saves profile
+    if (data.language && data.language !== i18n.language) {
+      i18n.changeLanguage(data.language)
+    }
+    updateProfile.mutate(data)
+  }
+
   return (
-    <form onSubmit={handleSubmit((data) => updateProfile.mutate(data))} className="space-y-6 max-w-lg">
+    <form onSubmit={handleSubmit(handleProfileSubmit)} className="space-y-6 max-w-lg">
       <div className="flex items-center gap-4">
         <Avatar src={avatarUrl || me?.avatarUrl} name={me?.displayName || 'User'} size="lg" />
         <div className="flex-1">
           <Input
-            label="Avatar URL"
+            label={t('settings.avatarUrl')}
             placeholder="https://example.com/avatar.jpg"
             error={errors.avatarUrl?.message}
             {...register('avatarUrl')}
@@ -84,7 +95,7 @@ function ProfileTab() {
       </div>
 
       <Input
-        label="Display Name"
+        label={t('auth.displayName')}
         placeholder="Your name"
         error={errors.displayName?.message}
         {...register('displayName')}
@@ -92,31 +103,32 @@ function ProfileTab() {
 
       <div className="grid grid-cols-2 gap-4">
         <Select
-          label="Timezone"
+          label={t('settings.timezone')}
           options={timezoneOptions}
           {...register('timezone')}
         />
         <Select
-          label="Language"
+          label={t('settings.language')}
           options={languageOptions}
           {...register('language')}
         />
       </div>
 
       <div>
-        <p className="text-sm text-gray-500 mb-2">Email address</p>
+        <p className="text-sm text-gray-500 mb-2">{t('settings.emailAddress')}</p>
         <p className="text-sm font-medium text-gray-900">{me?.email}</p>
-        <p className="text-xs text-gray-400 mt-1">Email cannot be changed here</p>
+        <p className="text-xs text-gray-400 mt-1">{t('settings.emailCannotChange')}</p>
       </div>
 
       <Button type="submit" isLoading={updateProfile.isPending} disabled={!isDirty}>
-        Save Changes
+        {t('settings.saveChanges')}
       </Button>
     </form>
   )
 }
 
 function AccountTab() {
+  const { t } = useTranslation()
   const changePassword = useChangePassword()
 
   const {
@@ -137,48 +149,49 @@ function AccountTab() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
-      <h3 className="font-semibold text-gray-900">Change Password</h3>
+      <h3 className="font-semibold text-gray-900">{t('settings.changePassword')}</h3>
 
       <Input
-        label="Current Password"
+        label={t('settings.currentPassword')}
         type="password"
         error={errors.currentPassword?.message}
         {...register('currentPassword')}
       />
       <Input
-        label="New Password"
+        label={t('settings.newPassword')}
         type="password"
         error={errors.newPassword?.message}
         {...register('newPassword')}
       />
       <Input
-        label="Confirm New Password"
+        label={t('settings.confirmNewPassword')}
         type="password"
         error={errors.confirmPassword?.message}
         {...register('confirmPassword')}
       />
 
       <Button type="submit" isLoading={changePassword.isPending}>
-        Update Password
+        {t('settings.updatePassword')}
       </Button>
     </form>
   )
 }
 
-const TABS = ['Profile', 'Account']
-
 export function UserSettingsPage() {
-  const [activeTab, setActiveTab] = useState('Profile')
+  const { t } = useTranslation()
+  const [activeTab, setActiveTab] = useState(t('settings.profile'))
+
+  const TABS = [t('settings.profile'), t('settings.account')]
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <PageHeader title="Settings" />
+      <PageHeader title={t('settings.title')} />
 
       <div className="mt-6">
         <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
         <div className="mt-6">
-          {activeTab === 'Profile' && <ProfileTab />}
-          {activeTab === 'Account' && <AccountTab />}
+          {activeTab === t('settings.profile') && <ProfileTab />}
+          {activeTab === t('settings.account') && <AccountTab />}
         </div>
       </div>
     </div>

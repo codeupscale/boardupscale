@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useProject } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
@@ -21,6 +22,7 @@ import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 
 export function ProjectIssuesPage() {
+  const { t } = useTranslation()
   const { id: projectId } = useParams<{ id: string }>()
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
@@ -69,16 +71,16 @@ export function ProjectIssuesPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Issues"
+        title={t('nav.issues')}
         breadcrumbs={[
-          { label: 'Projects', href: '/projects' },
+          { label: t('nav.projects'), href: '/projects' },
           { label: project?.name || '...', href: `/projects/${projectId}/board` },
-          { label: 'Issues' },
+          { label: t('nav.issues') },
         ]}
         actions={
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4" />
-            Create Issue
+            {t('issues.createIssue')}
           </Button>
         }
       />
@@ -88,7 +90,7 @@ export function ProjectIssuesPage() {
         <div className="flex flex-wrap gap-3">
           <div className="flex-1 min-w-48">
             <Input
-              placeholder="Search issues..."
+              placeholder={t('issues.searchIssues')}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
@@ -99,12 +101,12 @@ export function ProjectIssuesPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Types' },
-              { value: IssueType.EPIC, label: 'Epic' },
-              { value: IssueType.STORY, label: 'Story' },
-              { value: IssueType.TASK, label: 'Task' },
-              { value: IssueType.BUG, label: 'Bug' },
-              { value: IssueType.SUBTASK, label: 'Subtask' },
+              { value: '', label: t('issues.allTypes') },
+              { value: IssueType.EPIC, label: t('issues.epic') },
+              { value: IssueType.STORY, label: t('issues.story') },
+              { value: IssueType.TASK, label: t('issues.task') },
+              { value: IssueType.BUG, label: t('issues.bug') },
+              { value: IssueType.SUBTASK, label: t('issues.subtask') },
             ]}
             value={filterType}
             onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
@@ -113,11 +115,11 @@ export function ProjectIssuesPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Priorities' },
-              { value: IssuePriority.CRITICAL, label: 'Critical' },
-              { value: IssuePriority.HIGH, label: 'High' },
-              { value: IssuePriority.MEDIUM, label: 'Medium' },
-              { value: IssuePriority.LOW, label: 'Low' },
+              { value: '', label: t('issues.allPriorities') },
+              { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
+              { value: IssuePriority.HIGH, label: t('priorities.high') },
+              { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
+              { value: IssuePriority.LOW, label: t('priorities.low') },
             ]}
             value={filterPriority}
             onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
@@ -126,7 +128,7 @@ export function ProjectIssuesPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Statuses' },
+              { value: '', label: t('issues.allStatuses') },
               ...(board?.statuses?.map((s) => ({ value: s.id, label: s.name })) || []),
             ]}
             value={filterStatus}
@@ -136,7 +138,7 @@ export function ProjectIssuesPage() {
 
           <Select
             options={[
-              { value: '', label: 'All Assignees' },
+              { value: '', label: t('issues.allAssignees') },
               ...(users?.map((u) => ({ value: u.id, label: u.displayName })) || []),
             ]}
             value={filterAssignee}
@@ -147,7 +149,7 @@ export function ProjectIssuesPage() {
           {sprints && sprints.length > 0 && (
             <Select
               options={[
-                { value: '', label: 'All Sprints' },
+                { value: '', label: t('issues.allSprints') },
                 ...(sprints?.map((s) => ({ value: s.id, label: s.name })) || []),
               ]}
               value={filterSprint}
@@ -177,11 +179,11 @@ export function ProjectIssuesPage() {
                     />
                   </th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">Title</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Priority</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">Assignee</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Due Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('issues.dueDate')}</th>
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">SP</th>
                 </tr>
               </thead>
@@ -196,7 +198,7 @@ export function ProjectIssuesPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
                 <span className="text-sm text-gray-500">
-                  Showing {(page - 1) * 25 + 1}--{Math.min(page * 25, total)} of {total}
+                  {t('common.showing', { from: (page - 1) * 25 + 1, to: Math.min(page * 25, total), total })}
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -205,7 +207,7 @@ export function ProjectIssuesPage() {
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
-                    Previous
+                    {t('common.previous')}
                   </Button>
                   <Button
                     size="sm"
@@ -213,7 +215,7 @@ export function ProjectIssuesPage() {
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next
+                    {t('common.next')}
                   </Button>
                 </div>
               </div>
@@ -221,9 +223,9 @@ export function ProjectIssuesPage() {
           </div>
         ) : (
           <EmptyState
-            title="No issues found"
-            description="Try adjusting your filters or create a new issue."
-            action={{ label: 'Create Issue', onClick: () => setShowCreate(true) }}
+            title={t('issues.noIssues')}
+            description={t('issues.noIssuesFilter')}
+            action={{ label: t('issues.createIssue'), onClick: () => setShowCreate(true) }}
           />
         )}
       </div>
@@ -239,7 +241,7 @@ export function ProjectIssuesPage() {
 
       <Dialog open={showCreate} onClose={() => setShowCreate(false)} className="max-w-2xl">
         <DialogHeader onClose={() => setShowCreate(false)}>
-          <DialogTitle>Create Issue</DialogTitle>
+          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm

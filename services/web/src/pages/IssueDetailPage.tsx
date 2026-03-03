@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Send, Edit2, Trash2, Clock, Plus, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   useIssue,
   useUpdateIssue,
@@ -46,6 +47,7 @@ function CommentItem({
   comment: Comment
   currentUserId?: string
 }) {
+  const { t } = useTranslation()
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
   const [showDelete, setShowDelete] = useState(false)
@@ -62,7 +64,7 @@ function CommentItem({
           </span>
           <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
           {comment.editedAt && (
-            <span className="text-xs text-gray-400">(edited)</span>
+            <span className="text-xs text-gray-400">{t('issues.edited')}</span>
           )}
         </div>
         {editing ? (
@@ -83,10 +85,10 @@ function CommentItem({
                   )
                 }
               >
-                Save
+                {t('common.save')}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
@@ -102,13 +104,13 @@ function CommentItem({
                 setEditing(true)
               }}
             >
-              Edit
+              {t('common.edit')}
             </button>
             <button
               className="text-xs text-gray-400 hover:text-red-600"
               onClick={() => setShowDelete(true)}
             >
-              Delete
+              {t('common.delete')}
             </button>
           </div>
         )}
@@ -121,9 +123,9 @@ function CommentItem({
               { onSuccess: () => setShowDelete(false) },
             )
           }
-          title="Delete Comment"
-          description="Are you sure you want to delete this comment?"
-          confirmLabel="Delete"
+          title={t('common.delete') + ' ' + t('issues.comment')}
+          description={t('issues.deleteConfirm')}
+          confirmLabel={t('common.delete')}
           destructive
           isLoading={deleteComment.isPending}
         />
@@ -133,6 +135,7 @@ function CommentItem({
 }
 
 export function IssueDetailPage() {
+  const { t } = useTranslation()
   const { id: issueId } = useParams<{ id: string }>()
   const currentUser = useAuthStore((s) => s.user)
 
@@ -169,7 +172,7 @@ export function IssueDetailPage() {
   const [labels, setLabels] = useState<string[]>(issue?.labels || [])
 
   if (isLoading) return <LoadingPage />
-  if (!issue) return <div className="p-6 text-gray-500">Issue not found.</div>
+  if (!issue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
 
   const handleAddLabel = () => {
     const trimmed = labelInput.trim()
@@ -192,7 +195,7 @@ export function IssueDetailPage() {
       {/* Breadcrumb */}
       <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center gap-2 text-sm">
         <Link to="/projects" className="text-gray-400 hover:text-gray-600">
-          Projects
+          {t('nav.projects')}
         </Link>
         <span className="text-gray-300">/</span>
         {issue.projectId && (
@@ -201,7 +204,7 @@ export function IssueDetailPage() {
               to={`/projects/${issue.projectId}/board`}
               className="text-gray-400 hover:text-gray-600"
             >
-              Board
+              {t('nav.board')}
             </Link>
             <span className="text-gray-300">/</span>
           </>
@@ -241,10 +244,10 @@ export function IssueDetailPage() {
                     setEditingTitle(false)
                   }}
                 >
-                  Save
+                  {t('common.save')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setEditingTitle(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             ) : (
@@ -262,7 +265,7 @@ export function IssueDetailPage() {
 
           {/* Description */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('common.description')}</h3>
             {editingDesc ? (
               <div className="space-y-2">
                 <Textarea
@@ -280,10 +283,10 @@ export function IssueDetailPage() {
                       setEditingDesc(false)
                     }}
                   >
-                    Save
+                    {t('common.save')}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setEditingDesc(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               </div>
@@ -298,7 +301,7 @@ export function IssueDetailPage() {
                 {issue.description ? (
                   <p className="whitespace-pre-wrap">{issue.description}</p>
                 ) : (
-                  <p className="text-gray-400 italic">Click to add description...</p>
+                  <p className="text-gray-400 italic">{t('issues.clickToAddDescription')}</p>
                 )}
               </div>
             )}
@@ -307,7 +310,7 @@ export function IssueDetailPage() {
           {/* Comments */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Comments ({comments?.length || 0})
+              {t('issues.commentsCount', { count: comments?.length || 0 })}
             </h3>
             <div className="space-y-4 mb-4">
               {comments?.map((comment) => (
@@ -318,7 +321,7 @@ export function IssueDetailPage() {
                 />
               ))}
               {(!comments || comments.length === 0) && (
-                <p className="text-sm text-gray-400">No comments yet.</p>
+                <p className="text-sm text-gray-400">{t('issues.noComments')}</p>
               )}
             </div>
 
@@ -327,7 +330,7 @@ export function IssueDetailPage() {
               <Avatar user={currentUser || undefined} size="sm" />
               <div className="flex-1 space-y-2">
                 <Textarea
-                  placeholder="Add a comment..."
+                  placeholder={t('issues.addCommentPlaceholder')}
                   rows={3}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
@@ -344,7 +347,7 @@ export function IssueDetailPage() {
                   }}
                 >
                   <Send className="h-3.5 w-3.5" />
-                  Comment
+                  {t('issues.comment')}
                 </Button>
               </div>
             </div>
@@ -354,11 +357,11 @@ export function IssueDetailPage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">
-                Time Tracking
+                {t('issues.timeTracking')}
               </h3>
               <Button size="sm" variant="outline" onClick={() => setShowWorkLogDialog(true)}>
                 <Clock className="h-3.5 w-3.5" />
-                Log Work
+                {t('issues.addWorkLog')}
               </Button>
             </div>
             <div className="space-y-2">
@@ -375,7 +378,7 @@ export function IssueDetailPage() {
                 </div>
               ))}
               {(!workLogs || workLogs.length === 0) && (
-                <p className="text-sm text-gray-400">No time logged yet.</p>
+                <p className="text-sm text-gray-400">{t('issues.noTimeLogged')}</p>
               )}
             </div>
           </div>
@@ -386,7 +389,7 @@ export function IssueDetailPage() {
           {/* Status */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Status
+              {t('common.status')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -395,7 +398,7 @@ export function IssueDetailPage() {
                 updateIssue.mutate({ id: issue.id, statusId: e.target.value || undefined })
               }
             >
-              <option value="">No Status</option>
+              <option value="">{t('common.noStatus')}</option>
               {board?.statuses?.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -407,7 +410,7 @@ export function IssueDetailPage() {
           {/* Priority */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Priority
+              {t('common.priority')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -427,7 +430,7 @@ export function IssueDetailPage() {
           {/* Type */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Type
+              {t('common.type')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -447,7 +450,7 @@ export function IssueDetailPage() {
           {/* Assignee */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Assignee
+              {t('common.assignee')}
             </label>
             <UserSelect
               value={issue.assigneeId || null}
@@ -460,7 +463,7 @@ export function IssueDetailPage() {
           {/* Reporter */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Reporter
+              {t('common.reporter')}
             </label>
             <div className="flex items-center gap-2">
               <Avatar user={issue.reporter} size="xs" />
@@ -473,7 +476,7 @@ export function IssueDetailPage() {
           {/* Sprint */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Sprint
+              {t('issues.sprint')}
             </label>
             <select
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -482,7 +485,7 @@ export function IssueDetailPage() {
                 updateIssue.mutate({ id: issue.id, sprintId: e.target.value || null })
               }
             >
-              <option value="">No Sprint</option>
+              <option value="">{t('common.noSprint')}</option>
               {sprints
                 ?.filter((s) => s.status !== 'completed')
                 .map((s) => (
@@ -496,7 +499,7 @@ export function IssueDetailPage() {
           {/* Due Date */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Due Date
+              {t('issues.dueDate')}
             </label>
             <Input
               type="date"
@@ -510,7 +513,7 @@ export function IssueDetailPage() {
           {/* Story Points */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Story Points
+              {t('issues.storyPoints')}
             </label>
             <Input
               type="number"
@@ -529,7 +532,7 @@ export function IssueDetailPage() {
           {/* Time Estimate */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Time Estimate
+              {t('issues.timeEstimate')}
             </label>
             <div className="flex items-center gap-2">
               <Input
@@ -547,10 +550,9 @@ export function IssueDetailPage() {
             </div>
             {issue.timeSpent > 0 && (
               <p className="text-xs text-gray-400 mt-1">
-                Logged: {formatDuration(issue.timeSpent)}
                 {issue.timeEstimate
-                  ? ` / ${formatDuration(issue.timeEstimate)}`
-                  : ''}
+                  ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
+                  : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
               </p>
             )}
           </div>
@@ -558,7 +560,7 @@ export function IssueDetailPage() {
           {/* Labels */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              Labels
+              {t('issues.labels')}
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {(issue.labels || []).map((l) => (
@@ -588,7 +590,7 @@ export function IssueDetailPage() {
                     handleAddLabel()
                   }
                 }}
-                placeholder="Add label"
+                placeholder={t('issues.addLabel')}
                 className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel}>
@@ -815,10 +817,10 @@ export function IssueDetailPage() {
           {/* Dates */}
           <div className="pt-2 border-t border-gray-200 space-y-1">
             <p className="text-xs text-gray-400">
-              Created {formatRelativeTime(issue.createdAt)}
+              {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
             </p>
             <p className="text-xs text-gray-400">
-              Updated {formatRelativeTime(issue.updatedAt)}
+              {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
             </p>
           </div>
 
@@ -830,7 +832,7 @@ export function IssueDetailPage() {
             onClick={() => setShowDeleteIssue(true)}
           >
             <Trash2 className="h-4 w-4" />
-            Delete Issue
+            {t('issues.deleteIssue')}
           </Button>
         </div>
       </div>
@@ -842,11 +844,11 @@ export function IssueDetailPage() {
         className="max-w-sm"
       >
         <DialogHeader onClose={() => setShowWorkLogDialog(false)}>
-          <DialogTitle>Log Work</DialogTitle>
+          <DialogTitle>{t('issues.addWorkLog')}</DialogTitle>
         </DialogHeader>
         <DialogContent className="space-y-4">
           <Input
-            label="Time Spent (minutes)"
+            label={t('issues.timeSpentMinutes')}
             type="number"
             min="1"
             placeholder="e.g. 90"
@@ -854,15 +856,15 @@ export function IssueDetailPage() {
             onChange={(e) => setWorkLogTime(e.target.value)}
           />
           <Textarea
-            label="Description (optional)"
-            placeholder="What did you work on?"
+            label={t('common.description') + ' (' + t('common.cancel').toLowerCase() + ')'}
+            placeholder={t('issues.describeIssue')}
             rows={3}
             value={workLogDesc}
             onChange={(e) => setWorkLogDesc(e.target.value)}
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowWorkLogDialog(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               disabled={!workLogTime}
@@ -885,7 +887,7 @@ export function IssueDetailPage() {
                 )
               }}
             >
-              Log Work
+              {t('issues.addWorkLog')}
             </Button>
           </div>
         </DialogContent>
@@ -901,9 +903,9 @@ export function IssueDetailPage() {
             { onSuccess: () => window.history.back() },
           )
         }
-        title="Delete Issue"
-        description={`Are you sure you want to delete "${issue.title}"? This action cannot be undone.`}
-        confirmLabel="Delete Issue"
+        title={t('issues.deleteIssue')}
+        description={t('issues.deleteIssueConfirm', { title: issue.title })}
+        confirmLabel={t('issues.deleteIssue')}
         destructive
         isLoading={deleteIssue.isPending}
       />

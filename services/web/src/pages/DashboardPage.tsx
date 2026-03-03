@@ -19,6 +19,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth.store'
 import { useIssues } from '@/hooks/useIssues'
 import { useProjects } from '@/hooks/useProjects'
@@ -239,6 +240,7 @@ function formatMinutes(minutes: number): string {
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const { data: myIssuesData, isLoading: issuesLoading } = useIssues({
     assigneeId: user?.id,
@@ -271,10 +273,10 @@ export function DashboardPage() {
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
-  }, [])
+    if (hour < 12) return t('dashboard.goodMorning')
+    if (hour < 17) return t('dashboard.goodAfternoon')
+    return t('dashboard.goodEvening')
+  }, [t])
 
   if (issuesLoading && projectsLoading) return <LoadingPage />
 
@@ -286,26 +288,26 @@ export function DashboardPage() {
           {greeting}, {user?.displayName?.split(' ')[0] || 'there'}
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          {formatDate(new Date())} — Here's what's happening today.
+          {t('dashboard.hereIsWhatsHappening', { date: formatDate(new Date()) })}
         </p>
       </div>
 
       {/* Stats */}
       <div className="flex gap-4">
         <StatCard
-          label="Open Issues"
+          label={t('dashboard.openIssues')}
           value={stats.open}
           icon={AlertCircle}
           color="bg-yellow-500"
         />
         <StatCard
-          label="In Progress"
+          label={t('dashboard.inProgress')}
           value={stats.inProgress}
           icon={Clock}
           color="bg-blue-500"
         />
         <StatCard
-          label="Completed (All Time)"
+          label={t('dashboard.completedAllTime')}
           value={stats.done}
           icon={CheckCircle}
           color="bg-green-500"
@@ -340,16 +342,16 @@ export function DashboardPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">My Issues</h2>
+            <h2 className="text-base font-semibold text-gray-900">{t('dashboard.myIssues')}</h2>
             <Link to="/issues" className="text-sm text-blue-600 hover:text-blue-700">
-              View all
+              {t('common.viewAll')}
             </Link>
           </div>
         </CardHeader>
         {myIssues.length === 0 ? (
           <EmptyState
-            title="No issues assigned to you"
-            description="Issues assigned to you will appear here."
+            title={t('dashboard.noIssuesAssigned')}
+            description={t('dashboard.issuesAssignedAppear')}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -357,11 +359,11 @@ export function DashboardPage() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">Title</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-28">Priority</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-36">Status</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-16">Assignee</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-28">Due Date</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-28">{t('issues.dueDate')}</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-16">SP</th>
                 </tr>
               </thead>
@@ -378,9 +380,9 @@ export function DashboardPage() {
       {/* Recent Projects */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-gray-900">Recent Projects</h2>
+          <h2 className="text-base font-semibold text-gray-900">{t('dashboard.recentProjects')}</h2>
           <Link to="/projects" className="text-sm text-blue-600 hover:text-blue-700">
-            View all
+            {t('common.viewAll')}
           </Link>
         </div>
         {projectsLoading ? (
@@ -392,7 +394,7 @@ export function DashboardPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="No projects yet" description="Create your first project to get started." />
+          <EmptyState title={t('dashboard.noProjectsYet')} description={t('dashboard.createFirstProject')} />
         )}
       </div>
     </div>
