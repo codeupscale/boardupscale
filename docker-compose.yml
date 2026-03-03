@@ -1,0 +1,171 @@
+version: '3.9'
+
+services:
+  nginx:
+    build: ./services/nginx
+    ports:
+      - '8091:80'
+    depends_on:
+      - api
+      - web
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_URL=/api
+      - VITE_WS_URL=
+    depends_on:
+      - api
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://projectflow:projectflow@postgres:5432/projectflow
+      - REDIS_URL=redis://redis:6379
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=projectflow
+      - JWT_SECRET=${JWT_SECRET:-change-in-production}
+      - JWT_EXPIRY=15m
+      - JWT_REFRESH_EXPIRY=7d
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_FROM=noreply@projectflow.local
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8091}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8091}
+      - PORT=4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://projectflow:projectflow@postgres:5432/projectflow
+      - REDIS_URL=redis://redis:6379
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=projectflow
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_FROM=noreply@projectflow.local
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8091}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=projectflow
+      - POSTGRES_USER=projectflow
+      - POSTGRES_PASSWORD=projectflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - '5435:5432'
+    networks:
+      - projectflow
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U projectflow']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6381:6379'
+    networks:
+      - projectflow
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - '9202:9200'
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ':9001'
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - '9010:9000'
+      - '9011:9001'
+    networks:
+      - projectflow
+    restart: unless-stopped
+
+  mailhog:
+    image: axllent/mailpit:latest
+    ports:
+      - '1027:1025'
+      - '8026:8025'
+    networks:
+      - projectflow
+
+volumes:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
+  minio_data:
+
+networks:
+  projectflow:
+    driver: bridge

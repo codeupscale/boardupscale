@@ -1,0 +1,68 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Exclude } from 'class-transformer';
+import { Organization } from '../../organizations/entities/organization.entity';
+
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'organization_id', type: 'uuid', nullable: true })
+  organizationId: string;
+
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
+
+  @Column({ type: 'varchar', length: 255, unique: true })
+  email: string;
+
+  @Column({ name: 'display_name', type: 'varchar', length: 255 })
+  displayName: string;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl: string;
+
+  @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true })
+  @Exclude()
+  passwordHash: string;
+
+  @Column({ type: 'varchar', length: 50, default: 'member' })
+  role: string;
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'email_verified', type: 'boolean', default: false })
+  emailVerified: boolean;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  timezone: string;
+
+  @Column({ type: 'varchar', length: 10, default: 'en' })
+  language: string;
+
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
+  lastLoginAt: Date;
+
+  @Column({
+    name: 'notification_preferences',
+    type: 'jsonb',
+    default: () => `'{"email":true,"inApp":true}'`,
+  })
+  notificationPreferences: Record<string, boolean>;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

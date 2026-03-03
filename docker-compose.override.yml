@@ -1,0 +1,35 @@
+version: '3.9'
+
+# Development overrides - mounts source code for hot reload
+services:
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./services/web:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost/api
+      - NEXT_PUBLIC_WS_URL=ws://localhost
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./services/api:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  worker:
+    build:
+      context: ./services/worker
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./services/worker:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
