@@ -7,6 +7,7 @@ import { Issue } from '../issues/entities/issue.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { EventsModule } from '../../websocket/events.module';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { EventsModule } from '../../websocket/events.module';
     NotificationsModule,
     PermissionsModule,
     EventsModule,
+    WebhooksModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

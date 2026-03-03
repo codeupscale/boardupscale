@@ -201,6 +201,56 @@ export interface PaginatedResponse<T> {
   limit: number
 }
 
+export interface Webhook {
+  id: string
+  organizationId: string
+  projectId?: string
+  name: string
+  url: string
+  secret?: string
+  events: string[]
+  isActive: boolean
+  headers: Record<string, string>
+  createdBy?: string
+  creator?: User
+  createdAt: string
+  updatedAt: string
+}
+
+export interface WebhookDelivery {
+  id: string
+  webhookId: string
+  eventType: string
+  payload: Record<string, any>
+  responseStatus?: number
+  responseBody?: string
+  responseHeaders?: Record<string, any>
+  durationMs?: number
+  status: 'pending' | 'success' | 'failed'
+  attempt: number
+  nextRetryAt?: string
+  createdAt: string
+}
+
+export const WEBHOOK_EVENT_TYPES = [
+  'issue.created',
+  'issue.updated',
+  'issue.deleted',
+  'issue.assigned',
+  'issue.status_changed',
+  'comment.created',
+  'comment.updated',
+  'comment.deleted',
+  'sprint.started',
+  'sprint.completed',
+  'project.created',
+  'project.updated',
+  'member.added',
+  'member.removed',
+] as const
+
+export type WebhookEventType = (typeof WEBHOOK_EVENT_TYPES)[number]
+
 export interface ApiResponse<T> {
   data: T
 }

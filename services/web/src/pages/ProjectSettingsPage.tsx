@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Plus, Trash2, Edit2, AlertTriangle, Shield } from 'lucide-react'
+import { Plus, Trash2, Edit2, AlertTriangle, Shield, Globe } from 'lucide-react'
 import {
   useProject,
   useUpdateProject,
@@ -121,6 +121,7 @@ export function ProjectSettingsPage() {
             { id: 'members', label: 'Members' },
             { id: 'workflow', label: 'Workflow' },
             { id: 'roles', label: 'Roles & Permissions' },
+            { id: 'webhooks', label: 'Webhooks' },
             { id: 'danger', label: 'Danger Zone' },
           ]}
           activeTab={activeTab}
@@ -237,6 +238,27 @@ export function ProjectSettingsPage() {
               {/* Assign roles to members inline */}
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
                 <MemberRoleList projectId={projectId!} />
+              </div>
+            </div>
+          )}
+
+          {/* Webhooks */}
+          {activeTab === 'webhooks' && (
+            <div className="max-w-lg">
+              <div className="flex items-start gap-3">
+                <Globe className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-gray-900 mb-1">Webhooks</h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Configure webhooks to receive real-time HTTP callbacks when events occur in this project.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/projects/${projectId}/webhooks`)}
+                  >
+                    Manage Webhooks
+                  </Button>
+                </div>
               </div>
             </div>
           )}

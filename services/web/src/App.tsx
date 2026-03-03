@@ -15,6 +15,7 @@ import { NotificationsPage } from '@/pages/NotificationsPage'
 import { UserSettingsPage } from '@/pages/UserSettingsPage'
 import { RoleManagementPage } from '@/pages/RoleManagementPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { WebhooksPage } from '@/pages/WebhooksPage'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/projects/:id/backlog" element={<ProjectBacklogPage />} />
         <Route path="/projects/:id/issues" element={<ProjectIssuesPage />} />
         <Route path="/projects/:id/settings" element={<ProjectSettingsPage />} />
+        <Route path="/projects/:id/webhooks" element={<WebhooksPage />} />
         <Route path="/issues" element={<MyIssuesPage />} />
         <Route path="/issues/:id" element={<IssueDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

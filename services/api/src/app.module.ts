@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
 import configuration from './config/configuration';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -18,6 +19,7 @@ import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { EventsModule } from './websocket/events.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -33,6 +35,8 @@ import { Notification } from './modules/notifications/entities/notification.enti
 import { WorkLog } from './modules/issues/entities/work-log.entity';
 import { Permission } from './modules/permissions/entities/permission.entity';
 import { Role } from './modules/permissions/entities/role.entity';
+import { Webhook } from './modules/webhooks/entities/webhook.entity';
+import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.entity';
 
 @Module({
   imports: [
@@ -61,6 +65,8 @@ import { Role } from './modules/permissions/entities/role.entity';
           WorkLog,
           Permission,
           Role,
+          Webhook,
+          WebhookDelivery,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -78,6 +84,17 @@ import { Role } from './modules/permissions/entities/role.entity';
       },
     ]),
 
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('redis.host'),
+          port: configService.get<number>('redis.port'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
     AuthModule,
     UsersModule,
     OrganizationsModule,
@@ -92,6 +109,7 @@ import { Role } from './modules/permissions/entities/role.entity';
     HealthModule,
     PermissionsModule,
     EventsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

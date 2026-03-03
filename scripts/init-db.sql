@@ -268,6 +268,44 @@ CREATE INDEX IF NOT EXISTS idx_role_permissions_perm ON role_permissions(permiss
 ALTER TABLE project_members ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES roles(id);
 CREATE INDEX IF NOT EXISTS idx_project_members_role ON project_members(role_id);
 
+-- Webhooks
+CREATE TABLE IF NOT EXISTS webhooks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    secret VARCHAR(255),
+    events TEXT[] NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    headers JSONB DEFAULT '{}',
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhooks_org ON webhooks(organization_id);
+CREATE INDEX IF NOT EXISTS idx_webhooks_project ON webhooks(project_id);
+
+-- Webhook deliveries
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    webhook_id UUID NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+    event_type VARCHAR(100) NOT NULL,
+    payload JSONB NOT NULL,
+    response_status INTEGER,
+    response_body TEXT,
+    response_headers JSONB,
+    duration_ms INTEGER,
+    status VARCHAR(20) DEFAULT 'pending',
+    attempt INTEGER DEFAULT 1,
+    next_retry_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_webhook ON webhook_deliveries(webhook_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_status ON webhook_deliveries(status);
+
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)
 RETURNS INT AS $$
