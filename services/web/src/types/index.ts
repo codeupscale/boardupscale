@@ -368,3 +368,32 @@ export interface VersionProgress {
   inProgress: number
   todo: number
 }
+
+export interface AutomationRule {
+  id: string
+  organizationId: string
+  projectId: string
+  name: string
+  description?: string
+  isActive: boolean
+  triggerType: string
+  triggerConfig: Record<string, any>
+  conditions: any[]
+  actions: any[]
+  executionCount: number
+  lastExecutedAt?: string
+  createdBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AutomationLog {
+  id: string
+  ruleId: string
+  issueId?: string
+  triggerEvent: string
+  actionsExecuted: any[]
+  status: string
+  errorMessage?: string
+  executedAt: string
+}

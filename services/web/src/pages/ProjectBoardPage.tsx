@@ -130,6 +130,7 @@ export function ProjectBoardPage() {
           { label: 'Backlog', href: `/projects/${projectId}/backlog` },
           { label: 'Issues', href: `/projects/${projectId}/issues` },
           { label: 'Trash', href: `/projects/${projectId}/trash` },
+          { label: 'Automations', href: `/projects/${projectId}/automations` },
           { label: 'Settings', href: `/projects/${projectId}/settings` },
         ].map((tab) => (
           <Link

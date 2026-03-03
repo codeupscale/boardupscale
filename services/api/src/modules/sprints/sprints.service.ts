@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +15,7 @@ import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 
 @Injectable()
 export class SprintsService {
@@ -25,6 +28,8 @@ export class SprintsService {
     private issueStatusRepository: Repository<IssueStatus>,
     private projectsService: ProjectsService,
     private webhookEventEmitter: WebhookEventEmitter,
+    @Optional() @Inject(AutomationEngineService)
+    private automationEngine?: AutomationEngineService,
   ) {}
 
   async findAll(projectId: string, organizationId: string): Promise<Sprint[]> {
@@ -92,6 +97,13 @@ export class SprintsService {
       { sprint: saved, projectId: sprint.projectId },
     );
 
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(sprint.projectId, 'sprint.started', {
+        sprintId: id,
+      });
+    }
+
     return saved;
   }
 
@@ -136,6 +148,13 @@ export class SprintsService {
       WebhookEventType.SPRINT_COMPLETED,
       { sprint: saved, projectId: sprint.projectId, incompleteIssueCount: incompleteIssues.length },
     );
+
+    // Trigger automation rules
+    if (this.automationEngine) {
+      this.automationEngine.processTrigger(sprint.projectId, 'sprint.completed', {
+        sprintId: id,
+      });
+    }
 
     return saved;
   }

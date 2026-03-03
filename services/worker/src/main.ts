@@ -6,6 +6,7 @@ import { createEmailWorker } from './email/email.worker';
 import { createNotificationWorker } from './notification/notification.worker';
 import { createSearchWorker } from './search/search.worker';
 import { createWebhookWorker } from './webhook/webhook.worker';
+import { createAutomationWorker } from './automation/automation.worker';
 
 async function main(): Promise<void> {
   console.log('[Main] ProjectFlow Worker starting up...');
@@ -54,6 +55,14 @@ async function main(): Promise<void> {
   } catch (err: any) {
     // Webhook worker failure is non-fatal — log and continue
     console.error('[Main] Failed to start WebhookWorker (webhook delivery disabled):', err.message);
+  }
+
+  try {
+    const automationWorker = createAutomationWorker(db);
+    workers.push(automationWorker);
+  } catch (err: any) {
+    // Automation worker failure is non-fatal — log and continue
+    console.error('[Main] Failed to start AutomationWorker (automation disabled):', err.message);
   }
 
   console.log(`[Main] All workers running (${workers.length} active). Waiting for jobs...`);

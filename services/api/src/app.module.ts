@@ -24,6 +24,7 @@ import { ComponentsModule } from './modules/components/components.module';
 import { VersionsModule } from './modules/versions/versions.module';
 import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { AutomationModule } from './modules/automation/automation.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -47,6 +48,8 @@ import { Component } from './modules/components/entities/component.entity';
 import { IssueComponent } from './modules/components/entities/issue-component.entity';
 import { Version } from './modules/versions/entities/version.entity';
 import { IssueVersion } from './modules/versions/entities/issue-version.entity';
+import { AutomationRule } from './modules/automation/entities/automation-rule.entity';
+import { AutomationLog } from './modules/automation/entities/automation-log.entity';
 
 @Module({
   imports: [
@@ -83,6 +86,8 @@ import { IssueVersion } from './modules/versions/entities/issue-version.entity';
           IssueComponent,
           Version,
           IssueVersion,
+          AutomationRule,
+          AutomationLog,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -130,6 +135,7 @@ import { IssueVersion } from './modules/versions/entities/issue-version.entity';
     VersionsModule,
     EventsModule,
     WebhooksModule,
+    AutomationModule,
   ],
 })
 export class AppModule {}

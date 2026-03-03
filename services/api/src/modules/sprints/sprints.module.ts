@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SprintsController } from './sprints.controller';
 import { SprintsService } from './sprints.service';
@@ -8,6 +8,7 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
+import { AutomationModule } from '../automation/automation.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
     ProjectsModule,
     PermissionsModule,
     WebhooksModule,
+    forwardRef(() => AutomationModule),
   ],
   controllers: [SprintsController],
   providers: [SprintsService],

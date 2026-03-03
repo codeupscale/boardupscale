@@ -12,6 +12,7 @@ import { ProjectSettingsPage } from '@/pages/ProjectSettingsPage'
 import { ProjectReportsPage } from '@/pages/ProjectReportsPage'
 import { ProjectReleasesPage } from '@/pages/ProjectReleasesPage'
 import { ProjectTrashPage } from '@/pages/ProjectTrashPage'
+import { ProjectAutomationsPage } from '@/pages/ProjectAutomationsPage'
 import { IssueDetailPage } from '@/pages/IssueDetailPage'
 import { MyIssuesPage } from '@/pages/MyIssuesPage'
 import { NotificationsPage } from '@/pages/NotificationsPage'
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/projects/:id/backlog" element={<ProjectBacklogPage />} />
         <Route path="/projects/:id/issues" element={<ProjectIssuesPage />} />
         <Route path="/projects/:id/reports" element={<ProjectReportsPage />} />
+        <Route path="/projects/:id/automations" element={<ProjectAutomationsPage />} />
         <Route path="/projects/:id/settings" element={<ProjectSettingsPage />} />
         <Route path="/projects/:id/webhooks" element={<WebhooksPage />} />
         <Route path="/projects/:id/releases" element={<ProjectReleasesPage />} />

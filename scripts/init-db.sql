@@ -387,6 +387,42 @@ CREATE TABLE IF NOT EXISTS issue_versions (
     PRIMARY KEY (issue_id, version_id, relation_type)
 );
 
+-- Automation rules
+CREATE TABLE IF NOT EXISTS automation_rules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    project_id UUID NOT NULL REFERENCES projects(id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    trigger_type VARCHAR(50) NOT NULL,
+    trigger_config JSONB NOT NULL DEFAULT '{}',
+    conditions JSONB DEFAULT '[]',
+    actions JSONB NOT NULL DEFAULT '[]',
+    execution_count INTEGER DEFAULT 0,
+    last_executed_at TIMESTAMPTZ,
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_rules_project ON automation_rules(project_id);
+CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_active);
+
+-- Automation execution logs
+CREATE TABLE IF NOT EXISTS automation_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES automation_rules(id) ON DELETE CASCADE,
+    issue_id UUID REFERENCES issues(id),
+    trigger_event VARCHAR(100),
+    actions_executed JSONB,
+    status VARCHAR(20) DEFAULT 'success',
+    error_message TEXT,
+    executed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_logs_rule ON automation_logs(rule_id);
+
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)
 RETURNS INT AS $$
