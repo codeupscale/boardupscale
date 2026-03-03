@@ -16,6 +16,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { FilesModule } from './modules/files/files.module';
 import { SearchModule } from './modules/search/search.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { HealthModule } from './modules/health/health.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { EventsModule } from './websocket/events.module';
@@ -105,6 +106,7 @@ import { WebhookDelivery } from './modules/webhooks/entities/webhook-delivery.en
     CommentsModule,
     NotificationsModule,
     FilesModule,
+    ReportsModule,
     SearchModule,
     HealthModule,
     PermissionsModule,

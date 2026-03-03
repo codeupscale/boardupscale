@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -8,6 +9,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Columns3,
+  List,
+  ListTodo,
+  BarChart3,
+  Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
@@ -34,6 +40,25 @@ export function Sidebar() {
     if (href === '/dashboard') return location.pathname === href
     return location.pathname.startsWith(href)
   }
+
+  // Detect current project from URL
+  const currentProjectId = useMemo(() => {
+    const match = location.pathname.match(/^\/projects\/([^/]+)/)
+    return match ? match[1] : null
+  }, [location.pathname])
+
+  const currentProject = useMemo(() => {
+    if (!currentProjectId || !projects) return null
+    return projects.find((p) => p.id === currentProjectId) || null
+  }, [currentProjectId, projects])
+
+  const projectSubNav = [
+    { icon: Columns3, label: 'Board', path: 'board' },
+    { icon: ListTodo, label: 'Backlog', path: 'backlog' },
+    { icon: List, label: 'Issues', path: 'issues' },
+    { icon: BarChart3, label: 'Reports', path: 'reports' },
+    { icon: Settings2, label: 'Settings', path: 'settings' },
+  ]
 
   return (
     <aside
@@ -86,6 +111,36 @@ export function Sidebar() {
             return item
           })}
         </div>
+
+        {/* Current Project Navigation */}
+        {isSidebarOpen && currentProject && (
+          <div className="mt-4 px-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              {currentProject.key} - {currentProject.name}
+            </p>
+            <div className="space-y-0.5">
+              {projectSubNav.map(({ icon: Icon, label, path }) => {
+                const href = `/projects/${currentProjectId}/${path}`
+                const active = location.pathname === href
+                return (
+                  <Link
+                    key={path}
+                    to={href}
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      active
+                        ? 'text-blue-700 bg-blue-50'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600' : 'text-gray-400')} />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Recent Projects */}
         {isSidebarOpen && projects && projects.length > 0 && (
