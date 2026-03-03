@@ -107,12 +107,28 @@ import { AutomationLog } from './modules/automation/entities/automation-log.enti
 
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('redis.host'),
-          port: configService.get<number>('redis.port'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisUrl = configService.get<string>('redis.url');
+        if (redisUrl) {
+          try {
+            const url = new URL(redisUrl);
+            return {
+              connection: {
+                host: url.hostname,
+                port: parseInt(url.port, 10) || 6379,
+              },
+            };
+          } catch {
+            // fall through to host/port
+          }
+        }
+        return {
+          connection: {
+            host: configService.get<string>('redis.host'),
+            port: configService.get<number>('redis.port'),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 

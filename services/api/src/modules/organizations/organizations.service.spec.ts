@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { OrganizationsService } from './organizations.service';
 import { Organization } from './entities/organization.entity';
 import { User } from '../users/entities/user.entity';
 import { createMockRepository } from '../../test/test-utils';
 import { mockOrganization, mockUser, TEST_IDS } from '../../test/mock-factories';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 
 describe('OrganizationsService', () => {
   let service: OrganizationsService;

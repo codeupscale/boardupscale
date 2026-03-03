@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { createMockRepository, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, TEST_IDS } from '../../test/mock-factories';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 
 describe('UsersService', () => {
   let service: UsersService;

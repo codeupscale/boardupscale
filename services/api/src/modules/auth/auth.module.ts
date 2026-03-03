@@ -13,6 +13,20 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
 
+// Conditionally include OAuth strategies only when credentials are configured
+const oauthProviders = [];
+
+function getOAuthProviders(): any[] {
+  const providers: any[] = [];
+  if (process.env.GOOGLE_CLIENT_ID) {
+    providers.push(GoogleStrategy);
+  }
+  if (process.env.GITHUB_CLIENT_ID) {
+    providers.push(GithubStrategy);
+  }
+  return providers;
+}
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([RefreshToken, Organization]),
@@ -28,7 +42,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, GoogleStrategy, GithubStrategy],
+  providers: [AuthService, JwtStrategy, LocalStrategy, ...getOAuthProviders()],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

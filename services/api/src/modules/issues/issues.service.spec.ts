@@ -8,6 +8,8 @@ import { WorkLog } from './entities/work-log.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 import {
   createMockRepository,
   createMockQueryBuilder,
@@ -44,6 +46,8 @@ describe('IssuesService', () => {
         { provide: ProjectsService, useValue: projectsService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: EventsGateway, useValue: eventsGateway },
+        { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

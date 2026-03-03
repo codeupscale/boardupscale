@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { mockIssue, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
 
 describe('IssuesController', () => {
@@ -24,6 +25,7 @@ describe('IssuesController', () => {
       controllers: [IssuesController],
       providers: [
         { provide: IssuesService, useValue: issuesService },
+        { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true) } },
       ],
     }).compile();
 

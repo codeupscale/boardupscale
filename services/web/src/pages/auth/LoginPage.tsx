@@ -90,7 +90,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit((values) => login.mutate(values))} className="space-y-4">
+          <form onSubmit={handleSubmit((values) => login.mutate({ email: values.email, password: values.password }))} className="space-y-4">
             <Input
               label={t('common.email')}
               type="email"

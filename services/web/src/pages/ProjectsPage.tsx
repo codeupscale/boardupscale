@@ -82,7 +82,7 @@ export function ProjectsPage() {
         <DialogContent>
           <ProjectForm
             onSubmit={(values) =>
-              createProject.mutate(values, { onSuccess: () => setShowCreate(false) })
+              createProject.mutate({ name: values.name, key: values.key, description: values.description, type: values.type }, { onSuccess: () => setShowCreate(false) })
             }
             onCancel={() => setShowCreate(false)}
             isLoading={createProject.isPending}

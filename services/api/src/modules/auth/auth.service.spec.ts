@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -11,7 +11,7 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../test/mock-factories';
 
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 jest.mock('uuid', () => ({ v4: () => 'mock-uuid-value' }));
 
 describe('AuthService', () => {

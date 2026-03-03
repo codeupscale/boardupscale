@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/store/auth.store'
-import { useMe, useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
+import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
+import { useMe } from '@/hooks/useAuth'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -179,19 +180,22 @@ function AccountTab() {
 
 export function UserSettingsPage() {
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState(t('settings.profile'))
+  const [activeTab, setActiveTab] = useState('profile')
 
-  const TABS = [t('settings.profile'), t('settings.account')]
+  const TABS = [
+    { id: 'profile', label: t('settings.profile') },
+    { id: 'account', label: t('settings.account') },
+  ]
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <PageHeader title={t('settings.title')} />
 
       <div className="mt-6">
-        <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
+        <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
         <div className="mt-6">
-          {activeTab === t('settings.profile') && <ProfileTab />}
-          {activeTab === t('settings.account') && <AccountTab />}
+          {activeTab === 'profile' && <ProfileTab />}
+          {activeTab === 'account' && <AccountTab />}
         </div>
       </div>
     </div>

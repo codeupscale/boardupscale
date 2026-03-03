@@ -6,6 +6,8 @@ import { Sprint } from './entities/sprint.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 import {
   createMockRepository,
   createMockQueryBuilder,
@@ -33,6 +35,8 @@ describe('SprintsService', () => {
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: ProjectsService, useValue: projectsService },
+        { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

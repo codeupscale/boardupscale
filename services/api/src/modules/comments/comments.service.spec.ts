@@ -6,6 +6,8 @@ import { Comment } from './entities/comment.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
+import { AutomationEngineService } from '../automation/automation-engine.service';
 import {
   createMockRepository,
   createMockNotificationsService,
@@ -34,6 +36,8 @@ describe('CommentsService', () => {
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: EventsGateway, useValue: eventsGateway },
+        { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 
