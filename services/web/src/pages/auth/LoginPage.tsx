@@ -1,12 +1,14 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router-dom'
-import { Zap } from 'lucide-react'
+import { Zap, AlertTriangle, Mail } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useLogin } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import api from '@/lib/api'
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,6 +20,12 @@ type FormValues = z.infer<typeof schema>
 export function LoginPage() {
   const { t } = useTranslation()
   const login = useLogin()
+  const [lockoutMessage, setLockoutMessage] = useState<string | null>(null)
+  const [showVerificationNotice, setShowVerificationNotice] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState('')
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [verificationSent, setVerificationSent] = useState(false)
+
   const {
     register,
     handleSubmit,
@@ -25,6 +33,53 @@ export function LoginPage() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
   })
+
+  const handleLogin = async (values: FormValues) => {
+    setLockoutMessage(null)
+    setShowVerificationNotice(false)
+    setVerificationSent(false)
+
+    login.mutate(
+      { email: values.email, password: values.password },
+      {
+        onError: (err: any) => {
+          const status = err?.response?.status
+          const data = err?.response?.data
+
+          // Account locked (423)
+          if (status === 423) {
+            setLockoutMessage(
+              data?.message ||
+                'Account is locked due to too many failed login attempts. Please try again later.'
+            )
+            return
+          }
+
+          // Check if the response hints at unverified email
+          if (
+            data?.emailVerified === false ||
+            data?.message?.toLowerCase()?.includes('verify')
+          ) {
+            setShowVerificationNotice(true)
+            setVerificationEmail(values.email)
+          }
+        },
+      }
+    )
+  }
+
+  const handleResendVerification = async () => {
+    if (!verificationEmail) return
+    setResendingVerification(true)
+    try {
+      await api.post('/auth/send-verification')
+      setVerificationSent(true)
+    } catch {
+      // Fail silently -- user can try logging in again
+    } finally {
+      setResendingVerification(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -90,7 +145,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit((values) => login.mutate({ email: values.email, password: values.password }))} className="space-y-4">
+          <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
             <Input
               label={t('common.email')}
               type="email"
@@ -100,16 +155,68 @@ export function LoginPage() {
               {...register('email')}
             />
 
-            <Input
-              label={t('common.password')}
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              error={errors.password?.message}
-              {...register('password')}
-            />
+            <div>
+              <Input
+                label={t('common.password')}
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                error={errors.password?.message}
+                {...register('password')}
+              />
+              <div className="mt-1 text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
 
-            {login.isError && (
+            {/* Account lockout notice */}
+            {lockoutMessage && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-700">{lockoutMessage}</p>
+              </div>
+            )}
+
+            {/* Email verification notice */}
+            {showVerificationNotice && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">
+                      Email not verified
+                    </p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Please check your inbox for a verification email.
+                      {!verificationSent ? (
+                        <button
+                          type="button"
+                          onClick={handleResendVerification}
+                          disabled={resendingVerification}
+                          className="ml-1 underline hover:no-underline font-medium"
+                        >
+                          {resendingVerification
+                            ? 'Sending...'
+                            : 'Resend verification email'}
+                        </button>
+                      ) : (
+                        <span className="ml-1 font-medium text-green-600">
+                          Verification email sent!
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Generic error */}
+            {login.isError && !lockoutMessage && !showVerificationNotice && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                 <p className="text-sm text-red-600">{t('auth.invalidCredentials')}</p>
               </div>

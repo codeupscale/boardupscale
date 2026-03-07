@@ -59,6 +59,26 @@ export class User {
   @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
   lastLoginAt: Date;
 
+  @Column({ name: 'email_verification_token', type: 'varchar', length: 255, nullable: true })
+  @Exclude()
+  emailVerificationToken: string;
+
+  @Column({ name: 'email_verification_expiry', type: 'timestamptz', nullable: true })
+  emailVerificationExpiry: Date;
+
+  @Column({ name: 'password_reset_token', type: 'varchar', length: 255, nullable: true })
+  @Exclude()
+  passwordResetToken: string;
+
+  @Column({ name: 'password_reset_expiry', type: 'timestamptz', nullable: true })
+  passwordResetExpiry: Date;
+
+  @Column({ name: 'failed_login_attempts', type: 'int', default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ name: 'locked_until', type: 'timestamptz', nullable: true })
+  lockedUntil: Date;
+
   @Column({
     name: 'notification_preferences',
     type: 'jsonb',

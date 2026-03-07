@@ -137,4 +137,90 @@ export class UsersService {
     }
     await this.usersRepository.update(id, { isActive: false });
   }
+
+  // ── Account Lockout helpers ───────────────────────────────────────────────
+
+  async incrementFailedAttempts(id: string): Promise<number> {
+    const user = await this.findById(id);
+    const attempts = (user.failedLoginAttempts || 0) + 1;
+    const updateData: Partial<User> = { failedLoginAttempts: attempts };
+
+    // Lock for 15 minutes after 5 failed attempts
+    if (attempts >= 5) {
+      const lockedUntil = new Date();
+      lockedUntil.setMinutes(lockedUntil.getMinutes() + 15);
+      updateData.lockedUntil = lockedUntil;
+    }
+
+    await this.usersRepository.update(id, updateData);
+    return attempts;
+  }
+
+  async resetFailedAttempts(id: string): Promise<void> {
+    await this.usersRepository.update(id, {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
+  }
+
+  isAccountLocked(user: User): boolean {
+    if (!user.lockedUntil) return false;
+    return new Date(user.lockedUntil) > new Date();
+  }
+
+  // ── Email Verification helpers ────────────────────────────────────────────
+
+  async setEmailVerificationToken(
+    id: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.usersRepository.update(id, {
+      emailVerificationToken: tokenHash,
+      emailVerificationExpiry: expiresAt,
+    });
+  }
+
+  async findByEmailVerificationToken(tokenHash: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { emailVerificationToken: tokenHash },
+    });
+  }
+
+  async markEmailVerified(id: string): Promise<void> {
+    await this.usersRepository.update(id, {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiry: null,
+    });
+  }
+
+  // ── Password Reset helpers ────────────────────────────────────────────────
+
+  async setPasswordResetToken(
+    id: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.usersRepository.update(id, {
+      passwordResetToken: tokenHash,
+      passwordResetExpiry: expiresAt,
+    });
+  }
+
+  async findByPasswordResetToken(tokenHash: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { passwordResetToken: tokenHash },
+    });
+  }
+
+  async resetPassword(id: string, passwordHash: string): Promise<void> {
+    await this.usersRepository.update(id, {
+      passwordHash,
+      passwordResetToken: null,
+      passwordResetExpiry: null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    });
+  }
 }

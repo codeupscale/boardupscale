@@ -3,8 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { PasswordPolicyService } from './password-policy.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -14,8 +16,6 @@ import { GithubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
 
 // Conditionally include OAuth strategies only when credentials are configured
-const oauthProviders = [];
-
 function getOAuthProviders(): any[] {
   const providers: any[] = [];
   if (process.env.GOOGLE_CLIENT_ID) {
@@ -39,10 +39,17 @@ function getOAuthProviders(): any[] {
       }),
       inject: [ConfigService],
     }),
+    BullModule.registerQueue({ name: 'email' }),
     UsersModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy, ...getOAuthProviders()],
-  exports: [AuthService, JwtModule],
+  providers: [
+    AuthService,
+    PasswordPolicyService,
+    JwtStrategy,
+    LocalStrategy,
+    ...getOAuthProviders(),
+  ],
+  exports: [AuthService, PasswordPolicyService, JwtModule],
 })
 export class AuthModule {}

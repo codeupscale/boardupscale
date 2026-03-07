@@ -139,6 +139,7 @@ export function createMockConfigService(values?: Record<string, any>) {
   const defaults: Record<string, any> = {
     'jwt.secret': 'test-jwt-secret',
     'jwt.expiry': '15m',
+    'app.frontendUrl': 'http://localhost:3000',
     'minio.endpoint': 'localhost',
     'minio.port': 9000,
     'minio.useSSL': false,

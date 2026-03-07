@@ -43,6 +43,11 @@ interface PasswordResetJobData {
   resetUrl: string;
 }
 
+interface EmailVerificationJobData {
+  to: string;
+  verificationUrl: string;
+}
+
 // ─── HTML template helpers ───────────────────────────────────────────────────
 
 function emailWrapper(title: string, bodyHtml: string): string {
@@ -212,6 +217,24 @@ function passwordResetTemplate(data: PasswordResetJobData): { subject: string; h
   };
 }
 
+function emailVerificationTemplate(data: EmailVerificationJobData): { subject: string; html: string } {
+  return {
+    subject: 'Verify your ProjectFlow email address',
+    html: emailWrapper(
+      'Email Verification',
+      `<h2>Verify your email address</h2>
+      <p>Thanks for signing up for ProjectFlow! Please verify your email address by clicking the button below.</p>
+      <p>
+        <a href="${escapeHtml(data.verificationUrl)}" class="btn">Verify Email</a>
+      </p>
+      <hr class="divider" />
+      <p style="font-size:13px;color:#6b778c;">This link will expire in <strong>24 hours</strong>. If you didn't create an account, you can safely ignore this email.</p>
+      <p style="font-size:13px;color:#6b778c;">If the button above doesn't work, copy and paste this URL into your browser:</p>
+      <p style="font-size:12px;color:#0052cc;word-break:break-all;">${escapeHtml(data.verificationUrl)}</p>`
+    ),
+  };
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -311,6 +334,18 @@ export function createEmailWorker(): Worker {
         case 'password-reset': {
           const data = job.data as PasswordResetJobData;
           message = passwordResetTemplate(data);
+          await transporter.sendMail({
+            from: config.smtp.from,
+            to: data.to,
+            subject: message.subject,
+            html: message.html,
+          });
+          break;
+        }
+
+        case 'email-verification': {
+          const data = job.data as EmailVerificationJobData;
+          message = emailVerificationTemplate(data);
           await transporter.sendMail({
             from: config.smtp.from,
             to: data.to,

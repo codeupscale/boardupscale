@@ -30,7 +30,8 @@ export function useLogin() {
       toast('Logged in successfully')
       navigate('/')
     },
-    onError: () => toast('Invalid email or password', 'error'),
+    // Error handling is done in the LoginPage component to support
+    // lockout (423) and email verification notices
   })
 }
 
@@ -47,11 +48,18 @@ export function useRegister() {
       return data.data
     },
     onSuccess: () => {
-      toast('Account created! Please log in.')
+      toast('Account created! Please check your email to verify your address.')
       navigate('/login')
     },
-    onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Registration failed', 'error'),
+    onError: (err: any) => {
+      const data = err?.response?.data
+      // Show password policy violations if present
+      if (data?.violations && Array.isArray(data.violations)) {
+        toast(data.violations.join('. '), 'error')
+      } else {
+        toast(data?.message || data?.error?.message || 'Registration failed', 'error')
+      }
+    },
   })
 }
 
