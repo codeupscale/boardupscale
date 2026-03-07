@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import configuration from './config/configuration';
 
@@ -25,6 +26,7 @@ import { VersionsModule } from './modules/versions/versions.module';
 import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AutomationModule } from './modules/automation/automation.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -50,6 +52,7 @@ import { Version } from './modules/versions/entities/version.entity';
 import { IssueVersion } from './modules/versions/entities/issue-version.entity';
 import { AutomationRule } from './modules/automation/entities/automation-rule.entity';
 import { AutomationLog } from './modules/automation/entities/automation-log.entity';
+import { ApiKey } from './modules/api-keys/entities/api-key.entity';
 
 @Module({
   imports: [
@@ -88,6 +91,7 @@ import { AutomationLog } from './modules/automation/entities/automation-log.enti
           IssueVersion,
           AutomationRule,
           AutomationLog,
+          ApiKey,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -152,6 +156,13 @@ import { AutomationLog } from './modules/automation/entities/automation-log.enti
     EventsModule,
     WebhooksModule,
     AutomationModule,
+    ApiKeysModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

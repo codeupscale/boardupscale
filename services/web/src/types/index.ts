@@ -25,6 +25,13 @@ export enum ProjectType {
   KANBAN = 'kanban',
 }
 
+export enum ProjectTemplate {
+  SCRUM = 'scrum',
+  KANBAN = 'kanban',
+  BUG_TRACKING = 'bug-tracking',
+  BLANK = 'blank',
+}
+
 export enum UserRole {
   ADMIN = 'admin',
   MANAGER = 'manager',

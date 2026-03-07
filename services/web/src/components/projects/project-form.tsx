@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Project, ProjectType } from '@/types'
+import { Project, ProjectType, ProjectTemplate } from '@/types'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
@@ -19,6 +19,7 @@ const schema = z.object({
     .regex(/^[A-Z0-9]+$/, 'Key must be uppercase letters and numbers only'),
   description: z.string().max(500).optional(),
   type: z.nativeEnum(ProjectType),
+  templateType: z.nativeEnum(ProjectTemplate).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -29,6 +30,13 @@ interface ProjectFormProps {
   onCancel: () => void
   isLoading?: boolean
   submitLabel?: string
+}
+
+const TEMPLATE_ICONS: Record<string, string> = {
+  [ProjectTemplate.SCRUM]: '\u{1F3C3}',
+  [ProjectTemplate.KANBAN]: '\u{1F4CB}',
+  [ProjectTemplate.BUG_TRACKING]: '\u{1F41B}',
+  [ProjectTemplate.BLANK]: '\u{1F4C4}',
 }
 
 export function ProjectForm({
@@ -53,10 +61,12 @@ export function ProjectForm({
       key: project?.key || '',
       description: project?.description || '',
       type: project?.type || ProjectType.SCRUM,
+      templateType: ProjectTemplate.SCRUM,
     },
   })
 
   const name = watch('name')
+  const selectedTemplate = watch('templateType')
 
   // Auto-generate key from name (only when creating new project)
   useEffect(() => {
@@ -65,8 +75,61 @@ export function ProjectForm({
     }
   }, [name, project, setValue])
 
+  const templates = [
+    {
+      value: ProjectTemplate.SCRUM,
+      label: t('projects.templateScrum'),
+      description: t('projects.templateScrumDesc'),
+    },
+    {
+      value: ProjectTemplate.KANBAN,
+      label: t('projects.templateKanban'),
+      description: t('projects.templateKanbanDesc'),
+    },
+    {
+      value: ProjectTemplate.BUG_TRACKING,
+      label: t('projects.templateBugTracking'),
+      description: t('projects.templateBugTrackingDesc'),
+    },
+    {
+      value: ProjectTemplate.BLANK,
+      label: t('projects.templateBlank'),
+      description: t('projects.templateBlankDesc'),
+    },
+  ]
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Template Selection - only show for new projects */}
+      {!project && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {t('projects.template')}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {templates.map((tmpl) => (
+              <button
+                key={tmpl.value}
+                type="button"
+                onClick={() => setValue('templateType', tmpl.value)}
+                className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-colors ${
+                  selectedTemplate === tmpl.value
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <span className="text-sm font-medium text-gray-900">
+                  {tmpl.label}
+                </span>
+                <span className="text-xs text-gray-500 mt-0.5">
+                  {tmpl.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Input
         label={t('projects.projectName')}
         placeholder="My Awesome Project"

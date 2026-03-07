@@ -32,6 +32,7 @@ export function useCreateProject() {
       key: string
       description?: string
       type: string
+      templateType?: string
     }) => {
       const { data } = await api.post('/projects', payload)
       return data.data as Project
