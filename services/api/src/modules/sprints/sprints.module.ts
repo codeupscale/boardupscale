@@ -6,6 +6,7 @@ import { Sprint } from './entities/sprint.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { ProjectsModule } from '../projects/projects.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
@@ -14,6 +15,7 @@ import { AutomationModule } from '../automation/automation.module';
   imports: [
     TypeOrmModule.forFeature([Sprint, Issue, IssueStatus]),
     ProjectsModule,
+    NotificationsModule,
     PermissionsModule,
     WebhooksModule,
     forwardRef(() => AutomationModule),

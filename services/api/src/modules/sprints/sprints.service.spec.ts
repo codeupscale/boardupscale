@@ -6,6 +6,7 @@ import { Sprint } from './entities/sprint.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { EmailService } from '../notifications/email.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import {
@@ -21,12 +22,21 @@ describe('SprintsService', () => {
   let issueRepo: ReturnType<typeof createMockRepository>;
   let statusRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
+  let emailService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     sprintRepo = createMockRepository();
     issueRepo = createMockRepository();
     statusRepo = createMockRepository();
     projectsService = createMockProjectsService();
+    projectsService.getMembers.mockResolvedValue([]);
+    emailService = {
+      sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+      sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
+      sendCommentMentionEmail: jest.fn().mockResolvedValue(undefined),
+      sendSprintReminderEmail: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +45,7 @@ describe('SprintsService', () => {
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: ProjectsService, useValue: projectsService },
+        { provide: EmailService, useValue: emailService },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],

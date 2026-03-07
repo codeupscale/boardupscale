@@ -2,12 +2,15 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
@@ -17,9 +20,10 @@ import {
   createMockProjectsService,
   createMockNotificationsService,
   createMockEventsGateway,
+  createMockConfigService,
   mockUpdateResult,
 } from '../../test/test-utils';
-import { mockIssue, mockIssueStatus, mockProject, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
+import { mockIssue, mockIssueStatus, mockProject, mockWorkLog, mockUser, TEST_IDS } from '../../test/mock-factories';
 
 describe('IssuesService', () => {
   let service: IssuesService;
@@ -29,6 +33,8 @@ describe('IssuesService', () => {
   let projectsService: ReturnType<typeof createMockProjectsService>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
+  let emailService: Record<string, jest.Mock>;
+  let usersService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     issueRepo = createMockRepository();
@@ -37,6 +43,19 @@ describe('IssuesService', () => {
     projectsService = createMockProjectsService();
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
+    emailService = {
+      sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+      sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
+      sendCommentMentionEmail: jest.fn().mockResolvedValue(undefined),
+      sendSprintReminderEmail: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = {
+      findById: jest.fn().mockResolvedValue(mockUser()),
+      findByEmail: jest.fn(),
+      findByOrg: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +65,9 @@ describe('IssuesService', () => {
         { provide: getRepositoryToken(WorkLog), useValue: workLogRepo },
         { provide: ProjectsService, useValue: projectsService },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: EmailService, useValue: emailService },
+        { provide: UsersService, useValue: usersService },
+        { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
         { provide: EventsGateway, useValue: eventsGateway },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: getQueueToken('search-index'), useValue: { add: jest.fn().mockResolvedValue(undefined) } },
@@ -402,9 +424,9 @@ describe('IssuesService', () => {
       );
 
       expect(result).toEqual(workLog);
-      expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, {
-        timeSpent: 1800 + 3600,
-      });
+      expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID,
+        expect.objectContaining({ timeSpent: 1800 + 3600 }),
+      );
     });
 
     it('should handle null timeSpent on issue (treat as 0)', async () => {
@@ -424,8 +446,50 @@ describe('IssuesService', () => {
         TEST_IDS.USER_ID,
       );
 
+      expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID,
+        expect.objectContaining({ timeSpent: 1000 }),
+      );
+    });
+
+    it('should auto-reduce remaining estimate when timeEstimate is set (FR-TIME-006)', async () => {
+      const issue = mockIssue({ timeSpent: 0, timeEstimate: 7200 });
+      issueRepo.findOne.mockResolvedValue(issue);
+      const workLog = mockWorkLog({ timeSpent: 3600 });
+      workLogRepo.create.mockReturnValue(workLog);
+      workLogRepo.save.mockResolvedValue(workLog);
+      issueRepo.update.mockResolvedValue(mockUpdateResult());
+
+      await service.createWorkLog(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        { timeSpent: 3600 },
+        TEST_IDS.USER_ID,
+      );
+
       expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, {
-        timeSpent: 1000, // 0 + 1000
+        timeSpent: 3600,
+        timeEstimate: 3600, // 7200 - 3600
+      });
+    });
+
+    it('should clamp remaining estimate to 0 when time spent exceeds estimate', async () => {
+      const issue = mockIssue({ timeSpent: 0, timeEstimate: 1000 });
+      issueRepo.findOne.mockResolvedValue(issue);
+      const workLog = mockWorkLog({ timeSpent: 2000 });
+      workLogRepo.create.mockReturnValue(workLog);
+      workLogRepo.save.mockResolvedValue(workLog);
+      issueRepo.update.mockResolvedValue(mockUpdateResult());
+
+      await service.createWorkLog(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        { timeSpent: 2000 },
+        TEST_IDS.USER_ID,
+      );
+
+      expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, {
+        timeSpent: 2000,
+        timeEstimate: 0,
       });
     });
   });

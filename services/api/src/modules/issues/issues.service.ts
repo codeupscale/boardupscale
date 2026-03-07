@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { Repository, IsNull, In, Not } from 'typeorm';
 import { Queue } from 'bullmq';
 import { Issue } from './entities/issue.entity';
@@ -22,6 +23,8 @@ import { BulkDeleteIssuesDto } from './dto/bulk-delete-issues.dto';
 import { BulkTransitionIssuesDto } from './dto/bulk-transition-issues.dto';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
@@ -40,6 +43,9 @@ export class IssuesService {
     private workLogRepository: Repository<WorkLog>,
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
+    private emailService: EmailService,
+    private usersService: UsersService,
+    private configService: ConfigService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
     @InjectQueue('search-index')
@@ -288,6 +294,12 @@ export class IssuesService {
         body: issue.title,
         data: { issueId: id, projectId: issue.projectId },
       });
+
+      // Send issue-assigned email to the new assignee
+      this.sendAssigneeEmail(dto.assigneeId, updatedIssue).catch((err) => {
+        // Non-blocking: log but don't fail the update
+        console.error('Failed to enqueue issue-assigned email:', err.message);
+      });
     }
 
     // Enqueue search index job (update)
@@ -360,9 +372,16 @@ export class IssuesService {
     });
     const saved = await this.workLogRepository.save(workLog);
 
-    await this.issueRepository.update(issueId, {
-      timeSpent: (issue.timeSpent || 0) + dto.timeSpent,
-    });
+    const newTimeSpent = (issue.timeSpent || 0) + dto.timeSpent;
+
+    // FR-TIME-006: Auto-calculate remaining estimate
+    const updatePayload: Partial<Issue> = { timeSpent: newTimeSpent };
+    if (issue.timeEstimate != null) {
+      const remaining = issue.timeEstimate - newTimeSpent;
+      updatePayload.timeEstimate = Math.max(remaining, 0);
+    }
+
+    await this.issueRepository.update(issueId, updatePayload);
 
     return saved;
   }
@@ -523,5 +542,25 @@ export class IssuesService {
     });
 
     return { affected: result.affected || 0 };
+  }
+
+  /**
+   * Send an issue-assigned email to the given user.
+   * Looks up the user and project to fill in the email template fields.
+   */
+  private async sendAssigneeEmail(assigneeId: string, issue: Issue): Promise<void> {
+    const assignee = await this.usersService.findById(assigneeId);
+    const projectName = issue.project?.name || 'Unknown Project';
+    const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
+    const issueUrl = `${frontendUrl}/issues/${issue.id}`;
+
+    await this.emailService.sendIssueAssignedEmail(
+      assignee.email,
+      assignee.displayName,
+      issue.key,
+      issue.title,
+      projectName,
+      issueUrl,
+    );
   }
 }
