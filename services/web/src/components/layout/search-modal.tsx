@@ -3,10 +3,74 @@ import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/ui.store'
-import { useSearch } from '@/hooks/useSearch'
+import { useSearch, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { IssueType } from '@/types'
 import { cn } from '@/lib/utils'
-import { Issue } from '@/types'
+
+/** Map ES field names to human-readable labels */
+const FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  description: 'Description',
+  assigneeName: 'Assignee',
+  labels: 'Labels',
+}
+
+/**
+ * Render an HTML string with <mark> tags safely as React elements.
+ * Only allows <mark> and </mark> tags; all other HTML is escaped.
+ */
+function HighlightedText({ html }: { html: string }) {
+  // Split on <mark> and </mark> to produce safe segments
+  const parts = html.split(/(<mark>|<\/mark>)/)
+  let inside = false
+  const elements: React.ReactNode[] = []
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]
+    if (part === '<mark>') {
+      inside = true
+      continue
+    }
+    if (part === '</mark>') {
+      inside = false
+      continue
+    }
+    if (inside) {
+      elements.push(
+        <mark key={i} className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5">
+          {part}
+        </mark>
+      )
+    } else {
+      elements.push(part)
+    }
+  }
+
+  return <>{elements}</>
+}
+
+function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] }) {
+  if (!highlights || highlights.length === 0) return null
+
+  // Show at most 2 highlights
+  const shown = highlights.slice(0, 2)
+
+  return (
+    <div className="mt-1 space-y-0.5">
+      {shown.map((hl) => (
+        <div key={hl.field} className="flex items-start gap-1.5 text-xs">
+          <span className="text-gray-400 flex-shrink-0 font-medium">
+            {FIELD_LABELS[hl.field] || hl.field}:
+          </span>
+          <span className="text-gray-600 line-clamp-1">
+            <HighlightedText html={hl.snippets[0]} />
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function SearchModal() {
   const { t } = useTranslation()
@@ -41,10 +105,11 @@ export function SearchModal() {
 
   if (!isSearchOpen) return null
 
-  const issues: Issue[] = data?.issues || []
+  const items: SearchResultItem[] = data?.items || []
+  const searchSource = data?.source
 
-  const handleSelect = (issue: Issue) => {
-    navigate(`/issues/${issue.id}`)
+  const handleSelect = (item: SearchResultItem) => {
+    navigate(`/issues/${item.id}`)
     setSearchOpen(false)
   }
 
@@ -83,33 +148,46 @@ export function SearchModal() {
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto">
           {isLoading && query.length >= 2 && (
             <div className="flex items-center justify-center py-8 text-sm text-gray-500">
               {t('search.searching')}
             </div>
           )}
 
-          {!isLoading && query.length >= 2 && issues.length === 0 && (
+          {!isLoading && query.length >= 2 && items.length === 0 && (
             <div className="py-8 text-center text-sm text-gray-500">
               {t('search.noResultsFor', { query })}
             </div>
           )}
 
-          {issues.length > 0 && (
+          {items.length > 0 && (
             <div>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                {t('search.issues')}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {t('search.issues')}
+                </span>
+                {searchSource === 'elasticsearch' && (
+                  <span className="text-[10px] text-gray-300 font-mono">ES</span>
+                )}
               </div>
-              {issues.map((issue) => (
+              {items.map((item) => (
                 <button
-                  key={issue.id}
-                  onClick={() => handleSelect(issue)}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  className="w-full flex flex-col px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
                 >
-                  <IssueTypeIcon type={issue.type} className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs font-mono text-blue-600 flex-shrink-0">{issue.key}</span>
-                  <span className="text-sm text-gray-900 truncate">{issue.title}</span>
+                  <div className="flex items-center gap-3">
+                    <IssueTypeIcon type={item.type as IssueType} className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs font-mono text-blue-600 flex-shrink-0">{item.key}</span>
+                    <span className="text-sm text-gray-900 truncate">{item.title}</span>
+                    {item.projectName && (
+                      <span className="ml-auto text-[10px] text-gray-400 flex-shrink-0">
+                        {item.projectName}
+                      </span>
+                    )}
+                  </div>
+                  {item.highlights && <SearchResultHighlights highlights={item.highlights} />}
                 </button>
               ))}
             </div>

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
 import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
@@ -47,6 +48,7 @@ describe('IssuesService', () => {
         { provide: NotificationsService, useValue: notificationsService },
         { provide: EventsGateway, useValue: eventsGateway },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        { provide: getQueueToken('search-index'), useValue: { add: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();

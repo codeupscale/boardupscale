@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
+    "@elastic/elasticsearch": "^8.11.0",
     "@aws-sdk/s3-request-presigner": "^3.490.0",
     "@nestjs/bullmq": "^10.1.1",
     "@nestjs/common": "^10.3.0",

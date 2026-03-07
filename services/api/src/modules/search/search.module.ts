@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
 import { Issue } from '../issues/entities/issue.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Issue])],
+  imports: [
+    TypeOrmModule.forFeature([Issue]),
+    BullModule.registerQueue({ name: 'search-index' }),
+  ],
   controllers: [SearchController],
   providers: [SearchService],
   exports: [SearchService],

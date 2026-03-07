@@ -4,9 +4,12 @@ import {
   BadRequestException,
   Inject,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
 import { Repository, IsNull, In, Not } from 'typeorm';
+import { Queue } from 'bullmq';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
@@ -26,6 +29,8 @@ import { AutomationEngineService } from '../automation/automation-engine.service
 
 @Injectable()
 export class IssuesService {
+  private readonly logger = new Logger(IssuesService.name);
+
   constructor(
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
@@ -37,9 +42,59 @@ export class IssuesService {
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
+    @InjectQueue('search-index')
+    private searchIndexQueue: Queue,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
+
+  /**
+   * Build an Elasticsearch-compatible issue document from a full Issue entity.
+   */
+  private buildSearchDocument(issue: Issue): Record<string, any> {
+    return {
+      id: issue.id,
+      organizationId: issue.organizationId,
+      projectId: issue.projectId,
+      projectName: issue.project?.name || '',
+      key: issue.key,
+      title: issue.title,
+      description: issue.description || '',
+      type: issue.type,
+      priority: issue.priority,
+      statusName: issue.status?.name || '',
+      assigneeName: issue.assignee?.displayName || '',
+      labels: issue.labels || [],
+      createdAt: issue.createdAt,
+      updatedAt: issue.updatedAt,
+    };
+  }
+
+  /**
+   * Enqueue an index-issue job for the search worker.
+   */
+  private async enqueueSearchIndex(issue: Issue): Promise<void> {
+    try {
+      await this.searchIndexQueue.add('index-issue', {
+        issue: this.buildSearchDocument(issue),
+      });
+    } catch (err: any) {
+      this.logger.warn(`Failed to enqueue search index job for issue ${issue.id}: ${err.message}`);
+    }
+  }
+
+  /**
+   * Enqueue a delete-issue job for the search worker.
+   */
+  private async enqueueSearchDelete(issueId: string): Promise<void> {
+    try {
+      await this.searchIndexQueue.add('delete-issue', {
+        issueId,
+      });
+    } catch (err: any) {
+      this.logger.warn(`Failed to enqueue search delete job for issue ${issueId}: ${err.message}`);
+    }
+  }
 
   async findAll(filters: {
     organizationId: string;
@@ -174,6 +229,9 @@ export class IssuesService {
       });
     }
 
+    // Enqueue search index job
+    this.enqueueSearchIndex(fullIssue);
+
     // Trigger automation rules
     if (this.automationEngine) {
       this.automationEngine.processTrigger(dto.projectId, 'issue.created', {
@@ -232,6 +290,9 @@ export class IssuesService {
       });
     }
 
+    // Enqueue search index job (update)
+    this.enqueueSearchIndex(updatedIssue);
+
     // Trigger automation rules
     if (this.automationEngine) {
       const context = {
@@ -269,6 +330,9 @@ export class IssuesService {
       WebhookEventType.ISSUE_DELETED,
       { issue: { id: issue.id, key: issue.key, title: issue.title, projectId: issue.projectId } },
     );
+
+    // Enqueue search delete job
+    this.enqueueSearchDelete(id);
   }
 
   async addWatcher(id: string, organizationId: string, userId: string): Promise<Issue> {

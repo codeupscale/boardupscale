@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
@@ -15,6 +16,7 @@ import { AutomationModule } from '../automation/automation.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Issue, IssueStatus, WorkLog]),
+    BullModule.registerQueue({ name: 'search-index' }),
     ProjectsModule,
     NotificationsModule,
     PermissionsModule,
