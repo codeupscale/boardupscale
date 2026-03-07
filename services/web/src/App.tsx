@@ -23,6 +23,7 @@ import { UserSettingsPage } from '@/pages/UserSettingsPage'
 import { RoleManagementPage } from '@/pages/RoleManagementPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WebhooksPage } from '@/pages/WebhooksPage'
+import { TimesheetPage } from '@/pages/TimesheetPage'
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/projects/:id/webhooks" element={<WebhooksPage />} />
         <Route path="/projects/:id/releases" element={<ProjectReleasesPage />} />
         <Route path="/projects/:id/trash" element={<ProjectTrashPage />} />
+        <Route path="/timesheet" element={<TimesheetPage />} />
         <Route path="/issues" element={<MyIssuesPage />} />
         <Route path="/issues/:id" element={<IssueDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

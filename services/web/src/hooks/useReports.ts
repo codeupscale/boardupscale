@@ -109,6 +109,68 @@ export interface SprintReportData {
   incompleteIssues: SprintReportIssue[]
 }
 
+export interface BurnupData {
+  sprintName: string
+  dates: string[]
+  scopeData: number[]
+  completedData: number[]
+  totalPoints: number
+}
+
+export interface CreatedVsResolvedData {
+  dates: string[]
+  created: number[]
+  resolved: number[]
+  interval: string
+}
+
+export interface TimesheetEntry {
+  workLogId: string
+  issueId: string
+  issueKey: string
+  issueTitle: string
+  projectName: string
+  timeSpent: number
+  description: string
+  loggedAt: string
+}
+
+export interface TimesheetDay {
+  date: string
+  entries: TimesheetEntry[]
+  totalMinutes: number
+}
+
+export interface TimesheetData {
+  startDate: string
+  endDate: string
+  days: TimesheetDay[]
+  issuesSummary: Array<{
+    issueKey: string
+    issueTitle: string
+    projectName: string
+    totalMinutes: number
+  }>
+  totalMinutes: number
+}
+
+export interface TeamTimesheetMember {
+  userId: string
+  displayName: string
+  avatarUrl?: string
+  dailyMinutes: number[]
+  totalMinutes: number
+}
+
+export interface TeamTimesheetData {
+  startDate: string
+  endDate: string
+  dates: string[]
+  members: TeamTimesheetMember[]
+  dailyTotals: number[]
+  totalMinutes: number
+}
+
 // --- Hooks ---
 
 export function useSprintBurndown(projectId: string, sprintId: string) {
@@ -219,4 +281,111 @@ export function useSprintReport(projectId: string, sprintId: string) {
     },
     enabled: !!projectId && !!sprintId,
   })
+}
+
+export function useSprintBurnup(projectId: string, sprintId: string) {
+  return useQuery({
+    queryKey: ['reports', 'burnup', projectId, sprintId],
+    queryFn: async () => {
+      const { data } = await api.get(
+        `/projects/${projectId}/reports/sprint-burnup`,
+        { params: { sprintId } },
+      )
+      return data.data as BurnupData
+    },
+    enabled: !!projectId && !!sprintId,
+  })
+}
+
+export function useCreatedVsResolved(
+  projectId: string,
+  startDate?: string,
+  endDate?: string,
+  interval?: string,
+) {
+  return useQuery({
+    queryKey: ['reports', 'createdVsResolved', projectId, startDate, endDate, interval],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+      if (interval) params.interval = interval
+      const { data } = await api.get(
+        `/projects/${projectId}/reports/created-vs-resolved`,
+        { params },
+      )
+      return data.data as CreatedVsResolvedData
+    },
+    enabled: !!projectId,
+  })
+}
+
+export function useTimesheet(
+  userId: string,
+  startDate?: string,
+  endDate?: string,
+) {
+  // The timesheet endpoint is under /projects/:projectId/reports/timesheet
+  // but it's user-scoped. We use a placeholder projectId and pass userId as query param.
+  return useQuery({
+    queryKey: ['reports', 'timesheet', userId, startDate, endDate],
+    queryFn: async () => {
+      const params: Record<string, string> = { userId }
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+      // Use a generic path — the backend extracts userId from query
+      const { data } = await api.get(`/reports/timesheet`, { params })
+      return data.data as TimesheetData
+    },
+    enabled: !!userId,
+  })
+}
+
+export function useTeamTimesheet(
+  projectId: string,
+  startDate?: string,
+  endDate?: string,
+) {
+  return useQuery({
+    queryKey: ['reports', 'teamTimesheet', projectId, startDate, endDate],
+    queryFn: async () => {
+      const params: Record<string, string> = {}
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+      const { data } = await api.get(
+        `/reports/team-timesheet`,
+        { params: { ...params, projectId } },
+      )
+      return data.data as TeamTimesheetData
+    },
+    enabled: !!projectId,
+  })
+}
+
+export function useExportIssues(projectId: string) {
+  return {
+    exportJson: async () => {
+      const response = await api.get(
+        `/projects/${projectId}/reports/export`,
+        { params: { format: 'json' }, responseType: 'blob' },
+      )
+      downloadBlob(response.data, `${projectId}-issues.json`, 'application/json')
+    },
+    exportCsv: async () => {
+      const response = await api.get(
+        `/projects/${projectId}/reports/export`,
+        { params: { format: 'csv' }, responseType: 'blob' },
+      )
+      downloadBlob(response.data, `${projectId}-issues.csv`, 'text/csv')
+    },
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string, mimeType: string) {
+  const url = URL.createObjectURL(new Blob([blob], { type: mimeType }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
