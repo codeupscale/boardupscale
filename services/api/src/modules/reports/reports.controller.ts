@@ -3,9 +3,11 @@ import {
   Get,
   Param,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
@@ -101,5 +103,73 @@ export class ReportsController {
   ) {
     const data = await this.reportsService.getSprintReport(projectId, sprintId, organizationId);
     return { data };
+  }
+
+  @Get('sprint-burnup')
+  @ApiOperation({ summary: 'Get sprint burnup chart data' })
+  @ApiQuery({ name: 'sprintId', required: true })
+  async getSprintBurnup(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Query('sprintId', ParseUUIDPipe) sprintId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const data = await this.reportsService.getSprintBurnup(projectId, sprintId, organizationId);
+    return { data };
+  }
+
+  @Get('created-vs-resolved')
+  @ApiOperation({ summary: 'Get created vs resolved issues chart data' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'interval', required: false, enum: ['day', 'week'] })
+  async getCreatedVsResolved(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @OrgId() organizationId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('interval') interval?: string,
+  ) {
+    const validInterval = interval === 'week' ? 'week' : 'day';
+    const data = await this.reportsService.getCreatedVsResolved(
+      projectId,
+      organizationId,
+      startDate,
+      endDate,
+      validInterval,
+    );
+    return { data };
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export project issues as JSON or CSV' })
+  @ApiQuery({ name: 'format', required: false, enum: ['json', 'csv'] })
+  async exportIssues(
+    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @OrgId() organizationId: string,
+    @Query('format') format?: string,
+    @Res() res?: Response,
+  ) {
+    const fmt = format === 'csv' ? 'csv' : 'json';
+    const result = await this.reportsService.exportProjectIssues(
+      projectId,
+      organizationId,
+      fmt,
+    );
+
+    if (fmt === 'csv') {
+      res!.setHeader('Content-Type', 'text/csv');
+      res!.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.filename}"`,
+      );
+      res!.send(result.content);
+    } else {
+      res!.setHeader('Content-Type', 'application/json');
+      res!.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${result.filename}"`,
+      );
+      res!.send(result.content);
+    }
   }
 }

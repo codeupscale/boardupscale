@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useProject } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
@@ -20,6 +20,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/u
 import { IssueForm } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
+import { useExportIssues } from '@/hooks/useReports'
 
 export function ProjectIssuesPage() {
   const { t } = useTranslation()
@@ -50,6 +51,21 @@ export function ProjectIssuesPage() {
     limit: 25,
   })
   const createIssue = useCreateIssue()
+  const { exportCsv, exportJson } = useExportIssues(projectId || '')
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setExporting(true)
+    try {
+      if (format === 'csv') {
+        await exportCsv()
+      } else {
+        await exportJson()
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const selectAll = useSelectionStore((s) => s.selectAll)
@@ -78,10 +94,30 @@ export function ProjectIssuesPage() {
           { label: t('nav.issues') },
         ]}
         actions={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4" />
-            {t('issues.createIssue')}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleExport('csv')}
+              disabled={exporting}
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleExport('json')}
+              disabled={exporting}
+            >
+              <Download className="h-4 w-4" />
+              Export JSON
+            </Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" />
+              {t('issues.createIssue')}
+            </Button>
+          </div>
         }
       />
 

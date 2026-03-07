@@ -14,6 +14,7 @@ import {
   ListTodo,
   BarChart3,
   Settings2,
+  Clock,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -34,6 +35,7 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: t('nav.dashboard'), href: '/dashboard' },
     { icon: FolderOpen, label: t('nav.projects'), href: '/projects' },
     { icon: CircleDot, label: t('nav.myIssues'), href: '/issues' },
+    { icon: Clock, label: 'Timesheet', href: '/timesheet' },
     { icon: Bell, label: t('nav.notifications'), href: '/notifications' },
     { icon: Settings, label: t('nav.settings'), href: '/settings' },
   ]
