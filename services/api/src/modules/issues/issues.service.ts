@@ -10,9 +10,12 @@ import { Repository, IsNull, In, Not } from 'typeorm';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
+import { IssueLink } from './entities/issue-link.entity';
+import { IssueWatcher } from './entities/issue-watcher.entity';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { CreateWorkLogDto } from './dto/create-work-log.dto';
+import { CreateIssueLinkDto } from './dto/create-issue-link.dto';
 import { BulkUpdateIssuesDto } from './dto/bulk-update-issues.dto';
 import { BulkMoveIssuesDto } from './dto/bulk-move-issues.dto';
 import { BulkDeleteIssuesDto } from './dto/bulk-delete-issues.dto';
@@ -23,6 +26,8 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { ActivityService } from '../activity/activity.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class IssuesService {
@@ -33,10 +38,16 @@ export class IssuesService {
     private issueStatusRepository: Repository<IssueStatus>,
     @InjectRepository(WorkLog)
     private workLogRepository: Repository<WorkLog>,
+    @InjectRepository(IssueLink)
+    private issueLinkRepository: Repository<IssueLink>,
+    @InjectRepository(IssueWatcher)
+    private issueWatcherRepository: Repository<IssueWatcher>,
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
+    private activityService: ActivityService,
+    private auditService: AuditService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -155,6 +166,13 @@ export class IssuesService {
     const saved = await this.issueRepository.save(issue);
     const fullIssue = await this.findById(saved.id, organizationId);
 
+    // Auto-add reporter as watcher
+    await this.addWatcherSilent(saved.id, userId);
+    // Auto-add assignee as watcher
+    if (dto.assigneeId && dto.assigneeId !== userId) {
+      await this.addWatcherSilent(saved.id, dto.assigneeId);
+    }
+
     this.eventsGateway.emitToOrg(organizationId, 'issue:created', fullIssue);
 
     this.webhookEventEmitter.emit(
@@ -174,6 +192,20 @@ export class IssuesService {
       });
     }
 
+    // Log activity
+    this.activityService.log(organizationId, saved.id, userId, 'created', null, null, null, {
+      key: fullIssue.key,
+      title: fullIssue.title,
+      type: fullIssue.type,
+    });
+
+    // Log audit
+    this.auditService.log(organizationId, userId, 'issue.created', 'issue', saved.id, {
+      key: fullIssue.key,
+      title: fullIssue.title,
+      projectId: dto.projectId,
+    });
+
     // Trigger automation rules
     if (this.automationEngine) {
       this.automationEngine.processTrigger(dto.projectId, 'issue.created', {
@@ -191,8 +223,28 @@ export class IssuesService {
     const prevStatusId = issue.statusId;
     const prevPriority = issue.priority;
 
+    // Capture previous values for activity logging
+    const prevValues: Record<string, any> = {
+      title: issue.title,
+      description: issue.description,
+      type: issue.type,
+      priority: issue.priority,
+      statusId: issue.statusId,
+      assigneeId: issue.assigneeId,
+      sprintId: issue.sprintId,
+      dueDate: issue.dueDate,
+      storyPoints: issue.storyPoints,
+      timeEstimate: issue.timeEstimate,
+      labels: issue.labels,
+    };
+
     Object.assign(issue, dto);
     await this.issueRepository.save(issue);
+
+    // Auto-add new assignee as watcher
+    if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
+      await this.addWatcherSilent(id, dto.assigneeId);
+    }
 
     const updatedIssue = await this.findById(id, organizationId);
     this.eventsGateway.emitToOrg(organizationId, 'issue:updated', updatedIssue);
@@ -232,6 +284,35 @@ export class IssuesService {
       });
     }
 
+    // Log activity for each changed field
+    const fieldsToTrack = [
+      'title', 'description', 'type', 'priority', 'statusId', 'assigneeId',
+      'sprintId', 'dueDate', 'storyPoints', 'timeEstimate',
+    ];
+    const changes: Record<string, { old: any; new: any }> = {};
+    for (const field of fieldsToTrack) {
+      if (dto[field] !== undefined && String(dto[field] ?? '') !== String(prevValues[field] ?? '')) {
+        const oldVal = prevValues[field] != null ? String(prevValues[field]) : null;
+        const newVal = dto[field] != null ? String(dto[field]) : null;
+        changes[field] = { old: oldVal, new: newVal };
+        this.activityService.log(organizationId, id, userId, 'updated', field, oldVal, newVal);
+      }
+    }
+    // Handle labels separately (array comparison)
+    if (dto.labels !== undefined) {
+      const oldLabels = JSON.stringify(prevValues.labels || []);
+      const newLabels = JSON.stringify(dto.labels || []);
+      if (oldLabels !== newLabels) {
+        changes['labels'] = { old: oldLabels, new: newLabels };
+        this.activityService.log(organizationId, id, userId, 'updated', 'labels', oldLabels, newLabels);
+      }
+    }
+
+    // Log audit for update
+    if (Object.keys(changes).length > 0) {
+      this.auditService.log(organizationId, userId, 'issue.updated', 'issue', id, changes);
+    }
+
     // Trigger automation rules
     if (this.automationEngine) {
       const context = {
@@ -258,7 +339,7 @@ export class IssuesService {
     return updatedIssue;
   }
 
-  async softDelete(id: string, organizationId: string): Promise<void> {
+  async softDelete(id: string, organizationId: string, userId?: string): Promise<void> {
     const issue = await this.findById(id, organizationId);
     await this.issueRepository.update(id, { deletedAt: new Date() });
     this.eventsGateway.emitToOrg(organizationId, 'issue:deleted', { id });
@@ -269,11 +350,177 @@ export class IssuesService {
       WebhookEventType.ISSUE_DELETED,
       { issue: { id: issue.id, key: issue.key, title: issue.title, projectId: issue.projectId } },
     );
+
+    // Log audit for deletion
+    this.auditService.log(organizationId, userId || null, 'issue.deleted', 'issue', id, {
+      key: issue.key,
+      title: issue.title,
+      projectId: issue.projectId,
+    });
   }
 
-  async addWatcher(id: string, organizationId: string, userId: string): Promise<Issue> {
-    // Watchers stored as notification preferences; simply return the issue
-    return this.findById(id, organizationId);
+  // ── Issue Links ──
+
+  private readonly LINK_TYPE_INVERSES: Record<string, string> = {
+    blocks: 'is_blocked_by',
+    is_blocked_by: 'blocks',
+    duplicates: 'is_duplicated_by',
+    is_duplicated_by: 'duplicates',
+    relates_to: 'relates_to',
+  };
+
+  private readonly LINK_TYPE_LABELS: Record<string, string> = {
+    blocks: 'blocks',
+    is_blocked_by: 'is blocked by',
+    duplicates: 'duplicates',
+    is_duplicated_by: 'is duplicated by',
+    relates_to: 'relates to',
+  };
+
+  async createLink(
+    issueId: string,
+    organizationId: string,
+    dto: CreateIssueLinkDto,
+    userId: string,
+  ): Promise<IssueLink> {
+    await this.findById(issueId, organizationId);
+    await this.findById(dto.targetIssueId, organizationId);
+
+    if (issueId === dto.targetIssueId) {
+      throw new BadRequestException('Cannot link an issue to itself');
+    }
+
+    const link = this.issueLinkRepository.create({
+      sourceIssueId: issueId,
+      targetIssueId: dto.targetIssueId,
+      linkType: dto.linkType,
+      createdBy: userId,
+    });
+
+    const saved = await this.issueLinkRepository.save(link);
+    return this.issueLinkRepository.findOne({
+      where: { id: saved.id },
+      relations: ['sourceIssue', 'targetIssue'],
+    });
+  }
+
+  async getLinks(
+    issueId: string,
+    organizationId: string,
+  ): Promise<{ outward: any[]; inward: any[] }> {
+    await this.findById(issueId, organizationId);
+
+    const outward = await this.issueLinkRepository.find({
+      where: { sourceIssueId: issueId },
+      relations: ['targetIssue', 'targetIssue.status'],
+    });
+
+    const inward = await this.issueLinkRepository.find({
+      where: { targetIssueId: issueId },
+      relations: ['sourceIssue', 'sourceIssue.status'],
+    });
+
+    return {
+      outward: outward.map((l) => ({
+        id: l.id,
+        linkType: l.linkType,
+        label: this.LINK_TYPE_LABELS[l.linkType] || l.linkType,
+        issue: l.targetIssue,
+      })),
+      inward: inward.map((l) => ({
+        id: l.id,
+        linkType: this.LINK_TYPE_INVERSES[l.linkType] || l.linkType,
+        label: this.LINK_TYPE_LABELS[this.LINK_TYPE_INVERSES[l.linkType] || l.linkType] || l.linkType,
+        issue: l.sourceIssue,
+      })),
+    };
+  }
+
+  async deleteLink(
+    issueId: string,
+    linkId: string,
+    organizationId: string,
+  ): Promise<void> {
+    await this.findById(issueId, organizationId);
+    const link = await this.issueLinkRepository.findOne({
+      where: { id: linkId },
+    });
+    if (!link) {
+      throw new NotFoundException('Link not found');
+    }
+    if (link.sourceIssueId !== issueId && link.targetIssueId !== issueId) {
+      throw new NotFoundException('Link not found for this issue');
+    }
+    await this.issueLinkRepository.delete(linkId);
+  }
+
+  // ── Issue Watchers ──
+
+  private async addWatcherSilent(issueId: string, userId: string): Promise<void> {
+    try {
+      await this.issueWatcherRepository.save(
+        this.issueWatcherRepository.create({ issueId, userId }),
+      );
+    } catch {
+      // Ignore duplicate key errors
+    }
+  }
+
+  async toggleWatch(
+    issueId: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<{ watching: boolean; watcherCount: number }> {
+    await this.findById(issueId, organizationId);
+
+    const existing = await this.issueWatcherRepository.findOne({
+      where: { issueId, userId },
+    });
+
+    if (existing) {
+      await this.issueWatcherRepository.delete({ issueId, userId });
+    } else {
+      await this.issueWatcherRepository.save(
+        this.issueWatcherRepository.create({ issueId, userId }),
+      );
+    }
+
+    const watcherCount = await this.issueWatcherRepository.count({
+      where: { issueId },
+    });
+
+    return { watching: !existing, watcherCount };
+  }
+
+  async getWatchers(
+    issueId: string,
+    organizationId: string,
+  ): Promise<{ watchers: any[]; count: number }> {
+    await this.findById(issueId, organizationId);
+
+    const watchers = await this.issueWatcherRepository.find({
+      where: { issueId },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+
+    return {
+      watchers: watchers.map((w) => ({
+        userId: w.userId,
+        displayName: w.user?.displayName,
+        avatarUrl: w.user?.avatarUrl,
+        email: w.user?.email,
+        createdAt: w.createdAt,
+      })),
+      count: watchers.length,
+    };
+  }
+
+  async isWatching(issueId: string, userId: string): Promise<boolean> {
+    const count = await this.issueWatcherRepository.count({
+      where: { issueId, userId },
+    });
+    return count > 0;
   }
 
   async getChildren(parentId: string, organizationId: string): Promise<Issue[]> {
@@ -299,6 +546,18 @@ export class IssuesService {
     await this.issueRepository.update(issueId, {
       timeSpent: (issue.timeSpent || 0) + dto.timeSpent,
     });
+
+    // Log activity for work log
+    this.activityService.log(
+      issue.organizationId,
+      issueId,
+      userId,
+      'work_logged',
+      'timeSpent',
+      null,
+      String(dto.timeSpent),
+      { description: dto.description },
+    );
 
     return saved;
   }

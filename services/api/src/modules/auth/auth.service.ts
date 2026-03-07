@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { RegisterDto } from './dto/register.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private auditService: AuditService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -68,12 +70,36 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    // Audit log for registration
+    this.auditService.log(
+      savedOrg.id,
+      user.id,
+      'auth.register',
+      'user',
+      user.id,
+      { email: dto.email, organizationName: dto.organizationName },
+      ipAddress,
+    );
+
     return { user, ...tokens };
   }
 
   async login(user: any, ipAddress?: string, userAgent?: string) {
     await this.usersService.updateLastLogin(user.id);
     const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    // Audit log for login
+    this.auditService.log(
+      user.organizationId,
+      user.id,
+      'auth.login',
+      'user',
+      user.id,
+      { email: user.email },
+      ipAddress,
+    );
+
     return { user, ...tokens };
   }
 
@@ -134,7 +160,7 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: string, refreshToken?: string) {
+  async logout(userId: string, refreshToken?: string, organizationId?: string, ipAddress?: string) {
     if (refreshToken) {
       const tokenHash = this.hashToken(refreshToken);
       await this.refreshTokenRepository.update(
@@ -148,6 +174,19 @@ export class AuthService {
         .set({ revokedAt: new Date() })
         .where('user_id = :userId AND revoked_at IS NULL', { userId })
         .execute();
+    }
+
+    // Audit log for logout
+    if (organizationId) {
+      this.auditService.log(
+        organizationId,
+        userId,
+        'auth.logout',
+        'user',
+        userId,
+        null,
+        ipAddress,
+      );
     }
   }
 

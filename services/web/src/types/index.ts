@@ -388,6 +388,40 @@ export interface VersionProgress {
   todo: number
 }
 
+// Issue Links
+export type IssueLinkType = 'blocks' | 'is_blocked_by' | 'duplicates' | 'is_duplicated_by' | 'relates_to'
+
+export interface IssueLink {
+  id: string
+  linkType: IssueLinkType
+  label: string
+  issue: Issue
+}
+
+export interface IssueLinkData {
+  outward: IssueLink[]
+  inward: IssueLink[]
+}
+
+// Issue Watchers
+export interface IssueWatcherUser {
+  userId: string
+  displayName: string
+  avatarUrl?: string
+  email: string
+  createdAt: string
+}
+
+export interface WatchersData {
+  watchers: IssueWatcherUser[]
+  count: number
+}
+
+export interface ToggleWatchResult {
+  watching: boolean
+  watcherCount: number
+}
+
 export interface AutomationRule {
   id: string
   organizationId: string

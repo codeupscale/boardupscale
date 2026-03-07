@@ -175,7 +175,16 @@
     "loggedOf": "Protokolliert: {{logged}} / {{estimate}}",
     "created": "Erstellt {{time}}",
     "updated": "Aktualisiert {{time}}",
-    "edited": "(bearbeitet)"
+    "edited": "(bearbeitet)",
+    "linkedIssues": "Verkn\u00fcpfte Vorg\u00e4nge",
+    "addLink": "Verkn\u00fcpfen",
+    "noLinks": "Keine verkn\u00fcpften Vorg\u00e4nge.",
+    "linkIssue": "Vorgang verkn\u00fcpfen",
+    "linkType": "Verkn\u00fcpfungstyp",
+    "watchers": "Beobachter",
+    "watch": "Beobachten",
+    "watching": "Beobachtet",
+    "unwatching": "Nicht mehr beobachten"
   },
   "board": {
     "title": "Board",

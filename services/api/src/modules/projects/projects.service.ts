@@ -12,6 +12,7 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ProjectsService {
@@ -22,6 +23,7 @@ export class ProjectsService {
     private projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(IssueStatus)
     private issueStatusRepository: Repository<IssueStatus>,
+    private auditService: AuditService,
   ) {}
 
   async findAll(organizationId: string, userId: string): Promise<Project[]> {
@@ -82,18 +84,39 @@ export class ProjectsService {
     );
     await this.issueStatusRepository.save(statusEntities);
 
+    // Audit log for project creation
+    this.auditService.log(organizationId, userId, 'project.created', 'project', saved.id, {
+      name: saved.name,
+      key: saved.key,
+    });
+
     return saved;
   }
 
-  async update(id: string, organizationId: string, dto: UpdateProjectDto): Promise<Project> {
+  async update(id: string, organizationId: string, dto: UpdateProjectDto, userId?: string): Promise<Project> {
     const project = await this.findById(id, organizationId);
+    const prevValues = { name: project.name, description: project.description };
     Object.assign(project, dto);
-    return this.projectRepository.save(project);
+    const saved = await this.projectRepository.save(project);
+
+    // Audit log for project update
+    this.auditService.log(organizationId, userId || null, 'project.updated', 'project', id, {
+      previous: prevValues,
+      updated: dto,
+    });
+
+    return saved;
   }
 
-  async archive(id: string, organizationId: string): Promise<void> {
+  async archive(id: string, organizationId: string, userId?: string): Promise<void> {
     const project = await this.findById(id, organizationId);
     await this.projectRepository.update(project.id, { status: 'archived' });
+
+    // Audit log for project archival
+    this.auditService.log(organizationId, userId || null, 'project.archived', 'project', id, {
+      name: project.name,
+      key: project.key,
+    });
   }
 
   async getMembers(projectId: string, organizationId: string) {

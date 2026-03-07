@@ -175,7 +175,16 @@
     "loggedOf": "Logged: {{logged}} / {{estimate}}",
     "created": "Created {{time}}",
     "updated": "Updated {{time}}",
-    "edited": "(edited)"
+    "edited": "(edited)",
+    "linkedIssues": "Linked Issues",
+    "addLink": "Link",
+    "noLinks": "No linked issues.",
+    "linkIssue": "Link Issue",
+    "linkType": "Link Type",
+    "watchers": "Watchers",
+    "watch": "Watch",
+    "watching": "Watching",
+    "unwatching": "Unwatch"
   },
   "board": {
     "title": "Board",

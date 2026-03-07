@@ -175,7 +175,16 @@
     "loggedOf": "\u8a18\u9332\u6e08\u307f: {{logged}} / {{estimate}}",
     "created": "\u4f5c\u6210 {{time}}",
     "updated": "\u66f4\u65b0 {{time}}",
-    "edited": "(\u7de8\u96c6\u6e08\u307f)"
+    "edited": "(\u7de8\u96c6\u6e08\u307f)",
+    "linkedIssues": "\u30ea\u30f3\u30af\u3055\u308c\u305f\u8ab2\u984c",
+    "addLink": "\u30ea\u30f3\u30af",
+    "noLinks": "\u30ea\u30f3\u30af\u3055\u308c\u305f\u8ab2\u984c\u306f\u3042\u308a\u307e\u305b\u3093\u3002",
+    "linkIssue": "\u8ab2\u984c\u3092\u30ea\u30f3\u30af",
+    "linkType": "\u30ea\u30f3\u30af\u30bf\u30a4\u30d7",
+    "watchers": "\u30a6\u30a9\u30c3\u30c1\u30e3\u30fc",
+    "watch": "\u30a6\u30a9\u30c3\u30c1",
+    "watching": "\u30a6\u30a9\u30c3\u30c1\u4e2d",
+    "unwatching": "\u30a6\u30a9\u30c3\u30c1\u89e3\u9664"
   },
   "board": {
     "title": "\u30dc\u30fc\u30c9",

@@ -175,7 +175,16 @@
     "loggedOf": "Enregistr\u00e9 : {{logged}} / {{estimate}}",
     "created": "Cr\u00e9\u00e9 {{time}}",
     "updated": "Mis \u00e0 jour {{time}}",
-    "edited": "(modifi\u00e9)"
+    "edited": "(modifi\u00e9)",
+    "linkedIssues": "Tickets li\u00e9s",
+    "addLink": "Lier",
+    "noLinks": "Aucun ticket li\u00e9.",
+    "linkIssue": "Lier un ticket",
+    "linkType": "Type de lien",
+    "watchers": "Observateurs",
+    "watch": "Suivre",
+    "watching": "Suivi",
+    "unwatching": "Ne plus suivre"
   },
   "board": {
     "title": "Tableau",

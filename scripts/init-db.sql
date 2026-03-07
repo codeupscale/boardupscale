@@ -424,6 +424,48 @@ CREATE TABLE IF NOT EXISTS automation_logs (
 
 CREATE INDEX IF NOT EXISTS idx_automation_logs_rule ON automation_logs(rule_id);
 
+-- Issue links
+CREATE TABLE IF NOT EXISTS issue_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    target_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    link_type VARCHAR(50) NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(source_issue_id, target_issue_id, link_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_links_source ON issue_links(source_issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_links_target ON issue_links(target_issue_id);
+
+-- Issue watchers
+CREATE TABLE IF NOT EXISTS issue_watchers (
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (issue_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_issue ON issue_watchers(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_user ON issue_watchers(user_id);
+
+-- Activities (issue changelog/activity stream)
+CREATE TABLE IF NOT EXISTS activities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES organizations(id),
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id),
+    action VARCHAR(50) NOT NULL,
+    field VARCHAR(100),
+    old_value TEXT,
+    new_value TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activities_issue ON activities(issue_id);
+CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id);
+
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)
 RETURNS INT AS $$

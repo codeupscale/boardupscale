@@ -5,22 +5,26 @@ import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
+import { IssueLink } from './entities/issue-link.entity';
+import { IssueWatcher } from './entities/issue-watcher.entity';
 import { ProjectsModule } from '../projects/projects.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { EventsModule } from '../../websocket/events.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Issue, IssueStatus, WorkLog]),
+    TypeOrmModule.forFeature([Issue, IssueStatus, WorkLog, IssueLink, IssueWatcher]),
     ProjectsModule,
     NotificationsModule,
     PermissionsModule,
     EventsModule,
     WebhooksModule,
     forwardRef(() => AutomationModule),
+    ActivityModule,
   ],
   controllers: [IssuesController],
   providers: [IssuesService],

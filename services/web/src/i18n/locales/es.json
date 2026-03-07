@@ -175,7 +175,16 @@
     "loggedOf": "Registrado: {{logged}} / {{estimate}}",
     "created": "Creado {{time}}",
     "updated": "Actualizado {{time}}",
-    "edited": "(editado)"
+    "edited": "(editado)",
+    "linkedIssues": "Incidencias enlazadas",
+    "addLink": "Enlazar",
+    "noLinks": "No hay incidencias enlazadas.",
+    "linkIssue": "Enlazar incidencia",
+    "linkType": "Tipo de enlace",
+    "watchers": "Observadores",
+    "watch": "Observar",
+    "watching": "Observando",
+    "unwatching": "Dejar de observar"
   },
   "board": {
     "title": "Tablero",

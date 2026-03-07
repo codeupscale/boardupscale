@@ -25,6 +25,8 @@ import { VersionsModule } from './modules/versions/versions.module';
 import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AutomationModule } from './modules/automation/automation.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -50,6 +52,8 @@ import { Version } from './modules/versions/entities/version.entity';
 import { IssueVersion } from './modules/versions/entities/issue-version.entity';
 import { AutomationRule } from './modules/automation/entities/automation-rule.entity';
 import { AutomationLog } from './modules/automation/entities/automation-log.entity';
+import { IssueLink } from './modules/issues/entities/issue-link.entity';
+import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
 
 @Module({
   imports: [
@@ -88,6 +92,8 @@ import { AutomationLog } from './modules/automation/entities/automation-log.enti
           IssueVersion,
           AutomationRule,
           AutomationLog,
+          IssueLink,
+          IssueWatcher,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
