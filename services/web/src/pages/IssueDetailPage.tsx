@@ -40,6 +40,9 @@ import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { UserSelect } from '@/components/common/user-select'
+import { IssueLinksList } from '@/components/issues/issue-links-list'
+import { WatchButton } from '@/components/issues/watch-button'
+import { ActivityList } from '@/components/issues/activity-list'
 import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils'
 
 function CommentItem({
@@ -310,6 +313,9 @@ export function IssueDetailPage() {
             )}
           </div>
 
+          {/* Linked Issues */}
+          <IssueLinksList issueId={issue.id} />
+
           {/* Comments */}
           <div>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -385,6 +391,14 @@ export function IssueDetailPage() {
                 <p className="text-sm text-gray-400">{t('issues.noTimeLogged')}</p>
               )}
             </div>
+          </div>
+
+          {/* Activity / Changelog */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              {t('activity.title')}
+            </h3>
+            <ActivityList issueId={issue.id} />
           </div>
         </div>
 
@@ -817,6 +831,9 @@ export function IssueDetailPage() {
               />
             </div>
           )}
+
+          {/* Watchers */}
+          <WatchButton issueId={issue.id} />
 
           {/* Dates */}
           <div className="pt-2 border-t border-gray-200 space-y-1">

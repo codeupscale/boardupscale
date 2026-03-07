@@ -27,10 +27,9 @@ export class ActivityController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const result = await this.activityService.findByIssue(issueId, {
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 50,
-    });
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    const result = await this.activityService.findByIssue(issueId, pageNum, limitNum);
     return {
       data: result.items,
       meta: {

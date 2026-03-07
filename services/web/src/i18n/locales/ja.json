@@ -69,7 +69,8 @@
     "reports": "\u30ec\u30dd\u30fc\u30c8",
     "projectSettings": "\u30d7\u30ed\u30b8\u30a7\u30af\u30c8\u8a2d\u5b9a",
     "profile": "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb",
-    "recentProjects": "\u6700\u8fd1\u306e\u30d7\u30ed\u30b8\u30a7\u30af\u30c8"
+    "recentProjects": "\u6700\u8fd1\u306e\u30d7\u30ed\u30b8\u30a7\u30af\u30c8",
+    "auditLogs": "\u76e3\u67fb\u30ed\u30b0"
   },
   "dashboard": {
     "title": "\u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u30c9",
@@ -175,7 +176,16 @@
     "loggedOf": "\u8a18\u9332\u6e08\u307f: {{logged}} / {{estimate}}",
     "created": "\u4f5c\u6210 {{time}}",
     "updated": "\u66f4\u65b0 {{time}}",
-    "edited": "(\u7de8\u96c6\u6e08\u307f)"
+    "edited": "(\u7de8\u96c6\u6e08\u307f)",
+    "linkedIssues": "\u30ea\u30f3\u30af\u3055\u308c\u305f\u8ab2\u984c",
+    "addLink": "\u30ea\u30f3\u30af",
+    "noLinks": "\u30ea\u30f3\u30af\u3055\u308c\u305f\u8ab2\u984c\u306f\u3042\u308a\u307e\u305b\u3093\u3002",
+    "linkIssue": "\u8ab2\u984c\u3092\u30ea\u30f3\u30af",
+    "linkType": "\u30ea\u30f3\u30af\u30bf\u30a4\u30d7",
+    "watchers": "\u30a6\u30a9\u30c3\u30c1\u30e3\u30fc",
+    "watch": "\u30a6\u30a9\u30c3\u30c1",
+    "watching": "\u30a6\u30a9\u30c3\u30c1\u4e2d",
+    "unwatching": "\u30a6\u30a9\u30c3\u30c1\u89e3\u9664"
   },
   "board": {
     "title": "\u30dc\u30fc\u30c9",
@@ -286,5 +296,45 @@
     "fr": "\u30d5\u30e9\u30f3\u30b9\u8a9e",
     "de": "\u30c9\u30a4\u30c4\u8a9e",
     "ja": "\u65e5\u672c\u8a9e"
+  },
+  "activity": {
+    "title": "\u30a2\u30af\u30c6\u30a3\u30d3\u30c6\u30a3",
+    "noActivity": "\u307e\u3060\u30a2\u30af\u30c6\u30a3\u30d3\u30c6\u30a3\u304c\u3042\u308a\u307e\u305b\u3093\u3002",
+    "createdIssue": "\u3053\u306e\u8ab2\u984c\u3092\u4f5c\u6210\u3057\u307e\u3057\u305f",
+    "addedComment": "\u30b3\u30e1\u30f3\u30c8\u3092\u8ffd\u52a0\u3057\u307e\u3057\u305f",
+    "loggedWork": "{{minutes}}\u5206\u306e\u4f5c\u696d\u3092\u8a18\u9332\u3057\u307e\u3057\u305f",
+    "changedField": "{{field}}\u3092\"{{oldValue}}\"\u304b\u3089\"{{newValue}}\"\u306b\u5909\u66f4\u3057\u307e\u3057\u305f",
+    "setField": "{{field}}\u3092\"{{value}}\"\u306b\u8a2d\u5b9a\u3057\u307e\u3057\u305f",
+    "clearedField": "{{field}}\u3092\u30af\u30ea\u30a2\u3057\u307e\u3057\u305f",
+    "updatedField": "{{field}}\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f",
+    "fields": {
+      "title": "\u30bf\u30a4\u30c8\u30eb",
+      "description": "\u8aac\u660e",
+      "type": "\u30bf\u30a4\u30d7",
+      "priority": "\u512a\u5148\u5ea6",
+      "statusId": "\u30b9\u30c6\u30fc\u30bf\u30b9",
+      "assigneeId": "\u62c5\u5f53\u8005",
+      "sprintId": "\u30b9\u30d7\u30ea\u30f3\u30c8",
+      "dueDate": "\u671f\u9650",
+      "storyPoints": "\u30b9\u30c8\u30fc\u30ea\u30fc\u30dd\u30a4\u30f3\u30c8",
+      "timeEstimate": "\u898b\u7a4d\u6642\u9593",
+      "labels": "\u30e9\u30d9\u30eb",
+      "timeSpent": "\u5b9f\u7e3e\u6642\u9593"
+    }
+  },
+  "audit": {
+    "title": "\u76e3\u67fb\u30ed\u30b0",
+    "subtitle": "\u7d44\u7e54\u5185\u306e\u3059\u3079\u3066\u306e\u30e6\u30fc\u30b6\u30fc\u30a2\u30af\u30b7\u30e7\u30f3\u3092\u8ffd\u8de1",
+    "entityType": "\u30a8\u30f3\u30c6\u30a3\u30c6\u30a3\u30bf\u30a4\u30d7",
+    "action": "\u30a2\u30af\u30b7\u30e7\u30f3",
+    "allTypes": "\u3059\u3079\u3066\u306e\u30bf\u30a4\u30d7",
+    "filterByAction": "\u30a2\u30af\u30b7\u30e7\u30f3\u3067\u30d5\u30a3\u30eb\u30bf\u30fc...",
+    "startDate": "\u958b\u59cb\u65e5",
+    "endDate": "\u7d42\u4e86\u65e5",
+    "noLogs": "\u76e3\u67fb\u30ed\u30b0\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002",
+    "when": "\u65e5\u6642",
+    "user": "\u30e6\u30fc\u30b6\u30fc",
+    "details": "\u8a73\u7d30",
+    "ipAddress": "IP\u30a2\u30c9\u30ec\u30b9"
   }
 }

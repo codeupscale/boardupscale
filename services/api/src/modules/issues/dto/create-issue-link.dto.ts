@@ -8,9 +8,9 @@ export class CreateIssueLinkDto {
 
   @ApiProperty({
     example: 'blocks',
-    enum: ['blocks', 'duplicates', 'relates_to'],
+    enum: ['blocks', 'is_blocked_by', 'duplicates', 'is_duplicated_by', 'relates_to'],
   })
   @IsString()
-  @IsIn(['blocks', 'duplicates', 'relates_to'])
+  @IsIn(['blocks', 'is_blocked_by', 'duplicates', 'is_duplicated_by', 'relates_to'])
   linkType: string;
 }

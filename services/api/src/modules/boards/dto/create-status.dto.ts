@@ -22,4 +22,10 @@ export class CreateStatusDto {
   @IsInt()
   @Min(0)
   position?: number;
+
+  @ApiPropertyOptional({ example: 5, description: 'WIP limit for this column (0 = no limit)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  wipLimit?: number;
 }

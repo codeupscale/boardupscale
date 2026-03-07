@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS issue_statuses (
     position INT DEFAULT 0,
     color VARCHAR(7) DEFAULT '#6B7280',
     is_default BOOLEAN DEFAULT false,
+    wip_limit INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -441,6 +442,48 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(org_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash);
+
+-- Issue links
+CREATE TABLE IF NOT EXISTS issue_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    source_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    target_issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    link_type VARCHAR(50) NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(source_issue_id, target_issue_id, link_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_links_source ON issue_links(source_issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_links_target ON issue_links(target_issue_id);
+
+-- Issue watchers
+CREATE TABLE IF NOT EXISTS issue_watchers (
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (issue_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_issue ON issue_watchers(issue_id);
+CREATE INDEX IF NOT EXISTS idx_issue_watchers_user ON issue_watchers(user_id);
+
+-- Activities (issue changelog/activity stream)
+CREATE TABLE IF NOT EXISTS activities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES organizations(id),
+    issue_id UUID NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id),
+    action VARCHAR(50) NOT NULL,
+    field VARCHAR(100),
+    old_value TEXT,
+    new_value TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activities_issue ON activities(issue_id);
+CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id);
 
 -- Issue number sequence function
 CREATE OR REPLACE FUNCTION next_issue_number(p_project_id UUID)

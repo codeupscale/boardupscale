@@ -1,13 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
-import { BoardData, IssueStatus } from '@/types'
+import { BoardData, BoardFilters, IssueStatus } from '@/types'
 
-export function useBoard(projectId: string) {
+export function useBoard(projectId: string, filters?: BoardFilters) {
   return useQuery({
-    queryKey: ['board', projectId],
+    queryKey: ['board', projectId, filters],
     queryFn: async () => {
-      const { data } = await api.get(`/projects/${projectId}/board`)
+      const params = new URLSearchParams()
+      if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId)
+      if (filters?.type) params.set('type', filters.type)
+      if (filters?.priority) params.set('priority', filters.priority)
+      if (filters?.label) params.set('label', filters.label)
+      if (filters?.search) params.set('search', filters.search)
+      if (filters?.sprintId) params.set('sprintId', filters.sprintId)
+
+      const qs = params.toString()
+      const url = `/projects/${projectId}/board${qs ? `?${qs}` : ''}`
+      const { data } = await api.get(url)
       return data.data as BoardData
     },
     enabled: !!projectId,
@@ -24,7 +34,7 @@ export function useReorderIssues() {
       return data.data
     },
     onError: (err: any) => {
-      toast(err?.response?.data?.error?.message || 'Failed to reorder issues', 'error')
+      toast(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to reorder issues', 'error')
     },
     onSuccess: (_, updates) => {
       // Invalidate all boards that might be affected
@@ -45,6 +55,7 @@ export function useCreateStatus() {
       name: string
       category: string
       color?: string
+      wipLimit?: number
     }) => {
       const { data } = await api.post(`/projects/${projectId}/statuses`, payload)
       return data.data as IssueStatus
@@ -72,6 +83,7 @@ export function useUpdateStatus() {
       category?: string
       color?: string
       position?: number
+      wipLimit?: number
     }) => {
       const { data } = await api.patch(`/projects/${projectId}/statuses/${statusId}`, payload)
       return data.data as IssueStatus

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import { AuditLogEntry } from '@/types'
+import { AuditLog } from '@/types'
 
-interface AuditLogsFilters {
+interface AuditLogFilters {
   entityType?: string
   action?: string
   userId?: string
@@ -12,17 +12,7 @@ interface AuditLogsFilters {
   limit?: number
 }
 
-interface AuditLogsResponse {
-  data: AuditLogEntry[]
-  meta: {
-    total: number
-    page: number
-    limit: number
-    totalPages: number
-  }
-}
-
-export function useAuditLogs(filters: AuditLogsFilters = {}) {
+export function useAuditLogs(filters: AuditLogFilters = {}) {
   return useQuery({
     queryKey: ['audit-logs', filters],
     queryFn: async () => {
@@ -30,7 +20,10 @@ export function useAuditLogs(filters: AuditLogsFilters = {}) {
         Object.entries(filters).filter(([, v]) => v !== undefined && v !== ''),
       )
       const { data } = await api.get('/admin/audit-logs', { params })
-      return data as AuditLogsResponse
+      return data as {
+        data: AuditLog[]
+        meta: { total: number; page: number; limit: number; totalPages: number }
+      }
     },
   })
 }

@@ -10,6 +10,7 @@ import { PermissionsModule } from '../permissions/permissions.module';
 import { EventsModule } from '../../websocket/events.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AutomationModule } from '../automation/automation.module';
     EventsModule,
     WebhooksModule,
     forwardRef(() => AutomationModule),
+    ActivityModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

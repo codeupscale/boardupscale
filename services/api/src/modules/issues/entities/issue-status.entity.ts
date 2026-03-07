@@ -36,6 +36,9 @@ export class IssueStatus {
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault: boolean;
 
+  @Column({ name: 'wip_limit', type: 'int', default: 0 })
+  wipLimit: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -24,6 +24,7 @@ import { RoleManagementPage } from '@/pages/RoleManagementPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { WebhooksPage } from '@/pages/WebhooksPage'
 import { TimesheetPage } from '@/pages/TimesheetPage'
+import { AuditLogPage } from '@/pages/AuditLogPage'
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings" element={<UserSettingsPage />} />
         <Route path="/settings/roles" element={<RoleManagementPage />} />
+        <Route path="/admin/audit-logs" element={<AuditLogPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

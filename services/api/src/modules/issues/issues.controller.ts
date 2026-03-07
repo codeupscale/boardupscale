@@ -20,6 +20,7 @@ import { BulkUpdateIssuesDto } from './dto/bulk-update-issues.dto';
 import { BulkMoveIssuesDto } from './dto/bulk-move-issues.dto';
 import { BulkDeleteIssuesDto } from './dto/bulk-delete-issues.dto';
 import { BulkTransitionIssuesDto } from './dto/bulk-transition-issues.dto';
+import { CreateIssueLinkDto } from './dto/create-issue-link.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -178,14 +179,60 @@ export class IssuesController {
     await this.issuesService.softDelete(id, organizationId);
   }
 
+  // ── Issue Links ──
+
+  @Post(':id/links')
+  @ApiOperation({ summary: 'Create an issue link' })
+  async createLink(
+    @Param('id', ParseUUIDPipe) id: string,
+    @OrgId() organizationId: string,
+    @CurrentUser() user: any,
+    @Body() dto: CreateIssueLinkDto,
+  ) {
+    return this.issuesService.createLink(id, organizationId, dto, user.id);
+  }
+
+  @Get(':id/links')
+  @ApiOperation({ summary: 'Get issue links' })
+  async getLinks(
+    @Param('id', ParseUUIDPipe) id: string,
+    @OrgId() organizationId: string,
+  ) {
+    const links = await this.issuesService.getLinks(id, organizationId);
+    return { data: links };
+  }
+
+  @Delete(':id/links/:linkId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an issue link' })
+  async deleteLink(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('linkId', ParseUUIDPipe) linkId: string,
+    @OrgId() organizationId: string,
+  ) {
+    await this.issuesService.deleteLink(id, linkId, organizationId);
+  }
+
+  // ── Issue Watchers ──
+
   @Post(':id/watch')
-  @ApiOperation({ summary: 'Watch an issue' })
-  async watch(
+  @ApiOperation({ summary: 'Toggle watch/unwatch an issue' })
+  async toggleWatch(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
     @CurrentUser() user: any,
   ) {
-    return this.issuesService.addWatcher(id, organizationId, user.id);
+    return this.issuesService.toggleWatch(id, organizationId, user.id);
+  }
+
+  @Get(':id/watchers')
+  @ApiOperation({ summary: 'Get issue watchers' })
+  async getWatchers(
+    @Param('id', ParseUUIDPipe) id: string,
+    @OrgId() organizationId: string,
+  ) {
+    const result = await this.issuesService.getWatchers(id, organizationId);
+    return { data: result };
   }
 
   @Get(':id/children')

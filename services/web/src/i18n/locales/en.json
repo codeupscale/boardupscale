@@ -69,7 +69,8 @@
     "reports": "Reports",
     "projectSettings": "Project Settings",
     "profile": "Profile",
-    "recentProjects": "Recent Projects"
+    "recentProjects": "Recent Projects",
+    "auditLogs": "Audit Logs"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -184,7 +185,16 @@
     "loggedOf": "Logged: {{logged}} / {{estimate}}",
     "created": "Created {{time}}",
     "updated": "Updated {{time}}",
-    "edited": "(edited)"
+    "edited": "(edited)",
+    "linkedIssues": "Linked Issues",
+    "addLink": "Link",
+    "noLinks": "No linked issues.",
+    "linkIssue": "Link Issue",
+    "linkType": "Link Type",
+    "watchers": "Watchers",
+    "watch": "Watch",
+    "watching": "Watching",
+    "unwatching": "Unwatch"
   },
   "board": {
     "title": "Board",
@@ -295,5 +305,45 @@
     "fr": "French",
     "de": "German",
     "ja": "Japanese"
+  },
+  "activity": {
+    "title": "Activity",
+    "noActivity": "No activity yet.",
+    "createdIssue": "created this issue",
+    "addedComment": "added a comment",
+    "loggedWork": "logged {{minutes}} minutes of work",
+    "changedField": "changed {{field}} from \"{{oldValue}}\" to \"{{newValue}}\"",
+    "setField": "set {{field}} to \"{{value}}\"",
+    "clearedField": "cleared {{field}}",
+    "updatedField": "updated {{field}}",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "type": "Type",
+      "priority": "Priority",
+      "statusId": "Status",
+      "assigneeId": "Assignee",
+      "sprintId": "Sprint",
+      "dueDate": "Due Date",
+      "storyPoints": "Story Points",
+      "timeEstimate": "Time Estimate",
+      "labels": "Labels",
+      "timeSpent": "Time Spent"
+    }
+  },
+  "audit": {
+    "title": "Audit Log",
+    "subtitle": "Track all user actions across your organization",
+    "entityType": "Entity Type",
+    "action": "Action",
+    "allTypes": "All Types",
+    "filterByAction": "Filter by action...",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "noLogs": "No audit logs found.",
+    "when": "When",
+    "user": "User",
+    "details": "Details",
+    "ipAddress": "IP Address"
   }
 }

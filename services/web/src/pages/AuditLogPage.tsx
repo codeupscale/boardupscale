@@ -1,279 +1,192 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Shield, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Shield } from 'lucide-react'
 import { useAuditLogs } from '@/hooks/useAuditLogs'
-import { useUsers } from '@/hooks/useUsers'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatRelativeTime, formatDate } from '@/lib/utils'
-import { AuditLogEntry } from '@/types'
-
-const ENTITY_TYPES = ['user', 'project', 'issue', 'comment', 'sprint', 'webhook']
-const ACTIONS = [
-  'user.registered',
-  'user.login',
-  'project.created',
-  'project.updated',
-  'project.archived',
-  'issue.created',
-  'issue.updated',
-  'issue.deleted',
-]
-
-function formatAuditAction(entry: AuditLogEntry): string {
-  const parts = entry.action.split('.')
-  if (parts.length === 2) {
-    return `${parts[0].charAt(0).toUpperCase() + parts[0].slice(1)} ${parts[1]}`
-  }
-  return entry.action
-}
-
-function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Avatar user={entry.user} size="xs" />
-          <span className="text-sm text-gray-900">
-            {entry.user?.displayName || 'System'}
-          </span>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-          {formatAuditAction(entry)}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-600">
-        {entry.entityType && (
-          <span className="capitalize">{entry.entityType}</span>
-        )}
-        {entry.entityId && (
-          <span className="text-gray-400 text-xs ml-1 font-mono">
-            {entry.entityId.slice(0, 8)}...
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-500">
-        {entry.ipAddress || '-'}
-      </td>
-      <td className="px-4 py-3 text-xs text-gray-400" title={formatDate(entry.createdAt)}>
-        {formatRelativeTime(entry.createdAt)}
-      </td>
-      <td className="px-4 py-3">
-        {entry.changes && Object.keys(entry.changes).length > 0 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs text-blue-600 hover:text-blue-800"
-          >
-            {expanded ? 'Hide' : 'Details'}
-          </button>
-        )}
-      </td>
-    </tr>
-  )
-}
+import { formatRelativeTime } from '@/lib/utils'
+import { LoadingPage } from '@/components/ui/spinner'
 
 export function AuditLogPage() {
   const { t } = useTranslation()
+  const [page, setPage] = useState(1)
   const [entityType, setEntityType] = useState('')
   const [action, setAction] = useState('')
-  const [userId, setUserId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [page, setPage] = useState(1)
-  const limit = 25
 
-  const { data: users } = useUsers()
-  const { data: result, isLoading } = useAuditLogs({
+  const { data, isLoading } = useAuditLogs({
     entityType: entityType || undefined,
     action: action || undefined,
-    userId: userId || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     page,
-    limit,
+    limit: 20,
   })
 
-  const entries = result?.data || []
-  const meta = result?.meta
+  const logs = data?.data || []
+  const meta = data?.meta
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-purple-100 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-purple-600" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
-          <p className="text-sm text-gray-500">
-            Track all actions and changes across your organization
-          </p>
+    <div className="flex flex-col h-full">
+      <div className="px-6 py-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-3">
+          <Shield className="h-6 w-6 text-blue-600" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{t('audit.title')}</h1>
+            <p className="text-sm text-gray-500">{t('audit.subtitle')}</p>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Filter className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-gray-700">Filters</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            {t('audit.entityType')}
+          </label>
           <select
             className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={entityType}
-            onChange={(e) => {
-              setEntityType(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => { setEntityType(e.target.value); setPage(1) }}
           >
-            <option value="">All Entity Types</option>
-            {ENTITY_TYPES.map((et) => (
-              <option key={et} value={et}>
-                {et.charAt(0).toUpperCase() + et.slice(1)}
-              </option>
-            ))}
+            <option value="">{t('audit.allTypes')}</option>
+            <option value="user">User</option>
+            <option value="project">Project</option>
+            <option value="issue">Issue</option>
           </select>
-
-          <select
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            {t('audit.action')}
+          </label>
+          <Input
+            placeholder={t('audit.filterByAction')}
             value={action}
-            onChange={(e) => {
-              setAction(e.target.value)
-              setPage(1)
-            }}
-          >
-            <option value="">All Actions</option>
-            {ACTIONS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={userId}
-            onChange={(e) => {
-              setUserId(e.target.value)
-              setPage(1)
-            }}
-          >
-            <option value="">All Users</option>
-            {users?.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName}
-              </option>
-            ))}
-          </select>
-
-          <Input
-            type="date"
-            placeholder="Start date"
-            value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => { setAction(e.target.value); setPage(1) }}
+            className="w-48"
           />
-
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            {t('audit.startDate')}
+          </label>
           <Input
             type="date"
-            placeholder="End date"
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            {t('audit.endDate')}
+          </label>
+          <Input
+            type="date"
             value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value)
-              setPage(1)
-            }}
+            onChange={(e) => { setEndDate(e.target.value); setPage(1) }}
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  User
+      <div className="flex-1 overflow-auto">
+        {isLoading ? (
+          <LoadingPage />
+        ) : logs.length === 0 ? (
+          <div className="p-12 text-center text-gray-400">
+            {t('audit.noLogs')}
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+              <tr>
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.when')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Action
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.user')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Entity
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.action')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  IP Address
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.entityType')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Time
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.details')}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Changes
+                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t('audit.ipAddress')}
                 </th>
               </tr>
             </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    Loading audit logs...
+            <tbody className="divide-y divide-gray-100">
+              {logs.map((log) => (
+                <tr key={log.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
+                    {formatRelativeTime(log.createdAt)}
+                  </td>
+                  <td className="px-6 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <Avatar user={log.user} size="xs" />
+                      <span className="text-gray-900">
+                        {log.user?.displayName || 'System'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {log.action}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3 text-gray-600">
+                    {log.entityType || '-'}
+                  </td>
+                  <td className="px-6 py-3 text-gray-500 max-w-xs truncate">
+                    {log.changes ? JSON.stringify(log.changes).substring(0, 100) : '-'}
+                  </td>
+                  <td className="px-6 py-3 text-gray-400 text-xs font-mono">
+                    {log.ipAddress || '-'}
                   </td>
                 </tr>
-              ) : entries.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    No audit log entries found
-                  </td>
-                </tr>
-              ) : (
-                entries.map((entry) => (
-                  <AuditLogRow key={entry.id} entry={entry} />
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-            <p className="text-sm text-gray-500">
-              Showing {(meta.page - 1) * meta.limit + 1} to{' '}
-              {Math.min(meta.page * meta.limit, meta.total)} of {meta.total} entries
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <span className="text-sm text-gray-500">
-                Page {meta.page} of {meta.totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= meta.totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {meta && meta.totalPages > 1 && (
+        <div className="px-6 py-3 border-t border-gray-200 bg-white flex items-center justify-between">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            {t('common.previous')}
+          </Button>
+          <span className="text-sm text-gray-500">
+            {t('common.pageOf', {
+              page: meta.page,
+              totalPages: meta.totalPages,
+              total: meta.total,
+            })}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= meta.totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            {t('common.next')}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

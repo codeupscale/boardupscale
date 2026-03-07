@@ -6,14 +6,16 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BoardsService } from './boards.service';
 import { CreateStatusDto } from './dto/create-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
+import { BoardQueryDto } from './dto/board-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
@@ -21,21 +23,28 @@ import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 @ApiTags('boards')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('boards')
+@Controller('projects/:projectId')
 export class BoardsController {
   constructor(private boardsService: BoardsService) {}
 
-  @Get(':projectId')
-  @ApiOperation({ summary: 'Get board data for a project' })
+  @Get('board')
+  @ApiOperation({ summary: 'Get board data for a project with optional filters' })
+  @ApiQuery({ name: 'assigneeId', required: false, description: 'Filter by assignee' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filter by issue type' })
+  @ApiQuery({ name: 'priority', required: false, description: 'Filter by priority' })
+  @ApiQuery({ name: 'label', required: false, description: 'Filter by label' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search text in titles' })
+  @ApiQuery({ name: 'sprintId', required: false, description: 'Filter by sprint (use "backlog" for unassigned)' })
   async getBoard(
     @Param('projectId', ParseUUIDPipe) projectId: string,
     @OrgId() organizationId: string,
+    @Query() query: BoardQueryDto,
   ) {
-    const board = await this.boardsService.getBoardData(projectId, organizationId);
-    return { data: board };
+    const board = await this.boardsService.getBoardData(projectId, organizationId, query);
+    return { data: { statuses: board } };
   }
 
-  @Post(':projectId/statuses')
+  @Post('statuses')
   @ApiOperation({ summary: 'Create a new status column' })
   async createStatus(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -45,7 +54,7 @@ export class BoardsController {
     return this.boardsService.createStatus(projectId, organizationId, dto);
   }
 
-  @Patch(':projectId/statuses/:statusId')
+  @Patch('statuses/:statusId')
   @ApiOperation({ summary: 'Update a status column' })
   async updateStatus(
     @Param('projectId', ParseUUIDPipe) projectId: string,
@@ -56,7 +65,7 @@ export class BoardsController {
     return this.boardsService.updateStatus(projectId, statusId, organizationId, dto);
   }
 
-  @Delete(':projectId/statuses/:statusId')
+  @Delete('statuses/:statusId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a status column (issues moved to first column)' })
   async deleteStatus(
@@ -67,7 +76,7 @@ export class BoardsController {
     await this.boardsService.deleteStatus(projectId, statusId, organizationId);
   }
 
-  @Patch(':projectId/issues/reorder')
+  @Patch('issues/reorder')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Reorder issues on the board (drag & drop)' })
   async reorderIssues(

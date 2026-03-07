@@ -50,7 +50,8 @@ describe('BoardsService', () => {
 
       const issue1 = mockIssue({ id: 'issue-1', statusId: 'status-1' });
       const issue2 = mockIssue({ id: 'issue-2', statusId: 'status-2' });
-      issueRepo.find.mockResolvedValue([issue1, issue2]);
+      const issueQb = createMockQueryBuilder([issue1, issue2]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
 
       const result = await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
@@ -68,11 +69,105 @@ describe('BoardsService', () => {
     it('should return empty issues for statuses with no issues', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      issueRepo.find.mockResolvedValue([]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
 
       const result = await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
       expect(result[0].issues).toEqual([]);
+    });
+
+    it('should apply assignee filter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        assigneeId: TEST_IDS.USER_ID,
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.assignee_id = :assigneeId',
+        { assigneeId: TEST_IDS.USER_ID },
+      );
+    });
+
+    it('should apply type filter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        type: 'bug',
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.type = :type',
+        { type: 'bug' },
+      );
+    });
+
+    it('should apply priority filter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        priority: 'critical',
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.priority = :priority',
+        { priority: 'critical' },
+      );
+    });
+
+    it('should apply search filter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        search: 'login bug',
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.title ILIKE :search',
+        { search: '%login bug%' },
+      );
+    });
+
+    it('should apply sprint filter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        sprintId: TEST_IDS.SPRINT_ID,
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.sprint_id = :sprintId',
+        { sprintId: TEST_IDS.SPRINT_ID },
+      );
+    });
+
+    it('should filter backlog (no sprint) when sprintId is "backlog"', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const issueQb = createMockQueryBuilder([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        sprintId: 'backlog',
+      });
+
+      expect(issueQb.andWhere).toHaveBeenCalledWith('issue.sprint_id IS NULL');
     });
   });
 
@@ -90,6 +185,24 @@ describe('BoardsService', () => {
       });
 
       expect(result).toEqual(newStatus);
+    });
+
+    it('should accept wipLimit parameter', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      const newStatus = mockIssueStatus({ name: 'In Progress', wipLimit: 5 });
+      statusRepo.create.mockReturnValue(newStatus);
+      statusRepo.save.mockResolvedValue(newStatus);
+
+      const result = await service.createStatus(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        name: 'In Progress',
+        category: 'in_progress',
+        position: 1,
+        wipLimit: 5,
+      });
+
+      expect(statusRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ wipLimit: 5 }),
+      );
     });
 
     it('should auto-calculate position when not provided', async () => {
@@ -144,6 +257,20 @@ describe('BoardsService', () => {
       expect(result).toEqual(updated);
     });
 
+    it('should update wipLimit', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      const status = mockIssueStatus({ wipLimit: 0 });
+      statusRepo.findOne.mockResolvedValue(status);
+      const updated = mockIssueStatus({ wipLimit: 3 });
+      statusRepo.save.mockResolvedValue(updated);
+
+      const result = await service.updateStatus(TEST_IDS.PROJECT_ID, TEST_IDS.STATUS_ID, TEST_IDS.ORG_ID, {
+        wipLimit: 3,
+      } as any);
+
+      expect(result.wipLimit).toBe(3);
+    });
+
     it('should throw NotFoundException when status not found', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.findOne.mockResolvedValue(null);
@@ -189,8 +316,16 @@ describe('BoardsService', () => {
   });
 
   describe('reorderIssues', () => {
-    it('should update positions for all reorder items', async () => {
+    it('should update positions for all reorder items when no WIP limits', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
+
+      // Status lookups for WIP limit check (wipLimit=0 means no limit)
+      const status1 = mockIssueStatus({ id: 'status-1', wipLimit: 0 });
+      const status2 = mockIssueStatus({ id: 'status-2', wipLimit: 0 });
+      statusRepo.findOne
+        .mockResolvedValueOnce(status1)
+        .mockResolvedValueOnce(status2);
+
       issueRepo.update.mockResolvedValue(mockUpdateResult());
 
       await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
@@ -205,6 +340,39 @@ describe('BoardsService', () => {
       expect(issueRepo.update).toHaveBeenCalledWith('issue-1', { statusId: 'status-1', position: 0 });
       expect(issueRepo.update).toHaveBeenCalledWith('issue-2', { statusId: 'status-2', position: 1 });
       expect(issueRepo.update).toHaveBeenCalledWith('issue-3', { statusId: 'status-1', position: 2 });
+    });
+
+    it('should throw BadRequestException when WIP limit exceeded', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const status = mockIssueStatus({ id: 'status-1', wipLimit: 2 });
+      statusRepo.findOne.mockResolvedValue(status);
+
+      // Currently 2 issues in this status
+      const countQb = createMockQueryBuilder();
+      countQb.getCount.mockResolvedValue(2);
+      issueRepo.createQueryBuilder.mockReturnValue(countQb);
+
+      await expect(
+        service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+          items: [
+            { issueId: 'new-issue', statusId: 'status-1', position: 0 },
+          ],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when target status not found', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+          items: [
+            { issueId: 'issue-1', statusId: 'bad-status', position: 0 },
+          ],
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

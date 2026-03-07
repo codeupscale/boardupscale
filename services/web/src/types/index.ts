@@ -101,6 +101,7 @@ export interface IssueStatus {
   category: IssueStatusCategory
   position: number
   color: string
+  wipLimit: number
   createdAt: string
   updatedAt: string
 }
@@ -200,6 +201,24 @@ export interface BoardColumn extends IssueStatus {
 
 export interface BoardData {
   statuses: BoardColumn[]
+}
+
+export interface BoardFilters {
+  assigneeId?: string
+  type?: string
+  priority?: string
+  label?: string
+  search?: string
+  sprintId?: string
+}
+
+export type SwimlaneGroupBy = 'none' | 'assignee' | 'priority' | 'type' | 'epic'
+
+export interface SwimlaneGroup {
+  key: string
+  label: string
+  issues: Issue[]
+  avatarUrl?: string
 }
 
 export interface PaginatedResponse<T> {
@@ -376,6 +395,40 @@ export interface VersionProgress {
   todo: number
 }
 
+// Issue Links
+export type IssueLinkType = 'blocks' | 'is_blocked_by' | 'duplicates' | 'is_duplicated_by' | 'relates_to'
+
+export interface IssueLink {
+  id: string
+  linkType: IssueLinkType
+  label: string
+  issue: Issue
+}
+
+export interface IssueLinkData {
+  outward: IssueLink[]
+  inward: IssueLink[]
+}
+
+// Issue Watchers
+export interface IssueWatcherUser {
+  userId: string
+  displayName: string
+  avatarUrl?: string
+  email: string
+  createdAt: string
+}
+
+export interface WatchersData {
+  watchers: IssueWatcherUser[]
+  count: number
+}
+
+export interface ToggleWatchResult {
+  watching: boolean
+  watcherCount: number
+}
+
 export interface AutomationRule {
   id: string
   organizationId: string
@@ -403,4 +456,33 @@ export interface AutomationLog {
   status: string
   errorMessage?: string
   executedAt: string
+}
+
+// Activities (issue changelog)
+export interface Activity {
+  id: string
+  orgId: string
+  issueId: string
+  userId: string
+  action: string
+  field?: string
+  oldValue?: string
+  newValue?: string
+  metadata?: Record<string, any>
+  user?: User
+  createdAt: string
+}
+
+// Audit Logs
+export interface AuditLog {
+  id: string
+  orgId: string
+  userId?: string
+  action: string
+  entityType: string
+  entityId?: string
+  changes?: Record<string, any>
+  ipAddress?: string
+  user?: User
+  createdAt: string
 }

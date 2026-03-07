@@ -27,6 +27,8 @@ import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AutomationModule } from './modules/automation/automation.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -53,6 +55,10 @@ import { IssueVersion } from './modules/versions/entities/issue-version.entity';
 import { AutomationRule } from './modules/automation/entities/automation-rule.entity';
 import { AutomationLog } from './modules/automation/entities/automation-log.entity';
 import { ApiKey } from './modules/api-keys/entities/api-key.entity';
+import { IssueLink } from './modules/issues/entities/issue-link.entity';
+import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
+import { Activity } from './modules/activity/activity.entity';
+import { AuditLog } from './modules/audit/audit-log.entity';
 
 @Module({
   imports: [
@@ -92,6 +98,10 @@ import { ApiKey } from './modules/api-keys/entities/api-key.entity';
           AutomationRule,
           AutomationLog,
           ApiKey,
+          IssueLink,
+          IssueWatcher,
+          Activity,
+          AuditLog,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -157,6 +167,8 @@ import { ApiKey } from './modules/api-keys/entities/api-key.entity';
     WebhooksModule,
     AutomationModule,
     ApiKeysModule,
+    ActivityModule,
+    AuditModule,
   ],
   providers: [
     {

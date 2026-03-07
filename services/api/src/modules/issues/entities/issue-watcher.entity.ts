@@ -1,10 +1,9 @@
 import {
   Entity,
-  Column,
+  PrimaryColumn,
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  PrimaryColumn,
 } from 'typeorm';
 import { Issue } from './issue.entity';
 import { User } from '../../users/entities/user.entity';
@@ -14,17 +13,17 @@ export class IssueWatcher {
   @PrimaryColumn({ name: 'issue_id', type: 'uuid' })
   issueId: string;
 
+  @PrimaryColumn({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
   @ManyToOne(() => Issue, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'issue_id' })
   issue: Issue;
 
-  @PrimaryColumn({ name: 'user_id', type: 'uuid' })
-  userId: string;
-
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 }

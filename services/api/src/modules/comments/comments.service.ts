@@ -21,6 +21,7 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class CommentsService {
@@ -37,6 +38,7 @@ export class CommentsService {
     private configService: ConfigService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
+    private activityService: ActivityService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -108,6 +110,18 @@ export class CommentsService {
     // FR-NOT-006: @mention detection
     this.processMentions(dto.content, userId, issue, saved.id, full?.author?.displayName || 'Someone').catch(
       (err) => this.logger.error('Failed to process @mentions:', err.message),
+    );
+
+    // Log activity for comment
+    this.activityService.log(
+      organizationId,
+      dto.issueId,
+      userId,
+      'commented',
+      null,
+      null,
+      null,
+      { commentId: saved.id, content: dto.content.substring(0, 200) },
     );
 
     // Trigger automation rules

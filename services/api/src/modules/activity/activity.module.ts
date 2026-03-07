@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ActivityController } from './activity.controller';
+import { Activity } from './activity.entity';
 import { ActivityService } from './activity.service';
-import { Activity } from './entities/activity.entity';
+import { ActivityController } from './activity.controller';
 import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
