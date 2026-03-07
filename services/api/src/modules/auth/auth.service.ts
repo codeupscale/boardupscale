@@ -11,6 +11,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { RegisterDto } from './dto/register.dto';
@@ -23,6 +24,7 @@ export class AuthService {
     @InjectRepository(Organization)
     private organizationRepository: Repository<Organization>,
     private usersService: UsersService,
+    private emailService: EmailService,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
@@ -68,6 +70,15 @@ export class AuthService {
     });
 
     const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    // Send welcome email asynchronously via BullMQ
+    this.emailService
+      .sendWelcomeEmail(user.email, user.displayName, savedOrg.name)
+      .catch((err) => {
+        // Non-blocking: log but don't fail the registration
+        console.error('Failed to enqueue welcome email:', err.message);
+      });
+
     return { user, ...tokens };
   }
 

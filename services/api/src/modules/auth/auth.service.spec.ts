@@ -6,6 +6,7 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
@@ -19,6 +20,7 @@ describe('AuthService', () => {
   let refreshTokenRepo: ReturnType<typeof createMockRepository>;
   let organizationRepo: ReturnType<typeof createMockRepository>;
   let usersService: Record<string, jest.Mock>;
+  let emailService: Record<string, jest.Mock>;
   let jwtService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
@@ -32,6 +34,14 @@ describe('AuthService', () => {
       findById: jest.fn(),
     };
 
+    emailService = {
+      sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+      sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
+      sendCommentMentionEmail: jest.fn().mockResolvedValue(undefined),
+      sendSprintReminderEmail: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    };
+
     jwtService = {
       sign: jest.fn().mockReturnValue('mock-access-token'),
       verify: jest.fn(),
@@ -43,6 +53,7 @@ describe('AuthService', () => {
         { provide: getRepositoryToken(RefreshToken), useValue: refreshTokenRepo },
         { provide: getRepositoryToken(Organization), useValue: organizationRepo },
         { provide: UsersService, useValue: usersService },
+        { provide: EmailService, useValue: emailService },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: createMockConfigService() },
       ],

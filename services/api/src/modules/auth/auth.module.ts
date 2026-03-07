@@ -12,6 +12,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 // Conditionally include OAuth strategies only when credentials are configured
 const oauthProviders = [];
@@ -40,6 +41,7 @@ function getOAuthProviders(): any[] {
       inject: [ConfigService],
     }),
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, LocalStrategy, ...getOAuthProviders()],

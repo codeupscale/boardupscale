@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Inject,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,12 +14,15 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { CreateSprintDto } from './dto/create-sprint.dto';
 import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { EmailService } from '../notifications/email.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 
 @Injectable()
 export class SprintsService {
+  private readonly logger = new Logger(SprintsService.name);
+
   constructor(
     @InjectRepository(Sprint)
     private sprintRepository: Repository<Sprint>,
@@ -27,6 +31,7 @@ export class SprintsService {
     @InjectRepository(IssueStatus)
     private issueStatusRepository: Repository<IssueStatus>,
     private projectsService: ProjectsService,
+    private emailService: EmailService,
     private webhookEventEmitter: WebhookEventEmitter,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
@@ -95,6 +100,11 @@ export class SprintsService {
       sprint.projectId,
       WebhookEventType.SPRINT_STARTED,
       { sprint: saved, projectId: sprint.projectId },
+    );
+
+    // Send sprint reminder emails to all project members
+    this.sendSprintReminderEmails(sprint, organizationId).catch((err) =>
+      this.logger.error('Failed to send sprint reminder emails:', err.message),
     );
 
     // Trigger automation rules
@@ -175,5 +185,38 @@ export class SprintsService {
       .execute();
 
     await this.sprintRepository.remove(sprint);
+  }
+
+  /**
+   * Send sprint reminder emails to all members of the project.
+   */
+  private async sendSprintReminderEmails(
+    sprint: Sprint,
+    organizationId: string,
+  ): Promise<void> {
+    const members = await this.projectsService.getMembers(
+      sprint.projectId,
+      organizationId,
+    );
+    const projectName = sprint.project?.name || 'Unknown Project';
+    const endDate = sprint.endDate || new Date().toISOString();
+
+    for (const member of members) {
+      if (!member.user) continue;
+      try {
+        await this.emailService.sendSprintReminderEmail(
+          member.user.email,
+          member.user.displayName,
+          sprint.name,
+          endDate,
+          projectName,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to send sprint reminder to ${member.user.email}:`,
+          err.message,
+        );
+      }
+    }
   }
 }

@@ -10,6 +10,7 @@ import {
   useAddWorkLog,
 } from '@/hooks/useIssues'
 import { useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useComments'
+import { useUsers } from '@/hooks/useUsers'
 import { useAuthStore } from '@/store/auth.store'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
@@ -21,6 +22,7 @@ import {
 import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
+import { MentionTextarea } from '@/components/comments/mention-textarea'
 import {
   IssueType,
   IssuePriority,
@@ -154,6 +156,7 @@ export function IssueDetailPage() {
   const { data: issueVersions } = useIssueVersions(issueId!)
   const setIssueVersions = useSetIssueVersions()
 
+  const { data: orgUsers } = useUsers()
   const updateIssue = useUpdateIssue()
   const deleteIssue = useDeleteIssue()
   const createComment = useCreateComment()
@@ -329,11 +332,12 @@ export function IssueDetailPage() {
             <div className="flex gap-3">
               <Avatar user={currentUser || undefined} size="sm" />
               <div className="flex-1 space-y-2">
-                <Textarea
+                <MentionTextarea
                   placeholder={t('issues.addCommentPlaceholder')}
                   rows={3}
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
+                  onChange={setCommentText}
+                  users={orgUsers || []}
                 />
                 <Button
                   size="sm"

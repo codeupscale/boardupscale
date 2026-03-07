@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommentsService } from './comments.service';
 import { Comment } from './entities/comment.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
@@ -12,9 +15,10 @@ import {
   createMockRepository,
   createMockNotificationsService,
   createMockEventsGateway,
+  createMockConfigService,
   mockUpdateResult,
 } from '../../test/test-utils';
-import { mockComment, mockIssue, TEST_IDS } from '../../test/mock-factories';
+import { mockComment, mockIssue, mockUser, TEST_IDS } from '../../test/mock-factories';
 
 describe('CommentsService', () => {
   let service: CommentsService;
@@ -22,12 +26,27 @@ describe('CommentsService', () => {
   let issueRepo: ReturnType<typeof createMockRepository>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
+  let emailService: Record<string, jest.Mock>;
+  let usersService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     commentRepo = createMockRepository();
     issueRepo = createMockRepository();
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
+    emailService = {
+      sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+      sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
+      sendCommentMentionEmail: jest.fn().mockResolvedValue(undefined),
+      sendSprintReminderEmail: jest.fn().mockResolvedValue(undefined),
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    };
+    usersService = {
+      findById: jest.fn().mockResolvedValue(mockUser()),
+      findByEmail: jest.fn(),
+      findByOrg: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +54,9 @@ describe('CommentsService', () => {
         { provide: getRepositoryToken(Comment), useValue: commentRepo },
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: EmailService, useValue: emailService },
+        { provide: UsersService, useValue: usersService },
+        { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
         { provide: EventsGateway, useValue: eventsGateway },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },

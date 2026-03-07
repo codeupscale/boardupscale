@@ -4,14 +4,19 @@ import {
   ForbiddenException,
   Inject,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository, IsNull } from 'typeorm';
 import { Comment } from './entities/comment.entity';
 import { Issue } from '../issues/entities/issue.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
@@ -19,12 +24,17 @@ import { AutomationEngineService } from '../automation/automation-engine.service
 
 @Injectable()
 export class CommentsService {
+  private readonly logger = new Logger(CommentsService.name);
+
   constructor(
     @InjectRepository(Comment)
     private commentRepository: Repository<Comment>,
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
     private notificationsService: NotificationsService,
+    private emailService: EmailService,
+    private usersService: UsersService,
+    private configService: ConfigService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
     @Optional() @Inject(AutomationEngineService)
@@ -95,6 +105,11 @@ export class CommentsService {
       });
     }
 
+    // FR-NOT-006: @mention detection
+    this.processMentions(dto.content, userId, issue, saved.id, full?.author?.displayName || 'Someone').catch(
+      (err) => this.logger.error('Failed to process @mentions:', err.message),
+    );
+
     // Trigger automation rules
     if (this.automationEngine) {
       this.automationEngine.processTrigger(issue.projectId, 'comment.added', {
@@ -154,6 +169,99 @@ export class CommentsService {
         WebhookEventType.COMMENT_DELETED,
         { commentId: id, issueId: comment.issueId, issueKey: issue.key },
       );
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // @Mention helpers
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Parse @mentions from comment text and create in-app + email notifications.
+   *
+   * Supported mention formats:
+   *   - @[Display Name](userId)   — rich mention from autocomplete
+   *   - @username / @displayname  — plain text mention (matched against org users)
+   */
+  private async processMentions(
+    content: string,
+    authorId: string,
+    issue: Issue,
+    commentId: string,
+    commenterName: string,
+  ): Promise<void> {
+    const mentionedUserIds = new Set<string>();
+
+    // Pattern 1: Rich mention @[DisplayName](userId)
+    const richMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = richMentionRegex.exec(content)) !== null) {
+      const userId = match[2];
+      if (userId && userId !== authorId) {
+        mentionedUserIds.add(userId);
+      }
+    }
+
+    // Pattern 2: Plain @word mentions (matched against organization users)
+    const plainMentionRegex = /@(\w[\w.-]*\w|\w)/g;
+    // Strip out already-matched rich mentions before scanning plain ones
+    const strippedContent = content.replace(richMentionRegex, '');
+    while ((match = plainMentionRegex.exec(strippedContent)) !== null) {
+      const mentionText = match[1].toLowerCase();
+      try {
+        const orgUsers = await this.usersService.findByOrg(issue.organizationId);
+        for (const user of orgUsers) {
+          if (user.id === authorId) continue;
+          if (mentionedUserIds.has(user.id)) continue;
+          // Match against displayName (case-insensitive, spaces replaced with dots/underscores)
+          const normalizedName = user.displayName.toLowerCase().replace(/\s+/g, '');
+          const normalizedMention = mentionText.replace(/[._-]/g, '');
+          if (
+            normalizedName === normalizedMention ||
+            user.email.split('@')[0].toLowerCase() === mentionText
+          ) {
+            mentionedUserIds.add(user.id);
+          }
+        }
+      } catch {
+        // Org user lookup failed; skip plain mention resolution
+      }
+    }
+
+    if (mentionedUserIds.size === 0) return;
+
+    const frontendUrl =
+      this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
+    const issueUrl = `${frontendUrl}/issues/${issue.id}`;
+
+    for (const mentionedUserId of mentionedUserIds) {
+      // In-app notification
+      await this.notificationsService.create({
+        userId: mentionedUserId,
+        type: 'mention',
+        title: `${commenterName} mentioned you in ${issue.key}`,
+        body: content.substring(0, 200),
+        data: { issueId: issue.id, commentId },
+      });
+
+      // Email notification
+      try {
+        const mentionedUser = await this.usersService.findById(mentionedUserId);
+        await this.emailService.sendCommentMentionEmail(
+          mentionedUser.email,
+          mentionedUser.displayName,
+          commenterName,
+          issue.key,
+          issue.title,
+          content,
+          issueUrl,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to send mention email to user ${mentionedUserId}:`,
+          err.message,
+        );
+      }
     }
   }
 }
