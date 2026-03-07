@@ -48,6 +48,9 @@ export default () => ({
         `http://localhost:4000/api/auth/github/callback`,
     },
   },
+  elasticsearch: {
+    url: process.env.ELASTICSEARCH_URL || 'http://localhost:9200',
+  },
   smtp: {
     host: process.env.SMTP_HOST || 'localhost',
     port: parseInt(process.env.SMTP_PORT, 10) || 1025,
