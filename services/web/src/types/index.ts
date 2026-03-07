@@ -94,6 +94,7 @@ export interface IssueStatus {
   category: IssueStatusCategory
   position: number
   color: string
+  wipLimit: number
   createdAt: string
   updatedAt: string
 }
@@ -193,6 +194,24 @@ export interface BoardColumn extends IssueStatus {
 
 export interface BoardData {
   statuses: BoardColumn[]
+}
+
+export interface BoardFilters {
+  assigneeId?: string
+  type?: string
+  priority?: string
+  label?: string
+  search?: string
+  sprintId?: string
+}
+
+export type SwimlaneGroupBy = 'none' | 'assignee' | 'priority' | 'type' | 'epic'
+
+export interface SwimlaneGroup {
+  key: string
+  label: string
+  issues: Issue[]
+  avatarUrl?: string
 }
 
 export interface PaginatedResponse<T> {

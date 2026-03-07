@@ -104,6 +104,7 @@ export function mockIssueStatus(overrides?: Partial<IssueStatus>): IssueStatus {
     color: '#6B7280',
     position: 0,
     isDefault: true,
+    wipLimit: 0,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     ...overrides,
