@@ -40,6 +40,7 @@ import { StatusBadge } from '@/components/issues/status-badge'
 import { UserSelect } from '@/components/common/user-select'
 import { IssueLinksList } from '@/components/issues/issue-links-list'
 import { WatchButton } from '@/components/issues/watch-button'
+import { ActivityList } from '@/components/issues/activity-list'
 import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils'
 
 function CommentItem({
@@ -386,6 +387,14 @@ export function IssueDetailPage() {
                 <p className="text-sm text-gray-400">{t('issues.noTimeLogged')}</p>
               )}
             </div>
+          </div>
+
+          {/* Activity / Changelog */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              {t('activity.title')}
+            </h3>
+            <ActivityList issueId={issue.id} />
           </div>
         </div>
 

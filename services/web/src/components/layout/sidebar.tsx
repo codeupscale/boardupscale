@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Shield,
   Columns3,
   List,
   ListTodo,
@@ -30,12 +31,15 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const { data: projects } = useProjects()
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+
   const navItems = [
     { icon: LayoutDashboard, label: t('nav.dashboard'), href: '/dashboard' },
     { icon: FolderOpen, label: t('nav.projects'), href: '/projects' },
     { icon: CircleDot, label: t('nav.myIssues'), href: '/issues' },
     { icon: Bell, label: t('nav.notifications'), href: '/notifications' },
     { icon: Settings, label: t('nav.settings'), href: '/settings' },
+    ...(isAdmin ? [{ icon: Shield, label: t('nav.auditLogs'), href: '/admin/audit-logs' }] : []),
   ]
 
   const isActive = (href: string) => {

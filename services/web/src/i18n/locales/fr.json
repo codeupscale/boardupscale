@@ -69,7 +69,8 @@
     "reports": "Rapports",
     "projectSettings": "Param\u00e8tres du projet",
     "profile": "Profil",
-    "recentProjects": "Projets r\u00e9cents"
+    "recentProjects": "Projets r\u00e9cents",
+    "auditLogs": "Journal d'audit"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -295,5 +296,45 @@
     "fr": "Fran\u00e7ais",
     "de": "Allemand",
     "ja": "Japonais"
+  },
+  "activity": {
+    "title": "Activit\u00e9",
+    "noActivity": "Aucune activit\u00e9 pour le moment.",
+    "createdIssue": "a cr\u00e9\u00e9 ce ticket",
+    "addedComment": "a ajout\u00e9 un commentaire",
+    "loggedWork": "a enregistr\u00e9 {{minutes}} minutes de travail",
+    "changedField": "a modifi\u00e9 {{field}} de \"{{oldValue}}\" \u00e0 \"{{newValue}}\"",
+    "setField": "a d\u00e9fini {{field}} \u00e0 \"{{value}}\"",
+    "clearedField": "a effac\u00e9 {{field}}",
+    "updatedField": "a mis \u00e0 jour {{field}}",
+    "fields": {
+      "title": "Titre",
+      "description": "Description",
+      "type": "Type",
+      "priority": "Priorit\u00e9",
+      "statusId": "Statut",
+      "assigneeId": "Assign\u00e9",
+      "sprintId": "Sprint",
+      "dueDate": "Date d'\u00e9ch\u00e9ance",
+      "storyPoints": "Points de r\u00e9cit",
+      "timeEstimate": "Estimation du temps",
+      "labels": "\u00c9tiquettes",
+      "timeSpent": "Temps pass\u00e9"
+    }
+  },
+  "audit": {
+    "title": "Journal d'audit",
+    "subtitle": "Suivez toutes les actions des utilisateurs dans votre organisation",
+    "entityType": "Type d'entit\u00e9",
+    "action": "Action",
+    "allTypes": "Tous les types",
+    "filterByAction": "Filtrer par action...",
+    "startDate": "Date de d\u00e9but",
+    "endDate": "Date de fin",
+    "noLogs": "Aucun journal d'audit trouv\u00e9.",
+    "when": "Quand",
+    "user": "Utilisateur",
+    "details": "D\u00e9tails",
+    "ipAddress": "Adresse IP"
   }
 }

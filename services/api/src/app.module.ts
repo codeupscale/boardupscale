@@ -54,6 +54,8 @@ import { AutomationRule } from './modules/automation/entities/automation-rule.en
 import { AutomationLog } from './modules/automation/entities/automation-log.entity';
 import { IssueLink } from './modules/issues/entities/issue-link.entity';
 import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
+import { Activity } from './modules/activity/activity.entity';
+import { AuditLog } from './modules/audit/audit-log.entity';
 
 @Module({
   imports: [
@@ -94,6 +96,8 @@ import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
           AutomationLog,
           IssueLink,
           IssueWatcher,
+          Activity,
+          AuditLog,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -158,6 +162,8 @@ import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
     EventsModule,
     WebhooksModule,
     AutomationModule,
+    ActivityModule,
+    AuditModule,
   ],
 })
 export class AppModule {}

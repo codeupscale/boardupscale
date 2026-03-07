@@ -10,6 +10,8 @@ import { Comment } from '../modules/comments/entities/comment.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
 import { Attachment } from '../modules/files/entities/attachment.entity';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
+import { Activity } from '../modules/activity/activity.entity';
+import { AuditLog } from '../modules/audit/audit-log.entity';
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
 const USER_ID = '22222222-2222-2222-2222-222222222222';
@@ -21,6 +23,8 @@ const COMMENT_ID = '77777777-7777-7777-7777-777777777777';
 const NOTIFICATION_ID = '88888888-8888-8888-8888-888888888888';
 const ATTACHMENT_ID = '99999999-9999-9999-9999-999999999999';
 const REFRESH_TOKEN_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const ACTIVITY_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const AUDIT_LOG_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
 
 export function mockOrganization(overrides?: Partial<Organization>): Organization {
   const org = new Organization();
@@ -243,6 +247,41 @@ export function mockRefreshToken(overrides?: Partial<RefreshToken>): RefreshToke
   return token;
 }
 
+export function mockActivity(overrides?: Partial<Activity>): Activity {
+  const activity = new Activity();
+  Object.assign(activity, {
+    id: ACTIVITY_ID,
+    orgId: ORG_ID,
+    issueId: ISSUE_ID,
+    userId: USER_ID,
+    action: 'created',
+    field: null,
+    oldValue: null,
+    newValue: null,
+    metadata: null,
+    createdAt: new Date('2024-01-01'),
+    ...overrides,
+  });
+  return activity;
+}
+
+export function mockAuditLog(overrides?: Partial<AuditLog>): AuditLog {
+  const auditLog = new AuditLog();
+  Object.assign(auditLog, {
+    id: AUDIT_LOG_ID,
+    orgId: ORG_ID,
+    userId: USER_ID,
+    action: 'issue.created',
+    entityType: 'issue',
+    entityId: ISSUE_ID,
+    changes: {},
+    ipAddress: '127.0.0.1',
+    createdAt: new Date('2024-01-01'),
+    ...overrides,
+  });
+  return auditLog;
+}
+
 // Common IDs for cross-referencing in tests
 export const TEST_IDS = {
   ORG_ID,
@@ -255,4 +294,6 @@ export const TEST_IDS = {
   NOTIFICATION_ID,
   ATTACHMENT_ID,
   REFRESH_TOKEN_ID,
+  ACTIVITY_ID,
+  AUDIT_LOG_ID,
 };

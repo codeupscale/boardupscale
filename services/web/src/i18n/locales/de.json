@@ -69,7 +69,8 @@
     "reports": "Berichte",
     "projectSettings": "Projekteinstellungen",
     "profile": "Profil",
-    "recentProjects": "Aktuelle Projekte"
+    "recentProjects": "Aktuelle Projekte",
+    "auditLogs": "Pr\u00fcfprotokoll"
   },
   "dashboard": {
     "title": "\u00dcbersicht",
@@ -295,5 +296,45 @@
     "fr": "Franz\u00f6sisch",
     "de": "Deutsch",
     "ja": "Japanisch"
+  },
+  "activity": {
+    "title": "Aktivit\u00e4t",
+    "noActivity": "Noch keine Aktivit\u00e4t.",
+    "createdIssue": "hat diesen Vorgang erstellt",
+    "addedComment": "hat einen Kommentar hinzugef\u00fcgt",
+    "loggedWork": "hat {{minutes}} Minuten Arbeit protokolliert",
+    "changedField": "hat {{field}} von \"{{oldValue}}\" zu \"{{newValue}}\" ge\u00e4ndert",
+    "setField": "hat {{field}} auf \"{{value}}\" gesetzt",
+    "clearedField": "hat {{field}} gel\u00f6scht",
+    "updatedField": "hat {{field}} aktualisiert",
+    "fields": {
+      "title": "Titel",
+      "description": "Beschreibung",
+      "type": "Typ",
+      "priority": "Priorit\u00e4t",
+      "statusId": "Status",
+      "assigneeId": "Zugewiesen",
+      "sprintId": "Sprint",
+      "dueDate": "F\u00e4lligkeitsdatum",
+      "storyPoints": "Story Points",
+      "timeEstimate": "Zeitsch\u00e4tzung",
+      "labels": "Labels",
+      "timeSpent": "Aufgewendete Zeit"
+    }
+  },
+  "audit": {
+    "title": "Pr\u00fcfprotokoll",
+    "subtitle": "Verfolgen Sie alle Benutzeraktionen in Ihrer Organisation",
+    "entityType": "Entit\u00e4tstyp",
+    "action": "Aktion",
+    "allTypes": "Alle Typen",
+    "filterByAction": "Nach Aktion filtern...",
+    "startDate": "Startdatum",
+    "endDate": "Enddatum",
+    "noLogs": "Keine Pr\u00fcfprotokolle gefunden.",
+    "when": "Wann",
+    "user": "Benutzer",
+    "details": "Details",
+    "ipAddress": "IP-Adresse"
   }
 }

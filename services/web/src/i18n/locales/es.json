@@ -69,7 +69,8 @@
     "reports": "Informes",
     "projectSettings": "Configuraci\u00f3n del proyecto",
     "profile": "Perfil",
-    "recentProjects": "Proyectos recientes"
+    "recentProjects": "Proyectos recientes",
+    "auditLogs": "Registro de auditoría"
   },
   "dashboard": {
     "title": "Panel",
@@ -295,5 +296,45 @@
     "fr": "Franc\u00e9s",
     "de": "Alem\u00e1n",
     "ja": "Japon\u00e9s"
+  },
+  "activity": {
+    "title": "Actividad",
+    "noActivity": "A\u00fan no hay actividad.",
+    "createdIssue": "cre\u00f3 esta incidencia",
+    "addedComment": "agreg\u00f3 un comentario",
+    "loggedWork": "registr\u00f3 {{minutes}} minutos de trabajo",
+    "changedField": "cambi\u00f3 {{field}} de \"{{oldValue}}\" a \"{{newValue}}\"",
+    "setField": "estableci\u00f3 {{field}} a \"{{value}}\"",
+    "clearedField": "elimin\u00f3 {{field}}",
+    "updatedField": "actualiz\u00f3 {{field}}",
+    "fields": {
+      "title": "T\u00edtulo",
+      "description": "Descripci\u00f3n",
+      "type": "Tipo",
+      "priority": "Prioridad",
+      "statusId": "Estado",
+      "assigneeId": "Asignado",
+      "sprintId": "Sprint",
+      "dueDate": "Fecha l\u00edmite",
+      "storyPoints": "Puntos de historia",
+      "timeEstimate": "Estimaci\u00f3n de tiempo",
+      "labels": "Etiquetas",
+      "timeSpent": "Tiempo dedicado"
+    }
+  },
+  "audit": {
+    "title": "Registro de auditor\u00eda",
+    "subtitle": "Rastrea todas las acciones de usuario en tu organizaci\u00f3n",
+    "entityType": "Tipo de entidad",
+    "action": "Acci\u00f3n",
+    "allTypes": "Todos los tipos",
+    "filterByAction": "Filtrar por acci\u00f3n...",
+    "startDate": "Fecha de inicio",
+    "endDate": "Fecha de fin",
+    "noLogs": "No se encontraron registros de auditor\u00eda.",
+    "when": "Cu\u00e1ndo",
+    "user": "Usuario",
+    "details": "Detalles",
+    "ipAddress": "Direcci\u00f3n IP"
   }
 }

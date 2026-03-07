@@ -450,3 +450,32 @@ export interface AutomationLog {
   errorMessage?: string
   executedAt: string
 }
+
+// Activities (issue changelog)
+export interface Activity {
+  id: string
+  orgId: string
+  issueId: string
+  userId: string
+  action: string
+  field?: string
+  oldValue?: string
+  newValue?: string
+  metadata?: Record<string, any>
+  user?: User
+  createdAt: string
+}
+
+// Audit Logs
+export interface AuditLog {
+  id: string
+  orgId: string
+  userId?: string
+  action: string
+  entityType: string
+  entityId?: string
+  changes?: Record<string, any>
+  ipAddress?: string
+  user?: User
+  createdAt: string
+}
