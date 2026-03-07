@@ -120,7 +120,16 @@
     "issues_count": "{{count}} issue",
     "issues_count_plural": "{{count}} issues",
     "projectKeyHelper": "Short unique identifier (auto-generated from name)",
-    "whatIsProject": "What is this project about?"
+    "whatIsProject": "What is this project about?",
+    "template": "Template",
+    "templateScrum": "Scrum",
+    "templateScrumDesc": "Agile scrum workflow with sprints and reviews",
+    "templateKanban": "Kanban",
+    "templateKanbanDesc": "Continuous flow board with backlog",
+    "templateBugTracking": "Bug Tracking",
+    "templateBugTrackingDesc": "Bug lifecycle from report to verification",
+    "templateBlank": "Blank",
+    "templateBlankDesc": "Start with minimal statuses"
   },
   "issues": {
     "title": "Issues",

@@ -11,7 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
@@ -37,6 +37,8 @@ export class IssuesController {
 
   @Get()
   @ApiOperation({ summary: 'List issues with filters' })
+  @ApiResponse({ status: 200, description: 'Paginated list of issues' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'sprintId', required: false })
   @ApiQuery({ name: 'assigneeId', required: false })
@@ -84,6 +86,10 @@ export class IssuesController {
   @Post()
   @RequirePermission('issue', 'create')
   @ApiOperation({ summary: 'Create a new issue' })
+  @ApiResponse({ status: 201, description: 'Issue created successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   async create(
     @Body() dto: CreateIssueDto,
     @OrgId() organizationId: string,
@@ -140,6 +146,8 @@ export class IssuesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get issue by ID' })
+  @ApiResponse({ status: 200, description: 'Issue found' })
+  @ApiResponse({ status: 404, description: 'Issue not found' })
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,

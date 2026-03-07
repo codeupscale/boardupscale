@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MaxLength, MinLength, Matches } from 'class-validator';
+import { IsString, IsOptional, MaxLength, MinLength, Matches, IsEnum } from 'class-validator';
+
+export enum ProjectTemplate {
+  SCRUM = 'scrum',
+  KANBAN = 'kanban',
+  BUG_TRACKING = 'bug-tracking',
+  BLANK = 'blank',
+}
 
 export class CreateProjectDto {
   @ApiProperty({ example: 'My Project' })
@@ -24,4 +31,13 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   type?: string = 'software';
+
+  @ApiPropertyOptional({
+    enum: ProjectTemplate,
+    example: ProjectTemplate.SCRUM,
+    description: 'Project template to use. Determines initial statuses.',
+  })
+  @IsOptional()
+  @IsEnum(ProjectTemplate)
+  templateType?: ProjectTemplate;
 }

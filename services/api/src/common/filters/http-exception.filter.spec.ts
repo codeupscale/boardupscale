@@ -41,13 +41,11 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     expect(mockResponse.json).toHaveBeenCalledWith({
-      error: {
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Something went wrong',
-        errors: null,
-        timestamp: expect.any(String),
-        path: '/api/test',
-      },
+      statusCode: HttpStatus.BAD_REQUEST,
+      error: 'Bad Request',
+      message: 'Something went wrong',
+      timestamp: expect.any(String),
+      path: '/api/test',
     });
   });
 
@@ -58,8 +56,9 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.statusCode).toBe(HttpStatus.NOT_FOUND);
-    expect(jsonCall.error.message).toBe('User not found');
+    expect(jsonCall.statusCode).toBe(HttpStatus.NOT_FOUND);
+    expect(jsonCall.message).toBe('User not found');
+    expect(jsonCall.error).toBe('Not Found');
   });
 
   it('should handle UnauthorizedException', () => {
@@ -68,6 +67,8 @@ describe('HttpExceptionFilter', () => {
     filter.catch(exception, mockHost);
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+    const jsonCall = mockResponse.json.mock.calls[0][0];
+    expect(jsonCall.error).toBe('Unauthorized');
   });
 
   it('should handle ForbiddenException', () => {
@@ -76,6 +77,8 @@ describe('HttpExceptionFilter', () => {
     filter.catch(exception, mockHost);
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
+    const jsonCall = mockResponse.json.mock.calls[0][0];
+    expect(jsonCall.error).toBe('Forbidden');
   });
 
   it('should handle validation errors (array of messages)', () => {
@@ -88,8 +91,8 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.message).toBe('Validation failed');
-    expect(jsonCall.error.errors).toEqual([
+    expect(jsonCall.message).toBe('Validation failed');
+    expect(jsonCall.details).toEqual([
       'email must be an email',
       'password must be at least 8 characters',
     ]);
@@ -102,8 +105,8 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.message).toBe('Database connection failed');
-    expect(jsonCall.error.statusCode).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(jsonCall.message).toBe('Database connection failed');
+    expect(jsonCall.statusCode).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
   });
 
   it('should handle unknown exceptions', () => {
@@ -111,7 +114,7 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.message).toBe('Internal server error');
+    expect(jsonCall.message).toBe('Internal server error');
   });
 
   it('should include timestamp in error response', () => {
@@ -120,9 +123,9 @@ describe('HttpExceptionFilter', () => {
     filter.catch(exception, mockHost);
 
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.timestamp).toBeDefined();
+    expect(jsonCall.timestamp).toBeDefined();
     // Verify it is a valid ISO date string
-    expect(() => new Date(jsonCall.error.timestamp)).not.toThrow();
+    expect(() => new Date(jsonCall.timestamp)).not.toThrow();
   });
 
   it('should include request path in error response', () => {
@@ -132,7 +135,7 @@ describe('HttpExceptionFilter', () => {
     filter.catch(exception, mockHost);
 
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.path).toBe('/api/issues/123');
+    expect(jsonCall.path).toBe('/api/issues/123');
   });
 
   it('should handle HttpException with string response', () => {
@@ -142,6 +145,7 @@ describe('HttpExceptionFilter', () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
     const jsonCall = mockResponse.json.mock.calls[0][0];
-    expect(jsonCall.error.message).toBe('Custom error message');
+    expect(jsonCall.message).toBe('Custom error message');
+    expect(jsonCall.error).toBe('Conflict');
   });
 });

@@ -9,9 +9,59 @@ import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
-import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateProjectDto, ProjectTemplate } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+
+/** Definition for a project template with predefined statuses */
+interface TemplateDefinition {
+  name: string;
+  description: string;
+  statuses: Array<{
+    name: string;
+    category: string;
+    color: string;
+    position: number;
+    isDefault: boolean;
+  }>;
+}
+
+/** Registry of all available project templates */
+const PROJECT_TEMPLATES: Record<string, TemplateDefinition> = {
+  [ProjectTemplate.SCRUM]: {
+    name: 'Scrum',
+    description: 'Agile scrum workflow with sprints, backlog, and review stages',
+    statuses: [
+      { name: 'To Do', category: 'todo', color: '#6B7280', position: 0, isDefault: true },
+      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 1, isDefault: false },
+      { name: 'In Review', category: 'in_progress', color: '#F59E0B', position: 2, isDefault: false },
+      { name: 'Done', category: 'done', color: '#10B981', position: 3, isDefault: false },
+    ],
+  },
+  [ProjectTemplate.KANBAN]: {
+    name: 'Kanban',
+    description: 'Continuous flow Kanban board with backlog and review stages',
+    statuses: [
+      { name: 'Backlog', category: 'todo', color: '#9CA3AF', position: 0, isDefault: true },
+      { name: 'To Do', category: 'todo', color: '#6B7280', position: 1, isDefault: false },
+      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 2, isDefault: false },
+      { name: 'Review', category: 'in_progress', color: '#F59E0B', position: 3, isDefault: false },
+      { name: 'Done', category: 'done', color: '#10B981', position: 4, isDefault: false },
+    ],
+  },
+  [ProjectTemplate.BUG_TRACKING]: {
+    name: 'Bug Tracking',
+    description: 'Bug lifecycle workflow from report to verification',
+    statuses: [
+      { name: 'Open', category: 'todo', color: '#EF4444', position: 0, isDefault: true },
+      { name: 'Confirmed', category: 'todo', color: '#F97316', position: 1, isDefault: false },
+      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 2, isDefault: false },
+      { name: 'Fixed', category: 'in_progress', color: '#8B5CF6', position: 3, isDefault: false },
+      { name: 'Verified', category: 'done', color: '#10B981', position: 4, isDefault: false },
+      { name: 'Closed', category: 'done', color: '#6B7280', position: 5, isDefault: false },
+    ],
+  },
+};
 
 @Injectable()
 export class ProjectsService {
@@ -55,7 +105,10 @@ export class ProjectsService {
     }
 
     const project = this.projectRepository.create({
-      ...dto,
+      name: dto.name,
+      key: dto.key,
+      description: dto.description,
+      type: dto.type,
       organizationId,
       ownerId: userId,
       status: 'active',
@@ -70,19 +123,56 @@ export class ProjectsService {
     });
     await this.projectMemberRepository.save(ownerMember);
 
-    const defaultStatuses = [
-      { name: 'To Do', category: 'todo', color: '#6B7280', position: 0, isDefault: true },
-      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 1, isDefault: false },
-      { name: 'In Review', category: 'in_progress', color: '#F59E0B', position: 2, isDefault: false },
-      { name: 'Done', category: 'done', color: '#10B981', position: 3, isDefault: false },
-    ];
+    // Resolve statuses from template or use default scrum
+    const templateKey = dto.templateType || ProjectTemplate.SCRUM;
+    const statuses = this.getStatusesForTemplate(templateKey);
 
-    const statusEntities = defaultStatuses.map((s) =>
+    const statusEntities = statuses.map((s) =>
       this.issueStatusRepository.create({ ...s, projectId: saved.id }),
     );
     await this.issueStatusRepository.save(statusEntities);
 
     return saved;
+  }
+
+  /**
+   * Create a project from a specific template.
+   */
+  async createFromTemplate(
+    userId: string,
+    organizationId: string,
+    dto: CreateProjectDto,
+  ): Promise<Project> {
+    return this.create(dto, organizationId, userId);
+  }
+
+  /**
+   * Get the list of available project templates.
+   */
+  getTemplates(): Array<{
+    key: string;
+    name: string;
+    description: string;
+    statusCount: number;
+  }> {
+    return Object.entries(PROJECT_TEMPLATES).map(([key, template]) => ({
+      key,
+      name: template.name,
+      description: template.description,
+      statusCount: template.statuses.length,
+    }));
+  }
+
+  private getStatusesForTemplate(templateKey: string) {
+    const template = PROJECT_TEMPLATES[templateKey];
+    if (template) {
+      return template.statuses;
+    }
+    // Blank template: minimal single status
+    return [
+      { name: 'To Do', category: 'todo', color: '#6B7280', position: 0, isDefault: true },
+      { name: 'Done', category: 'done', color: '#10B981', position: 1, isDefault: false },
+    ];
   }
 
   async update(id: string, organizationId: string, dto: UpdateProjectDto): Promise<Project> {

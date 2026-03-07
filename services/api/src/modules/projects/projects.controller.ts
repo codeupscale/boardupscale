@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -29,15 +29,27 @@ import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}
 
+  @Get('templates')
+  @ApiOperation({ summary: 'List available project templates' })
+  @ApiResponse({ status: 200, description: 'List of project templates' })
+  getTemplates() {
+    return { data: this.projectsService.getTemplates() };
+  }
+
   @Get()
   @ApiOperation({ summary: "List all projects the user is a member of" })
+  @ApiResponse({ status: 200, description: 'List of projects' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@OrgId() organizationId: string, @CurrentUser() user: any) {
     const projects = await this.projectsService.findAll(organizationId, user.id);
     return { data: projects };
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new project' })
+  @ApiOperation({ summary: 'Create a new project (optionally from a template)' })
+  @ApiResponse({ status: 201, description: 'Project created successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 409, description: 'Project key already taken' })
   async create(
     @Body() dto: CreateProjectDto,
     @OrgId() organizationId: string,
@@ -48,6 +60,8 @@ export class ProjectsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get project by ID' })
+  @ApiResponse({ status: 200, description: 'Project found' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
@@ -58,6 +72,8 @@ export class ProjectsController {
   @Patch(':id')
   @RequirePermission('project', 'update')
   @ApiOperation({ summary: 'Update a project' })
+  @ApiResponse({ status: 200, description: 'Project updated' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
@@ -70,6 +86,8 @@ export class ProjectsController {
   @RequirePermission('project', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Archive a project (soft delete)' })
+  @ApiResponse({ status: 204, description: 'Project archived' })
+  @ApiResponse({ status: 404, description: 'Project not found' })
   async archive(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
@@ -79,6 +97,7 @@ export class ProjectsController {
 
   @Get(':id/members')
   @ApiOperation({ summary: 'Get project members' })
+  @ApiResponse({ status: 200, description: 'List of members' })
   async getMembers(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
@@ -90,6 +109,8 @@ export class ProjectsController {
   @Post(':id/members')
   @RequirePermission('member', 'create')
   @ApiOperation({ summary: 'Add a member to the project' })
+  @ApiResponse({ status: 201, description: 'Member added' })
+  @ApiResponse({ status: 409, description: 'User is already a member' })
   async addMember(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
@@ -102,6 +123,8 @@ export class ProjectsController {
   @RequirePermission('member', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remove a member from the project' })
+  @ApiResponse({ status: 204, description: 'Member removed' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
   async removeMember(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('userId', ParseUUIDPipe) userId: string,
