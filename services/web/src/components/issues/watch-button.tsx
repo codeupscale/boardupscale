@@ -26,7 +26,7 @@ export function WatchButton({ issueId }: { issueId: string }) {
       <div className="flex items-center gap-2">
         <Button
           size="sm"
-          variant={isWatching ? 'primary' : 'outline'}
+          variant={isWatching ? 'default' : 'outline'}
           className="flex-1"
           isLoading={toggleWatch.isPending}
           onClick={() => toggleWatch.mutate({ issueId })}

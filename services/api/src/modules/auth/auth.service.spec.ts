@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { AuditService } from '../audit/audit.service';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../test/mock-factories';
 
@@ -76,6 +77,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
         { provide: getQueueToken('email'), useValue: emailQueue },
+        { provide: AuditService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 

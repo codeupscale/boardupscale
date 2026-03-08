@@ -7,6 +7,10 @@ import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
 import { IssueStatus } from './entities/issue-status.entity';
 import { WorkLog } from './entities/work-log.entity';
+import { IssueLink } from './entities/issue-link.entity';
+import { IssueWatcher } from './entities/issue-watcher.entity';
+import { ActivityService } from '../activity/activity.service';
+import { AuditService } from '../audit/audit.service';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../notifications/email.service';
@@ -63,6 +67,8 @@ describe('IssuesService', () => {
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: getRepositoryToken(WorkLog), useValue: workLogRepo },
+        { provide: getRepositoryToken(IssueLink), useValue: createMockRepository() },
+        { provide: getRepositoryToken(IssueWatcher), useValue: createMockRepository() },
         { provide: ProjectsService, useValue: projectsService },
         { provide: NotificationsService, useValue: notificationsService },
         { provide: EmailService, useValue: emailService },
@@ -72,6 +78,8 @@ describe('IssuesService', () => {
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: getQueueToken('search-index'), useValue: { add: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
+        { provide: ActivityService, useValue: { log: jest.fn().mockResolvedValue(undefined), findByIssue: jest.fn().mockResolvedValue({ data: [], total: 0 }) } },
+        { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

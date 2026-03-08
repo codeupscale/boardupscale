@@ -16,6 +16,11 @@ describe('IssuesController', () => {
       update: jest.fn(),
       softDelete: jest.fn(),
       addWatcher: jest.fn(),
+      toggleWatch: jest.fn(),
+      getWatchers: jest.fn(),
+      createLink: jest.fn(),
+      getLinks: jest.fn(),
+      deleteLink: jest.fn(),
       getChildren: jest.fn(),
       createWorkLog: jest.fn(),
       getWorkLogs: jest.fn(),
@@ -107,14 +112,14 @@ describe('IssuesController', () => {
   });
 
   describe('POST /issues/:id/watch', () => {
-    it('should watch an issue', async () => {
-      const issue = mockIssue();
-      issuesService.addWatcher.mockResolvedValue(issue);
+    it('should toggle watch on an issue', async () => {
+      const watchResult = { watching: true, watcherCount: 1 };
+      issuesService.toggleWatch.mockResolvedValue(watchResult);
       const user = { id: TEST_IDS.USER_ID };
 
-      const result = await controller.watch(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, user);
+      const result = await controller.toggleWatch(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, user);
 
-      expect(result).toEqual(issue);
+      expect(result).toEqual(watchResult);
     });
   });
 

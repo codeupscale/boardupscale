@@ -348,9 +348,9 @@ describe('BoardsService', () => {
       const status = mockIssueStatus({ id: 'status-1', wipLimit: 2 });
       statusRepo.findOne.mockResolvedValue(status);
 
-      // Currently 2 issues in this status
+      // Currently 2 issues in this status, new issue not already in target
       const countQb = createMockQueryBuilder();
-      countQb.getCount.mockResolvedValue(2);
+      countQb.getCount.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
       issueRepo.createQueryBuilder.mockReturnValue(countQb);
 
       await expect(

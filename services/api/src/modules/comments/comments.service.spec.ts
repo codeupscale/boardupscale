@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { ActivityService } from '../activity/activity.service';
 import {
   createMockRepository,
   createMockNotificationsService,
@@ -60,6 +61,7 @@ describe('CommentsService', () => {
         { provide: EventsGateway, useValue: eventsGateway },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
+        { provide: ActivityService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

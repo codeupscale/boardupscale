@@ -32,7 +32,7 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const { data: projects } = useProjects()
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+  const isAdmin = user?.role === 'admin' || (user?.role as string) === 'owner'
 
   const navItems = [
     { icon: LayoutDashboard, label: t('nav.dashboard'), href: '/dashboard' },

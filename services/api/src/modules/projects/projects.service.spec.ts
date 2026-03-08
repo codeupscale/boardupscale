@@ -5,6 +5,7 @@ import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
+import { AuditService } from '../audit/audit.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 
@@ -25,6 +26,7 @@ describe('ProjectsService', () => {
         { provide: getRepositoryToken(Project), useValue: projectRepo },
         { provide: getRepositoryToken(ProjectMember), useValue: memberRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
+        { provide: AuditService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 
