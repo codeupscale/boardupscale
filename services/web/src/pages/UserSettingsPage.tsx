@@ -1,3 +1,4 @@
+import { UserRole } from '@/types'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -438,7 +439,7 @@ export function UserSettingsPage() {
   const { data: me } = useMe()
   const [activeTab, setActiveTab] = useState('profile')
 
-  const isOrgAdmin = me?.role === 'admin' || me?.role === 'owner'
+  const isOrgAdmin = me?.role === UserRole.ADMIN
 
   const TABS = [
     { id: 'profile', label: t('settings.profile') },

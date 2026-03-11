@@ -65,6 +65,7 @@ export interface User {
   role: UserRole
   isActive: boolean
   emailVerified: boolean
+  twoFaEnabled: boolean
   lastLoginAt?: string
   createdAt: string
   updatedAt: string

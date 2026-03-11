@@ -11,6 +11,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SamlService } from './saml.service';
 import { UsersService } from '../users/users.service';
 import { mockUser, TEST_IDS } from '../../test/mock-factories';
 
@@ -41,6 +42,7 @@ describe('AuthController', () => {
       providers: [
         { provide: AuthService, useValue: authService },
         { provide: UsersService, useValue: usersService },
+        { provide: SamlService, useValue: {} },
         { provide: ConfigService, useValue: { get: jest.fn() } },
       ],
     }).compile();
