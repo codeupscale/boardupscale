@@ -9,7 +9,7 @@ import {
   useResendInvitation,
   useRevokeInvitation,
 } from '@/hooks/useOrganization'
-import { User } from '@/types'
+import { User, UserRole } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -69,7 +69,7 @@ export function TeamPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<User | null>(null)
 
-  const isAdmin = me?.role === 'admin' || me?.role === 'owner'
+  const isAdmin = me?.role === UserRole.ADMIN
 
   const activeMembers = useMemo(
     () => members.filter((m) => m.isActive),

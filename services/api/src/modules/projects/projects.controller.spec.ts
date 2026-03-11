@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
+import { DataSource } from 'typeorm';
 import { PermissionsService } from '../permissions/permissions.service';
 import { mockProject, mockProjectMember, TEST_IDS } from '../../test/mock-factories';
 import { createMockProjectsService } from '../../test/test-utils';
@@ -17,6 +18,7 @@ describe('ProjectsController', () => {
       providers: [
         { provide: ProjectsService, useValue: projectsService },
         { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true) } },
+        { provide: DataSource, useValue: { getRepository: jest.fn() } },
       ],
     }).compile();
 

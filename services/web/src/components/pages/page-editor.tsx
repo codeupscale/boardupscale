@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react'
+import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -390,7 +390,7 @@ export function PageEditor({
     const current = editor.getHTML()
     const incoming = value || ''
     if (current !== incoming && incoming !== '<p></p>') {
-      editor.commands.setContent(incoming, false)
+      editor.commands.setContent(incoming, { emitUpdate: false })
     }
   }, [value, editor])
 
