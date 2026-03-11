@@ -69,7 +69,7 @@ export function TeamPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<User | null>(null)
 
-  const isAdmin = me?.role === UserRole.ADMIN || me?.role === 'owner'
+  const isAdmin = me?.role === UserRole.ADMIN || me?.role === UserRole.OWNER
 
   const activeMembers = useMemo(
     () => members.filter((m) => m.isActive),

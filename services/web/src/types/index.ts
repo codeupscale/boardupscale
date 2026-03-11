@@ -33,6 +33,7 @@ export enum ProjectTemplate {
 }
 
 export enum UserRole {
+  OWNER = 'owner',
   ADMIN = 'admin',
   MANAGER = 'manager',
   MEMBER = 'member',
