@@ -2,10 +2,10 @@
 
 <h1>Boardupscale</h1>
 
-<p><strong>The open-source Jira replacement you can actually self-host.</strong></p>
+<p><strong>The free, open-source alternative to Jira.</strong></p>
 
 <p>
-  Full-featured project management — Scrum boards, Kanban, sprints, epics, time tracking, real-time collaboration, and more. No per-seat pricing. No vendor lock-in. Your data, your server.
+  Everything Jira does — Scrum boards, Kanban, sprints, epics, time tracking, real-time collaboration, and more — with <strong>no per-seat pricing, no vendor lock-in, and no limits</strong>. 100% free and open-source. Self-host on your own infrastructure in minutes.
 </p>
 
 <p>
@@ -26,24 +26,101 @@
 
 ## ✨ Features
 
-| Category | Capabilities |
-|----------|-------------|
-| **Issue Tracking** | Epics → Stories → Tasks → Subtasks, custom fields, priority, labels, attachments |
-| **Agile Boards** | Scrum & Kanban boards with drag-and-drop, WIP limits, swimlanes |
-| **Sprint Management** | Sprint planning, backlog grooming, velocity charts, burndown/burnup |
-| **Time Tracking** | Work logs, timesheets, billable hour reports |
-| **Real-time** | Live board updates, @mentions, in-app & email notifications via WebSocket |
-| **Search** | Full-text search powered by Elasticsearch with saved filters |
-| **GitHub Integration** | Link commits and pull requests to issues automatically |
-| **Automation** | Rule-based automation (e.g. auto-assign, auto-transition on PR merge) |
-| **Custom Workflows** | Configurable statuses and transitions per project |
-| **Pages / Docs** | Built-in wiki and documentation per project |
-| **Access Control** | Multi-tenant RBAC — Admin, Manager, Member, Viewer + custom roles |
-| **Auth** | Email/password, Google OAuth, GitHub OAuth, SAML 2.0 SSO, 2FA |
-| **AI** | GPT-powered issue summaries, semantic search (optional, opt-in) |
-| **Reporting** | Dashboards, cumulative flow diagrams, custom charts |
-| **API & Webhooks** | Full REST API + outgoing webhooks for CI/CD integration |
-| **Self-hosted** | Single `docker compose up` — runs entirely on your infrastructure |
+### 🗂 Issue Tracking
+- Hierarchical issues: **Epics → Stories → Tasks → Subtasks**
+- Custom fields, labels, priority levels (Critical / High / Medium / Low)
+- File attachments, @mentions, and inline comments
+- Issue linking (blocks, duplicates, relates to)
+- Bulk operations — assign, transition, and label multiple issues at once
+- Saved views and filters for power users
+
+### 🏄 Agile Boards
+- **Scrum & Kanban** boards with full drag-and-drop
+- WIP limits per column to enforce flow
+- Swimlanes by assignee, priority, or epic
+- Quick filters (my issues, unassigned, by label)
+- Customisable board columns and workflow statuses per project
+
+### 🏃 Sprint Management
+- Sprint planning with backlog drag-and-drop
+- Start, complete, and carry-over sprints
+- Burndown & burnup charts, velocity chart, cycle-time chart
+- Sprint reports with completed vs. incomplete breakdown
+
+### ⏱ Time Tracking
+- Log time directly on issues ("2h 30m" format)
+- Weekly timesheets per user
+- Billable-hour reports exportable to CSV
+
+### 🔴 Real-time Collaboration
+- Live board updates via WebSocket — no page refresh needed
+- In-app notifications with read/unread state
+- Email notifications for assignments, mentions, and status changes
+- Activity stream on every issue
+
+### 🔍 Search
+- Full-text search across issues, comments, and pages (Elasticsearch)
+- Filters by project, assignee, priority, label, status, and date range
+- Saved views — store and share your most-used filters
+- Global Cmd+K command palette
+
+### 🐙 GitHub Integration
+- Link pull requests and commits to issues automatically
+- Auto-transition issues when a PR is merged
+- See GitHub activity directly on the issue detail page
+
+### ⚡ Automation
+- Rule-based automation engine: **trigger → condition → action**
+- Built-in triggers: issue created, status changed, PR merged, sprint started
+- Built-in actions: assign user, set priority, post comment, send webhook
+- Execution log for every automation run
+
+### 📄 Pages / Docs
+- Built-in per-project wiki — no Confluence needed
+- Rich text editor with headings, code blocks, tables, checklists, images
+- Slash-command menu (`/h1`, `/table`, `/code`, `/todo`)
+- Nested page tree with drag-to-reorder
+- Real-time collaborative editing via WebSocket
+
+### 🔐 Access Control
+- **Multi-tenant** — complete data isolation between organisations
+- Four built-in roles: Admin, Manager, Member, Viewer
+- Custom roles with granular per-resource permissions
+- Project-level permission overrides
+
+### 🔑 Authentication
+- Email / password with email verification
+- **Google OAuth** and **GitHub OAuth**
+- **SAML 2.0 SSO** for enterprise identity providers
+- **Two-factor authentication** (TOTP + backup codes)
+- Secure JWT with refresh-token rotation (15 min / 7 day)
+- Member invitation flow with email-based onboarding
+
+### 🤖 AI Features *(optional, opt-in)*
+- GPT-powered issue summaries and descriptions
+- Semantic duplicate detection before you create a new issue
+- Smart field suggestions (type, priority, assignee) based on issue content
+- Natural language search
+
+### 📊 Reporting & Dashboards
+- Personal dashboard with assigned issues and recent projects
+- Burndown, burnup, velocity, cycle-time, and workload charts
+- Created-vs-resolved trend chart
+- Sprint intelligence widget with predictive completion
+- Export reports to CSV
+
+### 🔗 API & Webhooks
+- Full REST API with Swagger docs (`/api/docs`)
+- API key authentication for CI/CD and integrations
+- Outgoing webhooks with configurable events and retry logic
+- **MCP server** — use Boardupscale from Claude Code or Cursor via natural language
+
+### 🖥 Self-hosted & Free
+- Single `docker compose up` — up in under 2 minutes
+- Runs entirely on your own infrastructure — your data never leaves your server
+- **No per-seat pricing. No usage limits. No vendor lock-in. Free forever.**
+- Production-ready Docker Compose for VPS deployment
+- Anonymous, opt-out telemetry (no PII ever sent)
 
 ---
 
