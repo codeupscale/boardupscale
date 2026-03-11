@@ -4,7 +4,7 @@ export const config = {
   },
 
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/projectflow',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardupscale',
   },
 
   elasticsearch: {
@@ -14,7 +14,7 @@ export const config = {
   smtp: {
     host: process.env.SMTP_HOST || 'localhost',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
-    from: process.env.SMTP_FROM || 'ProjectFlow <noreply@projectflow.local>',
+    from: process.env.SMTP_FROM || 'Boardupscale <noreply@boardupscale.local>',
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },

@@ -121,7 +121,7 @@ export class ProjectsService {
     const ownerMember = this.projectMemberRepository.create({
       projectId: saved.id,
       userId,
-      role: 'owner',
+      role: 'admin',
     });
     await this.projectMemberRepository.save(ownerMember);
 
@@ -235,14 +235,14 @@ export class ProjectsService {
   }
 
   async removeMember(projectId: string, organizationId: string, userId: string): Promise<void> {
-    await this.findById(projectId, organizationId);
+    const project = await this.findById(projectId, organizationId);
     const member = await this.projectMemberRepository.findOne({
       where: { projectId, userId },
     });
     if (!member) {
       throw new NotFoundException('Member not found in project');
     }
-    if (member.role === 'owner') {
+    if (project.ownerId === userId) {
       throw new ForbiddenException('Cannot remove the project owner');
     }
     await this.projectMemberRepository.remove(member);

@@ -4,6 +4,7 @@ import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('search')
 @ApiBearerAuth()
@@ -23,7 +24,7 @@ export class SearchController {
   async search(
     @OrgId() organizationId: string,
     @Query('q') q: string,
-    @Query('projectId') projectId?: string,
+    @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('type') type?: string,
     @Query('priority') priority?: string,
     @Query('status') statusName?: string,
@@ -47,6 +48,35 @@ export class SearchController {
     };
   }
 
+  @Get('similar')
+  @ApiOperation({ summary: 'Find similar/duplicate issues based on text (uses ES MLT with PostgreSQL fallback)' })
+  @ApiQuery({ name: 'text', required: true, description: 'Issue title/description text to find duplicates for' })
+  @ApiQuery({ name: 'projectId', required: false, description: 'Limit to a specific project' })
+  @ApiQuery({ name: 'excludeIssueId', required: false, description: 'Issue ID to exclude (for existing issues)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async findSimilar(
+    @OrgId() organizationId: string,
+    @Query('text') text: string,
+    @Query('projectId', ResolveProjectPipe) projectId?: string,
+    @Query('excludeIssueId') excludeIssueId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    const result = await this.searchService.findSimilar({
+      text,
+      organizationId,
+      projectId,
+      excludeIssueId,
+      limit: limit ? Number(limit) : 5,
+    });
+    return {
+      data: result.items,
+      meta: {
+        total: result.total,
+        source: result.source,
+      },
+    };
+  }
+
   @Post('reindex/:projectId')
   @UseGuards(RolesGuard)
   @Roles('admin')
@@ -55,7 +85,7 @@ export class SearchController {
   @ApiParam({ name: 'projectId', description: 'Project ID to reindex' })
   async reindexProject(
     @OrgId() organizationId: string,
-    @Param('projectId') projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
   ) {
     await this.searchService.reindexProject(projectId, organizationId);
     return {

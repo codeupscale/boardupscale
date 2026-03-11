@@ -86,6 +86,17 @@ export class User {
   })
   notificationPreferences: Record<string, boolean>;
 
+  @Column({ name: 'two_fa_secret', type: 'text', nullable: true })
+  @Exclude()
+  twoFaSecret: string;
+
+  @Column({ name: 'two_fa_enabled', type: 'boolean', default: false })
+  twoFaEnabled: boolean;
+
+  @Column({ name: 'backup_codes', type: 'text', array: true, nullable: true })
+  @Exclude()
+  backupCodes: string[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

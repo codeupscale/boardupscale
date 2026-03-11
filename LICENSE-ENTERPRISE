@@ -1,0 +1,60 @@
+Boardupscale Enterprise Licence
+==============================
+
+Copyright (c) 2026 CodeUpscale. All rights reserved.
+
+This file describes the terms under which Boardupscale Enterprise Edition
+features are made available. The core Boardupscale application is licensed
+separately under the GNU Affero General Public Licence v3.0 (see LICENSE).
+
+
+ENTERPRISE FEATURES
+-------------------
+
+The following features are designated as Enterprise Edition and require a
+valid commercial licence to use in production:
+
+  - SAML 2.0 SSO with per-organisation IdP configuration
+  - SCIM 2.0 automated user provisioning
+  - Custom roles beyond the four system roles
+  - Extended audit log retention (beyond 90 days)
+  - Compliance data export (SOC 2, ISO 27001)
+  - White-labelling and custom branding
+  - Advanced cross-project automation rules
+  - Priority support with guaranteed SLA
+
+
+OBTAINING A LICENCE
+-------------------
+
+To obtain a Boardupscale Enterprise licence, contact:
+
+  Email   : enterprise@boardupscale.com
+  Website : https://boardupscale.com/enterprise
+
+Licences are issued per organisation and may be perpetual or subscription-
+based depending on the agreement.
+
+
+COMMUNITY EDITION
+-----------------
+
+If you do not hold an Enterprise licence, you may use Boardupscale under
+the terms of the AGPL-3.0 (see LICENSE). All core project management
+features — including issue tracking, Scrum/Kanban boards, sprint
+management, time tracking, GitHub integration, webhooks, API access,
+RBAC, and 2FA — are fully available under the Community Edition at no
+cost.
+
+Setting ENTERPRISE_ENABLED=false (the default) ensures you run only
+Community Edition features.
+
+
+DISCLAIMER
+----------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.

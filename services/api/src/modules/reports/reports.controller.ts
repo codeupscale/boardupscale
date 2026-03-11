@@ -12,6 +12,7 @@ import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('reports')
 @ApiBearerAuth()
@@ -24,7 +25,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Get sprint burndown chart data' })
   @ApiQuery({ name: 'sprintId', required: true })
   async getSprintBurndown(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Query('sprintId', ParseUUIDPipe) sprintId: string,
     @OrgId() organizationId: string,
   ) {
@@ -36,7 +37,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Get velocity chart data for recent sprints' })
   @ApiQuery({ name: 'sprintCount', required: false })
   async getVelocity(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query('sprintCount') sprintCount?: string,
   ) {
@@ -50,7 +51,7 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   async getCumulativeFlow(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -62,7 +63,7 @@ export class ReportsController {
   @Get('issue-breakdown')
   @ApiOperation({ summary: 'Get issue breakdown by type, priority, and status' })
   async getIssueBreakdown(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
   ) {
     const data = await this.reportsService.getIssueBreakdown(projectId, organizationId);
@@ -72,7 +73,7 @@ export class ReportsController {
   @Get('assignee-workload')
   @ApiOperation({ summary: 'Get assignee workload distribution' })
   async getAssigneeWorkload(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
   ) {
     const data = await this.reportsService.getAssigneeWorkload(projectId, organizationId);
@@ -84,7 +85,7 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   async getCycleTime(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -97,7 +98,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Get comprehensive sprint report' })
   @ApiQuery({ name: 'sprintId', required: true })
   async getSprintReport(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Query('sprintId', ParseUUIDPipe) sprintId: string,
     @OrgId() organizationId: string,
   ) {
@@ -109,7 +110,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Get sprint burnup chart data' })
   @ApiQuery({ name: 'sprintId', required: true })
   async getSprintBurnup(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Query('sprintId', ParseUUIDPipe) sprintId: string,
     @OrgId() organizationId: string,
   ) {
@@ -123,7 +124,7 @@ export class ReportsController {
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'interval', required: false, enum: ['day', 'week'] })
   async getCreatedVsResolved(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -144,7 +145,7 @@ export class ReportsController {
   @ApiOperation({ summary: 'Export project issues as JSON or CSV' })
   @ApiQuery({ name: 'format', required: false, enum: ['json', 'csv'] })
   async exportIssues(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query('format') format?: string,
     @Res() res?: Response,

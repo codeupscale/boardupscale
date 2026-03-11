@@ -116,12 +116,12 @@ export function VersionList({ projectId }: VersionListProps) {
               )}
               <div className="flex gap-3 mt-1">
                 {version.startDate && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-500">
                     Start: {formatDate(version.startDate)}
                   </span>
                 )}
                 {version.releaseDate && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-500">
                     Release: {formatDate(version.releaseDate)}
                   </span>
                 )}
@@ -158,7 +158,7 @@ export function VersionList({ projectId }: VersionListProps) {
           </div>
         ))}
         {(!versions || versions.length === 0) && (
-          <div className="py-8 text-center text-sm text-gray-400">
+          <div className="py-8 text-center text-sm text-gray-500">
             No versions configured.
           </div>
         )}

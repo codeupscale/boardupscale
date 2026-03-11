@@ -1,0 +1,80 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Before submitting, please search [existing issues](https://github.com/codeupscale/boardupscale/issues) and [discussions](https://github.com/codeupscale/boardupscale/discussions) to avoid duplicates.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem or limitation you are running into. Good feature requests start with a real problem.
+      placeholder: "When I try to do X, I can't because..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature you'd like to see. Be as specific as possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Any workarounds or other approaches you've thought about.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - Issue tracking
+        - Agile boards (Scrum / Kanban)
+        - Sprint management
+        - Time tracking
+        - Reporting & dashboards
+        - Search & filters
+        - Notifications
+        - GitHub integration
+        - Webhooks & API
+        - Automation rules
+        - Authentication & SSO
+        - Access control (RBAC)
+        - Pages / Docs
+        - AI features
+        - Billing & subscriptions
+        - Admin / settings
+        - Performance
+        - Developer experience
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you?
+      options:
+        - Nice to have
+        - Would significantly improve my workflow
+        - Blocking — I can't use Boardupscale without this
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you like to contribute this feature?
+      options:
+        - label: Yes, I'd like to open a PR for this
+        - label: I can help with design / spec, but not implementation
+        - label: No, I'd like the maintainers to implement it

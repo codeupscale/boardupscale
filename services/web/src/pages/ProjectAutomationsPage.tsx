@@ -38,9 +38,9 @@ function getTriggerLabel(triggerType: string): string {
 }
 
 export function ProjectAutomationsPage() {
-  const { id: projectId } = useParams<{ id: string }>()
-  const { data: project } = useProject(projectId!)
-  const { data: rules, isLoading } = useAutomationRules(projectId!)
+  const { key: projectKey } = useParams<{ key: string }>()
+  const { data: project } = useProject(projectKey!)
+  const { data: rules, isLoading } = useAutomationRules(projectKey!)
 
   const createRule = useCreateRule()
   const updateRule = useUpdateRule()
@@ -98,7 +98,7 @@ export function ProjectAutomationsPage() {
       )
     } else {
       createRule.mutate(
-        { projectId: projectId!, ...payload },
+        { projectId: projectKey!, ...payload },
         { onSuccess: () => setShowEditor(false) },
       )
     }
@@ -117,7 +117,7 @@ export function ProjectAutomationsPage() {
         title="Automations"
         breadcrumbs={[
           { label: 'Projects', href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: 'Automations' },
         ]}
         actions={
@@ -186,7 +186,7 @@ export function ProjectAutomationsPage() {
                     {rule.description && (
                       <p className="text-sm text-gray-500 mb-2">{rule.description}</p>
                     )}
-                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span>Trigger: {getTriggerLabel(rule.triggerType)}</span>
                       <span>{rule.conditions?.length || 0} condition(s)</span>
                       <span>{rule.actions?.length || 0} action(s)</span>
@@ -324,7 +324,7 @@ export function ProjectAutomationsPage() {
           onClose={() => setShowDeleteConfirm(null)}
           onConfirm={() => {
             deleteRule.mutate(
-              { id: showDeleteConfirm, projectId: projectId! },
+              { id: showDeleteConfirm, projectId: projectKey! },
               { onSuccess: () => setShowDeleteConfirm(null) },
             )
           }}
@@ -383,7 +383,7 @@ export function ProjectAutomationsPage() {
                   <span className="text-gray-600">
                     {cr.field} {cr.operator} {JSON.stringify(cr.expected)}
                   </span>
-                  <span className="text-gray-400">
+                  <span className="text-gray-500">
                     (actual: {JSON.stringify(cr.actual)})
                   </span>
                 </div>

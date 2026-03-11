@@ -9,7 +9,7 @@ services:
       - api
       - web
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   web:
@@ -22,7 +22,7 @@ services:
     depends_on:
       - api
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   api:
@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://projectflow:projectflow@postgres:5432/projectflow
+      - DATABASE_URL=postgresql://boardupscale:boardupscale@postgres:5432/boardupscale
       - REDIS_URL=redis://redis:6379
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - MINIO_ENDPOINT=minio
@@ -39,16 +39,35 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET=projectflow
+      - MINIO_BUCKET=boardupscale
       - JWT_SECRET=${JWT_SECRET:-change-in-production}
       - JWT_EXPIRY=15m
       - JWT_REFRESH_EXPIRY=7d
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
-      - SMTP_FROM=noreply@projectflow.local
+      - SMTP_FROM=noreply@boardupscale.local
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8091}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8091}
       - PORT=4000
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      - AI_MAX_TOKENS_PER_ORG_PER_DAY=${AI_MAX_TOKENS_PER_ORG_PER_DAY:-100000}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_APP_WEBHOOK_SECRET=${GITHUB_APP_WEBHOOK_SECRET:-}
+      - SAML_ENTRY_POINT=${SAML_ENTRY_POINT:-}
+      - SAML_ISSUER=${SAML_ISSUER:-boardupscale}
+      - SAML_CERT=${SAML_CERT:-}
+      - SAML_CALLBACK_URL=${SAML_CALLBACK_URL:-}
+      - ENTERPRISE_ENABLED=${ENTERPRISE_ENABLED:-false}
+      - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,7 +76,7 @@ services:
       minio:
         condition: service_started
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   worker:
@@ -66,7 +85,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://projectflow:projectflow@postgres:5432/projectflow
+      - DATABASE_URL=postgresql://boardupscale:boardupscale@postgres:5432/boardupscale
       - REDIS_URL=redis://redis:6379
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - MINIO_ENDPOINT=minio
@@ -74,36 +93,39 @@ services:
       - MINIO_USE_SSL=false
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
-      - MINIO_BUCKET=projectflow
+      - MINIO_BUCKET=boardupscale
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
-      - SMTP_FROM=noreply@projectflow.local
+      - SMTP_FROM=noreply@boardupscale.local
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8091}
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     environment:
-      - POSTGRES_DB=projectflow
-      - POSTGRES_USER=projectflow
-      - POSTGRES_PASSWORD=projectflow
+      - POSTGRES_DB=boardupscale
+      - POSTGRES_USER=boardupscale
+      - POSTGRES_PASSWORD=boardupscale
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     ports:
       - '5435:5432'
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U projectflow']
+      test: ['CMD-SHELL', 'pg_isready -U boardupscale']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -115,7 +137,7 @@ services:
     ports:
       - '6381:6379'
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
@@ -134,7 +156,7 @@ services:
     ports:
       - '9202:9200'
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   minio:
@@ -149,7 +171,7 @@ services:
       - '9010:9000'
       - '9011:9001'
     networks:
-      - projectflow
+      - boardupscale
     restart: unless-stopped
 
   mailhog:
@@ -158,7 +180,7 @@ services:
       - '1027:1025'
       - '8026:8025'
     networks:
-      - projectflow
+      - boardupscale
 
 volumes:
   postgres_data:
@@ -167,5 +189,5 @@ volumes:
   minio_data:
 
 networks:
-  projectflow:
+  boardupscale:
     driver: bridge

@@ -15,6 +15,8 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { generateSecret, generateURI, verify as otpVerify } from 'otplib';
+import * as QRCode from 'qrcode';
 import { UsersService } from '../users/users.service';
 import { PasswordPolicyService } from './password-policy.service';
 import { EmailService } from '../notifications/email.service';
@@ -152,6 +154,18 @@ export class AuthService {
   // ── Login ─────────────────────────────────────────────────────────────────
 
   async login(user: any, ipAddress?: string, userAgent?: string) {
+    // Check if 2FA is enabled
+    if (user.twoFaEnabled) {
+      const tempToken = this.jwtService.sign(
+        { sub: user.id, purpose: '2fa' },
+        {
+          secret: this.configService.get<string>('jwt.secret'),
+          expiresIn: '5m',
+        },
+      );
+      return { requiresTwoFactor: true, tempToken };
+    }
+
     await this.usersService.updateLastLogin(user.id);
     const tokens = await this.generateTokens(user, ipAddress, userAgent);
 
@@ -450,6 +464,278 @@ export class AuthService {
       oauthProvider: provider,
       oauthId: profile.oauthId,
       role: 'owner',
+    });
+
+    return user;
+  }
+
+  // ── Two-Factor Authentication ────────────────────────────────────────────
+
+  async setupTwoFactor(userId: string) {
+    const user = await this.usersService.findById(userId);
+    const secret = generateSecret();
+
+    // Store secret temporarily (not enabled yet until confirmed)
+    await this.usersService.update(userId, { twoFaSecret: secret } as any);
+
+    const appName = this.configService.get<string>('app.name') || 'Boardupscale';
+    const otpauthUrl = generateURI({ secret, issuer: appName, label: user.email });
+    const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
+
+    return { secret, qrCodeUrl };
+  }
+
+  async confirmTwoFactor(userId: string, code: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user.twoFaSecret) {
+      throw new BadRequestException('2FA setup not initiated. Call setup first.');
+    }
+
+    const valid = await otpVerify({ token: code, secret: user.twoFaSecret });
+    if (!valid) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    // Generate 10 backup codes
+    const rawBackupCodes: string[] = [];
+    const hashedBackupCodes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = crypto.randomBytes(4).toString('hex'); // 8-char hex
+      rawBackupCodes.push(code);
+      hashedBackupCodes.push(await bcrypt.hash(code, 10));
+    }
+
+    await this.usersService.update(userId, {
+      twoFaEnabled: true,
+      backupCodes: hashedBackupCodes,
+    } as any);
+
+    return { backupCodes: rawBackupCodes };
+  }
+
+  async verifyTwoFactor(
+    tempToken: string,
+    code: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(tempToken, {
+        secret: this.configService.get<string>('jwt.secret'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired 2FA token');
+    }
+
+    if (payload.purpose !== '2fa') {
+      throw new UnauthorizedException('Invalid token purpose');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+    if (!user || !user.twoFaEnabled) {
+      throw new UnauthorizedException('2FA is not enabled for this user');
+    }
+
+    // Try TOTP first
+    const totpValid = await otpVerify({ token: code, secret: user.twoFaSecret });
+    if (!totpValid) {
+      // Try backup codes
+      const backupUsed = await this.verifyBackupCode(user, code);
+      if (!backupUsed) {
+        throw new UnauthorizedException('Invalid 2FA code');
+      }
+    }
+
+    await this.usersService.updateLastLogin(user.id);
+    const tokens = await this.generateTokens(user, ipAddress, userAgent);
+
+    this.auditService.log(
+      user.organizationId,
+      user.id,
+      'auth.login.2fa',
+      'user',
+      user.id,
+      { email: user.email },
+      ipAddress,
+    );
+
+    return { user, ...tokens };
+  }
+
+  async disableTwoFactor(userId: string, password: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user.passwordHash) {
+      throw new BadRequestException('Cannot verify password for OAuth-only account');
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    await this.usersService.update(userId, {
+      twoFaEnabled: false,
+      twoFaSecret: null,
+      backupCodes: null,
+    } as any);
+
+    return { message: '2FA has been disabled' };
+  }
+
+  async regenerateBackupCodes(userId: string, password: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user.twoFaEnabled) {
+      throw new BadRequestException('2FA is not enabled');
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    const rawBackupCodes: string[] = [];
+    const hashedBackupCodes: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const code = crypto.randomBytes(4).toString('hex');
+      rawBackupCodes.push(code);
+      hashedBackupCodes.push(await bcrypt.hash(code, 10));
+    }
+
+    await this.usersService.update(userId, {
+      backupCodes: hashedBackupCodes,
+    } as any);
+
+    return { backupCodes: rawBackupCodes };
+  }
+
+  private async verifyBackupCode(user: any, code: string): Promise<boolean> {
+    if (!user.backupCodes || user.backupCodes.length === 0) {
+      return false;
+    }
+
+    for (let i = 0; i < user.backupCodes.length; i++) {
+      const match = await bcrypt.compare(code, user.backupCodes[i]);
+      if (match) {
+        // Remove used backup code
+        const updatedCodes = [...user.backupCodes];
+        updatedCodes.splice(i, 1);
+        await this.usersService.update(user.id, {
+          backupCodes: updatedCodes,
+        } as any);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ── Invitation Accept ──────────────────────────────────────────────────
+
+  async validateInvitation(rawToken: string): Promise<{ email: string; organizationName: string }> {
+    const tokenHash = this.hashToken(rawToken);
+    const user = await this.usersService.findByEmailVerificationToken(tokenHash);
+
+    if (!user) {
+      throw new BadRequestException('Invalid invitation token');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('This invitation has already been accepted');
+    }
+
+    if (
+      user.emailVerificationExpiry &&
+      new Date(user.emailVerificationExpiry) < new Date()
+    ) {
+      throw new BadRequestException('Invitation has expired. Please ask your admin to resend.');
+    }
+
+    const org = await this.organizationRepository.findOne({
+      where: { id: user.organizationId },
+    });
+
+    return {
+      email: user.email,
+      organizationName: org?.name || '',
+    };
+  }
+
+  async acceptInvitation(
+    rawToken: string,
+    password: string,
+    displayName: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    this.passwordPolicyService.validate(password);
+
+    const tokenHash = this.hashToken(rawToken);
+    const user = await this.usersService.findByEmailVerificationToken(tokenHash);
+
+    if (!user) {
+      throw new BadRequestException('Invalid invitation token');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('This invitation has already been accepted');
+    }
+
+    if (
+      user.emailVerificationExpiry &&
+      new Date(user.emailVerificationExpiry) < new Date()
+    ) {
+      throw new BadRequestException('Invitation has expired. Please ask your admin to resend.');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await this.usersService.activateInvitedUser(user.id, passwordHash, displayName);
+
+    const activatedUser = await this.usersService.findById(user.id);
+    const tokens = await this.generateTokens(activatedUser, ipAddress, userAgent);
+
+    this.auditService.log(
+      activatedUser.organizationId,
+      activatedUser.id,
+      'auth.invitation_accepted',
+      'user',
+      activatedUser.id,
+      { email: activatedUser.email },
+      ipAddress,
+    );
+
+    return { user: activatedUser, ...tokens };
+  }
+
+  // ── SAML SSO ────────────────────────────────────────────────────────────
+
+  async findOrCreateSamlUser(
+    orgId: string,
+    profile: { email: string; displayName?: string },
+  ) {
+    // First try to find by email within the organization
+    const existingUser = await this.usersService.findByEmail(profile.email);
+
+    if (existingUser) {
+      // If user exists in the same org, just update last login
+      if (existingUser.organizationId === orgId) {
+        await this.usersService.updateLastLogin(existingUser.id);
+        return existingUser;
+      }
+      // If user exists in a different org, we can't auto-link across orgs for security
+      // Just return the existing user — org-scoped access will be handled by guards
+      await this.usersService.updateLastLogin(existingUser.id);
+      return existingUser;
+    }
+
+    // Create a new user in the organization (no password — SSO-only)
+    const user = await this.usersService.createOAuthUser({
+      organizationId: orgId,
+      email: profile.email,
+      displayName: profile.displayName || profile.email.split('@')[0],
+      avatarUrl: null,
+      oauthProvider: 'saml',
+      oauthId: profile.email, // Use email as the SAML identifier
+      role: 'member',
     });
 
     return user;

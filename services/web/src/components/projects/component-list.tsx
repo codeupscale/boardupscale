@@ -119,7 +119,7 @@ export function ComponentList({ projectId }: ComponentListProps) {
           </div>
         ))}
         {(!components || components.length === 0) && (
-          <div className="py-8 text-center text-sm text-gray-400">
+          <div className="py-8 text-center text-sm text-gray-500">
             No components configured.
           </div>
         )}

@@ -14,11 +14,13 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BoardsService } from './boards.service';
 import { CreateStatusDto } from './dto/create-status.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('boards')
 @ApiBearerAuth()
@@ -36,7 +38,7 @@ export class BoardsController {
   @ApiQuery({ name: 'search', required: false, description: 'Search text in titles' })
   @ApiQuery({ name: 'sprintId', required: false, description: 'Filter by sprint (use "backlog" for unassigned)' })
   async getBoard(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Query() query: BoardQueryDto,
   ) {
@@ -47,7 +49,7 @@ export class BoardsController {
   @Post('statuses')
   @ApiOperation({ summary: 'Create a new status column' })
   async createStatus(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Body() dto: CreateStatusDto,
   ) {
@@ -57,10 +59,10 @@ export class BoardsController {
   @Patch('statuses/:statusId')
   @ApiOperation({ summary: 'Update a status column' })
   async updateStatus(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Param('statusId', ParseUUIDPipe) statusId: string,
     @OrgId() organizationId: string,
-    @Body() dto: CreateStatusDto,
+    @Body() dto: UpdateStatusDto,
   ) {
     return this.boardsService.updateStatus(projectId, statusId, organizationId, dto);
   }
@@ -69,7 +71,7 @@ export class BoardsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a status column (issues moved to first column)' })
   async deleteStatus(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Param('statusId', ParseUUIDPipe) statusId: string,
     @OrgId() organizationId: string,
   ) {
@@ -80,7 +82,7 @@ export class BoardsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Reorder issues on the board (drag & drop)' })
   async reorderIssues(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Body() dto: ReorderIssuesDto,
   ) {

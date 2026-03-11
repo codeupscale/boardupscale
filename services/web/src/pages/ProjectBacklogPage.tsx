@@ -1,5 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from '@hello-pangea/dnd'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ChevronDown,
   ChevronRight,
@@ -7,11 +14,23 @@ import {
   Play,
   CheckCircle,
   Trash2,
+  GripVertical,
+  Target,
+  Pencil,
+  Check,
+  X,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useProject, useProjects } from '@/hooks/useProjects'
-import { useSprints, useCreateSprint, useStartSprint, useCompleteSprint, useDeleteSprint } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import {
+  useSprints,
+  useCreateSprint,
+  useStartSprint,
+  useCompleteSprint,
+  useDeleteSprint,
+  useUpdateSprint,
+} from '@/hooks/useSprints'
+import { useIssues, useCreateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
@@ -20,252 +39,653 @@ import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogContent,
+} from '@/components/ui/dialog'
 import { IssueForm } from '@/components/issues/issue-form'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Avatar } from '@/components/ui/avatar'
+import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { PriorityBadge } from '@/components/issues/priority-badge'
+import { StatusBadge } from '@/components/issues/status-badge'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
+
+/* ------------------------------------------------------------------ */
+/*  Draggable Issue Row                                                */
+/* ------------------------------------------------------------------ */
+
+function DraggableIssueRow({
+  issue,
+  index,
+  selectable,
+}: {
+  issue: Issue
+  index: number
+  selectable?: boolean
+}) {
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const toggleIssue = useSelectionStore((s) => s.toggleIssue)
+  const isSelected = selectedIssueIds.has(issue.id)
+
+  return (
+    <Draggable draggableId={issue.id} index={index}>
+      {(provided, snapshot) => (
+        <tr
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={cn(
+            'group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
+            selectable && isSelected && 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+            snapshot.isDragging && 'bg-blue-50 dark:bg-blue-900/30 shadow-lg rounded-lg border border-blue-200 dark:border-blue-700',
+          )}
+          style={{
+            ...provided.draggableProps.style,
+            // Remove table layout issues when dragging
+            ...(snapshot.isDragging ? { display: 'flex', alignItems: 'center' } : {}),
+          }}
+        >
+          {/* Drag Handle */}
+          <td
+            className="px-1 py-3 w-8"
+            {...provided.dragHandleProps}
+          >
+            <GripVertical className="h-4 w-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+          </td>
+
+          {/* Checkbox */}
+          {selectable && (
+            <td className="px-2 py-3 w-8">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  toggleIssue(issue.id)
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+            </td>
+          )}
+
+          {/* Type + Key */}
+          <td className="px-3 py-3 w-28">
+            <Link
+              to={`/issues/${issue.id}`}
+              className="flex items-center gap-1.5 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <IssueTypeIcon type={issue.type} />
+              <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium">{issue.key}</span>
+            </Link>
+          </td>
+
+          {/* Title */}
+          <td className="px-3 py-3">
+            <Link
+              to={`/issues/${issue.id}`}
+              className="text-sm text-gray-900 dark:text-gray-100 font-medium line-clamp-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {issue.title}
+            </Link>
+          </td>
+
+          {/* Priority */}
+          <td className="px-3 py-3 w-24">
+            <PriorityBadge priority={issue.priority} />
+          </td>
+
+          {/* Status */}
+          <td className="px-3 py-3 w-32">
+            <StatusBadge status={issue.status} />
+          </td>
+
+          {/* Assignee */}
+          <td className="px-3 py-3 w-12">
+            {issue.assignee ? (
+              <Avatar user={issue.assignee} size="xs" />
+            ) : (
+              <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600" />
+            )}
+          </td>
+
+          {/* Story Points */}
+          <td className="px-3 py-3 w-14 text-center">
+            {issue.storyPoints != null ? (
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                {issue.storyPoints}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-300 dark:text-gray-600">--</span>
+            )}
+          </td>
+        </tr>
+      )}
+    </Draggable>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sprint Section                                                     */
+/* ------------------------------------------------------------------ */
 
 function SprintSection({
   sprint,
   issues,
   projectId,
-  statuses,
-  allSprints,
 }: {
   sprint: any
   issues: Issue[]
   projectId: string
-  statuses: any[]
-  allSprints: any[]
 }) {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false)
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [editingGoal, setEditingGoal] = useState(false)
+  const [goalText, setGoalText] = useState(sprint.goal || '')
 
   const startSprint = useStartSprint()
   const completeSprint = useCompleteSprint()
   const deleteSprint = useDeleteSprint()
+  const updateSprint = useUpdateSprint()
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const selectAll = useSelectionStore((s) => s.selectAll)
 
   const isActive = sprint.status === SprintStatus.ACTIVE
+  const isPlanned = sprint.status === SprintStatus.PLANNED
 
   const issueIds = issues.map((i) => i.id)
   const allSelected = issueIds.length > 0 && issueIds.every((id) => selectedIssueIds.has(id))
   const someSelected = issueIds.some((id) => selectedIssueIds.has(id))
 
-  return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* Sprint Header */}
-      <div
-        className={cn(
-          'flex items-center justify-between px-4 py-3 cursor-pointer',
-          isActive ? 'bg-blue-50 border-b border-blue-100' : 'bg-gray-50 border-b border-gray-100',
-        )}
-        onClick={() => setCollapsed((c) => !c)}
-      >
-        <div className="flex items-center gap-2">
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-gray-400" />
-          )}
-          <h3 className="text-sm font-semibold text-gray-900">{sprint.name}</h3>
-          {isActive && (
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-              {t('sprints.active')}
-            </span>
-          )}
-          <span className="text-xs text-gray-400">
-            ({issues.length} {issues.length !== 1 ? t('nav.issues').toLowerCase() : t('projects.issue')})
-          </span>
-          {sprint.startDate && sprint.endDate && (
-            <span className="text-xs text-gray-400">
-              {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
-            </span>
-          )}
-        </div>
-        <div
-          className="flex items-center gap-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {sprint.status === SprintStatus.PLANNED && (
-            <Button size="sm" variant="outline" onClick={() => setShowConfirm('start')}>
-              <Play className="h-3.5 w-3.5" />
-              {t('sprints.startSprint')}
-            </Button>
-          )}
-          {isActive && (
-            <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
-              <CheckCircle className="h-3.5 w-3.5" />
-              {t('sprints.complete')}
-            </Button>
-          )}
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => setShowConfirm('delete')}
-            className="text-gray-400 hover:text-red-600"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
+  // Story points calculation
+  const totalPoints = issues.reduce((sum, i) => sum + (i.storyPoints || 0), 0)
+  const completedPoints = issues
+    .filter((i) => i.status?.category === 'done')
+    .reduce((sum, i) => sum + (i.storyPoints || 0), 0)
 
-      {/* Issues */}
-      {!collapsed && (
-        <div>
-          {issues.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-4 py-2 w-10">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someSelected && !allSelected
+  const handleSaveGoal = () => {
+    updateSprint.mutate(
+      { projectId, sprintId: sprint.id, goal: goalText },
+      { onSuccess: () => setEditingGoal(false) },
+    )
+  }
+
+  return (
+    <Droppable droppableId={sprint.id} type="ISSUE">
+      {(provided, snapshot) => (
+        <div
+          className={cn(
+            'border rounded-xl overflow-hidden transition-colors',
+            snapshot.isDraggingOver
+              ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
+              : 'border-gray-200 dark:border-gray-700',
+          )}
+        >
+          {/* Sprint Header */}
+          <div
+            className={cn(
+              'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
+              isActive
+                ? 'bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800'
+                : 'bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700',
+            )}
+            onClick={() => setCollapsed((c) => !c)}
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+              )}
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{sprint.name}</h3>
+              {isActive && (
+                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full flex-shrink-0">
+                  {t('sprints.active')}
+                </span>
+              )}
+              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
+              </span>
+
+              {/* Story Points Summary */}
+              {totalPoints > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">
+                  <Target className="h-3 w-3" />
+                  {completedPoints}/{totalPoints} SP
+                </span>
+              )}
+
+              {sprint.startDate && sprint.endDate && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 hidden sm:inline">
+                  {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
+                </span>
+              )}
+            </div>
+            <div
+              className="flex items-center gap-2 flex-shrink-0 ml-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isPlanned && (
+                <Button size="sm" variant="outline" onClick={() => setShowConfirm('start')}>
+                  <Play className="h-3.5 w-3.5" />
+                  {t('sprints.startSprint')}
+                </Button>
+              )}
+              {isActive && (
+                <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  {t('sprints.complete')}
+                </Button>
+              )}
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                onClick={() => setShowConfirm('delete')}
+                className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Sprint Goal */}
+          {!collapsed && (sprint.goal || editingGoal) && (
+            <div className="px-4 py-2 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-700">
+              {editingGoal ? (
+                <div className="flex items-start gap-2">
+                  <Textarea
+                    value={goalText}
+                    onChange={(e) => setGoalText(e.target.value)}
+                    placeholder="Sprint goal..."
+                    rows={2}
+                    className="text-sm flex-1"
+                    autoFocus
+                  />
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={handleSaveGoal}
+                      className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingGoal(false)
+                        setGoalText(sprint.goal || '')
                       }}
-                      onChange={() => selectAll(issueIds)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </th>
-                  <th colSpan={6} />
-                </tr>
-              </thead>
-              <tbody>
-                {issues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} selectable />
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="py-6 text-center text-sm text-gray-400">
-              {t('issues.noIssuesInSprint')}
+                      className="text-gray-400 dark:text-gray-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="group flex items-start gap-2 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingGoal(true)
+                  }}
+                >
+                  <Target className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-gray-600 dark:text-gray-400 flex-1">
+                    <span className="font-medium text-gray-500 dark:text-gray-400">Goal:</span>{' '}
+                    {sprint.goal}
+                  </p>
+                  <Pencil className="h-3 w-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                </div>
+              )}
             </div>
           )}
+
+          {/* Add goal button when no goal exists */}
+          {!collapsed && !sprint.goal && !editingGoal && (
+            <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <button
+                onClick={() => setEditingGoal(true)}
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                Add sprint goal
+              </button>
+            </div>
+          )}
+
+          {/* Issues */}
+          {!collapsed && (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={cn(
+                'min-h-[48px] transition-colors',
+                snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
+              )}
+            >
+              {issues.length > 0 ? (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="w-8" />
+                      <th className="px-2 py-2 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someSelected && !allSelected
+                          }}
+                          onChange={() => selectAll(issueIds)}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </th>
+                      <th colSpan={5} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {issues.map((issue, index) => (
+                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                    ))}
+                    {provided.placeholder}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                  {provided.placeholder}
+                  Drag issues here or create new ones
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Collapsed placeholder */}
+          {collapsed && (
+            <div ref={provided.innerRef} {...provided.droppableProps} className="hidden">
+              {provided.placeholder}
+            </div>
+          )}
+
+          {/* Start Sprint Confirm */}
+          <Dialog
+            open={showConfirm === 'start'}
+            onClose={() => setShowConfirm(null)}
+            className="max-w-sm"
+          >
+            <DialogHeader onClose={() => setShowConfirm(null)}>
+              <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
+            </DialogHeader>
+            <DialogContent className="space-y-3">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
+              </div>
+              <Input
+                label={t('sprints.startDate')}
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <Input
+                label={t('sprints.endDate')}
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  isLoading={startSprint.isPending}
+                  onClick={() =>
+                    startSprint.mutate(
+                      { projectId, sprintId: sprint.id, startDate, endDate },
+                      { onSuccess: () => setShowConfirm(null) },
+                    )
+                  }
+                >
+                  {t('sprints.start')}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <ConfirmDialog
+            open={showConfirm === 'complete'}
+            onClose={() => setShowConfirm(null)}
+            onConfirm={() =>
+              completeSprint.mutate(
+                { projectId, sprintId: sprint.id },
+                { onSuccess: () => setShowConfirm(null) },
+              )
+            }
+            title={t('sprints.completeSprint')}
+            description={`Complete ${sprint.name}? ${issues.filter((i) => i.status?.category !== 'done').length} incomplete issues will be moved to backlog.`}
+            confirmLabel={t('sprints.completeSprint')}
+            isLoading={completeSprint.isPending}
+          />
+
+          <ConfirmDialog
+            open={showConfirm === 'delete'}
+            onClose={() => setShowConfirm(null)}
+            onConfirm={() =>
+              deleteSprint.mutate(
+                { projectId, sprintId: sprint.id },
+                { onSuccess: () => setShowConfirm(null) },
+              )
+            }
+            title={t('sprints.deleteSprint')}
+            description={t('sprints.deleteSprintConfirm')}
+            confirmLabel={t('common.delete')}
+            destructive
+            isLoading={deleteSprint.isPending}
+          />
         </div>
       )}
-
-      {/* Start Sprint Confirm */}
-      <Dialog
-        open={showConfirm === 'start'}
-        onClose={() => setShowConfirm(null)}
-        className="max-w-sm"
-      >
-        <DialogHeader onClose={() => setShowConfirm(null)}>
-          <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-3">
-          <Input
-            label={t('sprints.startDate')}
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <Input
-            label={t('sprints.endDate')}
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowConfirm(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              isLoading={startSprint.isPending}
-              onClick={() =>
-                startSprint.mutate(
-                  { projectId, sprintId: sprint.id, startDate, endDate },
-                  { onSuccess: () => setShowConfirm(null) },
-                )
-              }
-            >
-              {t('sprints.start')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <ConfirmDialog
-        open={showConfirm === 'complete'}
-        onClose={() => setShowConfirm(null)}
-        onConfirm={() =>
-          completeSprint.mutate(
-            { projectId, sprintId: sprint.id },
-            { onSuccess: () => setShowConfirm(null) },
-          )
-        }
-        title={t('sprints.completeSprint')}
-        description={t('sprints.completeSprintConfirm')}
-        confirmLabel={t('sprints.completeSprint')}
-        isLoading={completeSprint.isPending}
-      />
-
-      <ConfirmDialog
-        open={showConfirm === 'delete'}
-        onClose={() => setShowConfirm(null)}
-        onConfirm={() =>
-          deleteSprint.mutate(
-            { projectId, sprintId: sprint.id },
-            { onSuccess: () => setShowConfirm(null) },
-          )
-        }
-        title={t('sprints.deleteSprint')}
-        description={t('sprints.deleteSprintConfirm')}
-        confirmLabel={t('common.delete')}
-        destructive
-        isLoading={deleteSprint.isPending}
-      />
-    </div>
+    </Droppable>
   )
 }
 
+/* ------------------------------------------------------------------ */
+/*  Backlog Section                                                    */
+/* ------------------------------------------------------------------ */
+
+function BacklogSection({
+  issues,
+  onCreateIssue,
+}: {
+  issues: Issue[]
+  onCreateIssue: () => void
+}) {
+  const { t } = useTranslation()
+  const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
+  const selectAll = useSelectionStore((s) => s.selectAll)
+
+  const backlogIds = issues.map((i) => i.id)
+  const allBacklogSelected = backlogIds.length > 0 && backlogIds.every((id) => selectedIssueIds.has(id))
+  const someBacklogSelected = backlogIds.some((id) => selectedIssueIds.has(id))
+
+  const totalPoints = issues.reduce((sum, i) => sum + (i.storyPoints || 0), 0)
+
+  return (
+    <Droppable droppableId="backlog" type="ISSUE">
+      {(provided, snapshot) => (
+        <div
+          className={cn(
+            'border rounded-xl overflow-hidden transition-colors',
+            snapshot.isDraggingOver
+              ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
+              : 'border-gray-200 dark:border-gray-700',
+          )}
+        >
+          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {t('sprints.backlog')}
+              </h3>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
+              </span>
+              {totalPoints > 0 && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                  <Target className="h-3 w-3" />
+                  {totalPoints} SP
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={cn(
+              'min-h-[48px] transition-colors',
+              snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
+            )}
+          >
+            {issues.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="w-8" />
+                    <th className="px-2 py-2 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allBacklogSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
+                        }}
+                        onChange={() => selectAll(backlogIds)}
+                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th colSpan={5} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {issues.map((issue, index) => (
+                    <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                  ))}
+                  {provided.placeholder}
+                </tbody>
+              </table>
+            ) : (
+              <EmptyState
+                title={t('sprints.backlogEmpty')}
+                description={t('sprints.backlogEmptyDesc')}
+                action={{ label: t('issues.createIssue'), onClick: onCreateIssue }}
+              />
+            )}
+            {issues.length > 0 && <span className="hidden">{provided.placeholder}</span>}
+          </div>
+        </div>
+      )}
+    </Droppable>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
 export function ProjectBacklogPage() {
   const { t } = useTranslation()
-  const { id: projectId } = useParams<{ id: string }>()
+  const { key: projectKey } = useParams<{ key: string }>()
+  const qc = useQueryClient()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
   const [sprintName, setSprintName] = useState('')
+  const [sprintGoal, setSprintGoal] = useState('')
 
-  const { data: project } = useProject(projectId!)
+  const { data: project } = useProject(projectKey!)
   const { data: projects } = useProjects()
-  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectId!)
-  const { data: board } = useBoard(projectId!)
+  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!)
+  const { data: board } = useBoard(projectKey!)
   const { data: users } = useUsers()
-  const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectId! })
+  const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectKey! })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
+  const moveIssue = useMoveIssueSprint()
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
-  const selectAll = useSelectionStore((s) => s.selectAll)
   const clearSelection = useSelectionStore((s) => s.clearSelection)
 
   const allIssues = issuesData?.data || []
 
-  const activeSprints = sprints?.filter((s) => s.status !== SprintStatus.COMPLETED) || []
+  const activeSprints = useMemo(
+    () => sprints?.filter((s) => s.status !== SprintStatus.COMPLETED) || [],
+    [sprints],
+  )
 
-  const getSprintIssues = (sprintId: string) =>
-    allIssues.filter((i) => i.sprintId === sprintId)
+  const getSprintIssues = useCallback(
+    (sprintId: string) => allIssues.filter((i) => i.sprintId === sprintId),
+    [allIssues],
+  )
 
-  const backlogIssues = allIssues.filter((i) => !i.sprintId)
-
-  const backlogIds = backlogIssues.map((i) => i.id)
-  const allBacklogSelected = backlogIds.length > 0 && backlogIds.every((id) => selectedIssueIds.has(id))
-  const someBacklogSelected = backlogIds.some((id) => selectedIssueIds.has(id))
+  const backlogIssues = useMemo(
+    () => allIssues.filter((i) => !i.sprintId),
+    [allIssues],
+  )
 
   // Clear selection on unmount
   useEffect(() => {
     return () => clearSelection()
   }, [clearSelection])
+
+  /* ---- Drag-and-drop handler ---- */
+  const handleDragEnd = useCallback(
+    (result: DropResult) => {
+      const { destination, source, draggableId } = result
+
+      if (!destination) return
+      if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+      const sourceSprintId = source.droppableId === 'backlog' ? null : source.droppableId
+      const destSprintId = destination.droppableId === 'backlog' ? null : destination.droppableId
+
+      // Only fire API call if the sprint changed
+      if (sourceSprintId !== destSprintId) {
+        // Optimistic update: mutate the cached issues data
+        qc.setQueryData(['issues', { projectId: projectKey! }], (old: any) => {
+          if (!old?.data) return old
+          return {
+            ...old,
+            data: old.data.map((issue: Issue) =>
+              issue.id === draggableId ? { ...issue, sprintId: destSprintId } : issue,
+            ),
+          }
+        })
+
+        // Fire the update (silent — no toast)
+        moveIssue.mutate(
+          { id: draggableId, sprintId: destSprintId },
+          {
+            onError: () => {
+              // Revert on error
+              qc.invalidateQueries({ queryKey: ['issues'] })
+            },
+            onSuccess: () => {
+              qc.invalidateQueries({ queryKey: ['sprints', projectKey] })
+            },
+          },
+        )
+      }
+    },
+    [projectKey, qc, moveIssue],
+  )
 
   if (sprintsLoading || issuesLoading) return <LoadingPage />
 
@@ -275,7 +695,7 @@ export function ProjectBacklogPage() {
         title={t('nav.backlog')}
         breadcrumbs={[
           { label: t('nav.projects'), href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: t('nav.backlog') },
         ]}
         actions={
@@ -292,62 +712,43 @@ export function ProjectBacklogPage() {
         }
       />
 
-      <div className="p-6 space-y-4">
-        {/* Sprints */}
-        {activeSprints.map((sprint) => (
-          <SprintSection
-            key={sprint.id}
-            sprint={sprint}
-            issues={getSprintIssues(sprint.id)}
-            projectId={projectId!}
-            statuses={board?.statuses || []}
-            allSprints={activeSprints}
-          />
-        ))}
-
-        {/* Backlog */}
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-900">
-              {t('sprints.backlog')}{' '}
-              <span className="text-gray-400 font-normal">
-                ({backlogIssues.length} {backlogIssues.length !== 1 ? t('nav.issues').toLowerCase() : t('projects.issue')})
+      {/* Drag-and-Drop Context */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+          {/* Summary Bar */}
+          {activeSprints.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
-            </h3>
-          </div>
-          {backlogIssues.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-4 py-2 w-10">
-                    <input
-                      type="checkbox"
-                      checked={allBacklogSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
-                      }}
-                      onChange={() => selectAll(backlogIds)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                  </th>
-                  <th colSpan={6} />
-                </tr>
-              </thead>
-              <tbody>
-                {backlogIssues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} selectable />
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <EmptyState
-              title={t('sprints.backlogEmpty')}
-              description={t('sprints.backlogEmptyDesc')}
-              action={{ label: t('issues.createIssue'), onClick: () => setShowCreateIssue(true) }}
-            />
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span>{allIssues.length} total issues</span>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span>{backlogIssues.length} in backlog</span>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                Drag issues between sprints to plan
+              </span>
+            </div>
           )}
+
+          {/* Sprint Sections */}
+          {activeSprints.map((sprint) => (
+            <SprintSection
+              key={sprint.id}
+              sprint={sprint}
+              issues={getSprintIssues(sprint.id)}
+              projectId={projectKey!}
+            />
+          ))}
+
+          {/* Backlog Section */}
+          <BacklogSection
+            issues={backlogIssues}
+            onCreateIssue={() => setShowCreateIssue(true)}
+          />
         </div>
-      </div>
+      </DragDropContext>
 
       {/* Bulk Actions Bar */}
       <BulkActionsBar
@@ -355,7 +756,7 @@ export function ProjectBacklogPage() {
         users={users}
         projects={projects}
         sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
-        projectId={projectId}
+        projectId={projectKey}
       />
 
       {/* Create Sprint Dialog */}
@@ -374,6 +775,13 @@ export function ProjectBacklogPage() {
             value={sprintName}
             onChange={(e) => setSprintName(e.target.value)}
           />
+          <Textarea
+            label="Sprint Goal (optional)"
+            placeholder="What do you want to achieve in this sprint?"
+            value={sprintGoal}
+            onChange={(e) => setSprintGoal(e.target.value)}
+            rows={3}
+          />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
               {t('common.cancel')}
@@ -383,13 +791,15 @@ export function ProjectBacklogPage() {
               onClick={() =>
                 createSprint.mutate(
                   {
-                    projectId: projectId!,
+                    projectId: projectKey!,
                     name: sprintName || `Sprint ${(sprints?.length || 0) + 1}`,
+                    goal: sprintGoal || undefined,
                   },
                   {
                     onSuccess: () => {
                       setShowCreateSprint(false)
                       setSprintName('')
+                      setSprintGoal('')
                     },
                   },
                 )
@@ -412,12 +822,13 @@ export function ProjectBacklogPage() {
         </DialogHeader>
         <DialogContent>
           <IssueForm
-            projectId={projectId!}
+            projectId={project?.id || projectKey!}
             statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
             sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+            users={users || []}
             onSubmit={(values) =>
               createIssue.mutate(
-                { ...values, projectId: projectId! } as any,
+                { ...values, projectId: project?.id || projectKey! } as any,
                 { onSuccess: () => setShowCreateIssue(false) },
               )
             }

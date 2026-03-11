@@ -13,13 +13,13 @@ import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 export function ProjectTrashPage() {
-  const { id: projectId } = useParams<{ id: string }>()
+  const { key: projectKey } = useParams<{ key: string }>()
   const [page, setPage] = useState(1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const { data: project } = useProject(projectId!)
+  const { data: project } = useProject(projectKey!)
   const { data: issuesData, isLoading } = useIssues({
-    projectId: projectId!,
+    projectId: projectKey!,
     deleted: true,
     page,
     limit: 25,
@@ -55,7 +55,7 @@ export function ProjectTrashPage() {
         title="Trash"
         breadcrumbs={[
           { label: 'Projects', href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: 'Trash' },
         ]}
         actions={

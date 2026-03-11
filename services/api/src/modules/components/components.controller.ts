@@ -16,6 +16,7 @@ import { CreateComponentDto } from './dto/create-component.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('components')
 @ApiBearerAuth()
@@ -27,7 +28,7 @@ export class ComponentsController {
   @Post('projects/:projectId/components')
   @ApiOperation({ summary: 'Create a component for a project' })
   async create(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Body() dto: CreateComponentDto,
   ) {
     const component = await this.componentsService.create(projectId, dto);
@@ -36,7 +37,7 @@ export class ComponentsController {
 
   @Get('projects/:projectId/components')
   @ApiOperation({ summary: 'List all components for a project' })
-  async findAll(@Param('projectId', ParseUUIDPipe) projectId: string) {
+  async findAll(@Param('projectId', ResolveProjectPipe) projectId: string) {
     const components = await this.componentsService.findAll(projectId);
     return { data: components };
   }

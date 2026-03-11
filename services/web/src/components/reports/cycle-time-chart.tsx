@@ -88,7 +88,7 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
         </CardHeader>
         <CardContent>
           {data.byType.length === 0 ? (
-            <div className="py-8 text-center text-gray-400 text-sm">
+            <div className="py-8 text-center text-gray-500 text-sm">
               No completed issues to analyze
             </div>
           ) : (

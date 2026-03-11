@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router-dom'
-import { Zap } from 'lucide-react'
+import { Zap, Eye, EyeOff, Mail, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRegister } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
@@ -26,6 +27,9 @@ type FormValues = z.infer<typeof schema>
 export function RegisterPage() {
   const { t } = useTranslation()
   const register_ = useRegister()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -35,12 +39,58 @@ export function RegisterPage() {
   })
 
   const onSubmit = (values: FormValues) => {
-    register_.mutate({
-      organizationName: values.organizationName,
-      displayName: values.displayName,
-      email: values.email,
-      password: values.password,
-    })
+    register_.mutate(
+      {
+        organizationName: values.organizationName,
+        displayName: values.displayName,
+        email: values.email,
+        password: values.password,
+      },
+      {
+        onSuccess: () => {
+          setRegisteredEmail(values.email)
+        },
+      },
+    )
+  }
+
+  // Success screen — shown after account is created
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center mb-8">
+            <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+              <Zap className="h-7 w-7 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="flex items-center justify-center h-16 w-16 bg-green-100 rounded-full mx-auto mb-5">
+              <CheckCircle2 className="h-9 w-9 text-green-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Account created!</h2>
+            <p className="text-sm text-gray-600 mb-5">
+              We've sent a verification email to
+            </p>
+            <div className="flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-5">
+              <Mail className="h-4 w-4 text-blue-500 shrink-0" />
+              <span className="text-sm font-medium text-blue-700 break-all">{registeredEmail}</span>
+            </div>
+            <p className="text-xs text-gray-500 mb-6">
+              Click the link in the email to activate your account. Check your spam folder if you don't see it.
+            </p>
+            <Link
+              to="/login"
+              className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors text-center"
+            >
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -51,7 +101,7 @@ export function RegisterPage() {
           <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">ProjectFlow</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
           <p className="text-sm text-gray-500 mt-1">{t('auth.registerSubtitle')}</p>
         </div>
 
@@ -103,7 +153,7 @@ export function RegisterPage() {
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-gray-400">or continue with email</span>
+              <span className="bg-white px-2 text-gray-500">or continue with email</span>
             </div>
           </div>
 
@@ -131,23 +181,43 @@ export function RegisterPage() {
               {...register('email')}
             />
 
-            <Input
-              label={t('common.password')}
-              type="password"
-              placeholder="Min. 8 characters"
-              autoComplete="new-password"
-              error={errors.password?.message}
-              {...register('password')}
-            />
+            <div className="relative">
+              <Input
+                label={t('common.password')}
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Min. 8 characters"
+                autoComplete="new-password"
+                error={errors.password?.message}
+                {...register('password')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
 
-            <Input
-              label={t('auth.confirmPassword')}
-              type="password"
-              placeholder="Repeat your password"
-              autoComplete="new-password"
-              error={errors.confirmPassword?.message}
-              {...register('confirmPassword')}
-            />
+            <div className="relative">
+              <Input
+                label={t('auth.confirmPassword')}
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Repeat your password"
+                autoComplete="new-password"
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
 
             {register_.isError && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">

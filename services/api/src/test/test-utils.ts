@@ -145,7 +145,7 @@ export function createMockConfigService(values?: Record<string, any>) {
     'minio.useSSL': false,
     'minio.accessKey': 'minioadmin',
     'minio.secretKey': 'minioadmin',
-    'minio.bucket': 'projectflow',
+    'minio.bucket': 'boardupscale',
     ...values,
   };
 

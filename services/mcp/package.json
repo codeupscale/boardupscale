@@ -1,0 +1,24 @@
+{
+  "name": "@boardupscale/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Boardupscale — use from Claude Code, Cursor, or any MCP-compatible AI tool",
+  "type": "module",
+  "bin": {
+    "boardupscale-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "axios": "^1.6.8",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.5"
+  }
+}

@@ -23,7 +23,7 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
 
   if (!progress || progress.total === 0) {
     return (
-      <div className="text-xs text-gray-400">No issues linked</div>
+      <div className="text-xs text-gray-500">No issues linked</div>
     )
   }
 
@@ -73,10 +73,10 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
 
 function VersionCard({
   version,
-  projectId,
+  projectKey,
 }: {
   version: ProjectVersion
-  projectId: string
+  projectKey: string
 }) {
   const releaseVersion = useReleaseVersion()
 
@@ -110,7 +110,7 @@ function VersionCard({
           <Button
             size="sm"
             onClick={() =>
-              releaseVersion.mutate({ id: version.id, projectId })
+              releaseVersion.mutate({ id: version.id, projectId: projectKey })
             }
             isLoading={releaseVersion.isPending}
           >
@@ -120,7 +120,7 @@ function VersionCard({
         )}
       </div>
 
-      <div className="flex gap-4 mb-3 text-xs text-gray-400">
+      <div className="flex gap-4 mb-3 text-xs text-gray-500">
         {version.startDate && (
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
@@ -147,9 +147,9 @@ function VersionCard({
 }
 
 export function ProjectReleasesPage() {
-  const { id: projectId } = useParams<{ id: string }>()
-  const { data: project, isLoading: projectLoading } = useProject(projectId!)
-  const { data: versions, isLoading: versionsLoading } = useVersions(projectId!)
+  const { key: projectKey } = useParams<{ key: string }>()
+  const { data: project, isLoading: projectLoading } = useProject(projectKey!)
+  const { data: versions, isLoading: versionsLoading } = useVersions(projectKey!)
   const createVersion = useCreateVersion()
 
   const [showCreate, setShowCreate] = useState(false)
@@ -167,7 +167,7 @@ export function ProjectReleasesPage() {
   const handleCreate = () => {
     createVersion.mutate(
       {
-        projectId: projectId!,
+        projectId: projectKey!,
         name,
         description: description || undefined,
         startDate: startDate || undefined,
@@ -191,7 +191,7 @@ export function ProjectReleasesPage() {
         title="Releases"
         breadcrumbs={[
           { label: 'Projects', href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: 'Releases' },
         ]}
         actions={
@@ -211,7 +211,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {unreleased.map((v) => (
-                <VersionCard key={v.id} version={v} projectId={projectId!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
               ))}
             </div>
           </div>
@@ -225,7 +225,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {released.map((v) => (
-                <VersionCard key={v.id} version={v} projectId={projectId!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
               ))}
             </div>
           </div>
@@ -239,7 +239,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {archived.map((v) => (
-                <VersionCard key={v.id} version={v} projectId={projectId!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
               ))}
             </div>
           </div>

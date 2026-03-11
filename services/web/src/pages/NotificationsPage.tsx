@@ -48,10 +48,11 @@ function NotificationItem({ notification }: { notification: Notification }) {
   }
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
       className={cn(
-        'flex items-start gap-4 px-6 py-4 transition-colors',
+        'w-full flex items-start gap-4 px-6 py-4 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
         !notification.read && 'bg-blue-50 border-l-4 border-l-blue-500',
         notification.read && 'hover:bg-gray-50',
         link && 'cursor-pointer',
@@ -67,14 +68,14 @@ function NotificationItem({ notification }: { notification: Notification }) {
         {notification.body && (
           <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{notification.body}</p>
         )}
-        <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(notification.createdAt)}</p>
+        <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(notification.createdAt)}</p>
       </div>
       {!notification.read && (
         <div className="flex-shrink-0">
           <div className="h-2 w-2 rounded-full bg-blue-500 mt-2" />
         </div>
       )}
-    </div>
+    </button>
   )
 }
 

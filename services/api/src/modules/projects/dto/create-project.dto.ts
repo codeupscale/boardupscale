@@ -27,10 +27,10 @@ export class CreateProjectDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 'software', enum: ['software', 'business', 'marketing'] })
+  @ApiPropertyOptional({ example: 'scrum', enum: ['scrum', 'kanban'] })
   @IsOptional()
   @IsString()
-  type?: string = 'software';
+  type?: string = 'scrum';
 
   @ApiPropertyOptional({
     enum: ProjectTemplate,

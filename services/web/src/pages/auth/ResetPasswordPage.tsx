@@ -77,7 +77,7 @@ export function ResetPasswordPage() {
             <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
               <Zap className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">ProjectFlow</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
             <p className="text-sm text-red-600 mb-4">
@@ -105,7 +105,7 @@ export function ResetPasswordPage() {
           <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">ProjectFlow</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
           <p className="text-sm text-gray-500 mt-1">Set your new password</p>
         </div>
 

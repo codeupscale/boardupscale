@@ -46,8 +46,8 @@ export class RolesGuard implements CanActivate {
         request.body?.projectId;
 
       if (!projectId) {
-        // If no projectId can be determined, fall back to org-level admin check
-        if (user.role === 'admin') return true;
+        // If no projectId can be determined, fall back to org-level admin/owner check
+        if (user.role === 'admin' || user.role === 'owner') return true;
         throw new ForbiddenException('Insufficient permissions');
       }
 

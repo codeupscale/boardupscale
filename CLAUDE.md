@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-**Pre-implementation.** The repository currently contains only `ProjectFlow_SRS.md` — the Software Requirements Specification. No application code exists yet. All architectural decisions below are drawn from that SRS.
+**Pre-implementation.** The repository currently contains only `Boardupscale_SRS.md` — the Software Requirements Specification. No application code exists yet. All architectural decisions below are drawn from that SRS.
 
 ## Project Overview
 
-ProjectFlow is a self-hosted Jira replacement for CodeUpscale — a multi-tenant, web-based project management platform supporting Scrum, Kanban, and hybrid agile methodologies.
+Boardupscale is a self-hosted Jira replacement for CodeUpscale — a multi-tenant, web-based project management platform supporting Scrum, Kanban, and hybrid agile methodologies.
 
 ## Planned Tech Stack
 

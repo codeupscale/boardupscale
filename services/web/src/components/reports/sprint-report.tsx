@@ -21,7 +21,7 @@ export function SprintReport({ data }: SprintReportProps) {
           {sprint.goal && (
             <p className="text-sm text-gray-500 mt-1">{sprint.goal}</p>
           )}
-          <div className="flex gap-4 mt-2 text-xs text-gray-400">
+          <div className="flex gap-4 mt-2 text-xs text-gray-500">
             {sprint.startDate && <span>Started: {sprint.startDate}</span>}
             {sprint.endDate && <span>Ended: {sprint.endDate}</span>}
             <span className="capitalize">Status: {sprint.status}</span>
@@ -102,7 +102,7 @@ export function SprintReport({ data }: SprintReportProps) {
         </CardHeader>
         <CardContent>
           {completedIssues.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">
+            <p className="text-sm text-gray-500 py-4 text-center">
               No completed issues
             </p>
           ) : (
@@ -127,7 +127,7 @@ export function SprintReport({ data }: SprintReportProps) {
         </CardHeader>
         <CardContent>
           {incompleteIssues.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">
+            <p className="text-sm text-gray-500 py-4 text-center">
               All issues completed!
             </p>
           ) : (
@@ -189,11 +189,11 @@ function IssueRow({
       to={`/issues/${issue.id}`}
       className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
     >
-      <span className="text-xs font-mono text-gray-400 w-20">{issue.key}</span>
+      <span className="text-xs font-mono text-gray-500 w-20">{issue.key}</span>
       <span className="text-sm text-gray-900 flex-1 truncate">
         {issue.title}
       </span>
-      <span className="text-xs text-gray-400 capitalize">{issue.type}</span>
+      <span className="text-xs text-gray-500 capitalize">{issue.type}</span>
       {issue.storyPoints != null && (
         <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
           {issue.storyPoints} SP
@@ -203,7 +203,7 @@ function IssueRow({
         <span className="text-xs text-gray-500">{issue.assignee.displayName}</span>
       )}
       {issue.status && (
-        <span className="text-xs text-gray-400">{issue.status.name}</span>
+        <span className="text-xs text-gray-500">{issue.status.name}</span>
       )}
     </Link>
   )

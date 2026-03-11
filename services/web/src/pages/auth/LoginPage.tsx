@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link } from 'react-router-dom'
-import { Zap, AlertTriangle, Mail } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Zap, AlertTriangle, Mail, Eye, EyeOff, ShieldCheck, LogIn } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useLogin } from '@/hooks/useAuth'
+import { useLogin, useVerify2FA } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
@@ -19,12 +19,42 @@ type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
   const { t } = useTranslation()
+  const [searchParams] = useSearchParams()
   const login = useLogin()
+  const verify2FA = useVerify2FA()
+  const [showPassword, setShowPassword] = useState(false)
   const [lockoutMessage, setLockoutMessage] = useState<string | null>(null)
   const [showVerificationNotice, setShowVerificationNotice] = useState(false)
   const [verificationEmail, setVerificationEmail] = useState('')
   const [resendingVerification, setResendingVerification] = useState(false)
   const [verificationSent, setVerificationSent] = useState(false)
+  const [twoFactorState, setTwoFactorState] = useState<{ tempToken: string } | null>(null)
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [ssoSlug, setSsoSlug] = useState('')
+  const [showSsoInput, setShowSsoInput] = useState(false)
+  const [ssoLoading, setSsoLoading] = useState(false)
+  const [ssoError, setSsoError] = useState<string | null>(null)
+
+  // Check for SAML error from callback
+  const samlError = searchParams.get('error')
+
+  const handleSsoLogin = async () => {
+    if (!ssoSlug.trim()) return
+    setSsoLoading(true)
+    setSsoError(null)
+    try {
+      const { data } = await api.get(`/auth/saml/status?orgSlug=${encodeURIComponent(ssoSlug.trim())}`)
+      if (data.configured) {
+        window.location.href = `/api/auth/saml?orgSlug=${encodeURIComponent(ssoSlug.trim())}`
+      } else {
+        setSsoError('SSO is not configured for this organization. Contact your administrator.')
+      }
+    } catch {
+      setSsoError('Could not verify SSO configuration. Please check the organization identifier.')
+    } finally {
+      setSsoLoading(false)
+    }
+  }
 
   const {
     register,
@@ -42,6 +72,12 @@ export function LoginPage() {
     login.mutate(
       { email: values.email, password: values.password },
       {
+        onSuccess: (data) => {
+          // Check if 2FA is required
+          if (data?.requiresTwoFactor && data?.tempToken) {
+            setTwoFactorState({ tempToken: data.tempToken })
+          }
+        },
         onError: (err: any) => {
           const status = err?.response?.status
           const data = err?.response?.data
@@ -68,6 +104,11 @@ export function LoginPage() {
     )
   }
 
+  const handle2FAVerify = () => {
+    if (!twoFactorState || !twoFactorCode) return
+    verify2FA.mutate({ tempToken: twoFactorState.tempToken, code: twoFactorCode })
+  }
+
   const handleResendVerification = async () => {
     if (!verificationEmail) return
     setResendingVerification(true)
@@ -81,6 +122,56 @@ export function LoginPage() {
     }
   }
 
+  // 2FA verification screen
+  if (twoFactorState) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center mb-8">
+            <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+              <ShieldCheck className="h-7 w-7 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Two-Factor Authentication</h1>
+            <p className="text-sm text-gray-500 mt-1">Enter the code from your authenticator app</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="space-y-4">
+              <Input
+                label="Verification Code"
+                placeholder="Enter 6-digit code or backup code"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handle2FAVerify()}
+              />
+              {verify2FA.isError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                  <p className="text-sm text-red-600">Invalid verification code. Please try again.</p>
+                </div>
+              )}
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handle2FAVerify}
+                isLoading={verify2FA.isPending}
+                disabled={!twoFactorCode}
+              >
+                Verify
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setTwoFactorState(null); setTwoFactorCode('') }}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 mt-2"
+              >
+                Back to login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -89,7 +180,7 @@ export function LoginPage() {
           <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">ProjectFlow</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
           <p className="text-sm text-gray-500 mt-1">{t('auth.loginSubtitle')}</p>
         </div>
 
@@ -141,7 +232,7 @@ export function LoginPage() {
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-gray-400">or continue with email</span>
+              <span className="bg-white px-2 text-gray-500">or continue with email</span>
             </div>
           </div>
 
@@ -156,14 +247,24 @@ export function LoginPage() {
             />
 
             <div>
-              <Input
-                label={t('common.password')}
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                error={errors.password?.message}
-                {...register('password')}
-              />
+              <div className="relative">
+                <Input
+                  label={t('common.password')}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  error={errors.password?.message}
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <div className="mt-1 text-right">
                 <Link
                   to="/forgot-password"
@@ -231,6 +332,68 @@ export function LoginPage() {
               {t('auth.signIn')}
             </Button>
           </form>
+
+          {/* SAML error from callback */}
+          {samlError && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-red-600">{samlError}</p>
+            </div>
+          )}
+
+          {/* SSO Divider */}
+          <div className="relative mt-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-2 text-gray-500">or</span>
+            </div>
+          </div>
+
+          {/* SSO Login */}
+          <div className="mt-5">
+            {!showSsoInput ? (
+              <button
+                type="button"
+                onClick={() => setShowSsoInput(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <LogIn className="h-4 w-4" />
+                Sign in with SSO
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <Input
+                  label="Organization identifier"
+                  placeholder="your-org-slug"
+                  value={ssoSlug}
+                  onChange={(e) => { setSsoSlug(e.target.value); setSsoError(null) }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSsoLogin()}
+                  helperText="Enter your organization's URL slug to sign in via SSO"
+                  autoFocus
+                />
+                {ssoError && (
+                  <p className="text-sm text-red-600">{ssoError}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    onClick={handleSsoLogin}
+                    isLoading={ssoLoading}
+                    disabled={!ssoSlug.trim()}
+                  >
+                    Continue with SSO
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setShowSsoInput(false); setSsoSlug(''); setSsoError(null) }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Register link */}

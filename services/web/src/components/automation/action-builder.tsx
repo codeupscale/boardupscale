@@ -72,7 +72,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
       </label>
 
       {actions.length === 0 && (
-        <p className="text-sm text-gray-400 italic">
+        <p className="text-sm text-gray-500 italic">
           Add at least one action.
         </p>
       )}

@@ -16,15 +16,16 @@ interface IssueFilters {
   deleted?: boolean
 }
 
-export function useIssues(filters: IssueFilters = {}) {
+export function useIssues(filters: IssueFilters | undefined = {}) {
   return useQuery({
     queryKey: ['issues', filters],
+    enabled: filters !== undefined,
     queryFn: async () => {
       const params = Object.fromEntries(
-        Object.entries(filters).filter(([, v]) => v !== undefined && v !== ''),
+        Object.entries(filters ?? {}).filter(([, v]) => v !== undefined && v !== ''),
       )
       const { data } = await api.get('/issues', { params })
-      return data.data as { data: Issue[]; total: number; page: number; limit: number }
+      return { data: data.data as Issue[], total: data.meta?.total ?? 0, page: data.meta?.page ?? 1, limit: data.meta?.limit ?? 25 }
     },
   })
 }
@@ -61,9 +62,9 @@ export function useCreateIssue() {
       const { data } = await api.post('/issues', payload)
       return data.data as Issue
     },
-    onSuccess: (issue) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['issues'] })
-      qc.invalidateQueries({ queryKey: ['board', issue.projectId] })
+      qc.invalidateQueries({ queryKey: ['board'] })
       toast('Issue created')
     },
     onError: (err: any) =>
@@ -97,11 +98,34 @@ export function useUpdateIssue() {
     onSuccess: (issue) => {
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.invalidateQueries({ queryKey: ['issue', issue.id] })
-      qc.invalidateQueries({ queryKey: ['board', issue.projectId] })
+      qc.invalidateQueries({ queryKey: ['board'] })
       toast('Issue updated')
     },
     onError: (err: any) =>
       toast(err?.response?.data?.error?.message || 'Failed to update issue', 'error'),
+  })
+}
+
+/** Silent issue update — no toast, for drag-and-drop operations */
+export function useMoveIssueSprint() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      sprintId,
+    }: {
+      id: string
+      sprintId: string | null
+    }) => {
+      const { data } = await api.patch(`/issues/${id}`, { sprintId })
+      return data.data as Issue
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['issues'] })
+      qc.invalidateQueries({ queryKey: ['board'] })
+    },
+    onError: (err: any) =>
+      toast(err?.response?.data?.error?.message || 'Failed to move issue', 'error'),
   })
 }
 
@@ -112,9 +136,9 @@ export function useDeleteIssue() {
       await api.delete(`/issues/${id}`)
       return { projectId }
     },
-    onSuccess: ({ projectId }) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['issues'] })
-      qc.invalidateQueries({ queryKey: ['board', projectId] })
+      qc.invalidateQueries({ queryKey: ['board'] })
       toast('Issue deleted')
     },
     onError: (err: any) =>

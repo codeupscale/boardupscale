@@ -19,6 +19,7 @@ export enum ActionType {
   ADD_COMMENT = 'add_comment',
   SEND_NOTIFICATION = 'notify',
   MOVE_TO_SPRINT = 'move_sprint',
+  AI_ASSIGN = 'ai_assign',
 }
 
 export enum ConditionOperator {

@@ -35,7 +35,7 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
-          <div className="h-80 flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-80 flex items-center justify-center text-gray-500 text-sm">
             No assigned issues
           </div>
         ) : (

@@ -8,6 +8,7 @@ import { Repository, IsNull, SelectQueryBuilder } from 'typeorm';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
+import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
@@ -104,7 +105,7 @@ export class BoardsService {
     projectId: string,
     statusId: string,
     organizationId: string,
-    dto: Partial<CreateStatusDto>,
+    dto: UpdateStatusDto,
   ): Promise<IssueStatus> {
     await this.projectsService.findById(projectId, organizationId);
 

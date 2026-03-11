@@ -32,7 +32,7 @@ export class Project {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'software' })
+  @Column({ type: 'varchar', length: 50, default: 'scrum' })
   type: string;
 
   @Column({ type: 'varchar', length: 50, default: 'active' })

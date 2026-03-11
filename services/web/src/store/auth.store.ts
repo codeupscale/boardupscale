@@ -12,11 +12,16 @@ interface AuthState {
   initialize: () => void
 }
 
+// Read tokens from localStorage at module load time (synchronous)
+const storedAccessToken = localStorage.getItem('accessToken')
+const storedRefreshToken = localStorage.getItem('refreshToken')
+const hasTokens = !!(storedAccessToken && storedRefreshToken)
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  accessToken: null,
-  refreshToken: null,
-  isAuthenticated: false,
+  accessToken: storedAccessToken,
+  refreshToken: storedRefreshToken,
+  isAuthenticated: hasTokens,
 
   setTokens: (accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken)

@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── API ────────────────────────────────────────────────────────────────────
+  api:
+    name: API — lint, build & test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: boardupscale_test
+          POSTGRES_USER: boardupscale
+          POSTGRES_PASSWORD: boardupscale
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U boardupscale"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: services/api
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://boardupscale:boardupscale@localhost:5432/boardupscale_test
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-test-secret-not-for-production
+      JWT_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compile check
+        run: npx tsc --noEmit
+
+      - name: Run migrations
+        run: npm run migration:run
+
+      - name: Run unit & integration tests
+        run: npm run test:cov
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-coverage
+          path: services/api/coverage/
+          retention-days: 7
+
+  # ── Web ───────────────────────────────────────────────────────────────────
+  web:
+    name: Web — lint & build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compile check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: /api
+          VITE_WS_URL: ''
+
+  # ── Worker ────────────────────────────────────────────────────────────────
+  worker:
+    name: Worker — lint & build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/worker
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/worker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  # ── Docker compose smoke test ─────────────────────────────────────────────
+  docker:
+    name: Docker Compose — smoke test
+    runs-on: ubuntu-latest
+    # Only run on PRs targeting main to keep CI fast on feature branches
+    if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env from example
+        run: |
+          cp .env.example .env
+          # Override with CI-safe values
+          sed -i 's|^JWT_SECRET=.*|JWT_SECRET=ci-smoke-test-secret-change-in-production|' .env
+          sed -i 's|^FRONTEND_URL=.*|FRONTEND_URL=http://localhost:8091|' .env
+          sed -i 's|^CORS_ORIGIN=.*|CORS_ORIGIN=http://localhost:8091|' .env
+
+      - name: Build images
+        run: docker compose build --parallel
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for API to be healthy
+        run: |
+          echo "Waiting for API health check..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8091/api/health > /dev/null 2>&1; then
+              echo "API is healthy after ${i}s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "API did not become healthy in time"
+          docker compose logs api
+          exit 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

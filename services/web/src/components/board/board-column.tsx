@@ -1,21 +1,25 @@
 import { useState } from 'react'
-import { Droppable } from '@hello-pangea/dnd'
-import { Plus, Settings, AlertCircle } from 'lucide-react'
+import { Droppable, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
+import { Plus, GripVertical, MoreHorizontal, Pencil, Gauge, Trash2, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { BoardColumn as BoardColumnType } from '@/types'
 import { cn } from '@/lib/utils'
+import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
 import { BoardCard } from './board-card'
 import { WipLimitSettings } from './wip-limit-settings'
 
 interface BoardColumnProps {
   column: BoardColumnType
+  dragHandleProps?: DraggableProvidedDragHandleProps | null
   onAddIssue?: (statusId: string) => void
   onUpdateWipLimit?: (statusId: string, wipLimit: number) => void
+  onEditColumn?: (statusId: string) => void
+  onDeleteColumn?: (statusId: string) => void
 }
 
-export function BoardColumn({ column, onAddIssue, onUpdateWipLimit }: BoardColumnProps) {
+export function BoardColumn({ column, dragHandleProps, onAddIssue, onUpdateWipLimit, onEditColumn, onDeleteColumn }: BoardColumnProps) {
   const { t } = useTranslation()
-  const [showSettings, setShowSettings] = useState(false)
+  const [showWipSettings, setShowWipSettings] = useState(false)
 
   const issueCount = column.issues.length
   const wipLimit = column.wipLimit || 0
@@ -32,7 +36,15 @@ export function BoardColumn({ column, onAddIssue, onUpdateWipLimit }: BoardColum
           isAtLimit && !isOverLimit && 'bg-amber-50 border border-amber-200',
         )}
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {dragHandleProps && (
+            <div
+              {...dragHandleProps}
+              className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing flex-shrink-0"
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
           <span
             className="h-2.5 w-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: column.color || '#6b7280' }}
@@ -56,20 +68,44 @@ export function BoardColumn({ column, onAddIssue, onUpdateWipLimit }: BoardColum
             <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
           )}
         </div>
-        <div className="flex items-center gap-1">
-          {onUpdateWipLimit && (
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-              title={t('board.columnSettings', 'Column settings')}
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </button>
-          )}
+        <div className="flex items-center gap-0.5">
+          <DropdownMenu
+            trigger={
+              <button
+                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                title={t('board.columnSettings', 'Column settings')}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            }
+          >
+            {onEditColumn && (
+              <DropdownItem icon={<Pencil className="h-4 w-4" />} onClick={() => onEditColumn(column.id)}>
+                Edit column
+              </DropdownItem>
+            )}
+            {onUpdateWipLimit && (
+              <DropdownItem icon={<Gauge className="h-4 w-4" />} onClick={() => setShowWipSettings(true)}>
+                WIP limit{wipLimit > 0 ? ` (${wipLimit})` : ''}
+              </DropdownItem>
+            )}
+            {onDeleteColumn && (
+              <>
+                <DropdownSeparator />
+                <DropdownItem
+                  icon={<Trash2 className="h-4 w-4" />}
+                  destructive
+                  onClick={() => onDeleteColumn(column.id)}
+                >
+                  Delete column
+                </DropdownItem>
+              </>
+            )}
+          </DropdownMenu>
           {onAddIssue && (
             <button
               onClick={() => onAddIssue(column.id)}
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               title={t('issues.addIssue')}
             >
               <Plus className="h-4 w-4" />
@@ -79,19 +115,19 @@ export function BoardColumn({ column, onAddIssue, onUpdateWipLimit }: BoardColum
       </div>
 
       {/* WIP Limit Settings Popover */}
-      {showSettings && onUpdateWipLimit && (
+      {showWipSettings && onUpdateWipLimit && (
         <WipLimitSettings
           currentLimit={wipLimit}
           onSave={(limit) => {
             onUpdateWipLimit(column.id, limit)
-            setShowSettings(false)
+            setShowWipSettings(false)
           }}
-          onClose={() => setShowSettings(false)}
+          onClose={() => setShowWipSettings(false)}
         />
       )}
 
       {/* Droppable area */}
-      <Droppable droppableId={column.id}>
+      <Droppable droppableId={column.id} type="ISSUE">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -112,7 +148,7 @@ export function BoardColumn({ column, onAddIssue, onUpdateWipLimit }: BoardColum
             ))}
             {provided.placeholder}
             {column.issues.length === 0 && !snapshot.isDraggingOver && (
-              <div className="flex items-center justify-center h-20 text-xs text-gray-400">
+              <div className="flex items-center justify-center h-20 text-xs text-gray-500">
                 {t('issues.noIssuesBoard')}
               </div>
             )}

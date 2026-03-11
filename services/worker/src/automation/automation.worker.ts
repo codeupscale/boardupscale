@@ -310,7 +310,7 @@ export function createAutomationWorker(pool: Pool): Worker {
       );
     },
     {
-      connection: createRedisConnection(),
+      connection: createRedisConnection() as any,
       concurrency: 5,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 200 },

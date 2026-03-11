@@ -1,17 +1,57 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
+.pnp
+.pnp.js
+
+# ── Environment — never commit secrets ────────────────────────────────────────
 .env
 .env.local
 .env.*.local
+.env.production
+
+# ── Build output ──────────────────────────────────────────────────────────────
 dist/
 build/
 .next/
-*.log
-.DS_Store
+out/
+*.tsbuildinfo
+
+# ── Test & coverage ───────────────────────────────────────────────────────────
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Docker volume data (local dev) ────────────────────────────────────────────
 postgres_data/
 redis_data/
 elasticsearch_data/
 minio_data/
+
+# ── Uploads (local dev without MinIO) ─────────────────────────────────────────
 uploads/
-.claude/worktrees/
+
+# ── OS & editor artefacts ─────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/

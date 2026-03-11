@@ -230,7 +230,7 @@ export function mockAttachment(overrides?: Partial<Attachment>): Attachment {
     fileSize: 1024,
     mimeType: 'application/pdf',
     storageKey: 'uuid-test-file.pdf',
-    storageBucket: 'projectflow',
+    storageBucket: 'boardupscale',
     createdAt: new Date('2024-01-01'),
     ...overrides,
   });

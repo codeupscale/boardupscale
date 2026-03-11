@@ -18,6 +18,7 @@ import { SetFieldValueDto } from './dto/set-field-value.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('custom-fields')
 @ApiBearerAuth()
@@ -29,7 +30,7 @@ export class CustomFieldsController {
   @Post('projects/:projectId/custom-fields')
   @ApiOperation({ summary: 'Create a custom field definition' })
   async createDefinition(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @Body() dto: CreateFieldDefinitionDto,
   ) {
@@ -44,7 +45,7 @@ export class CustomFieldsController {
   @Get('projects/:projectId/custom-fields')
   @ApiOperation({ summary: 'List custom field definitions for a project' })
   async getDefinitions(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
   ) {
     const definitions = await this.customFieldsService.getDefinitions(

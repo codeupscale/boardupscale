@@ -6,13 +6,18 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
 
   app.setGlobalPrefix('api');
 
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const rawOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const corsOrigin = rawOrigin.includes(',')
+    ? rawOrigin.split(',').map((s) => s.trim())
+    : rawOrigin;
   app.enableCors({
-    origin: frontendUrl,
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
@@ -30,7 +35,7 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const config = new DocumentBuilder()
-    .setTitle('ProjectFlow API')
+    .setTitle('Boardupscale API')
     .setDescription('Project management platform API')
     .setVersion('1.0')
     .addBearerAuth(
@@ -58,7 +63,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
-  console.log(`ProjectFlow API running on port ${port}`);
+  console.log(`Boardupscale API running on port ${port}`);
 }
 
 bootstrap();

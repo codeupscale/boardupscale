@@ -243,7 +243,7 @@ export function RoleManagementPage() {
                           </p>
                         )}
                       </div>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-500">
                         {role.permissions.length} permission{role.permissions.length !== 1 ? 's' : ''}
                       </span>
                     </button>

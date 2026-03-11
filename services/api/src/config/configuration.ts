@@ -6,12 +6,12 @@ export default () => ({
     corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   },
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/projectflow',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardupscale',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT, 10) || 5432,
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    name: process.env.DB_NAME || 'projectflow',
+    name: process.env.DB_NAME || 'boardupscale',
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
@@ -19,9 +19,10 @@ export default () => ({
     port: parseInt(process.env.REDIS_PORT, 10) || 6379,
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'supersecretjwtkey',
+    // No insecure hardcoded fallback — startup will throw if JWT_SECRET is missing in production.
+    secret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET must be set in production'); })() : 'dev-only-secret-change-before-deploy'),
     expiry: process.env.JWT_EXPIRY || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'supersecretrefreshkey',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? (() => { throw new Error('JWT_SECRET must be set in production'); })() : 'dev-only-refresh-secret-change-before-deploy'),
     refreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
   },
   minio: {
@@ -29,7 +30,7 @@ export default () => ({
     port: parseInt(process.env.MINIO_PORT, 10) || 9000,
     accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-    bucket: process.env.MINIO_BUCKET || 'projectflow',
+    bucket: process.env.MINIO_BUCKET || 'boardupscale',
     useSSL: process.env.MINIO_USE_SSL === 'true',
   },
   oauth: {
@@ -56,6 +57,39 @@ export default () => ({
     port: parseInt(process.env.SMTP_PORT, 10) || 1025,
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'noreply@projectflow.app',
+    from: process.env.SMTP_FROM || 'noreply@boardupscale.com',
+  },
+  ai: {
+    enabled: process.env.AI_ENABLED === 'true',
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    maxTokensPerOrgPerDay: parseInt(process.env.AI_MAX_TOKENS_PER_ORG_PER_DAY, 10) || 100000,
+  },
+  saml: {
+    entryPoint: process.env.SAML_ENTRY_POINT || '',
+    issuer: process.env.SAML_ISSUER || 'boardupscale',
+    cert: process.env.SAML_CERT || '',
+    callbackUrl: process.env.SAML_CALLBACK_URL || 'http://localhost:4000/api/auth/saml/callback',
+  },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+  },
+  github: {
+    webhookSecret: process.env.GITHUB_APP_WEBHOOK_SECRET || '',
+  },
+  // Enterprise Edition features — requires ENTERPRISE_ENABLED=true.
+  // Self-hosters with a commercial licence set this to true.
+  enterprise: {
+    enabled: process.env.ENTERPRISE_ENABLED === 'true',
+  },
+  // Anonymous usage telemetry — helps us understand adoption without
+  // collecting any personally identifiable information.
+  // Set TELEMETRY_ENABLED=false to opt out completely.
+  telemetry: {
+    enabled: process.env.TELEMETRY_ENABLED !== 'false',
+    endpoint: process.env.TELEMETRY_ENDPOINT || 'https://telemetry.boardupscale.com/ping',
   },
 });

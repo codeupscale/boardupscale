@@ -67,8 +67,8 @@ export class AuditService {
     const total = await qb.getCount();
     const items = await qb
       .orderBy('audit.created_at', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
+      .offset((page - 1) * limit)
+      .limit(limit)
       .getMany();
 
     return { items, total, page, limit };

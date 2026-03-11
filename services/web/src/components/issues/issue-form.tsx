@@ -1,16 +1,18 @@
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion } from '@/types'
+import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
+import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
+import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
@@ -35,6 +37,7 @@ interface IssueFormProps {
   customFieldDefs?: CustomFieldDefinition[]
   components?: ProjectComponent[]
   versions?: ProjectVersion[]
+  users?: User[]
   defaultValues?: Partial<FormValues>
   onSubmit: (values: FormValues) => void
   onCancel: () => void
@@ -49,6 +52,7 @@ export function IssueForm({
   customFieldDefs = [],
   components = [],
   versions = [],
+  users = [],
   defaultValues,
   onSubmit,
   onCancel,
@@ -66,6 +70,8 @@ export function IssueForm({
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -75,6 +81,9 @@ export function IssueForm({
       ...defaultValues,
     },
   })
+
+  // Watch title for duplicate detection
+  const watchedTitle = useWatch({ control, name: 'title' }) || ''
 
   const addLabel = () => {
     const trimmed = labelInput.trim()
@@ -87,14 +96,19 @@ export function IssueForm({
   const removeLabel = (l: string) => setLabels(labels.filter((x) => x !== l))
 
   const handleFormSubmit = (values: FormValues) => {
+    // Strip empty strings from optional fields so the backend
+    // doesn't reject them as invalid UUIDs / dates / etc.
+    const cleaned = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+    )
     onSubmit({
-      ...values,
+      ...cleaned,
       labels,
       customFieldValues: Object.entries(customFieldValues)
         .filter(([, v]) => v !== null && v !== undefined && v !== '')
         .map(([fieldId, value]) => ({ fieldId, value })),
-      componentIds: selectedComponents,
-      fixVersionIds: selectedFixVersions,
+      componentIds: selectedComponents.length > 0 ? selectedComponents : undefined,
+      fixVersionIds: selectedFixVersions.length > 0 ? selectedFixVersions : undefined,
     } as any)
   }
 
@@ -107,12 +121,31 @@ export function IssueForm({
         {...register('title')}
       />
 
-      <Textarea
-        label={t('common.description')}
-        placeholder={t('issues.describeIssue')}
-        rows={4}
-        {...register('description')}
+      {/* Duplicate Detection */}
+      <SimilarIssuesPanel title={watchedTitle} projectId={projectId} />
+
+      {/* AI Suggestions */}
+      <AiSuggestionsPanel
+        title={watchedTitle}
+        projectId={projectId}
+        onApplyType={(type) => setValue('type', type as IssueType)}
+        onApplyPriority={(priority) => setValue('priority', priority as IssuePriority)}
+        onApplyTitle={(title) => setValue('title', title)}
+        onApplyAssignee={(userId) => setValue('assigneeId', userId)}
       />
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t('common.description')}
+        </label>
+        <RichTextEditor
+          value={watch('description') || ''}
+          onChange={(val) => setValue('description', val)}
+          placeholder={t('issues.describeIssue')}
+          users={users}
+          minHeight={100}
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Controller

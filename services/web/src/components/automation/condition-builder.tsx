@@ -55,7 +55,7 @@ export function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps
       </label>
 
       {conditions.length === 0 && (
-        <p className="text-sm text-gray-400 italic">
+        <p className="text-sm text-gray-500 italic">
           No conditions -- rule will always execute when triggered.
         </p>
       )}

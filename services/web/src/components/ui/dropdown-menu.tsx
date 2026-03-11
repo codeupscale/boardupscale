@@ -24,13 +24,19 @@ export function DropdownMenu({ trigger, children, align = 'right', className }: 
 
   return (
     <div ref={containerRef} className="relative inline-block">
-      <div onClick={() => setOpen((o) => !o)} className="cursor-pointer">
+      <div
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="cursor-pointer"
+      >
         {trigger}
       </div>
       {open && (
         <div
+          role="menu"
           className={cn(
-            'absolute z-50 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1',
+            'absolute z-50 mt-1 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg dark:shadow-2xl dark:shadow-black/40 border border-gray-200 dark:border-gray-700 py-1',
             align === 'right' ? 'right-0' : 'left-0',
             className,
           )}
@@ -62,11 +68,12 @@ export function DropdownItem({
 }: DropdownItemProps) {
   return (
     <button
+      role="menuitem"
       className={cn(
         'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors text-left',
         destructive
-          ? 'text-red-600 hover:bg-red-50'
-          : 'text-gray-700 hover:bg-gray-100',
+          ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
         disabled && 'opacity-50 cursor-not-allowed',
         className,
       )}
@@ -79,12 +86,12 @@ export function DropdownItem({
 }
 
 export function DropdownSeparator() {
-  return <div className="my-1 h-px bg-gray-200" />
+  return <div className="my-1 h-px bg-gray-200 dark:bg-gray-700" />
 }
 
 export function DropdownLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
       {children}
     </div>
   )

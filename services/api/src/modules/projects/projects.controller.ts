@@ -21,6 +21,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('projects')
 @ApiBearerAuth()
@@ -63,7 +64,7 @@ export class ProjectsController {
   @ApiResponse({ status: 200, description: 'Project found' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
   ) {
     return this.projectsService.findById(id, organizationId);
@@ -75,7 +76,7 @@ export class ProjectsController {
   @ApiResponse({ status: 200, description: 'Project updated' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
     @Body() dto: UpdateProjectDto,
   ) {
@@ -89,7 +90,7 @@ export class ProjectsController {
   @ApiResponse({ status: 204, description: 'Project archived' })
   @ApiResponse({ status: 404, description: 'Project not found' })
   async archive(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
   ) {
     await this.projectsService.archive(id, organizationId);
@@ -99,7 +100,7 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Get project members' })
   @ApiResponse({ status: 200, description: 'List of members' })
   async getMembers(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
   ) {
     const members = await this.projectsService.getMembers(id, organizationId);
@@ -112,7 +113,7 @@ export class ProjectsController {
   @ApiResponse({ status: 201, description: 'Member added' })
   @ApiResponse({ status: 409, description: 'User is already a member' })
   async addMember(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
     @Body() dto: AddMemberDto,
   ) {
@@ -126,7 +127,7 @@ export class ProjectsController {
   @ApiResponse({ status: 204, description: 'Member removed' })
   @ApiResponse({ status: 404, description: 'Member not found' })
   async removeMember(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ResolveProjectPipe) id: string,
     @Param('userId', ParseUUIDPipe) userId: string,
     @OrgId() organizationId: string,
   ) {

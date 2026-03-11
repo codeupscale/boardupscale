@@ -22,7 +22,8 @@ import {
 import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
-import { MentionTextarea } from '@/components/comments/mention-textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { RichTextDisplay } from '@/components/ui/rich-text-display'
 import {
   IssueType,
   IssuePriority,
@@ -41,6 +42,9 @@ import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { UserSelect } from '@/components/common/user-select'
 import { IssueLinksList } from '@/components/issues/issue-links-list'
+import { GitHubEventsList } from '@/components/issues/github-events-list'
+import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
+import { AiSummaryPanel } from '@/components/issues/ai-summary-panel'
 import { WatchButton } from '@/components/issues/watch-button'
 import { ActivityList } from '@/components/issues/activity-list'
 import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils'
@@ -48,9 +52,11 @@ import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils'
 function CommentItem({
   comment,
   currentUserId,
+  users,
 }: {
   comment: Comment
   currentUserId?: string
+  users?: import('@/types').User[]
 }) {
   const { t } = useTranslation()
   const [editing, setEditing] = useState(false)
@@ -67,17 +73,19 @@ function CommentItem({
           <span className="text-sm font-medium text-gray-900">
             {comment.author?.displayName || 'Unknown'}
           </span>
-          <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-xs text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
           {comment.editedAt && (
-            <span className="text-xs text-gray-400">{t('issues.edited')}</span>
+            <span className="text-xs text-gray-500">{t('issues.edited')}</span>
           )}
         </div>
         {editing ? (
           <div className="space-y-2">
-            <Textarea
+            <RichTextEditor
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={3}
+              onChange={setEditContent}
+              users={users || []}
+              minHeight={80}
+              autoFocus
             />
             <div className="flex gap-2">
               <Button
@@ -98,7 +106,7 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+          <RichTextDisplay content={comment.content} className="text-sm" />
         )}
         {currentUserId === comment.authorId && !editing && (
           <div className="flex gap-2 mt-1">
@@ -218,7 +226,7 @@ export function IssueDetailPage() {
         <span className="font-mono text-blue-600 font-medium">{issue.key}</span>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Main content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Title */}
@@ -274,11 +282,12 @@ export function IssueDetailPage() {
             <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('common.description')}</h3>
             {editingDesc ? (
               <div className="space-y-2">
-                <Textarea
-                  autoFocus
+                <RichTextEditor
                   value={descValue}
-                  onChange={(e) => setDescValue(e.target.value)}
-                  rows={6}
+                  onChange={setDescValue}
+                  users={orgUsers || []}
+                  minHeight={150}
+                  autoFocus
                 />
                 <div className="flex gap-2">
                   <Button
@@ -298,23 +307,36 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <div
-                className="text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-2 transition-colors min-h-[48px]"
+                className="cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-2 transition-colors min-h-[48px]"
                 onClick={() => {
                   setDescValue(issue.description || '')
                   setEditingDesc(true)
                 }}
               >
                 {issue.description ? (
-                  <p className="whitespace-pre-wrap">{issue.description}</p>
+                  <RichTextDisplay content={issue.description} />
                 ) : (
-                  <p className="text-gray-400 italic">{t('issues.clickToAddDescription')}</p>
+                  <p className="text-sm text-gray-500 italic">{t('issues.clickToAddDescription')}</p>
                 )}
               </div>
             )}
           </div>
 
+          {/* AI Summary */}
+          <AiSummaryPanel issueId={issue.id} />
+
           {/* Linked Issues */}
           <IssueLinksList issueId={issue.id} />
+
+          {/* GitHub Activity */}
+          <GitHubEventsList issueId={issue.id} projectId={issue.projectId} />
+
+          {/* Similar Issues (Duplicate Detection) */}
+          <SimilarIssuesPanel
+            title={issue.title}
+            projectId={issue.projectId}
+            excludeIssueId={issue.id}
+          />
 
           {/* Comments */}
           <div>
@@ -327,10 +349,11 @@ export function IssueDetailPage() {
                   key={comment.id}
                   comment={comment}
                   currentUserId={currentUser?.id}
+                  users={orgUsers || []}
                 />
               ))}
               {(!comments || comments.length === 0) && (
-                <p className="text-sm text-gray-400">{t('issues.noComments')}</p>
+                <p className="text-sm text-gray-500">{t('issues.noComments')}</p>
               )}
             </div>
 
@@ -338,16 +361,16 @@ export function IssueDetailPage() {
             <div className="flex gap-3">
               <Avatar user={currentUser || undefined} size="sm" />
               <div className="flex-1 space-y-2">
-                <MentionTextarea
+                <RichTextEditor
                   placeholder={t('issues.addCommentPlaceholder')}
-                  rows={3}
                   value={commentText}
                   onChange={setCommentText}
                   users={orgUsers || []}
+                  minHeight={80}
                 />
                 <Button
                   size="sm"
-                  disabled={!commentText.trim()}
+                  disabled={!commentText || commentText === '<p></p>'}
                   isLoading={createComment.isPending}
                   onClick={() => {
                     createComment.mutate(
@@ -382,13 +405,13 @@ export function IssueDetailPage() {
                   {log.description && (
                     <span className="text-gray-500">{log.description}</span>
                   )}
-                  <span className="text-gray-400 text-xs ml-auto">
+                  <span className="text-gray-500 text-xs ml-auto">
                     {formatRelativeTime(log.createdAt)}
                   </span>
                 </div>
               ))}
               {(!workLogs || workLogs.length === 0) && (
-                <p className="text-sm text-gray-400">{t('issues.noTimeLogged')}</p>
+                <p className="text-sm text-gray-500">{t('issues.noTimeLogged')}</p>
               )}
             </div>
           </div>
@@ -403,7 +426,7 @@ export function IssueDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="w-80 flex-shrink-0 border-l border-gray-200 overflow-y-auto p-4 space-y-4 bg-gray-50">
+        <div className="w-full lg:w-80 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 overflow-y-auto p-4 space-y-4 bg-gray-50">
           {/* Status */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
@@ -567,7 +590,7 @@ export function IssueDetailPage() {
               />
             </div>
             {issue.timeSpent > 0 && (
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {issue.timeEstimate
                   ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
                   : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
@@ -837,10 +860,10 @@ export function IssueDetailPage() {
 
           {/* Dates */}
           <div className="pt-2 border-t border-gray-200 space-y-1">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-500">
               {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
             </p>
           </div>
@@ -877,7 +900,7 @@ export function IssueDetailPage() {
             onChange={(e) => setWorkLogTime(e.target.value)}
           />
           <Textarea
-            label={t('common.description') + ' (' + t('common.cancel').toLowerCase() + ')'}
+            label={`${t('common.description')} (${t('common.optional', 'optional')})`}
             placeholder={t('issues.describeIssue')}
             rows={3}
             value={workLogDesc}

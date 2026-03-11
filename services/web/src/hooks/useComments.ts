@@ -7,7 +7,7 @@ export function useComments(issueId: string) {
   return useQuery({
     queryKey: ['comments', issueId],
     queryFn: async () => {
-      const { data } = await api.get(`/issues/${issueId}/comments`)
+      const { data } = await api.get(`/comments`, { params: { issueId } })
       return data.data as Comment[]
     },
     enabled: !!issueId,
@@ -18,7 +18,7 @@ export function useCreateComment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ issueId, content }: { issueId: string; content: string }) => {
-      const { data } = await api.post(`/issues/${issueId}/comments`, { content })
+      const { data } = await api.post(`/comments`, { issueId, content })
       return data.data as Comment
     },
     onSuccess: (comment) => {
@@ -41,7 +41,7 @@ export function useUpdateComment() {
       commentId: string
       content: string
     }) => {
-      const { data } = await api.patch(`/issues/${issueId}/comments/${commentId}`, { content })
+      const { data } = await api.patch(`/comments/${commentId}`, { content })
       return data.data as Comment
     },
     onSuccess: (comment) => {
@@ -56,7 +56,7 @@ export function useDeleteComment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ issueId, commentId }: { issueId: string; commentId: string }) => {
-      await api.delete(`/issues/${issueId}/comments/${commentId}`)
+      await api.delete(`/comments/${commentId}`)
       return { issueId }
     },
     onSuccess: ({ issueId }) => {

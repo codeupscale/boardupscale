@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('automations')
@@ -35,7 +36,7 @@ export class AutomationController {
   @Post('projects/:projectId/automations')
   @ApiOperation({ summary: 'Create an automation rule' })
   async create(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @CurrentUser() user: any,
     @Body() dto: CreateRuleDto,
@@ -46,7 +47,7 @@ export class AutomationController {
   @Get('projects/:projectId/automations')
   @ApiOperation({ summary: 'List automation rules for a project' })
   async findAll(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
   ) {
     const rules = await this.automationService.findAll(projectId);
     return { data: rules };

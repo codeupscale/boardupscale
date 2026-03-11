@@ -76,6 +76,7 @@ export function SearchModal() {
   const { t } = useTranslation()
   const { isSearchOpen, setSearchOpen } = useUiStore()
   const [query, setQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { data, isLoading } = useSearch(query)
@@ -100,6 +101,7 @@ export function SearchModal() {
       setTimeout(() => inputRef.current?.focus(), 50)
     } else {
       setQuery('')
+      setActiveIndex(-1)
     }
   }, [isSearchOpen])
 
@@ -113,8 +115,28 @@ export function SearchModal() {
     setSearchOpen(false)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (items.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1))
+    } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < items.length) {
+      e.preventDefault()
+      handleSelect(items[activeIndex])
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search issues"
+    >
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/40"
@@ -131,12 +153,22 @@ export function SearchModal() {
             type="text"
             placeholder={t('search.placeholder')}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActiveIndex(-1)
+            }}
+            onKeyDown={handleKeyDown}
+            aria-activedescendant={activeIndex >= 0 && items[activeIndex] ? `search-option-${items[activeIndex].id}` : undefined}
+            aria-controls="search-results-listbox"
+            aria-autocomplete="list"
+            role="combobox"
+            aria-expanded={items.length > 0}
             className="flex-1 text-sm text-gray-900 placeholder:text-gray-400 outline-none bg-transparent"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
+              aria-label="Clear search"
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="h-4 w-4" />
@@ -164,32 +196,40 @@ export function SearchModal() {
           {items.length > 0 && (
             <div>
               <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {t('search.issues')}
                 </span>
                 {searchSource === 'elasticsearch' && (
                   <span className="text-[10px] text-gray-300 font-mono">ES</span>
                 )}
               </div>
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleSelect(item)}
-                  className="w-full flex flex-col px-4 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <IssueTypeIcon type={item.type as IssueType} className="h-4 w-4 flex-shrink-0" />
-                    <span className="text-xs font-mono text-blue-600 flex-shrink-0">{item.key}</span>
-                    <span className="text-sm text-gray-900 truncate">{item.title}</span>
-                    {item.projectName && (
-                      <span className="ml-auto text-[10px] text-gray-400 flex-shrink-0">
-                        {item.projectName}
-                      </span>
+              <div id="search-results-listbox" role="listbox" aria-label="Search results">
+                {items.map((item, index) => (
+                  <button
+                    key={item.id}
+                    id={`search-option-${item.id}`}
+                    role="option"
+                    aria-selected={index === activeIndex}
+                    onClick={() => handleSelect(item)}
+                    className={cn(
+                      'w-full flex flex-col px-4 py-2.5 hover:bg-gray-50 transition-colors text-left',
+                      index === activeIndex && 'bg-blue-50',
                     )}
-                  </div>
-                  {item.highlights && <SearchResultHighlights highlights={item.highlights} />}
-                </button>
-              ))}
+                  >
+                    <div className="flex items-center gap-3">
+                      <IssueTypeIcon type={item.type as IssueType} className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-xs font-mono text-blue-600 flex-shrink-0">{item.key}</span>
+                      <span className="text-sm text-gray-900 truncate">{item.title}</span>
+                      {item.projectName && (
+                        <span className="ml-auto text-[10px] text-gray-500 flex-shrink-0">
+                          {item.projectName}
+                        </span>
+                      )}
+                    </div>
+                    {item.highlights && <SearchResultHighlights highlights={item.highlights} />}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

@@ -71,7 +71,7 @@ describe('FilesService', () => {
         fileSize: 1024,
         mimeType: 'application/pdf',
         storageKey: 'mock-file-uuid-test-file.pdf',
-        storageBucket: 'projectflow',
+        storageBucket: 'boardupscale',
       });
     });
 

@@ -6,7 +6,7 @@ import { ensureIndex, elasticsearchAvailable } from '../elasticsearch';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export const ISSUES_INDEX = 'projectflow-issues';
+export const ISSUES_INDEX = 'boardupscale-issues';
 
 export const ISSUES_MAPPING: Record<string, any> = {
   id:           { type: 'keyword' },
@@ -215,7 +215,7 @@ export async function createSearchWorker(esClient: Client, pool: Pool): Promise<
       console.log(`[SearchWorker] Job ${job.id} (${job.name}) completed`);
     },
     {
-      connection: createRedisConnection(),
+      connection: createRedisConnection() as any,
       concurrency: 3,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 200 },

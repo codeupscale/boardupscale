@@ -183,10 +183,10 @@ export class PermissionsService {
     resource: string,
     action: string,
   ): Promise<boolean> {
-    // 1. Check org-level admin shortcut
+    // 1. Check org-level admin/owner shortcut
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return false;
-    if (user.role === 'admin') return true;
+    if (user.role === 'admin' || user.role === 'owner') return true;
 
     // 2. Find the project membership
     const member = await this.projectMemberRepo.findOne({
@@ -233,8 +233,8 @@ export class PermissionsService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return [];
 
-    // Admins get all permissions
-    if (user.role === 'admin') {
+    // Admins and org owners get all permissions
+    if (user.role === 'admin' || user.role === 'owner') {
       const allPerms = await this.permissionRepo.find();
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
@@ -277,6 +277,7 @@ export class PermissionsService {
    */
   private mapLegacyRole(legacyRole: string): string | null {
     const mapping: Record<string, string> = {
+      owner: 'Admin',
       admin: 'Admin',
       manager: 'Manager',
       member: 'Member',

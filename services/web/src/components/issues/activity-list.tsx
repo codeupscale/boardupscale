@@ -47,11 +47,11 @@ export function ActivityList({ issueId }: { issueId: string }) {
   const meta = data?.meta
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400">{t('common.loading')}</p>
+    return <p className="text-sm text-gray-500">{t('common.loading')}</p>
   }
 
   if (activities.length === 0) {
-    return <p className="text-sm text-gray-400">{t('activity.noActivity')}</p>
+    return <p className="text-sm text-gray-500">{t('activity.noActivity')}</p>
   }
 
   return (
@@ -64,7 +64,7 @@ export function ActivityList({ issueId }: { issueId: string }) {
               <span className="text-sm font-medium text-gray-900">
                 {activity.user?.displayName || 'Unknown'}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500">
                 {formatRelativeTime(activity.createdAt)}
               </span>
             </div>

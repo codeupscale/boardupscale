@@ -7,7 +7,7 @@ import { Queue } from 'bullmq';
 import { Client } from '@elastic/elasticsearch';
 import { Issue } from '../issues/entities/issue.entity';
 
-const ISSUES_INDEX = 'projectflow-issues';
+const ISSUES_INDEX = 'boardupscale-issues';
 
 export interface SearchHighlight {
   field: string;
@@ -99,7 +99,13 @@ export class SearchService implements OnModuleInit {
     // Try Elasticsearch first
     if (this.esAvailable && this.esClient) {
       try {
-        return await this.searchElasticsearch(params);
+        const esResult = await this.searchElasticsearch(params);
+        // If ES returned results, use them; otherwise fall back to PG
+        // (handles case where ES is running but index is empty/not populated)
+        if (esResult.items.length > 0) {
+          return esResult;
+        }
+        this.logger.debug('Elasticsearch returned 0 results, trying PostgreSQL fallback');
       } catch (err: any) {
         this.logger.warn(
           `Elasticsearch search failed: ${err.message} -- falling back to PostgreSQL`,
@@ -250,7 +256,7 @@ export class SearchService implements OnModuleInit {
     }
 
     const [issues, total] = await qb
-      .orderBy('issue.updated_at', 'DESC')
+      .orderBy('issue.updatedAt', 'DESC')
       .take(limit)
       .getManyAndCount();
 
@@ -268,6 +274,171 @@ export class SearchService implements OnModuleInit {
     }));
 
     return { items, total, source: 'postgresql' };
+  }
+
+  /**
+   * Find issues similar to the given text (title + optional description).
+   * Used for duplicate detection during issue creation.
+   * Uses Elasticsearch MLT (More Like This) query with PostgreSQL trigram fallback.
+   */
+  async findSimilar(params: {
+    text: string;
+    organizationId: string;
+    projectId?: string;
+    excludeIssueId?: string;
+    limit?: number;
+  }): Promise<SearchResult> {
+    const { text } = params;
+
+    if (!text || text.trim().length < 5) {
+      return { items: [], total: 0, source: 'postgresql' };
+    }
+
+    if (this.esAvailable && this.esClient) {
+      try {
+        const esResult = await this.findSimilarElasticsearch(params);
+        if (esResult.items.length > 0) {
+          return esResult;
+        }
+        this.logger.debug('ES MLT returned 0 results, trying PostgreSQL trigram fallback');
+      } catch (err: any) {
+        this.logger.warn(
+          `Elasticsearch MLT failed: ${err.message} -- falling back to PostgreSQL`,
+        );
+      }
+    }
+
+    return this.findSimilarPostgresql(params);
+  }
+
+  private async findSimilarElasticsearch(params: {
+    text: string;
+    organizationId: string;
+    projectId?: string;
+    excludeIssueId?: string;
+    limit?: number;
+  }): Promise<SearchResult> {
+    const { text, organizationId, projectId, excludeIssueId, limit = 5 } = params;
+
+    const filter: any[] = [{ term: { organizationId } }];
+    if (projectId) filter.push({ term: { projectId } });
+
+    const mustNot: any[] = [];
+    if (excludeIssueId) {
+      mustNot.push({ term: { id: excludeIssueId } });
+    }
+
+    const response = await this.esClient!.search({
+      index: ISSUES_INDEX,
+      size: limit,
+      min_score: 1,
+      query: {
+        bool: {
+          must: [
+            {
+              more_like_this: {
+                fields: ['title', 'description'],
+                like: text,
+                min_term_freq: 1,
+                min_doc_freq: 1,
+                max_query_terms: 25,
+                minimum_should_match: '30%',
+              },
+            },
+          ],
+          filter,
+          must_not: mustNot,
+        },
+      },
+      highlight: {
+        fields: {
+          title: { number_of_fragments: 1, fragment_size: 200 },
+          description: { number_of_fragments: 1, fragment_size: 200 },
+        },
+        pre_tags: ['<mark>'],
+        post_tags: ['</mark>'],
+      },
+      sort: ['_score'],
+    });
+
+    const hits = response.hits.hits;
+    const total =
+      typeof response.hits.total === 'number'
+        ? response.hits.total
+        : response.hits.total?.value ?? 0;
+
+    const items: SearchResultItem[] = hits.map((hit: any) => {
+      const source = hit._source;
+      const highlights: SearchHighlight[] = [];
+      if (hit.highlight) {
+        for (const [field, snippets] of Object.entries(hit.highlight)) {
+          highlights.push({ field, snippets: snippets as string[] });
+        }
+      }
+      return {
+        id: source.id,
+        key: source.key,
+        title: source.title,
+        type: source.type,
+        priority: source.priority,
+        projectId: source.projectId,
+        projectName: source.projectName,
+        statusName: source.statusName,
+        assigneeName: source.assigneeName,
+        highlights: highlights.length > 0 ? highlights : undefined,
+      };
+    });
+
+    return { items, total, source: 'elasticsearch' };
+  }
+
+  private async findSimilarPostgresql(params: {
+    text: string;
+    organizationId: string;
+    projectId?: string;
+    excludeIssueId?: string;
+    limit?: number;
+  }): Promise<SearchResult> {
+    const { text, organizationId, projectId, excludeIssueId, limit = 5 } = params;
+
+    // Use PostgreSQL trigram similarity (pg_trgm) + ILIKE fallback
+    const qb = this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoinAndSelect('issue.status', 'status')
+      .leftJoinAndSelect('issue.assignee', 'assignee')
+      .leftJoinAndSelect('issue.project', 'project')
+      .addSelect(`similarity(issue.title, :text)`, 'title_sim')
+      .where('issue.organization_id = :organizationId', { organizationId })
+      .andWhere('issue.deleted_at IS NULL')
+      .andWhere(`similarity(issue.title, :text) > 0.1`, { text })
+      .setParameter('text', text);
+
+    if (projectId) {
+      qb.andWhere('issue.project_id = :projectId', { projectId });
+    }
+    if (excludeIssueId) {
+      qb.andWhere('issue.id != :excludeIssueId', { excludeIssueId });
+    }
+
+    const issues = await qb
+      .orderBy('title_sim', 'DESC')
+      .take(limit)
+      .getMany();
+
+    const items: SearchResultItem[] = issues.map((issue) => ({
+      id: issue.id,
+      key: issue.key,
+      title: issue.title,
+      type: issue.type,
+      priority: issue.priority,
+      projectId: issue.projectId,
+      projectName: issue.project?.name,
+      statusName: issue.status?.name,
+      assigneeName: issue.assignee?.displayName,
+      issue,
+    }));
+
+    return { items, total: items.length, source: 'postgresql' };
   }
 
   /**

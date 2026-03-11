@@ -44,4 +44,4 @@ shell-web:
 	docker compose exec web sh
 
 shell-db:
-	docker compose exec postgres psql -U projectflow -d projectflow
+	docker compose exec postgres psql -U boardupscale -d boardupscale

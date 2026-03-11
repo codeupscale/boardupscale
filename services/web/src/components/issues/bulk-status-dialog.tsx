@@ -38,13 +38,13 @@ export function BulkStatusDialog({ open, onClose, statuses, issueIds }: BulkStat
                 style={{ backgroundColor: status.color }}
               />
               <span className="text-gray-900">{status.name}</span>
-              <span className="text-xs text-gray-400 ml-auto capitalize">
+              <span className="text-xs text-gray-500 ml-auto capitalize">
                 {status.category.replace('_', ' ')}
               </span>
             </button>
           ))}
           {statuses.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-4">No statuses available</p>
+            <p className="text-sm text-gray-500 text-center py-4">No statuses available</p>
           )}
         </div>
       </DialogContent>

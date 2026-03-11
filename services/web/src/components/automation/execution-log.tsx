@@ -33,7 +33,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
 
   if (logs.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-400">
+      <div className="py-8 text-center text-sm text-gray-500">
         No execution logs yet.
       </div>
     )
@@ -73,7 +73,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
                   )}
                 </div>
               </div>
-              <span className="text-xs text-gray-400 flex-shrink-0">
+              <span className="text-xs text-gray-500 flex-shrink-0">
                 {new Date(log.executedAt).toLocaleString()}
               </span>
             </button>

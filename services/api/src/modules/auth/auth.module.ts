@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SamlService } from './saml.service';
 import { PasswordPolicyService } from './password-policy.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -47,11 +48,12 @@ function getOAuthProviders(): any[] {
   controllers: [AuthController],
   providers: [
     AuthService,
+    SamlService,
     PasswordPolicyService,
     JwtStrategy,
     LocalStrategy,
     ...getOAuthProviders(),
   ],
-  exports: [AuthService, PasswordPolicyService, JwtModule],
+  exports: [AuthService, SamlService, PasswordPolicyService, JwtModule],
 })
 export class AuthModule {}

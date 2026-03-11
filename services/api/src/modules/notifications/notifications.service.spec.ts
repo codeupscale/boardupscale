@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { Notification } from './entities/notification.entity';
+import { EventsGateway } from '../../websocket/events.gateway';
 import { createMockRepository, createMockQueryBuilder } from '../../test/test-utils';
 import { mockNotification, TEST_IDS } from '../../test/mock-factories';
 
@@ -17,6 +18,7 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: getRepositoryToken(Notification), useValue: notificationRepo },
+        { provide: EventsGateway, useValue: { emitToUser: jest.fn(), emitToOrg: jest.fn(), emitToProject: jest.fn() } },
       ],
     }).compile();
 

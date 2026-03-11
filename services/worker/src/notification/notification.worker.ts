@@ -191,7 +191,7 @@ export function createNotificationWorker(pool: Pool): Worker {
       console.log(`[NotificationWorker] Job ${job.id} (${job.name}) completed`);
     },
     {
-      connection: createRedisConnection(),
+      connection: createRedisConnection() as any,
       concurrency: 10,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 200 },

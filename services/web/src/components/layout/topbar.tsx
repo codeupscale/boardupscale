@@ -1,37 +1,43 @@
-import { Menu, Search, Bell, User, Settings, LogOut, Globe } from 'lucide-react'
+import { Menu, Search, Bell, User, Settings, LogOut, Globe, Sun, Moon, Monitor } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
+import { useThemeStore } from '@/store/theme.store'
 import { useUnreadCount } from '@/hooks/useNotifications'
 import { useLogout } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
-  { code: 'es', label: 'Espanol' },
-  { code: 'fr', label: 'Francais' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch' },
-  { code: 'ja', label: 'Japanese' },
+  { code: 'ja', label: '日本語' },
 ]
 
 export function Topbar() {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { toggleSidebar, setSearchOpen } = useUiStore()
   const user = useAuthStore((s) => s.user)
+  const { theme, setTheme } = useThemeStore()
   const { data: unreadData } = useUnreadCount()
   const logout = useLogout()
   const unreadCount = unreadData?.count || 0
 
+  const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
+
   return (
-    <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-4 gap-4 flex-shrink-0">
+    <header className="h-14 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-4 gap-4 flex-shrink-0">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
           onClick={toggleSidebar}
-          className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          aria-label="Toggle menu"
+          className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -42,19 +48,61 @@ export function Topbar() {
         {/* Search */}
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          aria-label="Search (Cmd+K)"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">{t('common.search')}</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-white border border-gray-300 rounded font-mono">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-mono">
             ⌘K
           </kbd>
         </button>
 
+        {/* Theme Switcher */}
+        <DropdownMenu
+          trigger={
+            <button
+              aria-label="Switch theme"
+              className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            >
+              {(() => {
+                const Icon = themeIcon
+                return <Icon className="h-5 w-5" />
+              })()}
+            </button>
+          }
+        >
+          <DropdownLabel>Theme</DropdownLabel>
+          <DropdownItem
+            icon={<Sun className="h-4 w-4" />}
+            onClick={() => setTheme('light')}
+          >
+            <span className={cn('text-sm', theme === 'light' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              Light
+            </span>
+          </DropdownItem>
+          <DropdownItem
+            icon={<Moon className="h-4 w-4" />}
+            onClick={() => setTheme('dark')}
+          >
+            <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              Dark
+            </span>
+          </DropdownItem>
+          <DropdownItem
+            icon={<Monitor className="h-4 w-4" />}
+            onClick={() => setTheme('system')}
+          >
+            <span className={cn('text-sm', theme === 'system' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              System
+            </span>
+          </DropdownItem>
+        </DropdownMenu>
+
         {/* Language Switcher */}
         <DropdownMenu
           trigger={
-            <button className="flex items-center gap-1 p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+            <button className="flex items-center gap-1 p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               <Globe className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">{i18n.language.slice(0, 2)}</span>
             </button>
@@ -67,7 +115,7 @@ export function Topbar() {
             >
               <span className={cn(
                 'text-sm',
-                i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600',
+                i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600 dark:text-blue-400',
               )}>
                 {lang.label}
               </span>
@@ -78,7 +126,8 @@ export function Topbar() {
         {/* Notifications */}
         <Link
           to="/notifications"
-          className="relative p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+          className="relative p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -91,26 +140,26 @@ export function Topbar() {
         {/* User dropdown */}
         <DropdownMenu
           trigger={
-            <button className="flex items-center gap-2 rounded-lg p-1 hover:bg-gray-100 transition-colors">
+            <button aria-label="User menu" className="flex items-center gap-2 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
               <Avatar user={user || undefined} size="sm" />
             </button>
           }
         >
           {user && (
-            <div className="px-3 py-2 border-b border-gray-100">
-              <p className="text-sm font-medium text-gray-900">{user.displayName}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
+            <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.displayName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
             </div>
           )}
           <DropdownItem
             icon={<User className="h-4 w-4" />}
-            onClick={() => (window.location.href = '/settings')}
+            onClick={() => navigate('/settings')}
           >
             {t('nav.profile')}
           </DropdownItem>
           <DropdownItem
             icon={<Settings className="h-4 w-4" />}
-            onClick={() => (window.location.href = '/settings')}
+            onClick={() => navigate('/settings')}
           >
             {t('nav.settings')}
           </DropdownItem>

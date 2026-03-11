@@ -88,7 +88,7 @@ describe('ProjectsService', () => {
       const project = mockProject({ name: 'New Project', key: 'NEWPROJ' });
       projectRepo.create.mockReturnValue(project);
       projectRepo.save.mockResolvedValue(project);
-      const member = mockProjectMember({ role: 'owner' });
+      const member = mockProjectMember({ role: 'admin' });
       memberRepo.create.mockReturnValue(member);
       memberRepo.save.mockResolvedValue(member);
       statusRepo.create.mockImplementation((data) => data);
@@ -107,7 +107,7 @@ describe('ProjectsService', () => {
       expect(memberRepo.create).toHaveBeenCalledWith({
         projectId: project.id,
         userId: TEST_IDS.USER_ID,
-        role: 'owner',
+        role: 'admin',
       });
       expect(statusRepo.create).toHaveBeenCalledTimes(4);
       expect(statusRepo.save).toHaveBeenCalled();
@@ -201,13 +201,14 @@ describe('ProjectsService', () => {
 
   describe('removeMember', () => {
     it('should remove a member from the project', async () => {
+      const otherUserId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
       const project = mockProject();
       projectRepo.findOne.mockResolvedValue(project);
-      const member = mockProjectMember({ role: 'developer' });
+      const member = mockProjectMember({ userId: otherUserId, role: 'developer' });
       memberRepo.findOne.mockResolvedValue(member);
       memberRepo.remove.mockResolvedValue(member);
 
-      await service.removeMember(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
+      await service.removeMember(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, otherUserId);
 
       expect(memberRepo.remove).toHaveBeenCalledWith(member);
     });
@@ -223,9 +224,9 @@ describe('ProjectsService', () => {
     });
 
     it('should throw ForbiddenException when trying to remove the owner', async () => {
-      const project = mockProject();
+      const project = mockProject(); // ownerId defaults to TEST_IDS.USER_ID
       projectRepo.findOne.mockResolvedValue(project);
-      const ownerMember = mockProjectMember({ role: 'owner' });
+      const ownerMember = mockProjectMember({ role: 'admin' });
       memberRepo.findOne.mockResolvedValue(ownerMember);
 
       await expect(

@@ -18,11 +18,19 @@ services:
     build:
       context: ./services/api
       dockerfile: Dockerfile.dev
+    ports:
+      - '4000:4000'
     volumes:
       - ./services/api:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - FRONTEND_URL=http://localhost:8091
+      - CORS_ORIGIN=http://localhost:8091
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
 
   worker:
     build:
@@ -33,3 +41,4 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - FRONTEND_URL=http://localhost:3002

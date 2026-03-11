@@ -473,6 +473,29 @@ export interface Activity {
   createdAt: string
 }
 
+// Saved Views
+export interface SavedViewFilters {
+  search?: string
+  type?: string
+  priority?: string
+  statusId?: string
+  assigneeId?: string
+  sprintId?: string
+}
+
+export interface SavedView {
+  id: string
+  organizationId: string
+  projectId: string
+  creatorId: string
+  name: string
+  filters: SavedViewFilters
+  isShared: boolean
+  creator?: { id: string; displayName: string; avatarUrl?: string }
+  createdAt: string
+  updatedAt: string
+}
+
 // Audit Logs
 export interface AuditLog {
   id: string

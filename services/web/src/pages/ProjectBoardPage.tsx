@@ -1,35 +1,65 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams, Link, useSearchParams } from 'react-router-dom'
-import { DragDropContext, DropResult } from '@hello-pangea/dnd'
+import { useParams, Link, useSearchParams, useLocation } from 'react-router-dom'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useBoard, useReorderIssues, useUpdateStatus } from '@/hooks/useBoard'
+import { useBoard, useReorderIssues, useUpdateStatus, useCreateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
 import { useSprints } from '@/hooks/useSprints'
+import { useUsers } from '@/hooks/useUsers'
+import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { cn } from '@/lib/utils'
 import { BoardColumn } from '@/components/board/board-column'
 import { BoardQuickFilters } from '@/components/board/board-filters'
 import { BoardSwimlane, groupIssuesBySwimlane } from '@/components/board/board-swimlane'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueForm } from '@/components/issues/issue-form'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, SwimlaneGroupBy, Issue } from '@/types'
 import { toast } from '@/store/ui.store'
 
+const CATEGORY_OPTIONS = [
+  { value: 'todo', label: 'To Do' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'done', label: 'Done' },
+]
+
+const COLOR_PRESETS = [
+  '#6b7280', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#f59e0b', '#10b981', '#ef4444', '#06b6d4',
+]
+
 export function ProjectBoardPage() {
   const { t } = useTranslation()
-  const { id: projectId } = useParams<{ id: string }>()
+  const { key: projectKey } = useParams<{ key: string }>()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<string | undefined>()
   const [groupBy, setGroupBy] = useState<SwimlaneGroupBy>('none')
+
+  // Column management dialogs
+  const [showAddColumn, setShowAddColumn] = useState(false)
+  const [newColumnName, setNewColumnName] = useState('')
+  const [newColumnCategory, setNewColumnCategory] = useState('todo')
+  const [newColumnColor, setNewColumnColor] = useState('#6b7280')
+
+  const [editColumnId, setEditColumnId] = useState<string | null>(null)
+  const [editColumnName, setEditColumnName] = useState('')
+  const [editColumnCategory, setEditColumnCategory] = useState('todo')
+  const [editColumnColor, setEditColumnColor] = useState('#6b7280')
+
+  const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null)
 
   // Derive filters from URL search params
   const filters: BoardFilters = useMemo(() => {
@@ -63,31 +93,34 @@ export function ProjectBoardPage() {
     [setSearchParams],
   )
 
-  const { data: project } = useProject(projectId!)
-  const { data: board, isLoading } = useBoard(projectId!, filters)
-  const { data: sprints } = useSprints(projectId!)
-  const { data: members } = useProjectMembers(projectId!)
+  const { data: project } = useProject(projectKey!)
+  const { data: board, isLoading } = useBoard(projectKey!, filters)
+  const { data: sprints } = useSprints(projectKey!)
+  const { data: members } = useProjectMembers(projectKey!)
+  const { data: orgUsers } = useUsers()
   const reorderIssues = useReorderIssues()
   const createIssue = useCreateIssue()
   const updateStatus = useUpdateStatus()
+  const createStatus = useCreateStatus()
+  const deleteStatus = useDeleteStatus()
 
   // Socket.io real-time updates
   useEffect(() => {
-    if (!projectId) return
+    if (!projectKey) return
     const socket = getSocket()
-    socket.emit('join:project', projectId)
+    socket.emit('join:project', projectKey)
     socket.on('issue:updated', () => {
-      qc.invalidateQueries({ queryKey: ['board', projectId] })
+      qc.invalidateQueries({ queryKey: ['board', projectKey] })
     })
     socket.on('issue:created', () => {
-      qc.invalidateQueries({ queryKey: ['board', projectId] })
+      qc.invalidateQueries({ queryKey: ['board', projectKey] })
     })
     return () => {
       socket.off('issue:updated')
       socket.off('issue:created')
-      socket.emit('leave:project', projectId)
+      socket.emit('leave:project', projectKey)
     }
-  }, [projectId, qc])
+  }, [projectKey, qc])
 
   // Collect all issues from the board into a flat array
   const allIssues = useMemo(() => {
@@ -113,9 +146,44 @@ export function ProjectBoardPage() {
   )
 
   const handleDragEnd = (result: DropResult) => {
-    const { destination, source, draggableId } = result
+    const { destination, source, type } = result
 
     if (!destination) return
+
+    // Column reorder
+    if (type === 'COLUMN') {
+      if (destination.index === source.index) return
+
+      const boardData = qc.getQueryData<BoardData>(['board', projectKey, filters])
+      if (!boardData) return
+
+      const newStatuses = [...boardData.statuses]
+      const [moved] = newStatuses.splice(source.index, 1)
+      newStatuses.splice(destination.index, 0, moved)
+
+      // Optimistic update
+      qc.setQueryData<BoardData>(['board', projectKey, filters], { statuses: newStatuses })
+
+      // Batch update positions for affected columns
+      const updates = newStatuses
+        .map((col, index) => ({ col, index }))
+        .filter(({ col, index }) => col.position !== index)
+
+      Promise.all(
+        updates.map(({ col, index }) =>
+          api.patch(`/projects/${projectKey}/statuses/${col.id}`, { position: index })
+        )
+      ).then(() => {
+        qc.invalidateQueries({ queryKey: ['board', projectKey] })
+      }).catch(() => {
+        toast('Failed to reorder columns', 'error')
+        qc.invalidateQueries({ queryKey: ['board', projectKey] })
+      })
+      return
+    }
+
+    // Issue reorder (existing logic)
+    const { draggableId } = result
 
     // When swimlanes are active, droppableId has format "columnId::swimlaneKey"
     const sourceColumnId = source.droppableId.split('::')[0]
@@ -123,7 +191,7 @@ export function ProjectBoardPage() {
 
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
-    const boardData = qc.getQueryData<BoardData>(['board', projectId, filters])
+    const boardData = qc.getQueryData<BoardData>(['board', projectKey, filters])
     if (!boardData) return
 
     // Check WIP limit before allowing move
@@ -148,19 +216,13 @@ export function ProjectBoardPage() {
     const issueIndex = sourceCol.issues.findIndex((i) => i.id === draggableId)
     if (issueIndex === -1) return
 
-    const [moved] = sourceCol.issues.splice(issueIndex, 1)
-    const updatedIssue = { ...moved, statusId: destCol.id, status: destCol }
+    const [movedIssue] = sourceCol.issues.splice(issueIndex, 1)
+    const updatedIssue = { ...movedIssue, statusId: destCol.id, status: destCol }
 
-    // For swimlane mode, we need to figure out the correct destination index
-    // within the full column (not just the swimlane subset)
-    if (sourceColumnId === destColumnId) {
-      destCol.issues.splice(destination.index, 0, updatedIssue)
-    } else {
-      destCol.issues.splice(destination.index, 0, updatedIssue)
-    }
+    destCol.issues.splice(destination.index, 0, updatedIssue)
 
     // Optimistic update
-    qc.setQueryData<BoardData>(['board', projectId, filters], { statuses: newStatuses })
+    qc.setQueryData<BoardData>(['board', projectKey, filters], { statuses: newStatuses })
 
     // Build updates for all affected issues in destination column
     const updates = destCol.issues.map((issue, index) => ({
@@ -169,10 +231,9 @@ export function ProjectBoardPage() {
       position: index,
     }))
 
-    reorderIssues.mutate(updates, {
+    reorderIssues.mutate({ projectId: projectKey!, items: updates }, {
       onError: () => {
-        // Rollback
-        qc.invalidateQueries({ queryKey: ['board', projectId] })
+        qc.invalidateQueries({ queryKey: ['board', projectKey] })
       },
     })
   }
@@ -184,15 +245,60 @@ export function ProjectBoardPage() {
 
   const handleUpdateWipLimit = (statusId: string, wipLimit: number) => {
     updateStatus.mutate({
-      projectId: projectId!,
+      projectId: projectKey!,
       statusId,
       wipLimit,
     } as any)
   }
 
+  const handleEditColumn = (statusId: string) => {
+    const col = board?.statuses.find((c) => c.id === statusId)
+    if (!col) return
+    setEditColumnId(statusId)
+    setEditColumnName(col.name)
+    setEditColumnCategory(col.category || 'todo')
+    setEditColumnColor(col.color || '#6b7280')
+  }
+
+  const handleSaveEditColumn = () => {
+    if (!editColumnId || !editColumnName.trim()) return
+    updateStatus.mutate(
+      { projectId: projectKey!, statusId: editColumnId, name: editColumnName.trim(), category: editColumnCategory, color: editColumnColor } as any,
+      { onSuccess: () => setEditColumnId(null) },
+    )
+  }
+
+  const handleDeleteColumn = (statusId: string) => {
+    setDeleteColumnId(statusId)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!deleteColumnId) return
+    deleteStatus.mutate(
+      { projectId: projectKey!, statusId: deleteColumnId },
+      { onSuccess: () => setDeleteColumnId(null) },
+    )
+  }
+
+  const handleAddColumn = () => {
+    if (!newColumnName.trim()) return
+    createStatus.mutate(
+      { projectId: projectKey!, name: newColumnName.trim(), category: newColumnCategory, color: newColumnColor },
+      {
+        onSuccess: () => {
+          setShowAddColumn(false)
+          setNewColumnName('')
+          setNewColumnCategory('todo')
+          setNewColumnColor('#6b7280')
+        },
+      },
+    )
+  }
+
   if (isLoading) return <LoadingPage />
 
   const activeSprints = sprints?.filter((s) => s.status === 'active') || []
+  const deleteColumn = board?.statuses.find((c) => c.id === deleteColumnId)
 
   return (
     <div className="flex flex-col h-full">
@@ -200,7 +306,7 @@ export function ProjectBoardPage() {
         title={project?.name || t('board.title')}
         breadcrumbs={[
           { label: t('nav.projects'), href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: t('nav.board') },
         ]}
         actions={
@@ -227,21 +333,31 @@ export function ProjectBoardPage() {
       {/* Navigation Tabs */}
       <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 bg-white">
         {[
-          { label: t('nav.board'), href: `/projects/${projectId}/board` },
-          { label: t('nav.backlog'), href: `/projects/${projectId}/backlog` },
-          { label: t('nav.issues'), href: `/projects/${projectId}/issues` },
-          { label: 'Trash', href: `/projects/${projectId}/trash` },
-          { label: 'Automations', href: `/projects/${projectId}/automations` },
-          { label: t('nav.settings'), href: `/projects/${projectId}/settings` },
-        ].map((tab) => (
-          <Link
-            key={tab.href}
-            to={tab.href}
-            className="px-3 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-600 -mb-px"
-          >
-            {tab.label}
-          </Link>
-        ))}
+          { label: t('nav.board'), href: `/projects/${projectKey}/board` },
+          { label: t('nav.backlog'), href: `/projects/${projectKey}/backlog` },
+          { label: t('nav.issues'), href: `/projects/${projectKey}/issues` },
+          { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
+          { label: 'Timeline', href: `/projects/${projectKey}/timeline` },
+          { label: 'Trash', href: `/projects/${projectKey}/trash` },
+          { label: 'Automations', href: `/projects/${projectKey}/automations` },
+          { label: t('nav.settings'), href: `/projects/${projectKey}/settings` },
+        ].map((tab) => {
+          const isActive = location.pathname === tab.href
+          return (
+            <Link
+              key={tab.href}
+              to={tab.href}
+              className={cn(
+                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                isActive
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              )}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
       </div>
 
       {/* Quick Filters Bar */}
@@ -257,10 +373,16 @@ export function ProjectBoardPage() {
 
       {/* Board */}
       {!board || board.statuses.length === 0 ? (
-        <EmptyState
-          title={t('board.noColumns')}
-          description={t('board.noColumnsDesc')}
-        />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <EmptyState
+            title={t('board.noColumns')}
+            description={t('board.noColumnsDesc')}
+          />
+          <Button onClick={() => setShowAddColumn(true)}>
+            <Plus className="h-4 w-4" />
+            Add Column
+          </Button>
+        </div>
       ) : groupBy !== 'none' ? (
         /* Swimlane View */
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -319,7 +441,7 @@ export function ProjectBoardPage() {
                 />
               ))
             ) : (
-              <div className="flex items-center justify-center py-12 text-sm text-gray-400">
+              <div className="flex items-center justify-center py-12 text-sm text-gray-500">
                 No issues match the current filters
               </div>
             )}
@@ -328,18 +450,46 @@ export function ProjectBoardPage() {
       ) : (
         /* Standard Board View */
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex-1 overflow-x-auto">
-            <div className="flex gap-4 p-6 h-full min-h-[calc(100vh-200px)]">
-              {board.statuses.map((column) => (
-                <BoardColumn
-                  key={column.id}
-                  column={column}
-                  onAddIssue={handleAddIssue}
-                  onUpdateWipLimit={handleUpdateWipLimit}
-                />
-              ))}
-            </div>
-          </div>
+          <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
+            {(provided) => (
+              <div className="flex-1 overflow-x-auto" ref={provided.innerRef} {...provided.droppableProps}>
+                <div className="flex gap-4 p-6 h-full min-h-[calc(100vh-200px)]">
+                  {board.statuses.map((column, index) => (
+                    <Draggable key={column.id} draggableId={`col-${column.id}`} index={index}>
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          className={cn(
+                            dragSnapshot.isDragging && 'opacity-90 rotate-1',
+                          )}
+                        >
+                          <BoardColumn
+                            column={column}
+                            dragHandleProps={dragProvided.dragHandleProps}
+                            onAddIssue={handleAddIssue}
+                            onUpdateWipLimit={handleUpdateWipLimit}
+                            onEditColumn={handleEditColumn}
+                            onDeleteColumn={board.statuses.length > 1 ? handleDeleteColumn : undefined}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+
+                  {/* Add Column Button */}
+                  <button
+                    onClick={() => setShowAddColumn(true)}
+                    className="flex flex-col items-center justify-center w-72 flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500 hover:bg-gray-50 transition-colors"
+                  >
+                    <Plus className="h-6 w-6 mb-1" />
+                    <span className="text-sm font-medium">Add Column</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </Droppable>
         </DragDropContext>
       )}
 
@@ -362,13 +512,14 @@ export function ProjectBoardPage() {
         </DialogHeader>
         <DialogContent>
           <IssueForm
-            projectId={projectId!}
+            projectId={project?.id || projectKey!}
             statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
             sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+            users={orgUsers || []}
             defaultValues={{ statusId: createStatusId }}
             onSubmit={(values) => {
               createIssue.mutate(
-                { ...values, projectId: projectId! } as any,
+                { ...values, projectId: project?.id || projectKey! } as any,
                 {
                   onSuccess: () => {
                     setShowCreateDialog(false)
@@ -385,6 +536,115 @@ export function ProjectBoardPage() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Add Column Dialog */}
+      <Dialog open={showAddColumn} onClose={() => setShowAddColumn(false)} className="max-w-sm">
+        <DialogHeader onClose={() => setShowAddColumn(false)}>
+          <DialogTitle>Add Column</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
+            <Input
+              label="Column Name"
+              placeholder="e.g. In Review"
+              value={newColumnName}
+              onChange={(e) => setNewColumnName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
+            />
+            <Select
+              label="Category"
+              options={CATEGORY_OPTIONS}
+              value={newColumnCategory}
+              onChange={(e) => setNewColumnCategory(e.target.value)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <div className="flex gap-2">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setNewColumnColor(color)}
+                    className={cn(
+                      'h-7 w-7 rounded-full border-2 transition-all',
+                      newColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowAddColumn(false)}>Cancel</Button>
+          <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} isLoading={createStatus.isPending}>
+            Add Column
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Edit Column Dialog */}
+      <Dialog open={!!editColumnId} onClose={() => setEditColumnId(null)} className="max-w-sm">
+        <DialogHeader onClose={() => setEditColumnId(null)}>
+          <DialogTitle>Edit Column</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-4">
+            <Input
+              label="Column Name"
+              value={editColumnName}
+              onChange={(e) => setEditColumnName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveEditColumn()}
+            />
+            <Select
+              label="Category"
+              options={CATEGORY_OPTIONS}
+              value={editColumnCategory}
+              onChange={(e) => setEditColumnCategory(e.target.value)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <div className="flex gap-2">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setEditColumnColor(color)}
+                    className={cn(
+                      'h-7 w-7 rounded-full border-2 transition-all',
+                      editColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditColumnId(null)}>Cancel</Button>
+          <Button onClick={handleSaveEditColumn} disabled={!editColumnName.trim()} isLoading={updateStatus.isPending}>
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Delete Column Confirmation */}
+      <ConfirmDialog
+        open={!!deleteColumnId}
+        onClose={() => setDeleteColumnId(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Column"
+        description={
+          deleteColumn
+            ? `Are you sure you want to delete "${deleteColumn.name}"? ${deleteColumn.issues.length > 0 ? `${deleteColumn.issues.length} issue(s) will be moved to the first column.` : 'This column is empty.'}`
+            : ''
+        }
+        confirmLabel="Delete"
+        destructive
+        isLoading={deleteStatus.isPending}
+      />
     </div>
   )
 }

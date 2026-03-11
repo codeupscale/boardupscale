@@ -50,7 +50,7 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
           </span>
         )}
         <span className="text-sm font-semibold text-gray-700">{group.label}</span>
-        <span className="text-xs text-gray-400 font-medium bg-gray-200 rounded-full px-1.5 py-0.5">
+        <span className="text-xs text-gray-500 font-medium bg-gray-200 rounded-full px-1.5 py-0.5">
           {issueCount}
         </span>
       </button>
@@ -65,7 +65,7 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
 
             return (
               <div key={column.id} className="flex flex-col w-72 flex-shrink-0">
-                <Droppable droppableId={droppableId}>
+                <Droppable droppableId={droppableId} type="ISSUE">
                   {(provided, snapshot) => (
                     <div
                       ref={provided.innerRef}
@@ -84,7 +84,7 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
                       ))}
                       {provided.placeholder}
                       {columnIssues.length === 0 && !snapshot.isDraggingOver && (
-                        <div className="flex items-center justify-center h-12 text-xs text-gray-400">
+                        <div className="flex items-center justify-center h-12 text-xs text-gray-500">
                           {t('issues.noIssuesBoard', 'No issues')}
                         </div>
                       )}

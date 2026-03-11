@@ -67,13 +67,13 @@ export function AvatarGroup({ users, max = 3, size = 'sm' }: AvatarGroupProps) {
           key={user.id || i}
           user={user}
           size={size}
-          className="ring-2 ring-white"
+          className="ring-2 ring-white dark:ring-gray-900"
         />
       ))}
       {extra > 0 && (
         <div
           className={cn(
-            'rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium ring-2 ring-white text-xs',
+            'rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-medium ring-2 ring-white dark:ring-gray-900 text-xs',
             sizes[size],
           )}
         >

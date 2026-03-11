@@ -147,7 +147,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
               {def.description && (
                 <p className="text-xs text-gray-500 mt-0.5">{def.description}</p>
               )}
-              <p className="text-xs text-gray-400 font-mono mt-0.5">key: {def.fieldKey}</p>
+              <p className="text-xs text-gray-500 font-mono mt-0.5">key: {def.fieldKey}</p>
             </div>
             <Button
               variant="ghost"
@@ -167,7 +167,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
           </div>
         ))}
         {(!definitions || definitions.length === 0) && (
-          <div className="py-8 text-center text-sm text-gray-400">
+          <div className="py-8 text-center text-sm text-gray-500">
             No custom fields configured. Add fields to track additional information on issues.
           </div>
         )}
@@ -235,7 +235,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                       style={{ backgroundColor: opt.color || '#6b7280' }}
                     />
                     <span className="text-sm flex-1">{opt.label}</span>
-                    <span className="text-xs text-gray-400 font-mono">{opt.value}</span>
+                    <span className="text-xs text-gray-500 font-mono">{opt.value}</span>
                     <button
                       type="button"
                       onClick={() => removeOption(i)}

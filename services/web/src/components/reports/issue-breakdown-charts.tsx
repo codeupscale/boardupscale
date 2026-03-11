@@ -93,7 +93,7 @@ function BreakdownPie({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <div className="h-56 flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-56 flex items-center justify-center text-gray-500 text-sm">
             No data
           </div>
         ) : (

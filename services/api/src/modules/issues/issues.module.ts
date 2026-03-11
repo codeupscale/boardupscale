@@ -16,6 +16,7 @@ import { EventsModule } from '../../websocket/events.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
 import { ActivityModule } from '../activity/activity.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ActivityModule } from '../activity/activity.module';
     WebhooksModule,
     forwardRef(() => AutomationModule),
     ActivityModule,
+    AiModule,
   ],
   controllers: [IssuesController],
   providers: [IssuesService],

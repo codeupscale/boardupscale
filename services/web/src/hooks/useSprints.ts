@@ -7,7 +7,7 @@ export function useSprints(projectId: string) {
   return useQuery({
     queryKey: ['sprints', projectId],
     queryFn: async () => {
-      const { data } = await api.get(`/projects/${projectId}/sprints`)
+      const { data } = await api.get(`/sprints`, { params: { projectId } })
       return data.data as Sprint[]
     },
     enabled: !!projectId,
@@ -27,11 +27,11 @@ export function useCreateSprint() {
       startDate?: string
       endDate?: string
     }) => {
-      const { data } = await api.post(`/projects/${projectId}/sprints`, payload)
+      const { data } = await api.post(`/sprints`, { projectId, ...payload })
       return data.data as Sprint
     },
-    onSuccess: (sprint) => {
-      qc.invalidateQueries({ queryKey: ['sprints', sprint.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints'] })
       toast('Sprint created')
     },
     onError: (err: any) =>
@@ -54,11 +54,11 @@ export function useUpdateSprint() {
       startDate?: string
       endDate?: string
     }) => {
-      const { data } = await api.patch(`/projects/${projectId}/sprints/${sprintId}`, payload)
+      const { data } = await api.patch(`/sprints/${sprintId}`, payload)
       return data.data as Sprint
     },
-    onSuccess: (sprint) => {
-      qc.invalidateQueries({ queryKey: ['sprints', sprint.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints'] })
       toast('Sprint updated')
     },
     onError: (err: any) =>
@@ -81,13 +81,13 @@ export function useStartSprint() {
       endDate: string
     }) => {
       const { data } = await api.post(
-        `/projects/${projectId}/sprints/${sprintId}/start`,
+        `/sprints/${sprintId}/start`,
         { startDate, endDate },
       )
       return data.data as Sprint
     },
-    onSuccess: (sprint) => {
-      qc.invalidateQueries({ queryKey: ['sprints', sprint.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints'] })
       toast('Sprint started')
     },
     onError: (err: any) =>
@@ -105,12 +105,12 @@ export function useCompleteSprint() {
       projectId: string
       sprintId: string
     }) => {
-      const { data } = await api.post(`/projects/${projectId}/sprints/${sprintId}/complete`)
+      const { data } = await api.post(`/sprints/${sprintId}/complete`)
       return data.data as Sprint
     },
-    onSuccess: (sprint) => {
-      qc.invalidateQueries({ queryKey: ['sprints', sprint.projectId] })
-      qc.invalidateQueries({ queryKey: ['board', sprint.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints'] })
+      qc.invalidateQueries({ queryKey: ['board'] })
       qc.invalidateQueries({ queryKey: ['issues'] })
       toast('Sprint completed')
     },
@@ -123,7 +123,7 @@ export function useDeleteSprint() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({ projectId, sprintId }: { projectId: string; sprintId: string }) => {
-      await api.delete(`/projects/${projectId}/sprints/${sprintId}`)
+      await api.delete(`/sprints/${sprintId}`)
       return { projectId }
     },
     onSuccess: ({ projectId }) => {

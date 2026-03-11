@@ -1,3 +1,12 @@
+jest.mock('otplib', () => ({
+  generateSecret: jest.fn().mockReturnValue('mock-secret'),
+  generateURI: jest.fn().mockReturnValue('otpauth://mock'),
+  verify: jest.fn().mockReturnValue(true),
+}));
+jest.mock('qrcode', () => ({
+  toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mock'),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';

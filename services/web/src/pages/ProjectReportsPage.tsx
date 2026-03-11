@@ -49,7 +49,7 @@ const TABS = [
 ]
 
 export function ProjectReportsPage() {
-  const { id: projectId } = useParams<{ id: string }>()
+  const { key: projectKey } = useParams<{ key: string }>()
   const [activeTab, setActiveTab] = useState('burndown')
   const [selectedSprintId, setSelectedSprintId] = useState('')
   const [cfdStartDate, setCfdStartDate] = useState('')
@@ -60,7 +60,7 @@ export function ProjectReportsPage() {
   const [cvrEndDate, setCvrEndDate] = useState('')
   const [cvrInterval, setCvrInterval] = useState<'day' | 'week'>('day')
 
-  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectId || '')
+  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey || '')
 
   // Auto-select first sprint
   const activeSprint = useMemo(() => {
@@ -73,45 +73,45 @@ export function ProjectReportsPage() {
 
   // Data hooks
   const burndownQuery = useSprintBurndown(
-    projectId || '',
+    projectKey || '',
     activeTab === 'burndown' ? activeSprint : '',
   )
   const velocityQuery = useVelocity(
-    projectId || '',
+    projectKey || '',
     activeTab === 'velocity' ? 6 : 0,
   )
   const cfdQuery = useCumulativeFlow(
-    projectId || '',
+    projectKey || '',
     activeTab === 'cumulative-flow' ? cfdStartDate || undefined : undefined,
     activeTab === 'cumulative-flow' ? cfdEndDate || undefined : undefined,
   )
   const breakdownQuery = useIssueBreakdown(
-    activeTab === 'breakdown' ? projectId || '' : '',
+    activeTab === 'breakdown' ? projectKey || '' : '',
   )
   const workloadQuery = useAssigneeWorkload(
-    activeTab === 'workload' ? projectId || '' : '',
+    activeTab === 'workload' ? projectKey || '' : '',
   )
   const cycleTimeQuery = useCycleTime(
-    activeTab === 'cycle-time' ? projectId || '' : '',
+    activeTab === 'cycle-time' ? projectKey || '' : '',
     activeTab === 'cycle-time' ? ctStartDate || undefined : undefined,
     activeTab === 'cycle-time' ? ctEndDate || undefined : undefined,
   )
   const burnupQuery = useSprintBurnup(
-    projectId || '',
+    projectKey || '',
     activeTab === 'burnup' ? activeSprint : '',
   )
   const createdVsResolvedQuery = useCreatedVsResolved(
-    activeTab === 'created-vs-resolved' ? projectId || '' : '',
+    activeTab === 'created-vs-resolved' ? projectKey || '' : '',
     activeTab === 'created-vs-resolved' ? cvrStartDate || undefined : undefined,
     activeTab === 'created-vs-resolved' ? cvrEndDate || undefined : undefined,
     activeTab === 'created-vs-resolved' ? cvrInterval : undefined,
   )
   const sprintReportQuery = useSprintReport(
-    projectId || '',
+    projectKey || '',
     activeTab === 'sprint-report' ? activeSprint : '',
   )
 
-  if (!projectId) return null
+  if (!projectKey) return null
 
   return (
     <div className="p-6 space-y-4">
@@ -132,7 +132,7 @@ export function ProjectReportsPage() {
               Sprint
             </label>
             {sprintsLoading ? (
-              <div className="text-sm text-gray-400">Loading sprints...</div>
+              <div className="text-sm text-gray-500">Loading sprints...</div>
             ) : sprints && sprints.length > 0 ? (
               <select
                 value={activeSprint}
@@ -146,7 +146,7 @@ export function ProjectReportsPage() {
                 ))}
               </select>
             ) : (
-              <p className="text-sm text-gray-400">No sprints available</p>
+              <p className="text-sm text-gray-500">No sprints available</p>
             )}
           </div>
         )}

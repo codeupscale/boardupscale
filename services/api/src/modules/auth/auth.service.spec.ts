@@ -1,3 +1,12 @@
+jest.mock('otplib', () => ({
+  generateSecret: jest.fn().mockReturnValue('mock-secret'),
+  generateURI: jest.fn().mockReturnValue('otpauth://mock'),
+  verify: jest.fn().mockReturnValue(true),
+}));
+jest.mock('qrcode', () => ({
+  toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mock'),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -237,7 +246,7 @@ describe('AuthService', () => {
       refreshTokenRepo.create.mockReturnValue({});
       refreshTokenRepo.save.mockResolvedValue({});
 
-      const result = await service.login(user, '127.0.0.1', 'test-agent');
+      const result = await service.login(user, '127.0.0.1', 'test-agent') as any;
 
       expect(usersService.updateLastLogin).toHaveBeenCalledWith(user.id);
       expect(result.user).toEqual(user);

@@ -29,6 +29,7 @@ import { ProjectForm } from '@/components/projects/project-form'
 import { CustomFieldSettings } from '@/components/projects/custom-field-settings'
 import { ComponentList } from '@/components/projects/component-list'
 import { VersionList } from '@/components/projects/version-list'
+import { GitHubConnection } from '@/components/projects/github-connection'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS = [
@@ -38,7 +39,7 @@ const STATUS_COLORS = [
 
 export function ProjectSettingsPage() {
   const { t } = useTranslation()
-  const { id: projectId } = useParams<{ id: string }>()
+  const { key: projectKey } = useParams<{ key: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('general')
   const [showAddMember, setShowAddMember] = useState(false)
@@ -51,9 +52,9 @@ export function ProjectSettingsPage() {
   const [statusColor, setStatusColor] = useState(STATUS_COLORS[0])
   const [showDeleteProject, setShowDeleteProject] = useState(false)
 
-  const { data: project, isLoading } = useProject(projectId!)
-  const { data: board } = useBoard(projectId!)
-  const { data: members } = useProjectMembers(projectId!)
+  const { data: project, isLoading } = useProject(projectKey!)
+  const { data: board } = useBoard(projectKey!)
+  const { data: members } = useProjectMembers(projectKey!)
   const { data: users } = useUsers()
 
   const updateProject = useUpdateProject()
@@ -77,7 +78,7 @@ export function ProjectSettingsPage() {
     if (editStatus) {
       updateStatus.mutate(
         {
-          projectId: projectId!,
+          projectId: projectKey!,
           statusId: editStatus.id,
           name: statusName,
           category: statusCategory,
@@ -93,7 +94,7 @@ export function ProjectSettingsPage() {
     } else {
       createStatus.mutate(
         {
-          projectId: projectId!,
+          projectId: projectKey!,
           name: statusName,
           category: statusCategory,
           color: statusColor,
@@ -114,7 +115,7 @@ export function ProjectSettingsPage() {
         title={t('nav.projectSettings')}
         breadcrumbs={[
           { label: t('nav.projects'), href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
           { label: t('nav.settings') },
         ]}
       />
@@ -130,6 +131,7 @@ export function ProjectSettingsPage() {
             { id: 'custom-fields', label: 'Custom Fields' },
             { id: 'components', label: 'Components' },
             { id: 'versions', label: 'Versions' },
+            { id: 'github', label: 'GitHub' },
             { id: 'danger', label: t('settings.dangerZone') },
           ]}
           activeTab={activeTab}
@@ -164,7 +166,7 @@ export function ProjectSettingsPage() {
                 </Button>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 px-4">
-                <MemberList projectId={projectId!} members={members || []} />
+                <MemberList projectId={projectKey!} members={members || []} />
               </div>
             </div>
           )}
@@ -196,7 +198,7 @@ export function ProjectSettingsPage() {
                       style={{ backgroundColor: status.color || '#6b7280' }}
                     />
                     <span className="flex-1 text-sm font-medium text-gray-900">{status.name}</span>
-                    <span className="text-xs text-gray-400">{status.category}</span>
+                    <span className="text-xs text-gray-500">{status.category}</span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -209,7 +211,7 @@ export function ProjectSettingsPage() {
                       size="icon-sm"
                       className="text-gray-400 hover:text-red-600"
                       onClick={() =>
-                        deleteStatus.mutate({ projectId: projectId!, statusId: status.id })
+                        deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })
                       }
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -217,7 +219,7 @@ export function ProjectSettingsPage() {
                   </div>
                 ))}
                 {(!board?.statuses || board.statuses.length === 0) && (
-                  <div className="py-8 text-center text-sm text-gray-400">
+                  <div className="py-8 text-center text-sm text-gray-500">
                     {t('settings.noStatusesConfigured')}
                   </div>
                 )}
@@ -245,7 +247,7 @@ export function ProjectSettingsPage() {
 
               {/* Assign roles to members inline */}
               <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-                <MemberRoleList projectId={projectId!} />
+                <MemberRoleList projectId={projectKey!} />
               </div>
             </div>
           )}
@@ -262,7 +264,7 @@ export function ProjectSettingsPage() {
                   </p>
                   <Button
                     size="sm"
-                    onClick={() => navigate(`/projects/${projectId}/webhooks`)}
+                    onClick={() => navigate(`/projects/${projectKey}/webhooks`)}
                   >
                     Manage Webhooks
                   </Button>
@@ -274,21 +276,28 @@ export function ProjectSettingsPage() {
           {/* Custom Fields */}
           {activeTab === 'custom-fields' && (
             <div className="max-w-2xl">
-              <CustomFieldSettings projectId={projectId!} />
+              <CustomFieldSettings projectId={projectKey!} />
             </div>
           )}
 
           {/* Components */}
           {activeTab === 'components' && (
             <div className="max-w-2xl">
-              <ComponentList projectId={projectId!} />
+              <ComponentList projectId={projectKey!} />
             </div>
           )}
 
           {/* Versions */}
           {activeTab === 'versions' && (
             <div className="max-w-2xl">
-              <VersionList projectId={projectId!} />
+              <VersionList projectId={projectKey!} />
+            </div>
+          )}
+
+          {/* GitHub */}
+          {activeTab === 'github' && (
+            <div className="max-w-lg">
+              <GitHubConnection projectId={projectKey!} />
             </div>
           )}
 
@@ -351,7 +360,7 @@ export function ProjectSettingsPage() {
               onClick={() => {
                 if (!newMemberId) return
                 addMember.mutate(
-                  { projectId: projectId!, userId: newMemberId, role: newMemberRole },
+                  { projectId: projectKey!, userId: newMemberId, role: newMemberRole },
                   { onSuccess: () => { setShowAddMember(false); setNewMemberId(null) } },
                 )
               }}
@@ -421,7 +430,7 @@ export function ProjectSettingsPage() {
         open={showDeleteProject}
         onClose={() => setShowDeleteProject(false)}
         onConfirm={() =>
-          deleteProject.mutate(projectId!, {
+          deleteProject.mutate(projectKey!, {
             onSuccess: () => navigate('/projects'),
           })
         }
@@ -447,7 +456,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
 
   if (members.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-400">
+      <div className="py-8 text-center text-sm text-gray-500">
         No members in this project.
       </div>
     )
@@ -461,7 +470,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
             <span className="text-sm font-medium text-gray-900">
               {member.user?.displayName || member.userId}
             </span>
-            <span className="text-xs text-gray-400 ml-2">
+            <span className="text-xs text-gray-500 ml-2">
               {member.user?.email}
             </span>
           </div>

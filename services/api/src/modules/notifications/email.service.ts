@@ -88,4 +88,19 @@ export class EmailService {
     });
     this.logger.log(`Enqueued password-reset email to ${to}`);
   }
+
+  async sendInvitationEmail(
+    to: string,
+    inviterName: string,
+    organizationName: string,
+    inviteUrl: string,
+  ): Promise<void> {
+    await this.emailQueue.add('member-invitation', {
+      to,
+      inviterName,
+      organizationName,
+      inviteUrl,
+    });
+    this.logger.log(`Enqueued member-invitation email to ${to}`);
+  }
 }

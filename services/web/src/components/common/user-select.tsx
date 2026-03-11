@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Sparkles } from 'lucide-react'
 import { useUsers } from '@/hooks/useUsers'
+import { useAiAssignees, useAiStatus, AssigneeSuggestion } from '@/hooks/useAi'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
@@ -9,13 +10,17 @@ interface UserSelectProps {
   onChange: (userId: string | null) => void
   placeholder?: string
   className?: string
+  projectId?: string
+  issueType?: string
 }
 
-export function UserSelect({ value, onChange, placeholder = 'Select user', className }: UserSelectProps) {
+export function UserSelect({ value, onChange, placeholder = 'Select user', className, projectId, issueType }: UserSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const { data: users = [] } = useUsers()
+  const { data: aiStatus } = useAiStatus()
+  const { data: aiSuggestions = [] } = useAiAssignees(projectId, issueType)
 
   const selectedUser = users.find((u) => u.id === value) || null
 
@@ -79,7 +84,7 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
               autoFocus
             />
           </div>
-          <div className="max-h-48 overflow-y-auto py-1">
+          <div className="max-h-60 overflow-y-auto py-1">
             <button
               type="button"
               onClick={() => {
@@ -91,6 +96,39 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
             >
               Unassigned
             </button>
+
+            {/* AI Suggested Assignees */}
+            {aiStatus?.enabled && aiSuggestions.length > 0 && !search && (
+              <>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100">
+                  <Sparkles className="h-3 w-3 text-purple-500" />
+                  <span className="text-[10px] uppercase tracking-wider text-purple-500 font-semibold">AI Suggested</span>
+                </div>
+                {aiSuggestions.map((s: AssigneeSuggestion) => {
+                  const user = users.find((u) => u.id === s.userId)
+                  return (
+                    <button
+                      key={`ai-${s.userId}`}
+                      type="button"
+                      onClick={() => {
+                        onChange(s.userId)
+                        setOpen(false)
+                        setSearch('')
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-purple-50 text-left"
+                    >
+                      <Avatar user={user || { displayName: s.displayName, avatarUrl: s.avatarUrl }} size="xs" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-900 font-medium truncate">{s.displayName}</p>
+                        <p className="text-purple-500 text-[10px] truncate">{s.reason}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+                <div className="border-b border-gray-100 my-0.5" />
+              </>
+            )}
+
             {filtered.map((user) => (
               <button
                 key={user.id}
@@ -105,12 +143,12 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
                 <Avatar user={user} size="xs" />
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-900 font-medium truncate">{user.displayName}</p>
-                  <p className="text-gray-400 text-xs truncate">{user.email}</p>
+                  <p className="text-gray-500 text-xs truncate">{user.email}</p>
                 </div>
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="py-4 text-center text-sm text-gray-400">No users found</div>
+              <div className="py-4 text-center text-sm text-gray-500">No users found</div>
             )}
           </div>
         </div>

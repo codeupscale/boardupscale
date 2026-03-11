@@ -48,6 +48,13 @@ interface EmailVerificationJobData {
   verificationUrl: string;
 }
 
+interface MemberInvitationJobData {
+  to: string;
+  inviterName: string;
+  organizationName: string;
+  inviteUrl: string;
+}
+
 // ─── HTML template helpers ───────────────────────────────────────────────────
 
 function emailWrapper(title: string, bodyHtml: string): string {
@@ -88,8 +95,8 @@ function emailWrapper(title: string, bodyHtml: string): string {
         ${bodyHtml}
       </div>
       <div class="footer">
-        <p>You received this email because you have an account on ProjectFlow.</p>
-        <p>&copy; ${new Date().getFullYear()} ProjectFlow. All rights reserved.</p>
+        <p>You received this email because you have an account on Boardupscale.</p>
+        <p>&copy; ${new Date().getFullYear()} Boardupscale. All rights reserved.</p>
       </div>
     </div>
   </div>
@@ -99,11 +106,11 @@ function emailWrapper(title: string, bodyHtml: string): string {
 
 function welcomeTemplate(data: WelcomeJobData): { subject: string; html: string } {
   return {
-    subject: `Welcome to ${data.organizationName} on ProjectFlow`,
+    subject: `Welcome to ${data.organizationName} on Boardupscale`,
     html: emailWrapper(
-      'Welcome to ProjectFlow',
+      'Welcome to Boardupscale',
       `<h2>Welcome aboard, ${escapeHtml(data.displayName)}!</h2>
-      <p>You've been added to <strong>${escapeHtml(data.organizationName)}</strong> on ProjectFlow — your team's project management hub.</p>
+      <p>You've been added to <strong>${escapeHtml(data.organizationName)}</strong> on Boardupscale — your team's project management hub.</p>
       <p>Here's what you can do to get started:</p>
       <ul style="padding-left:20px; margin: 0 0 16px;">
         <li style="margin-bottom:8px;">Browse your team's projects and boards</li>
@@ -112,7 +119,7 @@ function welcomeTemplate(data: WelcomeJobData): { subject: string; html: string 
         <li style="margin-bottom:8px;">Collaborate with your team in real-time</li>
       </ul>
       <p>
-        <a href="${config.frontend.url}" class="btn">Go to ProjectFlow</a>
+        <a href="${config.frontend.url}" class="btn">Go to Boardupscale</a>
       </p>
       <hr class="divider" />
       <p style="font-size:13px;color:#6b778c;">If you weren't expecting this invitation, you can safely ignore this email.</p>`
@@ -135,7 +142,7 @@ function issueAssignedTemplate(data: IssueAssignedJobData): { subject: string; h
         <a href="${escapeHtml(data.issueUrl)}" class="btn">View Issue</a>
       </p>
       <hr class="divider" />
-      <p style="font-size:13px;color:#6b778c;">You can update this issue's status, add comments, and log work directly from ProjectFlow.</p>`
+      <p style="font-size:13px;color:#6b778c;">You can update this issue's status, add comments, and log work directly from Boardupscale.</p>`
     ),
   };
 }
@@ -162,7 +169,7 @@ function commentMentionedTemplate(data: CommentMentionedJobData): { subject: str
         <a href="${escapeHtml(data.issueUrl)}" class="btn">View Comment</a>
       </p>
       <hr class="divider" />
-      <p style="font-size:13px;color:#6b778c;">Reply directly in ProjectFlow to continue the conversation.</p>`
+      <p style="font-size:13px;color:#6b778c;">Reply directly in Boardupscale to continue the conversation.</p>`
     ),
   };
 }
@@ -201,11 +208,11 @@ function sprintReminderTemplate(data: SprintReminderJobData): { subject: string;
 
 function passwordResetTemplate(data: PasswordResetJobData): { subject: string; html: string } {
   return {
-    subject: 'Reset your ProjectFlow password',
+    subject: 'Reset your Boardupscale password',
     html: emailWrapper(
       'Password Reset',
       `<h2>Reset your password</h2>
-      <p>We received a request to reset the password for your ProjectFlow account. Click the button below to choose a new password.</p>
+      <p>We received a request to reset the password for your Boardupscale account. Click the button below to choose a new password.</p>
       <p>
         <a href="${escapeHtml(data.resetUrl)}" class="btn">Reset Password</a>
       </p>
@@ -219,11 +226,11 @@ function passwordResetTemplate(data: PasswordResetJobData): { subject: string; h
 
 function emailVerificationTemplate(data: EmailVerificationJobData): { subject: string; html: string } {
   return {
-    subject: 'Verify your ProjectFlow email address',
+    subject: 'Verify your Boardupscale email address',
     html: emailWrapper(
       'Email Verification',
       `<h2>Verify your email address</h2>
-      <p>Thanks for signing up for ProjectFlow! Please verify your email address by clicking the button below.</p>
+      <p>Thanks for signing up for Boardupscale! Please verify your email address by clicking the button below.</p>
       <p>
         <a href="${escapeHtml(data.verificationUrl)}" class="btn">Verify Email</a>
       </p>
@@ -231,6 +238,25 @@ function emailVerificationTemplate(data: EmailVerificationJobData): { subject: s
       <p style="font-size:13px;color:#6b778c;">This link will expire in <strong>24 hours</strong>. If you didn't create an account, you can safely ignore this email.</p>
       <p style="font-size:13px;color:#6b778c;">If the button above doesn't work, copy and paste this URL into your browser:</p>
       <p style="font-size:12px;color:#0052cc;word-break:break-all;">${escapeHtml(data.verificationUrl)}</p>`
+    ),
+  };
+}
+
+function memberInvitationTemplate(data: MemberInvitationJobData): { subject: string; html: string } {
+  return {
+    subject: `You've been invited to ${data.organizationName} on Boardupscale`,
+    html: emailWrapper(
+      'Team Invitation',
+      `<h2>You're invited!</h2>
+      <p><strong>${escapeHtml(data.inviterName)}</strong> has invited you to join <strong>${escapeHtml(data.organizationName)}</strong> on Boardupscale.</p>
+      <p>Click the button below to set up your account and start collaborating with your team.</p>
+      <p>
+        <a href="${escapeHtml(data.inviteUrl)}" class="btn">Accept Invitation</a>
+      </p>
+      <hr class="divider" />
+      <p style="font-size:13px;color:#6b778c;">This invitation will expire in <strong>7 days</strong>. If you weren't expecting this invitation, you can safely ignore this email.</p>
+      <p style="font-size:13px;color:#6b778c;">If the button above doesn't work, copy and paste this URL into your browser:</p>
+      <p style="font-size:12px;color:#0052cc;word-break:break-all;">${escapeHtml(data.inviteUrl)}</p>`
     ),
   };
 }
@@ -355,6 +381,18 @@ export function createEmailWorker(): Worker {
           break;
         }
 
+        case 'member-invitation': {
+          const data = job.data as MemberInvitationJobData;
+          message = memberInvitationTemplate(data);
+          await transporter.sendMail({
+            from: config.smtp.from,
+            to: data.to,
+            subject: message.subject,
+            html: message.html,
+          });
+          break;
+        }
+
         default:
           throw new Error(`[EmailWorker] Unknown job type: "${job.name}"`);
       }
@@ -362,7 +400,7 @@ export function createEmailWorker(): Worker {
       console.log(`[EmailWorker] Job ${job.id} (${job.name}) completed successfully`);
     },
     {
-      connection: createRedisConnection(),
+      connection: createRedisConnection() as any,
       concurrency: 5,
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 200 },

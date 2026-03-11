@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { EventsGateway } from '../../websocket/events.gateway';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private notificationRepository: Repository<Notification>,
+    private eventsGateway: EventsGateway,
   ) {}
 
   async create(dto: CreateNotificationDto): Promise<Notification> {
@@ -19,7 +21,12 @@ export class NotificationsService {
       body: dto.body,
       data: dto.data,
     });
-    return this.notificationRepository.save(notification);
+    const saved = await this.notificationRepository.save(notification);
+
+    // Push real-time notification to the user via WebSocket
+    this.eventsGateway.emitToUser(dto.userId, 'notification:new', saved);
+
+    return saved;
   }
 
   async findAll(userId: string, page: number = 1, limit: number = 20) {

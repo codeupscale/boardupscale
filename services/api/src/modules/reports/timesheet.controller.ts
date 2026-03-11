@@ -9,6 +9,7 @@ import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('reports')
 @ApiBearerAuth()
@@ -46,7 +47,7 @@ export class TimesheetController {
   @ApiQuery({ name: 'endDate', required: false })
   async getTeamTimesheet(
     @OrgId() organizationId: string,
-    @Query('projectId') projectId?: string,
+    @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {

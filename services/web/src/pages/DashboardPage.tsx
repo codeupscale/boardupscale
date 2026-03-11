@@ -31,6 +31,7 @@ import { LoadingPage } from '@/components/ui/spinner'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { ProjectCard } from '@/components/projects/project-card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intelligence-widget'
 import { formatDate } from '@/lib/utils'
 
 function StatCard({
@@ -85,12 +86,12 @@ function MiniBurndownWidget({
       <CardContent className="py-4">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <p className="text-xs text-gray-400 truncate">{projectName}</p>
+            <p className="text-xs text-gray-500 truncate">{projectName}</p>
             <p className="text-sm font-semibold text-gray-900">{data.sprintName}</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold text-blue-600">{remaining}</p>
-            <p className="text-xs text-gray-400">pts remaining</p>
+            <p className="text-xs text-gray-500">pts remaining</p>
           </div>
         </div>
         <div className="h-20">
@@ -155,12 +156,12 @@ function VelocityWidget({
       <CardContent className="py-4">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <p className="text-xs text-gray-400 truncate">{projectName}</p>
+            <p className="text-xs text-gray-500 truncate">{projectName}</p>
             <p className="text-sm font-semibold text-gray-900">Velocity</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold text-green-600">{data.averageVelocity}</p>
-            <p className="text-xs text-gray-400">avg pts/sprint</p>
+            <p className="text-xs text-gray-500">avg pts/sprint</p>
           </div>
         </div>
         <div className="h-20">
@@ -293,7 +294,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="flex gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label={t('dashboard.openIssues')}
           value={stats.open}
@@ -335,6 +336,11 @@ export function DashboardPage() {
             />
             <WorkloadSummaryWidget myIssues={myIssues} />
           </div>
+
+          {/* Sprint Intelligence (AI) */}
+          {activeSprint && (
+            <SprintIntelligenceWidget sprintId={activeSprint.id} className="mt-4" />
+          )}
         </div>
       )}
 

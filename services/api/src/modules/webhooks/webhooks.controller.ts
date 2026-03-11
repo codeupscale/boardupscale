@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('webhooks')
 @ApiBearerAuth()
@@ -34,7 +35,7 @@ export class WebhooksController {
   @Post('projects/:projectId/webhooks')
   @ApiOperation({ summary: 'Create a webhook for a project' })
   async create(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
     @CurrentUser() user: any,
     @Body() dto: CreateWebhookDto,
@@ -46,7 +47,7 @@ export class WebhooksController {
   @Get('projects/:projectId/webhooks')
   @ApiOperation({ summary: 'List webhooks for a project' })
   async findAllForProject(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
   ) {
     const webhooks = await this.webhooksService.findAll(organizationId, projectId);
@@ -87,7 +88,7 @@ export class WebhooksController {
       event: 'webhook.test',
       timestamp: new Date().toISOString(),
       data: {
-        message: 'This is a test webhook delivery from ProjectFlow',
+        message: 'This is a test webhook delivery from Boardupscale',
         webhookId: webhook.id,
         webhookName: webhook.name,
       },

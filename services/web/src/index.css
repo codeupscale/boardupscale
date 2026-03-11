@@ -17,6 +17,20 @@ body {
   margin: 0;
 }
 
+/* Dark mode body */
+.dark body {
+  background-color: #0f1117;
+  color: #e5e7eb;
+}
+
+/* Smooth theme transitions */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -34,4 +48,386 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Dark mode select option styling */
+.dark select option {
+  background-color: #1f2937;
+  color: #e5e7eb;
+}
+
+/* Accessibility: reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Rich Text Editor — ProseMirror / TipTap
+   ───────────────────────────────────────────── */
+
+/* Editor editable area */
+.rich-text-editor-content .ProseMirror {
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #111827;
+  min-height: inherit;
+}
+
+.rich-text-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* ─── Shared typography for both editor & display ─── */
+.rich-text-editor-content .ProseMirror,
+.rich-text-content {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #374151;
+}
+
+.rich-text-editor-content .ProseMirror > * + *,
+.rich-text-content > * + * {
+  margin-top: 0.5em;
+}
+
+/* Paragraphs */
+.rich-text-editor-content .ProseMirror p,
+.rich-text-content p {
+  margin: 0;
+}
+
+/* Headings */
+.rich-text-editor-content .ProseMirror h1,
+.rich-text-editor-content .ProseMirror h2,
+.rich-text-editor-content .ProseMirror h3,
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3 {
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+  margin-top: 1em;
+  margin-bottom: 0.25em;
+}
+
+.rich-text-editor-content .ProseMirror h1,
+.rich-text-content h1 {
+  font-size: 1.25rem;
+}
+
+.rich-text-editor-content .ProseMirror h2,
+.rich-text-content h2 {
+  font-size: 1.125rem;
+}
+
+.rich-text-editor-content .ProseMirror h3,
+.rich-text-content h3 {
+  font-size: 1rem;
+}
+
+/* Lists */
+.rich-text-editor-content .ProseMirror ul,
+.rich-text-editor-content .ProseMirror ol,
+.rich-text-content ul,
+.rich-text-content ol {
+  padding-left: 1.5em;
+  margin: 0.25em 0;
+}
+
+.rich-text-editor-content .ProseMirror ul,
+.rich-text-content ul {
+  list-style-type: disc;
+}
+
+.rich-text-editor-content .ProseMirror ol,
+.rich-text-content ol {
+  list-style-type: decimal;
+}
+
+.rich-text-editor-content .ProseMirror li,
+.rich-text-content li {
+  margin: 0.125em 0;
+}
+
+/* Blockquote */
+.rich-text-editor-content .ProseMirror blockquote,
+.rich-text-content blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Inline code */
+.rich-text-editor-content .ProseMirror code,
+.rich-text-content code {
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.8125rem;
+  color: #dc2626;
+}
+
+/* Code block */
+.rich-text-editor-content .ProseMirror pre,
+.rich-text-content pre {
+  background-color: #1f2937;
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  margin: 0.5em 0;
+  overflow-x: auto;
+}
+
+.rich-text-editor-content .ProseMirror pre code,
+.rich-text-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #e5e7eb;
+  font-size: 0.8125rem;
+}
+
+/* Horizontal rule */
+.rich-text-editor-content .ProseMirror hr,
+.rich-text-content hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 0.75em 0;
+}
+
+/* Links */
+.rich-text-editor-content .ProseMirror a,
+.rich-text-content a,
+.rich-text-editor-content .ProseMirror .rich-link,
+.rich-text-content .rich-link {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rich-text-editor-content .ProseMirror a:hover,
+.rich-text-content a:hover {
+  color: #1d4ed8;
+}
+
+/* @Mentions */
+.rich-text-editor-content .ProseMirror .mention,
+.rich-text-content .mention {
+  background-color: #dbeafe;
+  border-radius: 4px;
+  color: #1d4ed8;
+  font-weight: 500;
+  padding: 0.05em 0.3em;
+  white-space: nowrap;
+}
+
+/* Bold / Italic / Underline / Strike handled by browser defaults via semantic tags */
+.rich-text-editor-content .ProseMirror strong,
+.rich-text-content strong {
+  font-weight: 600;
+}
+
+.rich-text-editor-content .ProseMirror em,
+.rich-text-content em {
+  font-style: italic;
+}
+
+.rich-text-editor-content .ProseMirror u,
+.rich-text-content u {
+  text-decoration: underline;
+}
+
+.rich-text-editor-content .ProseMirror s,
+.rich-text-content s {
+  text-decoration: line-through;
+}
+
+/* Selection highlight in editor */
+.rich-text-editor-content .ProseMirror ::selection {
+  background-color: #bfdbfe;
+}
+
+/* Dark mode adjustments */
+.dark .rich-text-editor-content .ProseMirror,
+.dark .rich-text-content {
+  color: #d1d5db;
+}
+
+.dark .rich-text-editor-content .ProseMirror h1,
+.dark .rich-text-editor-content .ProseMirror h2,
+.dark .rich-text-editor-content .ProseMirror h3,
+.dark .rich-text-content h1,
+.dark .rich-text-content h2,
+.dark .rich-text-content h3 {
+  color: #f3f4f6;
+}
+
+.dark .rich-text-editor-content .ProseMirror code,
+.dark .rich-text-content code {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f87171;
+}
+
+.dark .rich-text-editor-content .ProseMirror blockquote,
+.dark .rich-text-content blockquote {
+  border-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .rich-text-editor-content .ProseMirror .mention,
+.dark .rich-text-content .mention {
+  background-color: #1e3a5f;
+  color: #93c5fd;
+}
+
+/* ─── TipTap Table ─────────────────────────────────────────────────────────── */
+
+.rich-text-editor-content .ProseMirror table,
+.page-editor-content .ProseMirror table,
+.rich-text-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.rich-text-editor-content .ProseMirror table th,
+.rich-text-editor-content .ProseMirror table td,
+.page-editor-content .ProseMirror table th,
+.page-editor-content .ProseMirror table td,
+.rich-text-content table th,
+.rich-text-content table td {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  vertical-align: top;
+  min-width: 80px;
+  position: relative;
+}
+
+.rich-text-editor-content .ProseMirror table th,
+.page-editor-content .ProseMirror table th,
+.rich-text-content table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  text-align: left;
+}
+
+/* Selected cell highlight */
+.rich-text-editor-content .ProseMirror .selectedCell::after,
+.page-editor-content .ProseMirror .selectedCell::after {
+  background: rgba(59, 130, 246, 0.15);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+/* Column resize handle */
+.rich-text-editor-content .ProseMirror .column-resize-handle,
+.page-editor-content .ProseMirror .column-resize-handle {
+  background-color: #3b82f6;
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 4px;
+}
+
+/* Dark mode tables */
+.dark .rich-text-editor-content .ProseMirror table th,
+.dark .rich-text-editor-content .ProseMirror table td,
+.dark .page-editor-content .ProseMirror table th,
+.dark .page-editor-content .ProseMirror table td,
+.dark .rich-text-content table th,
+.dark .rich-text-content table td {
+  border-color: #374151;
+}
+
+.dark .rich-text-editor-content .ProseMirror table th,
+.dark .page-editor-content .ProseMirror table th,
+.dark .rich-text-content table th {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+
+/* ─── TipTap Task List (Todo) ──────────────────────────────────────────────── */
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"],
+.page-editor-content .ProseMirror ul[data-type="taskList"],
+.rich-text-content ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"] li,
+.page-editor-content .ProseMirror ul[data-type="taskList"] li,
+.rich-text-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.25rem 0;
+}
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"] li > label,
+.page-editor-content .ProseMirror ul[data-type="taskList"] li > label,
+.rich-text-content ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"],
+.page-editor-content .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"],
+.rich-text-content ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"] li > div,
+.page-editor-content .ProseMirror ul[data-type="taskList"] li > div,
+.rich-text-content ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.rich-text-editor-content .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div,
+.page-editor-content .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div,
+.rich-text-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.dark .rich-text-editor-content .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div,
+.dark .page-editor-content .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div,
+.dark .rich-text-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: #6b7280;
 }

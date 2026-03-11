@@ -1,0 +1,90 @@
+name: Bug Report
+description: Something is broken or not working as expected
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as possible — it helps us reproduce and fix the issue faster.
+
+        > **Security vulnerability?** Do not use this form. See [SECURITY.md](../SECURITY.md) instead.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you do? What did you expect to happen? What actually happened?
+      placeholder: "When I click X, I expected Y but instead Z happened..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reliably reproduce the issue.
+      value: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Boardupscale version
+      description: Git tag or commit hash (`git rev-parse --short HEAD`)
+      placeholder: "v1.0.0 or abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment type
+      options:
+        - Docker Compose (self-hosted)
+        - Docker Compose (cloud VPS)
+        - Kubernetes
+        - Local dev (make dev)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste relevant output from `docker compose logs api` or `docker compose logs worker`. Remove any sensitive values.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Docker version, browser (if UI issue).
+      placeholder: |
+        OS: Ubuntu 22.04
+        Docker: 25.0.3
+        Browser: Chrome 120 (if applicable)
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I am running the latest version
+          required: false

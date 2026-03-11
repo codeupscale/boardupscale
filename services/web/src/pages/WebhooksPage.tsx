@@ -97,7 +97,7 @@ function DeliveryHistory({
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-gray-400">Loading deliveries...</div>
+        <div className="py-12 text-center text-sm text-gray-500">Loading deliveries...</div>
       ) : !data?.items?.length ? (
         <EmptyState
           icon={<Send className="h-8 w-8" />}
@@ -118,11 +118,11 @@ function DeliveryHistory({
                 <span className="text-xs font-mono text-gray-600 flex-shrink-0">
                   {delivery.eventType}
                 </span>
-                <span className="flex-1 text-xs text-gray-400 truncate">
+                <span className="flex-1 text-xs text-gray-500 truncate">
                   {delivery.responseStatus ? `HTTP ${delivery.responseStatus}` : 'No response'}
                 </span>
-                <span className="text-xs text-gray-400">{formatDuration(delivery.durationMs)}</span>
-                <span className="text-xs text-gray-400">{formatDate(delivery.createdAt)}</span>
+                <span className="text-xs text-gray-500">{formatDuration(delivery.durationMs)}</span>
+                <span className="text-xs text-gray-500">{formatDate(delivery.createdAt)}</span>
                 {delivery.status === 'failed' && (
                   <Button
                     variant="ghost"
@@ -201,9 +201,9 @@ function DeliveryHistory({
 // ─── Main WebhooksPage ──────────────────────────────────────────────────────
 
 export function WebhooksPage() {
-  const { id: projectId } = useParams<{ id: string }>()
-  const { data: project } = useProject(projectId!)
-  const { data: webhooks, isLoading } = useWebhooks(projectId!)
+  const { key: projectKey } = useParams<{ key: string }>()
+  const { data: project } = useProject(projectKey!)
+  const { data: webhooks, isLoading } = useWebhooks(projectKey!)
   const createWebhook = useCreateWebhook()
   const updateWebhook = useUpdateWebhook()
   const deleteWebhook = useDeleteWebhook()
@@ -249,7 +249,7 @@ export function WebhooksPage() {
       updateWebhook.mutate(
         {
           id: editingWebhook.id,
-          projectId: projectId!,
+          projectId: projectKey!,
           name,
           url,
           secret: secret || undefined,
@@ -265,7 +265,7 @@ export function WebhooksPage() {
     } else {
       createWebhook.mutate(
         {
-          projectId: projectId!,
+          projectId: projectKey!,
           name,
           url,
           secret: secret || undefined,
@@ -298,7 +298,7 @@ export function WebhooksPage() {
   const handleToggleActive = (webhook: Webhook) => {
     updateWebhook.mutate({
       id: webhook.id,
-      projectId: projectId!,
+      projectId: projectKey!,
       isActive: !webhook.isActive,
     })
   }
@@ -313,8 +313,8 @@ export function WebhooksPage() {
           title="Webhooks"
           breadcrumbs={[
             { label: 'Projects', href: '/projects' },
-            { label: project?.name || '...', href: `/projects/${projectId}/board` },
-            { label: 'Settings', href: `/projects/${projectId}/settings` },
+            { label: project?.name || '...', href: `/projects/${projectKey}/board` },
+            { label: 'Settings', href: `/projects/${projectKey}/settings` },
             { label: 'Webhooks' },
           ]}
         />
@@ -358,8 +358,8 @@ export function WebhooksPage() {
         title="Webhooks"
         breadcrumbs={[
           { label: 'Projects', href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectId}/board` },
-          { label: 'Settings', href: `/projects/${projectId}/settings` },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
+          { label: 'Settings', href: `/projects/${projectKey}/settings` },
           { label: 'Webhooks' },
         ]}
       />
@@ -408,7 +408,7 @@ export function WebhooksPage() {
                       {webhook.events.length} event{webhook.events.length !== 1 ? 's' : ''}
                     </Badge>
                   </div>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{webhook.url}</p>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">{webhook.url}</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
@@ -592,7 +592,7 @@ export function WebhooksPage() {
         onConfirm={() => {
           if (deleteTarget) {
             deleteWebhook.mutate(
-              { id: deleteTarget.id, projectId: projectId! },
+              { id: deleteTarget.id, projectId: projectKey! },
               { onSuccess: () => setDeleteTarget(null) },
             )
           }

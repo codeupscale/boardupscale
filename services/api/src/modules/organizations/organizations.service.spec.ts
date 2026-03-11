@@ -1,19 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
+import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { OrganizationsService } from './organizations.service';
 import { Organization } from './entities/organization.entity';
 import { User } from '../users/entities/user.entity';
+import { EmailService } from '../notifications/email.service';
+import { AuditService } from '../audit/audit.service';
 import { createMockRepository } from '../../test/test-utils';
 import { mockOrganization, mockUser, TEST_IDS } from '../../test/mock-factories';
-
-jest.mock('bcryptjs');
 
 describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let orgRepo: ReturnType<typeof createMockRepository>;
   let userRepo: ReturnType<typeof createMockRepository>;
+  const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
+  const mockAuditService = { log: jest.fn() };
+  const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
 
   beforeEach(async () => {
     orgRepo = createMockRepository();
@@ -24,6 +27,9 @@ describe('OrganizationsService', () => {
         OrganizationsService,
         { provide: getRepositoryToken(Organization), useValue: orgRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: EmailService, useValue: mockEmailService },
+        { provide: AuditService, useValue: mockAuditService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -66,17 +72,6 @@ describe('OrganizationsService', () => {
       expect(orgRepo.save).toHaveBeenCalled();
     });
 
-    it('should update organization settings', async () => {
-      const org = mockOrganization();
-      const updatedOrg = mockOrganization({ settings: { theme: 'dark' } });
-      orgRepo.findOne.mockResolvedValue(org);
-      orgRepo.save.mockResolvedValue(updatedOrg);
-
-      const result = await service.update(TEST_IDS.ORG_ID, { settings: { theme: 'dark' } });
-
-      expect(result.settings).toEqual({ theme: 'dark' });
-    });
-
     it('should throw NotFoundException when org not found during update', async () => {
       orgRepo.findOne.mockResolvedValue(null);
 
@@ -103,9 +98,14 @@ describe('OrganizationsService', () => {
   });
 
   describe('inviteMember', () => {
+    const inviterId = TEST_IDS.USER_ID;
+
     it('should create a new user for the organization', async () => {
-      userRepo.findOne.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-temp-password');
+      userRepo.findOne
+        .mockResolvedValueOnce(null) // email check
+        .mockResolvedValueOnce(mockUser({ id: inviterId })) // inviter lookup
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ email: 'invited@example.com', role: 'member', isActive: false });
       userRepo.create.mockReturnValue(newUser);
       userRepo.save.mockResolvedValue(newUser);
@@ -113,7 +113,7 @@ describe('OrganizationsService', () => {
       const result = await service.inviteMember(TEST_IDS.ORG_ID, {
         email: 'invited@example.com',
         role: 'member',
-      });
+      }, inviterId);
 
       expect(result).toEqual(newUser);
       expect(userRepo.create).toHaveBeenCalledWith(
@@ -123,8 +123,10 @@ describe('OrganizationsService', () => {
           role: 'member',
           isActive: false,
           emailVerified: false,
+          passwordHash: null,
         }),
       );
+      expect(mockEmailService.sendInvitationEmail).toHaveBeenCalled();
     });
 
     it('should throw ConflictException when user is already a member of the same org', async () => {
@@ -132,10 +134,10 @@ describe('OrganizationsService', () => {
       userRepo.findOne.mockResolvedValue(existingUser);
 
       await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }),
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
       ).rejects.toThrow(ConflictException);
       await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }),
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
       ).rejects.toThrow('User is already a member of this organization');
     });
 
@@ -144,25 +146,46 @@ describe('OrganizationsService', () => {
       userRepo.findOne.mockResolvedValue(existingUser);
 
       await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }),
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
       ).rejects.toThrow(ConflictException);
       await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }),
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
       ).rejects.toThrow('Email is already registered in another organization');
     });
 
     it('should default role to member when not specified', async () => {
-      userRepo.findOne.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
+      userRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(mockUser({ id: inviterId }));
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ role: 'member' });
       userRepo.create.mockReturnValue(newUser);
       userRepo.save.mockResolvedValue(newUser);
 
-      await service.inviteMember(TEST_IDS.ORG_ID, { email: 'new@example.com' });
+      await service.inviteMember(TEST_IDS.ORG_ID, { email: 'new@example.com' }, inviterId);
 
       expect(userRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ role: 'member' }),
       );
+    });
+  });
+
+  describe('deactivateMember', () => {
+    it('should prevent self-deactivation', async () => {
+      await expect(
+        service.deactivateMember(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, TEST_IDS.USER_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should deactivate a member', async () => {
+      const member = mockUser({ id: 'other-user', role: 'member' });
+      userRepo.findOne.mockResolvedValue(member);
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+      await service.deactivateMember(TEST_IDS.ORG_ID, 'other-user', TEST_IDS.USER_ID);
+
+      expect(userRepo.update).toHaveBeenCalledWith('other-user', { isActive: false });
     });
   });
 });

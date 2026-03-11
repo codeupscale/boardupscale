@@ -7,9 +7,11 @@ import { createNotificationWorker } from './notification/notification.worker';
 import { createSearchWorker } from './search/search.worker';
 import { createWebhookWorker } from './webhook/webhook.worker';
 import { createAutomationWorker } from './automation/automation.worker';
+import { createAiWorker } from './ai/ai.worker';
+import { createImportWorker } from './import/import.worker';
 
 async function main(): Promise<void> {
-  console.log('[Main] ProjectFlow Worker starting up...');
+  console.log('[Main] Boardupscale Worker starting up...');
 
   // ── 1. PostgreSQL ──────────────────────────────────────────────────────────
   try {
@@ -63,6 +65,22 @@ async function main(): Promise<void> {
   } catch (err: any) {
     // Automation worker failure is non-fatal — log and continue
     console.error('[Main] Failed to start AutomationWorker (automation disabled):', err.message);
+  }
+
+  try {
+    const aiWorker = await createAiWorker(db);
+    workers.push(aiWorker);
+  } catch (err: any) {
+    // AI worker failure is non-fatal — log and continue
+    console.error('[Main] Failed to start AIWorker (AI features disabled):', err.message);
+  }
+
+  try {
+    const importWorker = createImportWorker(db);
+    workers.push(importWorker);
+  } catch (err: any) {
+    // Import worker failure is non-fatal — log and continue
+    console.error('[Main] Failed to start ImportWorker (import disabled):', err.message);
   }
 
   console.log(`[Main] All workers running (${workers.length} active). Waiting for jobs...`);

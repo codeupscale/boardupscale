@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -27,11 +28,14 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ResolveProjectBodyInterceptor } from '../../common/interceptors/resolve-project-body.interceptor';
 
 @ApiTags('issues')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(ResolveProjectBodyInterceptor)
 @Controller('issues')
 export class IssuesController {
   constructor(private issuesService: IssuesService) {}
@@ -51,7 +55,7 @@ export class IssuesController {
   async findAll(
     @OrgId() organizationId: string,
     @Query() pagination: PaginationDto,
-    @Query('projectId') projectId?: string,
+    @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('sprintId') sprintId?: string,
     @Query('assigneeId') assigneeId?: string,
     @Query('type') type?: string,

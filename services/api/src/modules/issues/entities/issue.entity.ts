@@ -107,6 +107,10 @@ export class Issue {
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt: Date;
 
+  // AI embedding vector (1536 dims for text-embedding-3-small) — not loaded by default
+  @Column({ type: 'float8', array: true, nullable: true, select: false })
+  embedding: number[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

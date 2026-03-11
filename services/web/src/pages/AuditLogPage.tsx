@@ -95,7 +95,7 @@ export function AuditLogPage() {
         {isLoading ? (
           <LoadingPage />
         ) : logs.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
+          <div className="p-12 text-center text-gray-500">
             {t('audit.noLogs')}
           </div>
         ) : (
@@ -147,7 +147,7 @@ export function AuditLogPage() {
                   <td className="px-6 py-3 text-gray-500 max-w-xs truncate">
                     {log.changes ? JSON.stringify(log.changes).substring(0, 100) : '-'}
                   </td>
-                  <td className="px-6 py-3 text-gray-400 text-xs font-mono">
+                  <td className="px-6 py-3 text-gray-500 text-xs font-mono">
                     {log.ipAddress || '-'}
                   </td>
                 </tr>

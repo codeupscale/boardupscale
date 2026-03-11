@@ -34,6 +34,7 @@ import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { ActivityService } from '../activity/activity.service';
 import { AuditService } from '../audit/audit.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class IssuesService {
@@ -63,6 +64,8 @@ export class IssuesService {
     private auditService: AuditService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
+    @Optional() @Inject(AiService)
+    private aiService?: AiService,
   ) {}
 
   /**
@@ -251,10 +254,16 @@ export class IssuesService {
         body: dto.title,
         data: { issueId: saved.id, projectId: dto.projectId },
       });
+      this.sendAssigneeEmail(dto.assigneeId, fullIssue);
     }
 
     // Enqueue search index job
     this.enqueueSearchIndex(fullIssue);
+
+    // Enqueue AI embedding generation
+    if (this.aiService) {
+      this.aiService.enqueueEmbedding(saved.id, organizationId);
+    }
 
     // Log activity
     this.activityService.log(organizationId, saved.id, userId, 'created', null, null, null, {
@@ -356,6 +365,11 @@ export class IssuesService {
 
     // Enqueue search index job (update)
     this.enqueueSearchIndex(updatedIssue);
+
+    // Re-generate AI embedding if title or description changed
+    if (this.aiService && (dto.title !== undefined || dto.description !== undefined)) {
+      this.aiService.enqueueEmbedding(id, organizationId);
+    }
 
     // Log activity for each changed field
     const fieldsToTrack = [

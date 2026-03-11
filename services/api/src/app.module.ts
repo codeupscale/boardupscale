@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
+import { join } from 'path';
 import configuration from './config/configuration';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,6 +30,13 @@ import { AutomationModule } from './modules/automation/automation.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AiModule } from './modules/ai/ai.module';
+import { GithubModule } from './modules/github/github.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { ImportModule } from './modules/import/import.module';
+import { PagesModule } from './modules/pages/pages.module';
+import { SavedViewsModule } from './modules/saved-views/saved-views.module';
+import { TelemetryModule } from './modules/telemetry/telemetry.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -59,6 +67,13 @@ import { IssueLink } from './modules/issues/entities/issue-link.entity';
 import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
 import { Activity } from './modules/activity/activity.entity';
 import { AuditLog } from './modules/audit/audit-log.entity';
+import { AiUsageLog } from './modules/ai/entities/ai-usage-log.entity';
+import { GitHubConnection } from './modules/github/entities/github-connection.entity';
+import { GitHubEvent } from './modules/github/entities/github-event.entity';
+import { BillingPlan } from './modules/billing/entities/billing-plan.entity';
+import { Subscription } from './modules/billing/entities/subscription.entity';
+import { Page } from './modules/pages/entities/page.entity';
+import { SavedView } from './modules/saved-views/entities/saved-view.entity';
 
 @Module({
   imports: [
@@ -72,6 +87,8 @@ import { AuditLog } from './modules/audit/audit-log.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('database.url'),
+        migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
+        migrationsRun: true,
         entities: [
           Organization,
           User,
@@ -102,6 +119,13 @@ import { AuditLog } from './modules/audit/audit-log.entity';
           IssueWatcher,
           Activity,
           AuditLog,
+          AiUsageLog,
+          GitHubConnection,
+          GitHubEvent,
+          BillingPlan,
+          Subscription,
+          Page,
+          SavedView,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -169,6 +193,13 @@ import { AuditLog } from './modules/audit/audit-log.entity';
     ApiKeysModule,
     ActivityModule,
     AuditModule,
+    AiModule,
+    GithubModule,
+    BillingModule,
+    ImportModule,
+    PagesModule,
+    SavedViewsModule,
+    TelemetryModule,
   ],
   providers: [
     {

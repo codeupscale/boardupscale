@@ -28,9 +28,9 @@ export function useReorderIssues() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (
-      updates: Array<{ issueId: string; statusId: string; position: number }>,
+      payload: { projectId: string; items: Array<{ issueId: string; statusId: string; position: number }> },
     ) => {
-      const { data } = await api.post('/issues/reorder', { updates })
+      const { data } = await api.patch(`/projects/${payload.projectId}/issues/reorder`, { items: payload.items })
       return data.data
     },
     onError: (err: any) => {
@@ -60,8 +60,8 @@ export function useCreateStatus() {
       const { data } = await api.post(`/projects/${projectId}/statuses`, payload)
       return data.data as IssueStatus
     },
-    onSuccess: (status) => {
-      qc.invalidateQueries({ queryKey: ['board', status.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['board'] })
       toast('Status created')
     },
     onError: (err: any) =>
@@ -88,8 +88,8 @@ export function useUpdateStatus() {
       const { data } = await api.patch(`/projects/${projectId}/statuses/${statusId}`, payload)
       return data.data as IssueStatus
     },
-    onSuccess: (status) => {
-      qc.invalidateQueries({ queryKey: ['board', status.projectId] })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['board'] })
       toast('Status updated')
     },
     onError: (err: any) =>

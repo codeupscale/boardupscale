@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('permissions')
 @ApiBearerAuth()
@@ -88,7 +89,7 @@ export class PermissionsController {
   @Post('projects/:projectId/members/:memberId/role')
   @ApiOperation({ summary: 'Assign a role to a project member' })
   async assignRoleToMember(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
     @Body() dto: AssignRoleDto,
   ) {
@@ -102,7 +103,7 @@ export class PermissionsController {
   @Get('projects/:projectId/my-permissions')
   @ApiOperation({ summary: 'Get current user permissions for a specific project' })
   async getMyPermissions(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @CurrentUser() user: any,
   ) {
     const permissions = await this.permissionsService.getUserPermissionsForProject(

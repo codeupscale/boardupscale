@@ -40,7 +40,7 @@ export function ProjectCard({ project, memberCount, issueCount }: ProjectCardPro
 
   return (
     <div
-      onClick={() => navigate(`/projects/${project.id}/board`)}
+      onClick={() => navigate(`/projects/${project.key}/board`)}
       className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 cursor-pointer transition-all group"
     >
       {/* Header */}
@@ -58,7 +58,7 @@ export function ProjectCard({ project, memberCount, issueCount }: ProjectCardPro
             {project.name}
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs font-mono text-gray-400">{project.key}</span>
+            <span className="text-xs font-mono text-gray-500">{project.key}</span>
             <span
               className={cn(
                 'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
@@ -77,7 +77,7 @@ export function ProjectCard({ project, memberCount, issueCount }: ProjectCardPro
       )}
 
       {/* Footer stats */}
-      <div className="flex items-center gap-4 text-xs text-gray-400">
+      <div className="flex items-center gap-4 text-xs text-gray-500">
         {memberCount !== undefined && (
           <span className="flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />

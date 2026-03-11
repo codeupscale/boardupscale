@@ -17,6 +17,7 @@ import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('versions')
 @ApiBearerAuth()
@@ -28,7 +29,7 @@ export class VersionsController {
   @Post('projects/:projectId/versions')
   @ApiOperation({ summary: 'Create a version for a project' })
   async create(
-    @Param('projectId', ParseUUIDPipe) projectId: string,
+    @Param('projectId', ResolveProjectPipe) projectId: string,
     @Body() dto: CreateVersionDto,
   ) {
     const version = await this.versionsService.create(projectId, dto);
@@ -37,7 +38,7 @@ export class VersionsController {
 
   @Get('projects/:projectId/versions')
   @ApiOperation({ summary: 'List all versions for a project' })
-  async findAll(@Param('projectId', ParseUUIDPipe) projectId: string) {
+  async findAll(@Param('projectId', ResolveProjectPipe) projectId: string) {
     const versions = await this.versionsService.findAll(projectId);
     return { data: versions };
   }

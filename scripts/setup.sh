@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Setting up ProjectFlow..."
+echo "🚀 Setting up Boardupscale..."
 
 # Check Docker
 if ! command -v docker &> /dev/null; then
@@ -32,10 +32,10 @@ sleep 15
 
 echo "🪣 Creating MinIO bucket..."
 docker compose exec -T minio mc alias set local http://localhost:9000 minioadmin minioadmin 2>/dev/null || true
-docker compose exec minio sh -c "mc alias set local http://localhost:9000 minioadmin minioadmin && mc mb local/projectflow --ignore-existing" 2>/dev/null || true
+docker compose exec minio sh -c "mc alias set local http://localhost:9000 minioadmin minioadmin && mc mb local/boardupscale --ignore-existing" 2>/dev/null || true
 
 echo ""
-echo "✅ ProjectFlow is running!"
+echo "✅ Boardupscale is running!"
 echo ""
 echo "  🌐 App:       http://localhost"
 echo "  📖 API Docs:  http://localhost/api/docs"

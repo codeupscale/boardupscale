@@ -214,6 +214,21 @@ export class UsersService {
     });
   }
 
+  async activateInvitedUser(
+    id: string,
+    passwordHash: string,
+    displayName: string,
+  ): Promise<void> {
+    await this.usersRepository.update(id, {
+      passwordHash,
+      displayName,
+      isActive: true,
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiry: null,
+    });
+  }
+
   async resetPassword(id: string, passwordHash: string): Promise<void> {
     await this.usersRepository.update(id, {
       passwordHash,

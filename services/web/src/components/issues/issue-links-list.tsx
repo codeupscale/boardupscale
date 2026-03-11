@@ -113,7 +113,7 @@ export function IssueLinksList({ issueId }: { issueId: string }) {
           <Link2 className="h-4 w-4" />
           {t('issues.linkedIssues', 'Linked Issues')}
           {allLinks.length > 0 && (
-            <span className="text-xs font-normal text-gray-400">({allLinks.length})</span>
+            <span className="text-xs font-normal text-gray-500">({allLinks.length})</span>
           )}
         </h3>
         <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
@@ -123,7 +123,7 @@ export function IssueLinksList({ issueId }: { issueId: string }) {
       </div>
 
       {allLinks.length === 0 ? (
-        <p className="text-sm text-gray-400">{t('issues.noLinks', 'No linked issues.')}</p>
+        <p className="text-sm text-gray-500">{t('issues.noLinks', 'No linked issues.')}</p>
       ) : (
         <div className="space-y-3">
           {Object.entries(grouped).map(([label, links]) => (
@@ -195,7 +195,7 @@ export function IssueLinksList({ issueId }: { issueId: string }) {
           {searchTerm.length > 0 && (
             <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
               {issueList.length === 0 ? (
-                <p className="p-3 text-sm text-gray-400 text-center">
+                <p className="p-3 text-sm text-gray-500 text-center">
                   {t('common.noResults', 'No results found')}
                 </p>
               ) : (

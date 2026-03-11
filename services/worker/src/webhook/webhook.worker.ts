@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, Queue } from 'bullmq';
 import { Pool } from 'pg';
 import * as crypto from 'crypto';
 import { createRedisConnection } from '../redis';
@@ -36,6 +36,7 @@ function computeSignature(secret: string, body: string): string {
 // ─── Worker ─────────────────────────────────────────────────────────────────
 
 export function createWebhookWorker(pool: Pool): Worker {
+  const webhookQueue = new Queue('webhooks', { connection: createRedisConnection() as any });
   const worker = new Worker(
     'webhooks',
     async (job: Job) => {
@@ -50,15 +51,15 @@ export function createWebhookWorker(pool: Pool): Worker {
       // Build headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'User-Agent': 'ProjectFlow-Webhook/1.0',
-        'X-ProjectFlow-Event': data.eventType,
-        'X-ProjectFlow-Delivery-Id': data.deliveryId,
+        'User-Agent': 'Boardupscale-Webhook/1.0',
+        'X-Boardupscale-Event': data.eventType,
+        'X-Boardupscale-Delivery-Id': data.deliveryId,
         ...data.headers,
       };
 
       // Add HMAC signature if a secret is configured
       if (data.secret) {
-        headers['X-ProjectFlow-Signature'] = computeSignature(
+        headers['X-Boardupscale-Signature'] = computeSignature(
           data.secret,
           bodyString,
         );
@@ -151,7 +152,7 @@ export function createWebhookWorker(pool: Pool): Worker {
         const retryDeliveryId = retryResult.rows[0].id;
 
         // Queue the retry with a delay
-        await job.queue.add(
+        await webhookQueue.add(
           'deliver',
           {
             ...data,
@@ -171,7 +172,7 @@ export function createWebhookWorker(pool: Pool): Worker {
       }
     },
     {
-      connection: createRedisConnection(),
+      connection: createRedisConnection() as any,
       concurrency: 10,
       removeOnComplete: { count: 500 },
       removeOnFail: { count: 1000 },
