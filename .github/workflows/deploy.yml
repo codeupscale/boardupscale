@@ -1,0 +1,31 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/boardupscale
+            git pull origin main
+            docker compose -f docker-compose.prod.yml pull --quiet
+            docker compose -f docker-compose.prod.yml up -d --build --no-deps api web worker
+            docker compose -f docker-compose.prod.yml ps
+            # Remove dangling images to free disk space
+            docker image prune -f

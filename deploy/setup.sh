@@ -18,9 +18,9 @@ echo -e "${BOLD} Boardupscale Production Setup${NC}"
 echo -e "${BOLD}==============================${NC}\n"
 
 # --- Collect configuration ---
-read -rp "$(echo -e "${BOLD}Domain${NC} (e.g. api.example.com): ")" DOMAIN
+read -rp "$(echo -e "${BOLD}Domain${NC} (e.g. board.example.com): ")" DOMAIN
 read -rp "$(echo -e "${BOLD}Email${NC} for Let's Encrypt alerts: ")" LE_EMAIL
-read -rp "$(echo -e "${BOLD}Amplify URL${NC} (e.g. https://main.d1234.amplifyapp.com): ")" FRONTEND_URL
+FRONTEND_URL="https://${DOMAIN}"
 echo ""
 read -rsp "$(echo -e "${BOLD}PostgreSQL password${NC} (strong, no spaces): ")" PG_PASS; echo
 read -rsp "$(echo -e "${BOLD}JWT secret${NC} (32+ chars, or press Enter to auto-generate): ")" JWT_SECRET; echo
@@ -76,7 +76,6 @@ certbot certonly --standalone --non-interactive --agree-tos \
 echo -e "${YELLOW}[5/6] Writing .env...${NC}"
 cp .env.production.example .env
 sed -i "s|REPLACE_DOMAIN|${DOMAIN}|g"                                        .env
-sed -i "s|REPLACE_WITH_AMPLIFY_URL|${FRONTEND_URL}|g"                        .env
 sed -i "s|CHANGE_THIS_STRONG_PASSWORD|${PG_PASS}|g"                          .env
 sed -i "s|CHANGE_THIS_LONG_RANDOM_SECRET_32_CHARS_MIN|${JWT_SECRET}|g"       .env
 sed -i "s|CHANGE_THIS_ANOTHER_LONG_RANDOM_SECRET|${JWT_REFRESH}|g"           .env
@@ -104,21 +103,13 @@ echo -e "${GREEN}${BOLD}=============================="
 echo " Setup Complete!"
 echo -e "==============================${NC}"
 echo ""
+echo -e " ${BOLD}App:${NC}      https://${DOMAIN}"
 echo -e " ${BOLD}API:${NC}      https://${DOMAIN}/api"
 echo -e " ${BOLD}API Docs:${NC} https://${DOMAIN}/api/docs"
 echo ""
 echo -e "${BOLD}Next steps:${NC}"
 echo ""
-echo -e "  1. ${BOLD}In AWS Amplify${NC}, set these environment variables:"
-echo -e "     VITE_API_URL  =  https://${DOMAIN}/api"
-echo -e "     VITE_WS_URL   =  wss://${DOMAIN}"
-echo -e "     Then trigger a build."
-echo ""
-echo -e "  2. ${BOLD}After Amplify build completes${NC}, update .env:"
-echo -e "     FRONTEND_URL and CORS_ORIGIN → your final Amplify / custom domain URL"
-echo -e "     Then run: docker compose -f docker-compose.prod.yml restart api"
-echo ""
-echo -e "  3. ${BOLD}To update the app${NC} after a code push:"
+echo -e "  1. ${BOLD}To update the app${NC} after a code push:"
 echo -e "     cd ${INSTALL_DIR} && git pull && bash deploy/update.sh"
 echo ""
 echo -e "${BOLD}Useful commands:${NC}"

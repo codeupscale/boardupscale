@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SEO } from '@/components/seo/SEO'
 import {
   Zap,
   LayoutDashboard,
@@ -9,6 +10,9 @@ import {
   Shield,
   Check,
   ArrowRight,
+  ScanSearch,
+  Sparkles,
+  GitMerge,
 } from 'lucide-react'
 
 const features = [
@@ -28,9 +32,9 @@ const features = [
     description: 'Automate repetitive tasks with powerful rules',
   },
   {
-    icon: Brain,
-    title: 'AI-Native',
-    description: 'Built-in AI for smarter project management',
+    icon: ScanSearch,
+    title: 'AI Duplicate Detection',
+    description: 'Automatically flags duplicate issues the moment they\'re created — before they waste your team\'s time',
   },
   {
     icon: Github,
@@ -94,6 +98,11 @@ const plans = [
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Free, Open-Source Jira Alternative"
+        description="Boardupscale is the free, open-source alternative to Jira. AI duplicate detection, Kanban & Scrum boards, sprint planning, GitHub integration and more — self-hosted or in the cloud."
+        canonical="/"
+      />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -153,8 +162,8 @@ export function LandingPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium mb-8">
-            <Zap className="h-3.5 w-3.5" />
-            Now with AI-powered sprint planning
+            <Sparkles className="h-3.5 w-3.5" />
+            Now with AI duplicate detection &amp; sprint intelligence
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.1] max-w-4xl mx-auto">
@@ -262,6 +271,107 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* AI Duplicate Detection Spotlight */}
+      <section className="py-24 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left: copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 text-sm font-medium mb-6">
+                <Brain className="h-3.5 w-3.5" />
+                AI-Powered
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight leading-tight">
+                Stop creating the same issue{' '}
+                <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  twice
+                </span>
+              </h2>
+              <p className="mt-5 text-lg text-gray-600 leading-relaxed">
+                Boardupscale's AI scans your entire backlog the moment a new issue is typed. Before
+                anyone hits "Create", it surfaces similar and duplicate tickets — so your team never
+                splits effort on the same problem.
+              </p>
+              <ul className="mt-8 space-y-4">
+                {[
+                  { icon: ScanSearch, text: 'Real-time semantic similarity scanning as you type' },
+                  { icon: GitMerge, text: 'One-click merge suggestions for confirmed duplicates' },
+                  { icon: Sparkles, text: 'Learns from your team\'s past resolutions over time' },
+                ].map(({ icon: Icon, text }) => (
+                  <li key={text} className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Icon className="h-3.5 w-3.5 text-purple-600" />
+                    </div>
+                    <span className="text-gray-700 text-sm leading-relaxed">{text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Right: mock UI */}
+            <div className="relative">
+              {/* Glow */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl blur-2xl opacity-60" />
+              <div className="relative bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+                {/* Window chrome */}
+                <div className="h-10 bg-gray-50 border-b border-gray-200 flex items-center gap-2 px-4">
+                  <div className="h-3 w-3 rounded-full bg-red-400" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-400" />
+                  <div className="h-3 w-3 rounded-full bg-green-400" />
+                  <span className="ml-3 text-xs text-gray-400 font-mono">New Issue</span>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* Title field */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Title</label>
+                    <div className="h-10 rounded-lg border border-blue-300 bg-blue-50 flex items-center px-3 text-sm text-gray-700 ring-2 ring-blue-100">
+                      Fix login button not responding on mobile
+                    </div>
+                  </div>
+
+                  {/* AI banner */}
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Sparkles className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-purple-700">AI found 2 similar issues</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { id: 'BS-142', title: 'Mobile login button unresponsive after iOS 17', score: 97 },
+                        { id: 'BS-89', title: 'Login CTA broken on Safari mobile', score: 81 },
+                      ].map(({ id, title, score }) => (
+                        <div key={id} className="flex items-center gap-2.5 bg-white rounded-md border border-purple-100 p-2.5">
+                          <span className="text-xs font-mono text-purple-500 flex-shrink-0">{id}</span>
+                          <span className="text-xs text-gray-600 flex-1 truncate">{title}</span>
+                          <span
+                            className={`text-xs font-semibold flex-shrink-0 px-1.5 py-0.5 rounded-full ${
+                              score >= 90
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}
+                          >
+                            {score}% match
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button className="flex-1 h-7 rounded-md bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 transition-colors">
+                        View duplicate
+                      </button>
+                      <button className="flex-1 h-7 rounded-md bg-white border border-purple-200 text-purple-700 text-xs font-medium hover:bg-purple-50 transition-colors">
+                        Create anyway
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing Preview */}
       <section id="pricing" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -351,12 +461,32 @@ export function LandingPage() {
               <a href="#features" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
                 Features
               </a>
-              <span className="text-sm text-gray-600">Documentation</span>
+              <a
+                href="https://github.com/codeupscale/boardupscale"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                GitHub
+              </a>
             </div>
 
-            <p className="text-sm text-gray-500">
-              &copy; {new Date().getFullYear()} Boardupscale. Built with love for teams that ship.
-            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-4">
+                <Link to="/privacy" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link to="/terms" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                  Terms of Service
+                </Link>
+                <Link to="/cookies" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                  Cookies
+                </Link>
+              </div>
+              <p className="text-xs text-gray-400">
+                &copy; {new Date().getFullYear()} Boardupscale
+              </p>
+            </div>
           </div>
         </div>
       </footer>
