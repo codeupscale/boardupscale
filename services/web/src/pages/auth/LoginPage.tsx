@@ -9,6 +9,7 @@ import { useLogin, useVerify2FA } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
+import { SEO } from '@/components/seo/SEO'
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
@@ -174,6 +175,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <SEO title="Sign In" description="Sign in to your Boardupscale account." canonical="/login" noIndex />
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">

@@ -1,7 +1,6 @@
 version: '3.9'
 
 # Production Docker Compose — runs on EC2
-# Frontend is served by AWS Amplify (not here)
 # Requires a populated .env file (see .env.production.example)
 
 services:
@@ -16,6 +15,15 @@ services:
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - api
+      - web
+    networks:
+      - boardupscale
+    restart: always
+
+  web:
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile
     networks:
       - boardupscale
     restart: always
@@ -119,7 +127,6 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - boardupscale
     restart: always

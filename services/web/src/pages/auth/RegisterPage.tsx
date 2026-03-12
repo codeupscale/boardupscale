@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useRegister } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { SEO } from '@/components/seo/SEO'
 
 const schema = z
   .object({
@@ -95,6 +96,7 @@ export function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <SEO title="Create Account" description="Create your free Boardupscale account and start managing projects with AI-powered tools." canonical="/register" noIndex />
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Zap, Check, X, ChevronDown, ChevronUp, ArrowRight } from 'lucide-react'
+import { SEO } from '@/components/seo/SEO'
 
 const plans = [
   {
@@ -146,6 +147,11 @@ export function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <SEO
+        title="Pricing"
+        description="Boardupscale is free and open source. Start for free with unlimited projects, then scale up with Pro and Enterprise plans. No hidden fees, no per-seat surprises."
+        canonical="/pricing"
+      />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
