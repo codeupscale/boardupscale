@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoadingPage } from '@/components/ui/spinner'
@@ -79,23 +79,8 @@ const TeamPage = React.lazy(() =>
 const ImportPage = React.lazy(() =>
   import('@/pages/ImportPage').then(m => ({ default: m.ImportPage }))
 )
-const LandingPage = React.lazy(() =>
-  import('@/pages/LandingPage').then(m => ({ default: m.LandingPage }))
-)
-const PricingPage = React.lazy(() =>
-  import('@/pages/PricingPage').then(m => ({ default: m.PricingPage }))
-)
 const BillingPage = React.lazy(() =>
   import('@/pages/BillingPage').then(m => ({ default: m.BillingPage }))
-)
-const PrivacyPolicyPage = React.lazy(() =>
-  import('@/pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage }))
-)
-const TermsOfServicePage = React.lazy(() =>
-  import('@/pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage }))
-)
-const CookiePolicyPage = React.lazy(() =>
-  import('@/pages/CookiePolicyPage').then(m => ({ default: m.CookiePolicyPage }))
 )
 const ProjectPagesPage = React.lazy(() =>
   import('@/pages/ProjectPagesPage').then(m => ({ default: m.ProjectPagesPage }))
@@ -110,10 +95,18 @@ const PageDetailPage = React.lazy(() =>
   import('@/pages/PageDetailPage').then(m => ({ default: m.PageDetailPage }))
 )
 
+const LANDING_URL = 'https://boardupscale.com'
+
+/** Unauthenticated users are redirected to the marketing site */
 function RootRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      window.location.replace(LANDING_URL)
+    }
+  }, [isAuthenticated])
   if (isAuthenticated) return <Navigate to="/dashboard" replace />
-  return <LandingPage />
+  return <LoadingPage />
 }
 
 export default function App() {
@@ -122,10 +115,6 @@ export default function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<RootRoute />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/privacy" element={<PrivacyPolicyPage />} />
-        <Route path="/terms" element={<TermsOfServicePage />} />
-        <Route path="/cookies" element={<CookiePolicyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/auth/callback" element={<OAuthCallbackPage />} />
