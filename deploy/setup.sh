@@ -22,7 +22,8 @@ read -rp "$(echo -e "${BOLD}Domain${NC} (e.g. board.example.com): ")" DOMAIN
 read -rp "$(echo -e "${BOLD}Email${NC} for Let's Encrypt alerts: ")" LE_EMAIL
 FRONTEND_URL="https://${DOMAIN}"
 echo ""
-read -rsp "$(echo -e "${BOLD}PostgreSQL password${NC} (strong, no spaces): ")" PG_PASS; echo
+read -rp "$(echo -e "${BOLD}RDS endpoint${NC} (e.g. boardupscale-production.xxxx.ap-southeast-1.rds.amazonaws.com): ")" RDS_ENDPOINT
+read -rsp "$(echo -e "${BOLD}PostgreSQL password${NC} (the RDS master password): ")" PG_PASS; echo
 read -rsp "$(echo -e "${BOLD}JWT secret${NC} (32+ chars, or press Enter to auto-generate): ")" JWT_SECRET; echo
 if [ -z "$JWT_SECRET" ]; then JWT_SECRET=$(openssl rand -hex 32); echo "  Generated JWT secret."; fi
 read -rsp "$(echo -e "${BOLD}JWT refresh secret${NC} (different from above, or press Enter to auto-generate): ")" JWT_REFRESH; echo
@@ -76,6 +77,7 @@ certbot certonly --standalone --non-interactive --agree-tos \
 echo -e "${YELLOW}[5/6] Writing .env...${NC}"
 cp .env.production.example .env
 sed -i "s|REPLACE_DOMAIN|${DOMAIN}|g"                                        .env
+sed -i "s|REPLACE_RDS_ENDPOINT|${RDS_ENDPOINT}|g"                           .env
 sed -i "s|CHANGE_THIS_STRONG_PASSWORD|${PG_PASS}|g"                          .env
 sed -i "s|CHANGE_THIS_LONG_RANDOM_SECRET_32_CHARS_MIN|${JWT_SECRET}|g"       .env
 sed -i "s|CHANGE_THIS_ANOTHER_LONG_RANDOM_SECRET|${JWT_REFRESH}|g"           .env
