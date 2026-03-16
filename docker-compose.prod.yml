@@ -63,6 +63,8 @@ services:
       - SAML_CALLBACK_URL=${SAML_CALLBACK_URL:-}
       - GITHUB_APP_WEBHOOK_SECRET=${GITHUB_APP_WEBHOOK_SECRET:-}
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       minio:
@@ -97,13 +99,30 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - boardupscale
     restart: always
 
-  # postgres is managed by AWS RDS — DATABASE_URL in .env points to the RDS endpoint
+  postgres:
+    image: pgvector/pgvector:pg15
+    environment:
+      - POSTGRES_DB=boardupscale
+      - POSTGRES_USER=boardupscale
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - boardupscale
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U boardupscale']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -162,6 +181,7 @@ services:
       - boardupscale
 
 volumes:
+  postgres_data:
   redis_data:
   elasticsearch_data:
   minio_data:
