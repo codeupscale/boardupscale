@@ -21,6 +21,7 @@ import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 
 @ApiTags('files')
@@ -70,8 +71,8 @@ export class FilesController {
   @Get(':id')
   @Redirect()
   @ApiOperation({ summary: 'Get presigned URL for a file' })
-  async getFile(@Param('id', ParseUUIDPipe) id: string) {
-    const url = await this.filesService.getPresignedUrl(id);
+  async getFile(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    const url = await this.filesService.getPresignedUrl(id, organizationId);
     return { url };
   }
 
@@ -85,7 +86,7 @@ export class FilesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a file attachment' })
-  async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
-    await this.filesService.delete(id, user.id);
+  async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any, @OrgId() organizationId: string) {
+    await this.filesService.delete(id, user.id, organizationId);
   }
 }

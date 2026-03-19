@@ -56,7 +56,7 @@ export class UsersController {
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
-    const user = await this.usersService.findById(id);
+    const user = await this.usersService.findByIdAndOrg(id, organizationId);
     return user;
   }
 

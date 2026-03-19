@@ -75,9 +75,15 @@ export class FilesService {
     return this.attachmentRepository.save(attachment);
   }
 
-  async getPresignedUrl(id: string): Promise<string> {
-    const attachment = await this.attachmentRepository.findOne({ where: { id } });
+  async getPresignedUrl(id: string, organizationId?: string): Promise<string> {
+    const attachment = await this.attachmentRepository.findOne({
+      where: { id },
+      relations: ['issue', 'issue.project'],
+    });
     if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+    if (organizationId && attachment.issue?.project?.organizationId !== organizationId) {
       throw new NotFoundException('Attachment not found');
     }
 
@@ -97,9 +103,15 @@ export class FilesService {
     });
   }
 
-  async delete(id: string, userId: string): Promise<void> {
-    const attachment = await this.attachmentRepository.findOne({ where: { id } });
+  async delete(id: string, userId: string, organizationId?: string): Promise<void> {
+    const attachment = await this.attachmentRepository.findOne({
+      where: { id },
+      relations: ['issue', 'issue.project'],
+    });
     if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+    if (organizationId && attachment.issue?.project?.organizationId !== organizationId) {
       throw new NotFoundException('Attachment not found');
     }
     if (attachment.uploadedBy !== userId) {

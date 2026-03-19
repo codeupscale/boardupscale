@@ -39,8 +39,7 @@ export class GithubWebhookController {
       });
     }
 
-    // Determine which connection this webhook is for.
-    // GitHub sends the repository info in the payload.
+    // Determine which connection(s) this webhook is for.
     const repoFullName = body?.repository?.full_name;
     if (!repoFullName) {
       return res.status(HttpStatus.BAD_REQUEST).json({
@@ -49,42 +48,20 @@ export class GithubWebhookController {
     }
 
     const [repoOwner, repoName] = repoFullName.split('/');
-    const connection = await this.githubService.findConnectionByRepo(
+
+    // Multi-tenant: find ALL connections for this repo (multiple orgs can connect the same repo)
+    const connections = await this.githubService.findAllConnectionsByRepo(
       repoOwner,
       repoName,
     );
 
-    if (!connection) {
+    if (!connections.length) {
       this.logger.warn(
         `No GitHub connection found for repo ${repoFullName}, ignoring webhook`,
       );
       return res.status(HttpStatus.OK).json({
         message: 'No connection found for this repository',
       });
-    }
-
-    // Verify webhook signature if a secret is configured
-    if (connection.webhookSecret && rawBody) {
-      const expectedSignature =
-        'sha256=' +
-        crypto
-          .createHmac('sha256', connection.webhookSecret)
-          .update(rawBody)
-          .digest('hex');
-
-      const isValid = crypto.timingSafeEqual(
-        Buffer.from(signature || ''),
-        Buffer.from(expectedSignature),
-      );
-
-      if (!isValid) {
-        this.logger.warn(
-          `Invalid webhook signature for connection ${connection.id}`,
-        );
-        return res.status(HttpStatus.UNAUTHORIZED).json({
-          message: 'Invalid webhook signature',
-        });
-      }
     }
 
     // Only process events we care about
@@ -95,29 +72,65 @@ export class GithubWebhookController {
       });
     }
 
-    try {
-      const events = await this.githubService.processWebhookEvent(
-        connection.id,
-        githubEvent,
-        body,
-      );
+    // Fan out: process the event for each connection (each org gets its own events)
+    let totalEventsCreated = 0;
+    let processedConnections = 0;
 
-      this.logger.log(
-        `Processed GitHub ${githubEvent} event for ${repoFullName}: created ${events.length} event(s)`,
-      );
+    for (const connection of connections) {
+      // Verify webhook signature per connection (each has its own secret)
+      if (connection.webhookSecret && rawBody && signature) {
+        const expectedSignature =
+          'sha256=' +
+          crypto
+            .createHmac('sha256', connection.webhookSecret)
+            .update(rawBody)
+            .digest('hex');
 
-      return res.status(HttpStatus.OK).json({
-        message: 'Webhook processed',
-        eventsCreated: events.length,
-      });
-    } catch (error) {
-      this.logger.error(
-        `Error processing GitHub webhook: ${error.message}`,
-        error.stack,
+        const sigBuffer = Buffer.from(signature);
+        const expectedBuffer = Buffer.from(expectedSignature);
+
+        if (
+          sigBuffer.length !== expectedBuffer.length ||
+          !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
+        ) {
+          // Signature doesn't match this connection's secret — skip it, try others
+          continue;
+        }
+      }
+
+      try {
+        const events = await this.githubService.processWebhookEvent(
+          connection.id,
+          githubEvent,
+          body,
+        );
+        totalEventsCreated += events.length;
+        processedConnections++;
+      } catch (error) {
+        this.logger.error(
+          `Error processing GitHub webhook for connection ${connection.id} (org: ${connection.organizationId}): ${error.message}`,
+          error.stack,
+        );
+      }
+    }
+
+    if (processedConnections === 0) {
+      this.logger.warn(
+        `Webhook signature did not match any connection for ${repoFullName}`,
       );
-      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-        message: 'Error processing webhook',
+      return res.status(HttpStatus.UNAUTHORIZED).json({
+        message: 'Invalid webhook signature',
       });
     }
+
+    this.logger.log(
+      `Processed GitHub ${githubEvent} for ${repoFullName}: ${totalEventsCreated} event(s) across ${processedConnections} connection(s)`,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      message: 'Webhook processed',
+      eventsCreated: totalEventsCreated,
+      connectionsProcessed: processedConnections,
+    });
   }
 }

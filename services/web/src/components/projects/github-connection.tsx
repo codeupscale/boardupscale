@@ -85,7 +85,13 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
         window.location.href = url
       }
     } catch (err: any) {
-      setOauthError(err?.response?.data?.message || 'Could not generate GitHub OAuth URL. Check GITHUB_CLIENT_ID in your .env.')
+      const status = err?.response?.status
+      const serverMsg = err?.response?.data?.message
+      if (status === 401) {
+        setOauthError('Session expired. Please log out and log back in, then try again.')
+      } else {
+        setOauthError(serverMsg || 'Could not generate GitHub OAuth URL. Please try again or contact support.')
+      }
       setIsOauthLoading(false)
     }
   }

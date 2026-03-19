@@ -150,12 +150,14 @@ import { SavedView } from './modules/saved-views/entities/saved-view.entity';
         if (redisUrl) {
           try {
             const url = new URL(redisUrl);
-            return {
-              connection: {
-                host: url.hostname,
-                port: parseInt(url.port, 10) || 6379,
-              },
+            const connection: Record<string, unknown> = {
+              host: url.hostname,
+              port: parseInt(url.port, 10) || 6379,
             };
+            if (url.password) {
+              connection.password = decodeURIComponent(url.password);
+            }
+            return { connection };
           } catch {
             // fall through to host/port
           }

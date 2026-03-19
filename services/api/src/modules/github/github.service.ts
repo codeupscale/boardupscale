@@ -314,6 +314,18 @@ export class GithubService {
     });
   }
 
+  /**
+   * Find ALL connections for a repo (multi-tenant: multiple orgs can connect the same repo).
+   */
+  async findAllConnectionsByRepo(
+    repoOwner: string,
+    repoName: string,
+  ): Promise<GitHubConnection[]> {
+    return this.connectionRepository.find({
+      where: { repoOwner, repoName },
+    });
+  }
+
   // ── GitHub OAuth for repo picker ──
 
   /**
