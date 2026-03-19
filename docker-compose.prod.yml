@@ -13,6 +13,11 @@ services:
     networks:
       - boardupscale
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
 
   api:
     build:
@@ -72,6 +77,11 @@ services:
     networks:
       - boardupscale
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: '0.5'
 
   worker:
     build:
@@ -106,6 +116,11 @@ services:
     networks:
       - boardupscale
     restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
 
   postgres:
     image: pgvector/pgvector:pg15
@@ -142,7 +157,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+      - 'ES_JAVA_OPTS=-Xms256m -Xmx256m'
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
@@ -151,7 +166,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1g
+          memory: 512m
+          cpus: '0.5'
 
   minio:
     image: minio/minio:latest

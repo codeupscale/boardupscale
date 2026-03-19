@@ -56,24 +56,25 @@ export class WebhooksController {
 
   @Get('webhooks/:id')
   @ApiOperation({ summary: 'Get a webhook by ID' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.webhooksService.findById(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    return this.webhooksService.findByIdAndOrg(id, organizationId);
   }
 
   @Put('webhooks/:id')
   @ApiOperation({ summary: 'Update a webhook' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
+    @OrgId() organizationId: string,
     @Body() dto: UpdateWebhookDto,
   ) {
-    return this.webhooksService.update(id, dto);
+    return this.webhooksService.updateWithOrg(id, organizationId, dto);
   }
 
   @Delete('webhooks/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a webhook' })
-  async delete(@Param('id', ParseUUIDPipe) id: string) {
-    await this.webhooksService.delete(id);
+  async delete(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    await this.webhooksService.deleteWithOrg(id, organizationId);
   }
 
   @Post('webhooks/:id/test')

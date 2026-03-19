@@ -62,14 +62,36 @@ export class WebhooksService {
     return webhook;
   }
 
+  async findByIdAndOrg(id: string, organizationId: string): Promise<Webhook> {
+    const webhook = await this.webhookRepository.findOne({
+      where: { id, organizationId },
+      relations: ['creator'],
+    });
+    if (!webhook) {
+      throw new NotFoundException('Webhook not found');
+    }
+    return webhook;
+  }
+
   async update(id: string, dto: UpdateWebhookDto): Promise<Webhook> {
     const webhook = await this.findById(id);
     Object.assign(webhook, dto);
     return this.webhookRepository.save(webhook);
   }
 
+  async updateWithOrg(id: string, organizationId: string, dto: UpdateWebhookDto): Promise<Webhook> {
+    const webhook = await this.findByIdAndOrg(id, organizationId);
+    Object.assign(webhook, dto);
+    return this.webhookRepository.save(webhook);
+  }
+
   async delete(id: string): Promise<void> {
     const webhook = await this.findById(id);
+    await this.webhookRepository.remove(webhook);
+  }
+
+  async deleteWithOrg(id: string, organizationId: string): Promise<void> {
+    const webhook = await this.findByIdAndOrg(id, organizationId);
     await this.webhookRepository.remove(webhook);
   }
 

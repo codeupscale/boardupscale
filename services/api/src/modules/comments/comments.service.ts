@@ -43,7 +43,16 @@ export class CommentsService {
     private automationEngine?: AutomationEngineService,
   ) {}
 
-  async findAll(issueId: string): Promise<Comment[]> {
+  async findAll(issueId: string, organizationId?: string): Promise<Comment[]> {
+    if (organizationId) {
+      const issue = await this.issueRepository.findOne({
+        where: { id: issueId },
+        relations: ['project'],
+      });
+      if (!issue || issue.project?.organizationId !== organizationId) {
+        return [];
+      }
+    }
     return this.commentRepository.find({
       where: { issueId, deletedAt: IsNull() },
       relations: ['author'],

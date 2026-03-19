@@ -58,6 +58,7 @@ export class ImportService {
           this.redisClient = new IORedis({
             host: url.hostname,
             port: parseInt(url.port, 10) || 6379,
+            password: url.password ? decodeURIComponent(url.password) : undefined,
             maxRetriesPerRequest: 3,
           });
         } catch {

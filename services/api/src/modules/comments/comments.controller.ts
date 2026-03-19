@@ -32,8 +32,8 @@ export class CommentsController {
   @Get()
   @ApiOperation({ summary: 'Get comments for an issue' })
   @ApiQuery({ name: 'issueId', required: true })
-  async findAll(@Query('issueId', ParseUUIDPipe) issueId: string) {
-    const comments = await this.commentsService.findAll(issueId);
+  async findAll(@Query('issueId', ParseUUIDPipe) issueId: string, @OrgId() organizationId: string) {
+    const comments = await this.commentsService.findAll(issueId, organizationId);
     return { data: comments };
   }
 
