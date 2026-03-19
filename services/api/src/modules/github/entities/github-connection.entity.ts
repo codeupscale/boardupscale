@@ -46,6 +46,9 @@ export class GitHubConnection {
   @Column({ name: 'webhook_secret', type: 'varchar', length: 255, nullable: true })
   webhookSecret: string;
 
+  @Column({ name: 'webhook_id', type: 'int', nullable: true })
+  webhookId: number;
+
   @OneToMany(() => GitHubEvent, (event) => event.connection)
   events: GitHubEvent[];
 

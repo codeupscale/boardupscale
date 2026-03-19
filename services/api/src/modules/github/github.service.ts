@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { GitHubConnection } from './entities/github-connection.entity';
 import { GitHubEvent } from './entities/github-event.entity';
 import { Issue } from '../issues/entities/issue.entity';
@@ -42,13 +43,14 @@ export class GithubService {
 
   /**
    * Connect a GitHub repository to a project.
+   * Automatically registers a webhook on the GitHub repo.
    */
   async connectRepo(
     projectId: string,
     organizationId: string,
     dto: ConnectGithubDto,
   ): Promise<GitHubConnection> {
-    // Check if a connection already exists for this project (UNIQUE constraint on project_id)
+    // Check if a connection already exists for this project
     const existing = await this.connectionRepository.findOne({
       where: { projectId },
     });
@@ -58,20 +60,51 @@ export class GithubService {
       );
     }
 
+    // Generate a unique webhook secret for this connection
+    const webhookSecret = crypto.randomBytes(32).toString('hex');
+
     const connection = this.connectionRepository.create({
       projectId,
       organizationId,
       repoOwner: dto.repoOwner,
       repoName: dto.repoName,
       accessTokenEncrypted: dto.accessToken || null,
-      webhookSecret: dto.webhookSecret || null,
+      webhookSecret,
     });
 
-    return this.connectionRepository.save(connection);
+    const saved = await this.connectionRepository.save(connection);
+
+    // Auto-register webhook on GitHub
+    if (dto.accessToken) {
+      try {
+        const webhookId = await this.registerWebhook(
+          dto.accessToken,
+          dto.repoOwner,
+          dto.repoName,
+          webhookSecret,
+        );
+        if (webhookId) {
+          saved.webhookId = webhookId;
+          await this.connectionRepository.save(saved);
+          this.logger.log(
+            `Webhook registered on ${dto.repoOwner}/${dto.repoName} (ID: ${webhookId})`,
+          );
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to auto-register webhook on ${dto.repoOwner}/${dto.repoName}: ${error.message}. ` +
+          `User can manually set up the webhook at: POST ${this.getWebhookUrl()}`,
+        );
+        // Don't fail the connection — webhook can be set up manually
+      }
+    }
+
+    return saved;
   }
 
   /**
    * Disconnect (delete) the GitHub connection for a project.
+   * Automatically removes the webhook from GitHub.
    */
   async disconnectRepo(projectId: string, organizationId: string): Promise<void> {
     const connection = await this.connectionRepository.findOne({
@@ -80,6 +113,27 @@ export class GithubService {
     if (!connection) {
       throw new NotFoundException('No GitHub connection found for this project');
     }
+
+    // Auto-delete webhook from GitHub
+    if (connection.webhookId && connection.accessTokenEncrypted) {
+      try {
+        await this.deleteWebhook(
+          connection.accessTokenEncrypted,
+          connection.repoOwner,
+          connection.repoName,
+          connection.webhookId,
+        );
+        this.logger.log(
+          `Webhook removed from ${connection.repoOwner}/${connection.repoName} (ID: ${connection.webhookId})`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to remove webhook from ${connection.repoOwner}/${connection.repoName}: ${error.message}`,
+        );
+        // Don't fail the disconnect — just clean up our side
+      }
+    }
+
     await this.connectionRepository.remove(connection);
   }
 
@@ -89,10 +143,15 @@ export class GithubService {
   async getConnectionStatus(
     projectId: string,
     organizationId: string,
-  ): Promise<GitHubConnection | null> {
-    return this.connectionRepository.findOne({
+  ): Promise<(GitHubConnection & { webhookActive: boolean }) | null> {
+    const conn = await this.connectionRepository.findOne({
       where: { projectId, organizationId },
     });
+    if (!conn) return null;
+    return {
+      ...conn,
+      webhookActive: !!conn.webhookId,
+    };
   }
 
   /**
@@ -102,7 +161,6 @@ export class GithubService {
     issueId: string,
     organizationId: string,
   ): Promise<GitHubEvent[]> {
-    // Verify the issue belongs to this organization
     const issue = await this.issueRepository.findOne({
       where: { id: issueId, organizationId },
     });
@@ -118,7 +176,6 @@ export class GithubService {
 
   /**
    * Process an incoming webhook event from GitHub.
-   * Parses PR/commit data, extracts issue keys, and saves event records.
    */
   async processWebhookEvent(
     connectionId: string,
@@ -139,7 +196,7 @@ export class GithubService {
       const pr = payload.pull_request;
       if (!pr) return [];
 
-      const action = payload.action; // opened, closed, merged
+      const action = payload.action;
       let mappedType: string;
       if (action === 'opened' || action === 'reopened') {
         mappedType = 'pr_opened';
@@ -148,16 +205,13 @@ export class GithubService {
       } else if (action === 'closed') {
         mappedType = 'pr_closed';
       } else {
-        // Ignore other PR actions (edited, labeled, etc.)
         return [];
       }
 
-      // Extract issue keys from PR title and body
       const textToSearch = `${pr.title || ''} ${pr.body || ''} ${pr.head?.ref || ''}`;
       const issueKeys = this.extractIssueKeys(textToSearch);
 
       if (issueKeys.length === 0) {
-        // Save event without issue link
         const event = this.eventRepository.create({
           githubConnectionId: connectionId,
           eventType: mappedType,
@@ -170,7 +224,6 @@ export class GithubService {
         });
         events.push(await this.eventRepository.save(event));
       } else {
-        // Create one event per linked issue
         for (const key of issueKeys) {
           const issue = await this.findIssueByKey(key, connection.organizationId);
           const event = this.eventRepository.create({
@@ -201,7 +254,6 @@ export class GithubService {
         const issueKeys = this.extractIssueKeys(textToSearch);
 
         if (issueKeys.length === 0) {
-          // Save commit event without issue link
           const event = this.eventRepository.create({
             githubConnectionId: connectionId,
             eventType: 'commit',
@@ -266,7 +318,6 @@ export class GithubService {
 
   /**
    * Build the GitHub OAuth authorize URL with `repo` scope.
-   * The redirectUri must be a frontend callback page that passes the code back.
    */
   getOAuthUrl(redirectUri: string): string {
     const clientId = this.configService.get<string>('oauth.github.clientId');
@@ -297,7 +348,6 @@ export class GithubService {
       throw new BadRequestException('GitHub OAuth credentials are not configured');
     }
 
-    // Exchange code for access token
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
@@ -314,7 +364,6 @@ export class GithubService {
 
     const accessToken: string = tokenData.access_token;
 
-    // Fetch user's repos (sorted by recently updated, up to 100)
     const reposRes = await fetch(
       'https://api.github.com/user/repos?sort=updated&per_page=100&type=all',
       {
@@ -342,6 +391,131 @@ export class GithubService {
     }));
 
     return { accessToken, repos };
+  }
+
+  // ── GitHub Webhook Management (auto-register/delete) ──
+
+  /**
+   * Get the public webhook URL for this BoardUpscale instance.
+   */
+  private getWebhookUrl(): string {
+    const frontendUrl = this.configService.get<string>('app.frontendUrl') || '';
+    // The API is typically at the same domain or a different port
+    // Use FRONTEND_URL domain with /api prefix for production
+    const baseUrl = frontendUrl.replace(/\/$/, '');
+    return `${baseUrl}/api/github/webhook`;
+  }
+
+  /**
+   * Register a webhook on a GitHub repository via the GitHub REST API.
+   * Returns the webhook ID for later deletion.
+   */
+  private async registerWebhook(
+    accessToken: string,
+    repoOwner: string,
+    repoName: string,
+    webhookSecret: string,
+  ): Promise<number | null> {
+    const webhookUrl = this.getWebhookUrl();
+
+    this.logger.log(
+      `Registering webhook on ${repoOwner}/${repoName} → ${webhookUrl}`,
+    );
+
+    const response = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/hooks`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({
+          name: 'web',
+          active: true,
+          events: ['push', 'pull_request'],
+          config: {
+            url: webhookUrl,
+            content_type: 'json',
+            secret: webhookSecret,
+            insecure_ssl: '0',
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(
+        `GitHub API returned ${response.status}: ${errorBody}`,
+      );
+    }
+
+    const hookData: any = await response.json();
+    return hookData.id || null;
+  }
+
+  /**
+   * Delete a webhook from a GitHub repository.
+   */
+  private async deleteWebhook(
+    accessToken: string,
+    repoOwner: string,
+    repoName: string,
+    webhookId: number,
+  ): Promise<void> {
+    this.logger.log(
+      `Deleting webhook ${webhookId} from ${repoOwner}/${repoName}`,
+    );
+
+    const response = await fetch(
+      `https://api.github.com/repos/${repoOwner}/${repoName}/hooks/${webhookId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      },
+    );
+
+    if (!response.ok && response.status !== 404) {
+      const errorBody = await response.text();
+      throw new Error(
+        `GitHub API returned ${response.status}: ${errorBody}`,
+      );
+    }
+  }
+
+  /**
+   * Verify webhook is still active on GitHub. Used for status checks.
+   */
+  async verifyWebhook(connectionId: string): Promise<boolean> {
+    const connection = await this.connectionRepository.findOne({
+      where: { id: connectionId },
+    });
+    if (!connection?.webhookId || !connection?.accessTokenEncrypted) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${connection.repoOwner}/${connection.repoName}/hooks/${connection.webhookId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${connection.accessTokenEncrypted}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        },
+      );
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   /**

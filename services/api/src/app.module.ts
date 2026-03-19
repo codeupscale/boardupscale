@@ -65,7 +65,7 @@ import { AutomationLog } from './modules/automation/entities/automation-log.enti
 import { ApiKey } from './modules/api-keys/entities/api-key.entity';
 import { IssueLink } from './modules/issues/entities/issue-link.entity';
 import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
-import { Activity } from './modules/activity/activity.entity';
+import { Activity } from './modules/activity/entities/activity.entity';
 import { AuditLog } from './modules/audit/audit-log.entity';
 import { AiUsageLog } from './modules/ai/entities/ai-usage-log.entity';
 import { GitHubConnection } from './modules/github/entities/github-connection.entity';

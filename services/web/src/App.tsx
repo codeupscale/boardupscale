@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from 'react'
+import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoadingPage } from '@/components/ui/spinner'
@@ -95,18 +95,11 @@ const PageDetailPage = React.lazy(() =>
   import('@/pages/PageDetailPage').then(m => ({ default: m.PageDetailPage }))
 )
 
-const LANDING_URL = 'https://boardupscale.com'
-
-/** Unauthenticated users are redirected to the marketing site */
+/** Unauthenticated users are redirected to login */
 function RootRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      window.location.replace(LANDING_URL)
-    }
-  }, [isAuthenticated])
   if (isAuthenticated) return <Navigate to="/dashboard" replace />
-  return <LoadingPage />
+  return <Navigate to="/login" replace />
 }
 
 export default function App() {

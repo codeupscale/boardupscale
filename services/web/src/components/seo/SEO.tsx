@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async'
 
 const SITE_NAME = 'Boardupscale'
-const BASE_URL = 'https://boardupscale.com'
+const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://boardupscale.com'
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`
 const DEFAULT_DESCRIPTION =
   'The free, open-source alternative to Jira. Kanban, Scrum, AI duplicate detection, sprint planning, GitHub integration and more — self-hosted or in the cloud.'

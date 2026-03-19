@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Activity } from './activity.entity';
+import { Activity, ActivityAction } from './entities/activity.entity';
 
 @Injectable()
 export class ActivityService {
@@ -21,16 +21,16 @@ export class ActivityService {
     metadata?: any,
   ): Promise<Activity> {
     const activity = this.activityRepository.create({
-      orgId,
+      organizationId: orgId,
       issueId,
       userId,
-      action,
+      action: action as ActivityAction,
       field: field || null,
       oldValue: oldValue || null,
       newValue: newValue || null,
       metadata: metadata || null,
     });
-    return this.activityRepository.save(activity);
+    return this.activityRepository.save(activity as Activity);
   }
 
   async findByIssue(
