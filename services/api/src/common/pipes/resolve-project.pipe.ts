@@ -1,4 +1,5 @@
-import { PipeTransform, Injectable, NotFoundException } from '@nestjs/common';
+import { PipeTransform, Injectable, NotFoundException, Inject, Scope } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 import { Project } from '../../modules/projects/entities/project.entity';
 
@@ -7,11 +8,14 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 /**
  * Resolves a project identifier (UUID or key) to a UUID.
  * If the value is already a UUID, it passes through.
- * Otherwise, looks up the project by key and returns the UUID.
+ * Otherwise, looks up the project by key SCOPED TO the requesting user's organization.
  */
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ResolveProjectPipe implements PipeTransform<string | undefined, Promise<string | undefined>> {
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    @Inject(REQUEST) private request: any,
+  ) {}
 
   async transform(value: string | undefined): Promise<string | undefined> {
     if (!value) return value;
@@ -20,8 +24,14 @@ export class ResolveProjectPipe implements PipeTransform<string | undefined, Pro
       return value;
     }
 
+    const organizationId = this.request?.user?.organizationId;
+    const where: any = { key: value.toUpperCase() };
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+
     const project = await this.dataSource.getRepository(Project).findOne({
-      where: { key: value.toUpperCase() },
+      where,
       select: ['id'],
     });
 
