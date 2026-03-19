@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Github, ExternalLink, Loader2, Search, Lock, Globe, CheckCircle2, AlertCircle } from 'lucide-react'
-import { useGithubConnection, useConnectGithub, useDisconnectGithub, useGithubOAuthExchange, GitHubRepo } from '@/hooks/useGithub'
+import { Github, ExternalLink, Loader2, Search, Lock, Globe, CheckCircle2, AlertCircle, Webhook, RefreshCw } from 'lucide-react'
+import { useGithubConnection, useConnectGithub, useDisconnectGithub, useGithubOAuthExchange, useVerifyWebhook, GitHubRepo } from '@/hooks/useGithub'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
   const connectGithub = useConnectGithub()
   const disconnectGithub = useDisconnectGithub()
   const exchangeCode = useGithubOAuthExchange()
+  const verifyWebhook = useVerifyWebhook()
 
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [accessToken, setAccessToken] = useState<string>('')
@@ -74,7 +75,6 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       })
       const url: string = data.data.url
 
-      // Open GitHub OAuth in a popup
       const popup = window.open(
         url,
         'github-oauth',
@@ -82,7 +82,6 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       )
 
       if (!popup) {
-        // Fallback: navigate in same tab
         window.location.href = url
       }
     } catch (err: any) {
@@ -143,6 +142,41 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
             </div>
           </div>
 
+          {/* Webhook status */}
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Webhook className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">Webhook</span>
+                {connection.webhookActive ? (
+                  <Badge variant="success" className="text-[10px]">Active</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">Not registered</Badge>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => verifyWebhook.mutate(projectId)}
+                disabled={verifyWebhook.isPending}
+              >
+                <RefreshCw className={cn('h-3.5 w-3.5', verifyWebhook.isPending && 'animate-spin')} />
+                Verify
+              </Button>
+            </div>
+            {connection.webhookActive && (
+              <p className="text-xs text-gray-400 mt-2">
+                Commits and PRs mentioning issue keys (e.g. <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PROJ-123</code>) are linked automatically.
+              </p>
+            )}
+            {!connection.webhookActive && (
+              <p className="text-xs text-amber-500 mt-2">
+                Webhook was not auto-registered. This can happen if the OAuth token lacks admin permissions.
+                You can manually add a webhook in GitHub repo settings pointing to your API's <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">/api/github/webhook</code> endpoint.
+              </p>
+            )}
+          </div>
+
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
             <Button variant="destructive" size="sm" onClick={() => setShowDisconnect(true)}>
               Disconnect Repository
@@ -157,7 +191,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
             disconnectGithub.mutate(projectId, { onSuccess: () => setShowDisconnect(false) })
           }
           title="Disconnect GitHub Repository"
-          description={`Are you sure you want to disconnect ${connection.repoOwner}/${connection.repoName}? Existing GitHub events linked to issues will be preserved, but no new events will be received.`}
+          description={`Are you sure you want to disconnect ${connection.repoOwner}/${connection.repoName}? The webhook will be removed from GitHub and no new events will be received. Existing events linked to issues will be preserved.`}
           confirmLabel="Disconnect"
           destructive
           isLoading={disconnectGithub.isPending}
@@ -281,8 +315,9 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
               Connect a GitHub Repository
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
-              Log in with GitHub to browse and select a repository. Pull requests and commits
-              mentioning issue keys (e.g. <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PROJ-123</code>) will be linked automatically.
+              Log in with GitHub to browse and select a repository. A webhook will be
+              registered automatically — pull requests and commits mentioning issue keys
+              (e.g. <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PROJ-123</code>) will be linked to your issues.
             </p>
           </div>
 
@@ -301,11 +336,6 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
             <Github className="h-4 w-4" />
             Login with GitHub
           </Button>
-
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">
-            Requires a GitHub OAuth App with <code className="font-mono">GITHUB_CLIENT_ID</code> and <code className="font-mono">GITHUB_CLIENT_SECRET</code> set in your <code className="font-mono">.env</code>.
-            The callback URL must include <code className="font-mono">{GITHUB_CALLBACK_URL}</code>.
-          </p>
         </div>
       </div>
     </div>
@@ -319,7 +349,7 @@ function SectionHeader() {
       <div>
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">GitHub Integration</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Manage your GitHub repository connection for this project.
+          Connect a GitHub repository to automatically track commits and pull requests linked to your issues.
         </p>
       </div>
     </div>

@@ -17,6 +17,7 @@ interface GitHubConnection {
   projectId: string
   repoOwner: string
   repoName: string
+  webhookActive: boolean
   createdAt: string
 }
 
@@ -55,7 +56,6 @@ export function useConnectGithub() {
       repoOwner: string
       repoName: string
       accessToken?: string
-      webhookSecret?: string
     }) => {
       const { projectId, ...body } = params
       const { data } = await api.post(`/projects/${projectId}/github/connect`, body)
@@ -63,7 +63,7 @@ export function useConnectGithub() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['github-connection', vars.projectId] })
-      toast('GitHub repository connected')
+      toast('GitHub repository connected — webhook registered automatically')
     },
     onError: (err: any) =>
       toast(err?.response?.data?.error?.message || 'Failed to connect GitHub repository', 'error'),
@@ -78,7 +78,7 @@ export function useDisconnectGithub() {
     },
     onSuccess: (_, projectId) => {
       qc.invalidateQueries({ queryKey: ['github-connection', projectId] })
-      toast('GitHub repository disconnected')
+      toast('GitHub repository disconnected — webhook removed')
     },
     onError: (err: any) =>
       toast(err?.response?.data?.error?.message || 'Failed to disconnect GitHub repository', 'error'),
@@ -99,13 +99,24 @@ export function useGithubEvents(issueId: string | undefined) {
 
 /**
  * Exchange a GitHub OAuth code for an access token and repo list.
- * Called after the popup callback returns the code via postMessage.
  */
 export function useGithubOAuthExchange() {
   return useMutation({
     mutationFn: async (params: { code: string; redirectUri: string }) => {
       const { data } = await api.post('/github/oauth/exchange', params)
       return data.data as { accessToken: string; repos: GitHubRepo[] }
+    },
+  })
+}
+
+/**
+ * Verify that the webhook on GitHub is still active.
+ */
+export function useVerifyWebhook() {
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data } = await api.post(`/projects/${projectId}/github/verify-webhook`)
+      return data.data as { active: boolean }
     },
   })
 }

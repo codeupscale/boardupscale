@@ -92,4 +92,21 @@ export class GithubController {
     );
     return { data: events };
   }
+
+  @Post('projects/:projectId/github/verify-webhook')
+  @ApiOperation({ summary: 'Verify the GitHub webhook is still active' })
+  async verifyWebhook(
+    @Param('projectId', ResolveProjectPipe) projectId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const connection = await this.githubService.getConnectionStatus(
+      projectId,
+      organizationId,
+    );
+    if (!connection) {
+      return { data: { active: false, message: 'No connection found' } };
+    }
+    const active = await this.githubService.verifyWebhook(connection.id);
+    return { data: { active } };
+  }
 }
