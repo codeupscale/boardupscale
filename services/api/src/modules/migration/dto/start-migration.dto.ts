@@ -37,6 +37,15 @@ export class StartMigrationDto {
   @IsNotEmpty({ each: true })
   projectKeys: string[];
 
+  @ApiPropertyOptional({
+    description: 'Jira accountIds to import as members. Empty array = import all members.',
+    example: ['abc123', 'def456'],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  selectedMemberIds?: string[];
+
   @ApiPropertyOptional({ description: 'Jira status name → Boardupscale status name mapping' })
   @IsObject()
   @IsOptional()

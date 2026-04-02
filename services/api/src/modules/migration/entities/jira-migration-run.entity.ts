@@ -133,6 +133,13 @@ export class JiraMigrationRun {
   @Column({ name: 'current_offset', type: 'int', default: 0 })
   currentOffset: number;
 
+  /**
+   * Array of phase numbers that have already completed.
+   * Used by the worker to skip phases on retry/resume.
+   */
+  @Column({ name: 'completed_phases', type: 'jsonb', default: [] })
+  completedPhases: number[];
+
   // ── Progress counters ───────────────────────────────────────────────────────
 
   @Column({ name: 'total_projects', type: 'int', default: 0 })

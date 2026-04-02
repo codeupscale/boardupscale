@@ -8,6 +8,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Redirect,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -18,6 +19,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -33,7 +35,10 @@ import { PreviewMigrationDto, StartMigrationDto } from './dto/start-migration.dt
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('migration/jira')
 export class MigrationController {
-  constructor(private readonly migrationService: MigrationService) {}
+  constructor(
+    private readonly migrationService: MigrationService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * POST /api/migration/jira/connect
@@ -152,5 +157,75 @@ export class MigrationController {
   ) {
     const result = await this.migrationService.getHistory(organizationId, page, limit);
     return { status: true, message: 'OK', data: result };
+  }
+
+  /**
+   * GET /api/migration/jira/members?connectionId=xxx
+   * Return all Jira users for the given connection so the user can select which
+   * members to import. Returns accountId, displayName, email, avatarUrl, active.
+   */
+  @Get('members')
+  @ApiOperation({ summary: 'List Jira users available for member import selection' })
+  @ApiQuery({ name: 'connectionId', required: true, type: String })
+  @ApiResponse({ status: 200, description: 'List of Jira members' })
+  @ApiResponse({ status: 404, description: 'Connection not found' })
+  async getMembers(
+    @Query('connectionId') connectionId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const data = await this.migrationService.getMigrationMembers(connectionId, organizationId);
+    return { status: true, message: 'OK', data };
+  }
+
+  /**
+   * GET /api/migration/jira/oauth/authorize
+   * Build the Atlassian OAuth 2.0 (3-legged) authorization URL and redirect.
+   * Scopes: read:jira-work read:jira-user offline_access
+   *
+   * The `state` param is an opaque value the frontend can use for CSRF protection.
+   */
+  @Get('oauth/authorize')
+  @ApiOperation({ summary: 'Redirect to Atlassian OAuth consent screen' })
+  @ApiQuery({ name: 'state', required: false, type: String })
+  @ApiResponse({ status: 302, description: 'Redirects to Atlassian OAuth' })
+  @Redirect()
+  oauthAuthorize(@Query('state') state = '') {
+    const url = this.migrationService.buildOAuthAuthorizeUrl(state || 'boardupscale-jira-oauth');
+    return { url, statusCode: 302 };
+  }
+
+  /**
+   * GET /api/migration/jira/oauth/callback
+   * Atlassian OAuth callback — exchanges code for tokens, creates migration run,
+   * and redirects the browser back to the frontend wizard with runId + metadata.
+   */
+  @Get('oauth/callback')
+  @ApiOperation({ summary: 'Atlassian OAuth callback — exchanges code and creates migration run' })
+  @ApiQuery({ name: 'code', required: true, type: String })
+  @ApiQuery({ name: 'state', required: false, type: String })
+  @ApiResponse({ status: 302, description: 'Redirects to frontend wizard' })
+  @Redirect()
+  async oauthCallback(
+    @Query('code') code: string,
+    @Query('state') _state: string,
+    @OrgId() organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    const frontendUrl = this.configService.get<string>('atlassian.frontendRedirectUrl');
+    try {
+      const result = await this.migrationService.exchangeOAuthCode(code, organizationId, userId);
+      const params = new URLSearchParams({
+        oauth: '1',
+        runId: result.runId,
+        connectionId: result.connectionId,
+        orgName: result.orgName,
+        projectCount: String(result.projectCount),
+        memberCount: String(result.memberCount),
+      });
+      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+    } catch (err: any) {
+      const params = new URLSearchParams({ oauthError: err.message ?? 'OAuth failed' });
+      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+    }
   }
 }

@@ -9,13 +9,14 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { useMigrationHistory, MigrationRun } from '@/hooks/useMigration'
+import { useMigrationHistory, useRetryMigrationFromHistory, MigrationRun } from '@/hooks/useMigration'
+import { useQueryClient } from '@tanstack/react-query'
 
 const STATUS_CONFIG: Record<
   string,
@@ -63,7 +64,8 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function RunCard({ run }: { run: MigrationRun }) {
+function RunCard({ run, onRetry }: { run: MigrationRun; onRetry: (id: string) => void }) {
+  const navigate = useNavigate()
   const projectNames = (run.selectedProjects ?? [])
     .map((p) => p.name || p.key)
     .slice(0, 3)
@@ -77,11 +79,23 @@ function RunCard({ run }: { run: MigrationRun }) {
         )
       : null
 
+  const isRetryable = run.status === 'failed' || run.status === 'cancelled'
+
   return (
-    <Card className="hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+    <Card
+      className={cn(
+        'transition-colors',
+        run.status === 'failed'
+          ? 'border-red-200 dark:border-red-900'
+          : 'hover:border-gray-300 dark:hover:border-gray-600',
+      )}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={() => navigate(`/settings/migrate/report/${run.id}`)}
+          >
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={run.status} />
               {run.selectedProjects && run.selectedProjects.length > 0 && (
@@ -101,11 +115,23 @@ function RunCard({ run }: { run: MigrationRun }) {
                 <span className="text-red-500">{run.failedIssues} failed</span>
               )}
               {duration !== null && <span>{duration}m</span>}
-              <span>
-                {format(new Date(run.createdAt), 'MMM d, yyyy HH:mm')}
-              </span>
+              <span>{format(new Date(run.createdAt), 'MMM d, yyyy HH:mm')}</span>
             </div>
           </div>
+
+          {/* Retry button for failed/cancelled runs */}
+          {isRetryable && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRetry(run.id)}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+              aria-label={`Retry migration ${run.id}`}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -114,20 +140,29 @@ function RunCard({ run }: { run: MigrationRun }) {
 
 export function MigrationHistoryPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const { data, isLoading } = useMigrationHistory(page, 20)
+  const retryMutation = useRetryMigrationFromHistory()
 
   const runs = data?.data ?? []
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / 20)
 
+  async function handleRetry(runId: string) {
+    const result = await retryMutation.mutateAsync(runId)
+    if (result?.runId) {
+      // Invalidate history so the status badge updates
+      queryClient.invalidateQueries({ queryKey: ['migration-history'] })
+      navigate('/settings/migrate/jira')
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Migration History
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Migration History</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             All Jira migration runs for this organisation.
           </p>
@@ -158,10 +193,7 @@ export function MigrationHistoryPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-gray-500 dark:text-gray-400">No migrations yet.</p>
-            <Button
-              className="mt-4"
-              onClick={() => navigate('/settings/migrate/jira')}
-            >
+            <Button className="mt-4" onClick={() => navigate('/settings/migrate/jira')}>
               Start your first migration
             </Button>
           </CardContent>
@@ -171,7 +203,7 @@ export function MigrationHistoryPage() {
       {!isLoading && runs.length > 0 && (
         <div className="space-y-3">
           {runs.map((run) => (
-            <RunCard key={run.id} run={run} />
+            <RunCard key={run.id} run={run} onRetry={handleRetry} />
           ))}
         </div>
       )}

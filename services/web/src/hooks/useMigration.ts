@@ -18,6 +18,8 @@ export interface ConnectJiraResult {
   projectCount: number
   memberCount: number
   projects: Array<{ key: string; name: string; description?: string }>
+  /** Present when the connection was just created — used to fetch members */
+  connectionId?: string
 }
 
 export interface PreviewProject {
@@ -41,9 +43,19 @@ export interface MigrationOptions {
   inviteMembers: boolean
 }
 
+export interface JiraMember {
+  accountId: string
+  displayName: string
+  email: string | null
+  avatarUrl: string | null
+  active: boolean
+}
+
 export interface StartMigrationPayload {
   runId: string
   projectKeys: string[]
+  /** Jira accountIds to import. Empty array = import all. */
+  selectedMemberIds?: string[]
   statusMapping?: Record<string, string>
   roleMapping?: Record<string, string>
   options?: MigrationOptions
@@ -197,4 +209,40 @@ export function useMigrationHistory(page = 1, limit = 20) {
       return data.data as { data: MigrationRun[]; total: number; page: number; limit: number }
     },
   })
+}
+
+export function useMigrationMembers(connectionId: string | null) {
+  return useQuery({
+    queryKey: ['migration-members', connectionId],
+    queryFn: async () => {
+      const { data } = await api.get('/migration/jira/members', {
+        params: { connectionId },
+      })
+      return data.data as JiraMember[]
+    },
+    enabled: !!connectionId,
+  })
+}
+
+export function useRetryMigrationFromHistory() {
+  return useMutation({
+    mutationFn: async (runId: string) => {
+      const { data } = await api.post(`/migration/jira/retry/${runId}`)
+      return data.data as { runId: string }
+    },
+    onSuccess: () => {
+      toast('Migration retry queued', 'success')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Failed to retry migration'
+      toast(msg, 'error')
+    },
+  })
+}
+
+export function useOAuthAuthorizeUrl(): string {
+  // Build the URL the frontend can use to initiate the Atlassian OAuth flow
+  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : '') || 'http://localhost:4000'
+  // We hit the API endpoint which does a server-side redirect to Atlassian
+  return `/api/migration/jira/oauth/authorize?state=boardupscale-jira-oauth`
 }
