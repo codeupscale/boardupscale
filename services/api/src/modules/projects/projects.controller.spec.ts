@@ -42,7 +42,11 @@ describe('ProjectsController', () => {
       const result = await controller.findAll(TEST_IDS.ORG_ID, user);
 
       expect(result).toEqual({ data: projects });
-      expect(projectsService.findAll).toHaveBeenCalledWith(TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
+      expect(projectsService.findAll).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        undefined,
+      );
     });
   });
 
