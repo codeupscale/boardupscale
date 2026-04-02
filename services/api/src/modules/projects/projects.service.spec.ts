@@ -38,18 +38,29 @@ describe('ProjectsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return projects for organization where user is a member', async () => {
+    it('should return projects for organization where user is a member (non-admin)', async () => {
       const projects = [mockProject()];
       const qb = createMockQueryBuilder(projects);
       projectRepo.createQueryBuilder.mockReturnValue(qb);
 
-      const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
+      const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'member');
 
       expect(result).toEqual(projects);
       expect(qb.where).toHaveBeenCalledWith('project.organization_id = :organizationId', {
         organizationId: TEST_IDS.ORG_ID,
       });
       expect(qb.innerJoin).toHaveBeenCalled();
+    });
+
+    it('should return all org projects for owner without membership join', async () => {
+      const projects = [mockProject()];
+      const qb = createMockQueryBuilder(projects);
+      projectRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner');
+
+      expect(result).toEqual(projects);
+      expect(qb.innerJoin).not.toHaveBeenCalled();
     });
   });
 

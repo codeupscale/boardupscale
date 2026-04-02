@@ -22,4 +22,10 @@ export const config = {
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000',
   },
+
+  /**
+   * AES-256-GCM key for decrypting Jira API tokens stored in jira_connections.
+   * Must match APP_SECRET used by the API service.
+   */
+  appSecret: process.env.APP_SECRET || '',
 };

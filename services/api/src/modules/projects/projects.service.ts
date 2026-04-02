@@ -27,15 +27,24 @@ export class ProjectsService {
     private auditService: AuditService,
   ) {}
 
-  async findAll(organizationId: string, userId: string): Promise<Project[]> {
-    return this.projectRepository
+  /**
+   * List projects: org owner/admin see every non-archived project in the org;
+   * other roles only see projects they belong to (project_members).
+   */
+  async findAll(organizationId: string, userId: string, orgRole?: string): Promise<Project[]> {
+    const qb = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.owner', 'owner')
-      .innerJoin('project_members', 'pm', 'pm.project_id = project.id AND pm.user_id = :userId', { userId })
       .where('project.organization_id = :organizationId', { organizationId })
       .andWhere('project.status != :archived', { archived: 'archived' })
-      .orderBy('project.created_at', 'DESC')
-      .getMany();
+      .orderBy('project.created_at', 'DESC');
+
+    const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin';
+    if (!isOrgAdmin) {
+      qb.innerJoin('project_members', 'pm', 'pm.project_id = project.id AND pm.user_id = :userId', { userId });
+    }
+
+    return qb.getMany();
   }
 
   async findById(id: string, organizationId: string): Promise<Project> {

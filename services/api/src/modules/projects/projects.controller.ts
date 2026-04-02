@@ -38,11 +38,13 @@ export class ProjectsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "List all projects the user is a member of" })
+  @ApiOperation({
+    summary: 'List projects in the organization (owner/admin: all; others: membership only)',
+  })
   @ApiResponse({ status: 200, description: 'List of projects' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@OrgId() organizationId: string, @CurrentUser() user: any) {
-    const projects = await this.projectsService.findAll(organizationId, user.id);
+    const projects = await this.projectsService.findAll(organizationId, user.id, user.role);
     return { data: projects };
   }
 

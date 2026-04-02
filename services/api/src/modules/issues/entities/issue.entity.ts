@@ -101,6 +101,14 @@ export class Issue {
   @Column({ type: 'text', array: true, default: () => `'{}'` })
   labels: string[];
 
+  /**
+   * Original Jira issue key (e.g. 'PROJ-123').
+   * Populated during Jira imports; NULL for native Boardupscale issues.
+   * Used by the upsert logic to make imports idempotent.
+   */
+  @Column({ name: 'jira_key', type: 'varchar', length: 100, nullable: true })
+  jiraKey: string;
+
   @Column({ type: 'float', default: 0 })
   position: number;
 

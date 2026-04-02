@@ -34,6 +34,8 @@ import { AiModule } from './modules/ai/ai.module';
 import { GithubModule } from './modules/github/github.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { ImportModule } from './modules/import/import.module';
+import { JiraConnection } from './modules/import/entities/jira-connection.entity';
+import { JiraImportJob } from './modules/import/entities/jira-import-job.entity';
 import { PagesModule } from './modules/pages/pages.module';
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
@@ -81,6 +83,8 @@ import { SavedView } from './modules/saved-views/entities/saved-view.entity';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      // Monorepo: repo-root `.env` (works from both `src/` and `dist/` when nest runs)
+      envFilePath: [join(__dirname, '../../../.env')],
       load: [configuration],
     }),
 
@@ -130,6 +134,8 @@ import { SavedView } from './modules/saved-views/entities/saved-view.entity';
           Subscription,
           Page,
           SavedView,
+          JiraConnection,
+          JiraImportJob,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
