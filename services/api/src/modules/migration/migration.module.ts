@@ -9,11 +9,13 @@ import { JiraMigrationRun } from './entities/jira-migration-run.entity';
 // Reuse from the existing import module
 import { JiraConnection } from '../import/entities/jira-connection.entity';
 import { JiraApiService } from '../import/jira-api.service';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([JiraMigrationRun, JiraConnection]),
     BullModule.registerQueue({ name: 'jira-migration' }),
+    PermissionsModule,
   ],
   controllers: [MigrationController],
   providers: [MigrationService, JiraApiService],
