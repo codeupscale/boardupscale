@@ -212,9 +212,13 @@ export class JiraApiService {
     let hasMore = true;
 
     while (hasMore) {
+      // action=browse returns all projects the user can see (view permission).
+      // The default action=create only returns projects where the user can create
+      // issues, which excludes read-only or archived projects and causes fewer
+      // projects to be returned than are actually accessible.
       const page = await this.get<{ values: JiraApiProject[]; isLast: boolean }>(
         credentials,
-        `/rest/api/3/project/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&expand=description,lead`,
+        `/rest/api/3/project/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&action=browse&expand=description,lead`,
       );
 
       if (Array.isArray(page.values)) {
@@ -300,6 +304,49 @@ export class JiraApiService {
     } while (issues.length < total);
 
     return issues;
+  }
+
+  /**
+   * Fetch all users in the Jira organisation using the users/search API.
+   * Paginates with maxResults=50 until all users are retrieved.
+   * Returns an array of user objects with accountId, emailAddress, and displayName.
+   */
+  async fetchOrgUsers(
+    credentials: JiraApiCredentials,
+  ): Promise<Array<{ accountId: string; emailAddress?: string; displayName?: string; active?: boolean }>> {
+    const PAGE_SIZE = 50;
+    const users: Array<{ accountId: string; emailAddress?: string; displayName?: string; active?: boolean }> = [];
+    let startAt = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      let page: Array<{ accountId: string; emailAddress?: string; displayName?: string; active?: boolean }>;
+      try {
+        page = await this.get<Array<{ accountId: string; emailAddress?: string; displayName?: string; active?: boolean }>>(
+          credentials,
+          `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=false`,
+        );
+      } catch (err: any) {
+        // Non-fatal: some Jira configurations restrict this endpoint
+        this.logger.warn(`fetchOrgUsers failed at startAt=${startAt}: ${err.message}`);
+        break;
+      }
+
+      if (!Array.isArray(page) || page.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      users.push(...page);
+      hasMore = page.length === PAGE_SIZE;
+      startAt += PAGE_SIZE;
+
+      if (hasMore) {
+        await this.delay(REQUEST_DELAY_MS);
+      }
+    }
+
+    return users;
   }
 
   /**

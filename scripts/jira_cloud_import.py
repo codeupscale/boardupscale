@@ -7,6 +7,14 @@ Jira connection, and enqueues a jira-api-import BullMQ job for the specified
 Jira project keys.  The BullMQ worker (services/worker) must be running to
 process the job.
 
+Project discovery uses action=browse (fixed from the earlier action=create bug)
+so all 14 codeupscale.atlassian.net projects are returned:
+  AM, CGC, DEV, DROM, DUH, ILG, PCGAD, SC, SDA, SWIR, TEST, TMA, TRAIN, VU
+
+The worker also pre-fetches all Jira org users via /rest/api/3/users/search and
+upserts them as placeholder Boardupscale accounts so assignee/reporter links
+resolve correctly even before those users sign up.
+
 Required environment variables
 -------------------------------
 BOARDUPSCALE_URL      Base URL of the running API, e.g. http://localhost:4000
@@ -26,7 +34,7 @@ DRY_RUN               Set to '1' to show what would be imported without triggeri
 
 Usage
 -----
-# Import all visible Jira projects
+# Import all 14 visible Jira projects (uses action=browse — all projects returned)
 python3 scripts/jira_cloud_import.py
 
 # Import specific projects
@@ -37,6 +45,9 @@ DRY_RUN=1 python3 scripts/jira_cloud_import.py --max-projects 3
 
 # Pass flags directly
 python3 scripts/jira_cloud_import.py --project-keys DROM ILG --max-projects 2
+
+# All 14 codeupscale projects in one shot
+python3 scripts/jira_cloud_import.py --project-keys AM CGC DEV DROM DUH ILG PCGAD SC SDA SWIR TEST TMA TRAIN VU
 """
 
 from __future__ import annotations
