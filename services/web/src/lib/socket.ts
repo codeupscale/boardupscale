@@ -14,6 +14,13 @@ export function getSocket(): Socket {
   return socket
 }
 
+export function updateSocketToken(token: string) {
+  if (socket) {
+    socket.auth = { token }
+    socket.disconnect().connect()
+  }
+}
+
 export function disconnectSocket() {
   if (socket) {
     socket.disconnect()

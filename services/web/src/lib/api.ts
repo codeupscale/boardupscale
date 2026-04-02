@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { updateSocketToken } from './socket'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -45,6 +46,7 @@ api.interceptors.response.use(
         const { accessToken, refreshToken: newRefresh } = data.data
         localStorage.setItem('accessToken', accessToken)
         localStorage.setItem('refreshToken', newRefresh)
+        updateSocketToken(accessToken)
         refreshQueue.forEach((p) => p.resolve(accessToken))
         refreshQueue = []
         original.headers.Authorization = `Bearer ${accessToken}`

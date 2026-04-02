@@ -8,7 +8,6 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Zap,
   Shield,
   Users,
   Columns3,
@@ -22,6 +21,7 @@ import {
   CreditCard,
   BookOpen,
 } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
@@ -114,13 +114,11 @@ export function Sidebar() {
         )}
       >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="flex items-center justify-center h-8 w-8 bg-blue-600 rounded-lg flex-shrink-0">
-          <Zap className="h-5 w-5 text-white" />
-        </div>
-        {isSidebarOpen && (
-          <span className="font-bold text-gray-900 dark:text-gray-100 text-base tracking-tight">Boardupscale</span>
-        )}
+      <div className="flex items-center px-3 h-14 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <Logo
+          size="sm"
+          variant={isSidebarOpen ? 'full' : 'icon'}
+        />
       </div>
 
       {/* Navigation */}

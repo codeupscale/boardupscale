@@ -30,7 +30,16 @@ export enum ProjectTemplate {
   KANBAN = 'kanban',
   BUG_TRACKING = 'bug-tracking',
   BLANK = 'blank',
+  CAMPAIGN_MANAGEMENT = 'campaign-management',
+  CONTENT_CALENDAR = 'content-calendar',
+  SALES_PIPELINE = 'sales-pipeline',
+  RECRUITMENT = 'recruitment',
+  ONBOARDING = 'onboarding',
+  IT_SERVICE = 'it-service',
+  TASK_TRACKING = 'task-tracking',
 }
+
+export type TemplateCategory = 'all' | 'software' | 'marketing' | 'sales' | 'hr' | 'operations'
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -508,5 +517,28 @@ export interface AuditLog {
   changes?: Record<string, any>
   ipAddress?: string
   user?: User
+  createdAt: string
+}
+
+// Chat
+export interface ChatConversation {
+  id: string
+  organizationId: string
+  projectId: string
+  userId: string
+  title: string
+  lastMessageAt: string | null
+  createdAt: string
+  updatedAt: string
+  messages?: ChatMessage[]
+}
+
+export interface ChatMessage {
+  id: string
+  conversationId: string
+  role: 'user' | 'assistant'
+  content: string
+  tokensUsed: number
+  metadata?: Record<string, any>
   createdAt: string
 }

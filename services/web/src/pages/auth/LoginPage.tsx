@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Zap, AlertTriangle, Mail, Eye, EyeOff, ShieldCheck, LogIn } from 'lucide-react'
+import { AlertTriangle, Mail, Eye, EyeOff, ShieldCheck, LogIn } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { useTranslation } from 'react-i18next'
 import { useLogin, useVerify2FA } from '@/hooks/useAuth'
 import { Input } from '@/components/ui/input'
@@ -179,11 +180,8 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
-            <Zap className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">{t('auth.loginSubtitle')}</p>
+          <Logo size="lg" className="mb-1" />
+          <p className="text-sm text-gray-500 mt-2">{t('auth.loginSubtitle')}</p>
         </div>
 
         {/* Card */}

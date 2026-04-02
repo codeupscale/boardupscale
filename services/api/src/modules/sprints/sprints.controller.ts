@@ -74,8 +74,9 @@ export class SprintsController {
   async start(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @Body() dto: UpdateSprintDto,
   ) {
-    return this.sprintsService.start(id, organizationId);
+    return this.sprintsService.start(id, organizationId, dto);
   }
 
   @Post(':id/complete')

@@ -68,6 +68,8 @@ import { IssueWatcher } from './modules/issues/entities/issue-watcher.entity';
 import { Activity } from './modules/activity/entities/activity.entity';
 import { AuditLog } from './modules/audit/audit-log.entity';
 import { AiUsageLog } from './modules/ai/entities/ai-usage-log.entity';
+import { ChatConversation } from './modules/ai/entities/chat-conversation.entity';
+import { ChatMessage } from './modules/ai/entities/chat-message.entity';
 import { GitHubConnection } from './modules/github/entities/github-connection.entity';
 import { GitHubEvent } from './modules/github/entities/github-event.entity';
 import { BillingPlan } from './modules/billing/entities/billing-plan.entity';
@@ -120,6 +122,8 @@ import { SavedView } from './modules/saved-views/entities/saved-view.entity';
           Activity,
           AuditLog,
           AiUsageLog,
+          ChatConversation,
+          ChatMessage,
           GitHubConnection,
           GitHubEvent,
           BillingPlan,

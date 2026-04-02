@@ -6,6 +6,13 @@ export enum ProjectTemplate {
   KANBAN = 'kanban',
   BUG_TRACKING = 'bug-tracking',
   BLANK = 'blank',
+  CAMPAIGN_MANAGEMENT = 'campaign-management',
+  CONTENT_CALENDAR = 'content-calendar',
+  SALES_PIPELINE = 'sales-pipeline',
+  RECRUITMENT = 'recruitment',
+  ONBOARDING = 'onboarding',
+  IT_SERVICE = 'it-service',
+  TASK_TRACKING = 'task-tracking',
 }
 
 export class CreateProjectDto {

@@ -74,7 +74,7 @@ export class SprintsService {
     return this.sprintRepository.save(sprint);
   }
 
-  async start(id: string, organizationId: string): Promise<Sprint> {
+  async start(id: string, organizationId: string, dto?: { startDate?: string; endDate?: string }): Promise<Sprint> {
     const sprint = await this.findById(id);
     await this.projectsService.findById(sprint.projectId, organizationId);
 
@@ -90,8 +90,13 @@ export class SprintsService {
     }
 
     sprint.status = 'active';
-    if (!sprint.startDate) {
+    if (dto?.startDate) {
+      sprint.startDate = dto.startDate;
+    } else if (!sprint.startDate) {
       sprint.startDate = new Date().toISOString().split('T')[0];
+    }
+    if (dto?.endDate) {
+      sprint.endDate = dto.endDate;
     }
     const saved = await this.sprintRepository.save(sprint);
 

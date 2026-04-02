@@ -10,6 +10,7 @@ import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { ToastContainer } from '@/components/ui/toast'
 import { CommandPalette } from './command-palette'
+import { ProjectChat } from '@/components/chat/ProjectChat'
 import { cn } from '@/lib/utils'
 
 export function AppLayout() {
@@ -75,6 +76,7 @@ export function AppLayout() {
       </div>
       <ToastContainer />
       <CommandPalette />
+      <ProjectChat />
     </div>
   )
 }

@@ -150,7 +150,7 @@ export function useWorkLogs(issueId: string) {
   return useQuery({
     queryKey: ['worklogs', issueId],
     queryFn: async () => {
-      const { data } = await api.get(`/issues/${issueId}/worklogs`)
+      const { data } = await api.get(`/issues/${issueId}/work-logs`)
       return data.data as WorkLog[]
     },
     enabled: !!issueId,
@@ -171,7 +171,7 @@ export function useAddWorkLog() {
       description?: string
       loggedAt?: string
     }) => {
-      const { data } = await api.post(`/issues/${issueId}/worklogs`, {
+      const { data } = await api.post(`/issues/${issueId}/work-log`, {
         timeSpent,
         description,
         loggedAt,

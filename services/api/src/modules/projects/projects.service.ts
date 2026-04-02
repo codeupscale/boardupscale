@@ -13,56 +13,7 @@ import { CreateProjectDto, ProjectTemplate } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { AuditService } from '../audit/audit.service';
-
-/** Definition for a project template with predefined statuses */
-interface TemplateDefinition {
-  name: string;
-  description: string;
-  statuses: Array<{
-    name: string;
-    category: string;
-    color: string;
-    position: number;
-    isDefault: boolean;
-  }>;
-}
-
-/** Registry of all available project templates */
-const PROJECT_TEMPLATES: Record<string, TemplateDefinition> = {
-  [ProjectTemplate.SCRUM]: {
-    name: 'Scrum',
-    description: 'Agile scrum workflow with sprints, backlog, and review stages',
-    statuses: [
-      { name: 'To Do', category: 'todo', color: '#6B7280', position: 0, isDefault: true },
-      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 1, isDefault: false },
-      { name: 'In Review', category: 'in_progress', color: '#F59E0B', position: 2, isDefault: false },
-      { name: 'Done', category: 'done', color: '#10B981', position: 3, isDefault: false },
-    ],
-  },
-  [ProjectTemplate.KANBAN]: {
-    name: 'Kanban',
-    description: 'Continuous flow Kanban board with backlog and review stages',
-    statuses: [
-      { name: 'Backlog', category: 'todo', color: '#9CA3AF', position: 0, isDefault: true },
-      { name: 'To Do', category: 'todo', color: '#6B7280', position: 1, isDefault: false },
-      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 2, isDefault: false },
-      { name: 'Review', category: 'in_progress', color: '#F59E0B', position: 3, isDefault: false },
-      { name: 'Done', category: 'done', color: '#10B981', position: 4, isDefault: false },
-    ],
-  },
-  [ProjectTemplate.BUG_TRACKING]: {
-    name: 'Bug Tracking',
-    description: 'Bug lifecycle workflow from report to verification',
-    statuses: [
-      { name: 'Open', category: 'todo', color: '#EF4444', position: 0, isDefault: true },
-      { name: 'Confirmed', category: 'todo', color: '#F97316', position: 1, isDefault: false },
-      { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 2, isDefault: false },
-      { name: 'Fixed', category: 'in_progress', color: '#8B5CF6', position: 3, isDefault: false },
-      { name: 'Verified', category: 'done', color: '#10B981', position: 4, isDefault: false },
-      { name: 'Closed', category: 'done', color: '#6B7280', position: 5, isDefault: false },
-    ],
-  },
-};
+import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 
 @Injectable()
 export class ProjectsService {
@@ -161,26 +112,21 @@ export class ProjectsService {
     key: string;
     name: string;
     description: string;
+    templateCategory: string;
     statusCount: number;
   }> {
     return Object.entries(PROJECT_TEMPLATES).map(([key, template]) => ({
       key,
       name: template.name,
       description: template.description,
+      templateCategory: template.templateCategory,
       statusCount: template.statuses.length,
     }));
   }
 
   private getStatusesForTemplate(templateKey: string) {
     const template = PROJECT_TEMPLATES[templateKey];
-    if (template) {
-      return template.statuses;
-    }
-    // Blank template: minimal single status
-    return [
-      { name: 'To Do', category: 'todo', color: '#6B7280', position: 0, isDefault: true },
-      { name: 'Done', category: 'done', color: '#10B981', position: 1, isDefault: false },
-    ];
+    return template ? template.statuses : BLANK_STATUSES;
   }
 
   async update(id: string, organizationId: string, dto: UpdateProjectDto, userId?: string): Promise<Project> {

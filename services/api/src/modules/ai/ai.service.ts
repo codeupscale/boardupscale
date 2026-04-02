@@ -88,7 +88,8 @@ export class AiService implements OnModuleInit {
     }
 
     const result: AiStatusResponse = {
-      enabled: this.isAvailable(),
+      enabled: this.isEnabled(),
+      available: this.isAvailable(),
       model: this.configService.get<string>('ai.model'),
       embeddingModel: this.configService.get<string>('ai.embeddingModel'),
     };
@@ -193,6 +194,72 @@ export class AiService implements OnModuleInit {
     } catch (err: any) {
       this.logger.warn(`Chat completion failed: ${err.message}`);
       return null;
+    }
+  }
+
+  // ── Chat Completion Stream ──
+
+  async *chatCompletionStream(params: {
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+    organizationId: string;
+    userId?: string;
+    feature: string;
+    maxTokens?: number;
+    temperature?: number;
+  }): AsyncGenerator<{ type: 'chunk'; content: string } | { type: 'done'; tokensUsed: number }> {
+    if (!this.isAvailable()) {
+      return;
+    }
+
+    if (await this.isOverDailyLimit(params.organizationId)) {
+      this.logger.warn(`Organization ${params.organizationId} exceeded daily AI token limit`);
+      return;
+    }
+
+    try {
+      const startMs = Date.now();
+      const model = this.configService.get<string>('ai.model');
+      const stream = await this.openai.chat.completions.create({
+        model,
+        messages: params.messages,
+        max_tokens: params.maxTokens || 1500,
+        temperature: params.temperature ?? 0.3,
+        stream: true,
+      });
+
+      let fullContent = '';
+      let promptTokens = 0;
+      let completionTokens = 0;
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta?.content;
+        if (delta) {
+          fullContent += delta;
+          yield { type: 'chunk', content: delta };
+        }
+        if (chunk.usage) {
+          promptTokens = chunk.usage.prompt_tokens || 0;
+          completionTokens = chunk.usage.completion_tokens || 0;
+        }
+      }
+
+      const latencyMs = Date.now() - startMs;
+      const totalTokens = promptTokens + completionTokens;
+
+      await this.logUsage({
+        organizationId: params.organizationId,
+        userId: params.userId,
+        feature: params.feature,
+        model,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        latencyMs,
+      });
+
+      yield { type: 'done', tokensUsed: totalTokens };
+    } catch (err: any) {
+      this.logger.warn(`Chat completion stream failed: ${err.message}`);
     }
   }
 

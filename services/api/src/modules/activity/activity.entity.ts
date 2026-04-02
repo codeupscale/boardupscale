@@ -13,7 +13,7 @@ export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'org_id', type: 'uuid' })
+  @Column({ name: 'organization_id', type: 'uuid' })
   orgId: string;
 
   @Column({ name: 'issue_id', type: 'uuid' })
