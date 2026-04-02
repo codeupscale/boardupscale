@@ -7,6 +7,7 @@ import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 import { REQUEST } from '@nestjs/core';
 import { mockProject, mockProjectMember, TEST_IDS } from '../../test/mock-factories';
 import { createMockProjectsService } from '../../test/test-utils';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 describe('ProjectsController', () => {
   let controller: ProjectsController;
@@ -24,7 +25,10 @@ describe('ProjectsController', () => {
         { provide: ResolveProjectPipe, useValue: { transform: jest.fn((v) => v) } },
         { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
-    }).compile();
+    })
+      .overridePipe(ResolveProjectPipe)
+      .useValue({ transform: (value: string) => value })
+      .compile();
 
     controller = await module.resolve<ProjectsController>(ProjectsController);
   });
