@@ -27,5 +27,5 @@ export const config = {
    * AES-256-GCM key for decrypting Jira API tokens stored in jira_connections.
    * Must match APP_SECRET used by the API service.
    */
-  appSecret: process.env.APP_SECRET || '',
+  appSecret: process.env.APP_SECRET || 'boardupscale-dev-secret-change-before-production',
 };
