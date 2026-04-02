@@ -48,6 +48,7 @@ export class AddJiraMigrationRuns1743700000000 implements MigrationInterface {
         "status"              VARCHAR(20)   NOT NULL DEFAULT 'pending',
         "current_phase"       SMALLINT      NOT NULL DEFAULT 0,
         "current_offset"      INT           NOT NULL DEFAULT 0,
+        "completed_phases"    JSONB         NOT NULL DEFAULT '[]'::jsonb,
 
         -- Progress counters
         "total_projects"      INT           NOT NULL DEFAULT 0,
