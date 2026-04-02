@@ -4,7 +4,7 @@ export const config = {
   },
 
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardupscale',
+    url: process.env.DATABASE_URL || 'postgresql://copilot:copilot@localhost:5433/boardupscale',
   },
 
   elasticsearch: {
