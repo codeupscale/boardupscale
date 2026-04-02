@@ -4,6 +4,7 @@ import { IssuesService } from './issues.service';
 import { DataSource } from 'typeorm';
 import { PermissionsService } from '../permissions/permissions.service';
 import { mockIssue, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 describe('IssuesController', () => {
   let controller: IssuesController;
@@ -34,7 +35,10 @@ describe('IssuesController', () => {
         { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true) } },
         { provide: DataSource, useValue: { getRepository: jest.fn() } },
       ],
-    }).compile();
+    })
+      .overridePipe(ResolveProjectPipe)
+      .useValue({ transform: (value: string) => value })
+      .compile();
 
     controller = module.get<IssuesController>(IssuesController);
   });
