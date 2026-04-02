@@ -88,6 +88,9 @@ const ISSUE_TYPE_MAP: Record<string, string> = {
   'new feature': 'story',
   improvement: 'story',
   'technical task': 'task',
+  // Custom issue types discovered in codeupscale.atlassian.net projects
+  're-opened': 'bug',   // ILG project — treated as a re-opened bug
+  heartbeat: 'task',    // PCGAD project — recurring check-in task
 };
 
 const PRIORITY_MAP: Record<string, string> = {
@@ -803,6 +806,119 @@ async function updateApiJobDb(
   );
 }
 
+// ─── Jira org-user fetch + DB upsert ────────────────────────────────────────
+
+/**
+ * Fetch all users from the Jira organisation via /rest/api/3/users/search
+ * (action=browse-equivalent: returns all active Atlassian account users).
+ * Paginates 50 at a time.
+ */
+async function fetchJiraOrgUsers(
+  jiraUrl: string,
+  email: string,
+  apiToken: string,
+): Promise<Array<{ accountId: string; emailAddress?: string; displayName?: string }>> {
+  const PAGE_SIZE = 50;
+  const users: Array<{ accountId: string; emailAddress?: string; displayName?: string }> = [];
+  let startAt = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let page: Array<{ accountId: string; emailAddress?: string; displayName?: string; accountType?: string; active?: boolean }>;
+    try {
+      page = await jiraGet<Array<{ accountId: string; emailAddress?: string; displayName?: string; accountType?: string; active?: boolean }>>(
+        jiraUrl, email, apiToken,
+        `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=false`,
+      );
+    } catch (err: any) {
+      console.warn(`[ImportWorker] fetchJiraOrgUsers failed at startAt=${startAt}: ${err.message}`);
+      break;
+    }
+
+    if (!Array.isArray(page) || page.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    // Only keep real human Atlassian accounts (skip apps and service accounts)
+    for (const u of page) {
+      if (u.accountType === 'atlassian' && u.emailAddress) {
+        users.push({ accountId: u.accountId, emailAddress: u.emailAddress, displayName: u.displayName });
+      }
+    }
+
+    hasMore = page.length === PAGE_SIZE;
+    startAt += PAGE_SIZE;
+
+    if (hasMore) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  return users;
+}
+
+/**
+ * Upsert Jira users into the Boardupscale users table as inactive placeholder
+ * accounts so that assignee/reporter links resolve correctly.
+ * Returns an updated email→userId map.
+ */
+async function upsertJiraUsersIntoDb(
+  db: Pool,
+  organizationId: string,
+  jiraUsers: Array<{ accountId: string; emailAddress?: string; displayName?: string }>,
+  existingMap: Record<string, string>,
+): Promise<Record<string, string>> {
+  const updatedMap = { ...existingMap };
+
+  for (const u of jiraUsers) {
+    if (!u.emailAddress) continue;
+    const emailLower = u.emailAddress.toLowerCase();
+
+    // Skip if already mapped
+    if (updatedMap[emailLower]) continue;
+
+    try {
+      // Check if user already exists in the org (by email, any org)
+      const existing = await db.query(
+        `SELECT id FROM users WHERE email = $1 LIMIT 1`,
+        [emailLower],
+      );
+
+      if (existing.rows.length > 0) {
+        updatedMap[emailLower] = existing.rows[0].id;
+        continue;
+      }
+
+      // Insert as a placeholder (jira-imported) user — not active, no password.
+      // Column names match the InitialSchema migration: display_name, role, is_active.
+      const displayName = u.displayName || emailLower;
+
+      const inserted = await db.query(
+        `INSERT INTO users (
+           organization_id, email, display_name,
+           role, is_active, email_verified, language,
+           oauth_provider, oauth_id,
+           notification_preferences,
+           created_at, updated_at
+         ) VALUES ($1, $2, $3, 'member', false, false, 'en', 'jira', $4,
+                   '{"email":true,"inApp":true}'::jsonb, NOW(), NOW())
+         ON CONFLICT (email) DO UPDATE SET updated_at = NOW()
+         RETURNING id`,
+        [organizationId, emailLower, displayName, u.accountId],
+      );
+
+      if (inserted.rows.length > 0) {
+        updatedMap[emailLower] = inserted.rows[0].id;
+      }
+    } catch (err: any) {
+      console.warn(`[ImportWorker] Failed to upsert Jira user ${emailLower}: ${err.message}`);
+    }
+  }
+
+  return updatedMap;
+}
+
 // ─── Core: live Jira API import ───────────────────────────────────────────────
 
 async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
@@ -865,6 +981,25 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
   // Apply explicit overrides from the job payload
   for (const [email, bsUserId] of Object.entries(userMapping || {})) {
     emailToUserId[email.toLowerCase()] = bsUserId;
+  }
+
+  // ── 3b. Fetch all Jira org users and upsert as placeholder DB accounts ───────
+  // This ensures assignee/reporter fields resolve to a real user ID even when the
+  // Jira user has not yet signed up to Boardupscale. Fetches via action=browse
+  // equivalent: /rest/api/3/users/search (all active Atlassian account users).
+  console.log(`[ImportWorker] Fetching Jira org members to pre-populate user map...`);
+  try {
+    const jiraUsers = await fetchJiraOrgUsers(jiraUrl, jiraEmail, apiToken);
+    console.log(`[ImportWorker] Found ${jiraUsers.length} Jira users — upserting into DB...`);
+    const enrichedMap = await upsertJiraUsersIntoDb(db, organizationId, jiraUsers, emailToUserId);
+    // Merge enriched map back (upsertJiraUsersIntoDb returns a copy with additions)
+    for (const [email, uid] of Object.entries(enrichedMap)) {
+      emailToUserId[email] = uid;
+    }
+    console.log(`[ImportWorker] User map now has ${Object.keys(emailToUserId).length} entries`);
+  } catch (err: any) {
+    // Non-fatal: if this step fails, fall back to known org users only
+    console.warn(`[ImportWorker] Jira user pre-population failed (non-fatal): ${err.message}`);
   }
 
   // ── 4. Process each Jira project key ─────────────────────────────────────────
