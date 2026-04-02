@@ -61,6 +61,7 @@ export function Sidebar() {
     ...(isAdmin ? [{ icon: Users, label: 'Team', href: '/settings/team' }] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
     ...(isAdmin ? [{ icon: Upload, label: 'Import', href: '/import' }] : []),
+    ...(isAdmin ? [{ icon: Upload, label: 'Migrate from Jira', href: '/settings/migrate/jira' }] : []),
     ...(isAdmin ? [{ icon: Shield, label: t('nav.auditLogs'), href: '/admin/audit-logs' }] : []),
   ]
 
