@@ -60,6 +60,7 @@ interface RunState {
   id: string;
   organizationId: string;
   connectionId: string;
+  triggeredById: string;
   status: string;
   currentPhase: number;
   currentOffset: number;
@@ -161,6 +162,7 @@ function decryptToken(encoded: string, secret: string): string {
 async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
   const { rows } = await client.query<RunState>(
     `SELECT id, organization_id AS "organizationId", connection_id AS "connectionId",
+            triggered_by_id AS "triggeredById",
             status, current_phase AS "currentPhase", current_offset AS "currentOffset",
             COALESCE(completed_phases, '[]') AS "completedPhases",
             selected_projects AS "selectedProjects",
@@ -367,23 +369,15 @@ async function runMembersPhase(
     try {
       // Upsert user record
       const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO users (id, email, "firstName", "lastName", "organizationId", "isActive", "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, $2, '', $3, true, NOW(), NOW())
-         ON CONFLICT (email) DO UPDATE SET "firstName" = EXCLUDED."firstName", "updatedAt" = NOW()
+        `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, true, false, 'member', NOW(), NOW())
+         ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = NOW()
          RETURNING id`,
         [email, jiraUser.displayName ?? email.split('@')[0], state.organizationId],
       ).catch(() => ({ rows: [] as Array<{ id: string }> }));
 
       if (rows[0]) {
         state.jiraUserEmailToLocalId[email] = rows[0].id;
-
-        // Ensure org_member row
-        await client.query(
-          `INSERT INTO organization_members (id, "organizationId", "userId", role, "createdAt", "updatedAt")
-           VALUES (gen_random_uuid(), $1, $2, 'member', NOW(), NOW())
-           ON CONFLICT ("organizationId", "userId") DO NOTHING`,
-          [state.organizationId, rows[0].id],
-        ).catch(() => {});
       }
 
       processed++;
@@ -423,26 +417,18 @@ async function runProjectsPhase(
     try {
       // Create project
       const { rows: projRows } = await client.query<{ id: string }>(
-        `INSERT INTO projects (id, name, key, description, "organizationId", "isArchived", "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, $2, '', $3, false, NOW(), NOW())
-         ON CONFLICT ("organizationId", key) DO UPDATE SET name = EXCLUDED.name, "updatedAt" = NOW()
+        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, NOW(), NOW())
+         ON CONFLICT (organization_id, key) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()
          RETURNING id`,
-        [proj.name || proj.key, proj.key, state.organizationId],
+        [proj.name || proj.key, proj.key, state.organizationId, state.triggeredById],
       );
 
       if (!projRows[0]) continue;
       const projectId = projRows[0].id;
       state.jiraProjectIdToLocalId[proj.key] = projectId;
 
-      // Create default board for the project
-      await client.query(
-        `INSERT INTO boards (id, name, type, "projectId", "organizationId", "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, 'scrum', $2, $3, NOW(), NOW())
-         ON CONFLICT ("projectId", name) DO NOTHING`,
-        [`${proj.name || proj.key} Board`, projectId, state.organizationId],
-      ).catch(() => {});
-
-      // Create default issue statuses
+      // Create default issue statuses (no organization_id column in issue_statuses)
       const defaultStatuses = [
         { name: 'To Do', category: 'todo', color: '#6B7280', position: 0 },
         { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 1 },
@@ -456,6 +442,7 @@ async function runProjectsPhase(
         ...Object.keys(statusMapping),
       ]);
 
+      let position = 0;
       for (const statusName of allStatusNames) {
         const mapped = statusMapping[statusName] ?? statusName;
         const category = mapped.toLowerCase().includes('progress') ? 'in_progress'
@@ -463,10 +450,10 @@ async function runProjectsPhase(
           : 'todo';
         const color = category === 'done' ? '#10B981' : category === 'in_progress' ? '#3B82F6' : '#6B7280';
         await client.query(
-          `INSERT INTO issue_statuses (id, name, category, color, "projectId", "organizationId", "createdAt", "updatedAt")
+          `INSERT INTO issue_statuses (id, name, category, color, position, project_id, created_at, updated_at)
            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())
-           ON CONFLICT ("projectId", name) DO NOTHING`,
-          [mapped, category, color, projectId, state.organizationId],
+           ON CONFLICT (project_id, name) DO NOTHING`,
+          [mapped, category, color, position++, projectId],
         ).catch(() => {});
       }
 
@@ -531,16 +518,11 @@ async function runSprintsPhase(
 
       for (const sprint of sprints) {
         try {
-          const boardRow = await client.query<{ id: string }>(
-            `SELECT id FROM boards WHERE "projectId" = $1 AND "organizationId" = $2 LIMIT 1`,
-            [projectId, state.organizationId],
-          );
-          const boardDbId = boardRow.rows[0]?.id;
-
+          // sprints table: id, project_id, name, goal, status, start_date, end_date, completed_at, created_at, updated_at
           const { rows } = await client.query<{ id: string }>(
-            `INSERT INTO sprints (id, name, status, goal, "startDate", "endDate", "projectId", "boardId", "organizationId", "createdAt", "updatedAt")
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-             ON CONFLICT ("projectId", name) DO UPDATE SET status = EXCLUDED.status, "updatedAt" = NOW()
+            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, project_id, created_at, updated_at)
+             SELECT gen_random_uuid(), $1::text, $2::text, $3::text, $4::timestamptz, $5::timestamptz, $6::uuid, NOW(), NOW()
+             WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $6::uuid AND name = $1::text)
              RETURNING id`,
             [
               sprint.name,
@@ -549,13 +531,19 @@ async function runSprintsPhase(
               sprint.startDate ?? null,
               sprint.endDate ?? null,
               projectId,
-              boardDbId ?? null,
-              state.organizationId,
             ],
           );
 
           if (rows[0]) {
             state.jiraSprintIdToLocalId[String(sprint.id)] = rows[0].id;
+            processedSprints++;
+          } else {
+            // Sprint already exists — look up its ID
+            const { rows: existing } = await client.query<{ id: string }>(
+              `SELECT id FROM sprints WHERE project_id = $1 AND name = $2 LIMIT 1`,
+              [projectId, sprint.name],
+            );
+            if (existing[0]) state.jiraSprintIdToLocalId[String(sprint.id)] = existing[0].id;
             processedSprints++;
           }
         } catch (err: any) {
@@ -616,7 +604,7 @@ async function runIssuesPhase(
 
     while (hasMore) {
       const encoded = encodeURIComponent(jql);
-      const path = `/rest/api/3/search?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
+      const path = `/rest/api/3/search/jql?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
 
       let page: { total: number; issues: any[] };
       try {
@@ -642,7 +630,7 @@ async function runIssuesPhase(
           const mappedStatus = statusMapping[jiraStatusName] ?? jiraStatusName;
 
           const { rows: statusRows } = await client.query<{ id: string }>(
-            `SELECT id FROM issue_statuses WHERE "projectId" = $1 AND name = $2 LIMIT 1`,
+            `SELECT id FROM issue_statuses WHERE project_id = $1 AND name = $2 LIMIT 1`,
             [projectId, mappedStatus],
           );
           const statusId = statusRows[0]?.id ?? null;
@@ -664,27 +652,30 @@ async function runIssuesPhase(
           // Stript ADF description → plaintext
           const description = extractDescription(fields.description);
 
+          // Extract numeric part from Jira key (e.g. DROM-46 → 46)
+          const issueNumber = parseInt(issue.key.split('-').pop() ?? '0', 10) || 0;
+          // reporter_id is NOT NULL — fall back to migration owner
+          const safeReporterId = reporterId ?? state.triggeredById;
+
           const { rows: issueRows } = await client.query<{ id: string }>(
             `INSERT INTO issues (
                id, title, description, type, priority,
-               "statusId", "projectId", "organizationId",
-               "assigneeId", "reporterId", "sprintId",
-               "jiraKey", labels, "storyPoints",
-               "estimateSeconds", "timeSpentSeconds",
-               "createdAt", "updatedAt"
+               status_id, project_id, organization_id,
+               assignee_id, reporter_id, sprint_id,
+               key, number, jira_key, labels, story_points,
+               time_estimate, time_spent,
+               created_at, updated_at
              )
-             VALUES (
-               gen_random_uuid(), $1, $2, $3, $4,
-               $5, $6, $7,
-               $8, $9, $10,
-               $11, $12, $13,
-               $14, $15,
-               COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW())
+             SELECT
+               gen_random_uuid(), $1::text, $2::text, $3::text, $4::text,
+               $5::uuid, $6::uuid, $7::uuid,
+               $8::uuid, $9::uuid, $10::uuid,
+               $11::text, $12::int, $13::text, $14::text[], $15::int,
+               $16::int, $17::int,
+               COALESCE($18::timestamptz, NOW()), COALESCE($19::timestamptz, NOW())
+             WHERE NOT EXISTS (
+               SELECT 1 FROM issues WHERE project_id = $6::uuid AND jira_key = $13::text
              )
-             ON CONFLICT ("organizationId", "jiraKey") DO UPDATE
-               SET title = EXCLUDED.title,
-                   description = EXCLUDED.description,
-                   "updatedAt" = NOW()
              RETURNING id`,
             [
               fields.summary ?? issue.key,
@@ -695,10 +686,12 @@ async function runIssuesPhase(
               projectId,
               state.organizationId,
               assigneeId,
-              reporterId,
+              safeReporterId,
               sprintId,
               issue.key,
-              JSON.stringify(fields.labels ?? []),
+              issueNumber,
+              issue.key,
+              Array.isArray(fields.labels) ? fields.labels : [],
               fields.customfield_10016 ?? null,
               fields.timetracking?.originalEstimateSeconds ?? null,
               fields.timetracking?.timeSpentSeconds ?? 0,
@@ -709,6 +702,14 @@ async function runIssuesPhase(
 
           if (issueRows[0]) {
             state.jiraIssueKeyToLocalId[issue.key] = issueRows[0].id;
+            processedIssues++;
+          } else {
+            // Already exists — look up ID for the comments phase
+            const { rows: existing } = await client.query<{ id: string }>(
+              `SELECT id FROM issues WHERE project_id = $1 AND jira_key = $2 LIMIT 1`,
+              [projectId, issue.key],
+            );
+            if (existing[0]) state.jiraIssueKeyToLocalId[issue.key] = existing[0].id;
             processedIssues++;
           }
         } catch (err: any) {
@@ -802,10 +803,10 @@ async function runCommentsPhase(
           const body = extractDescription(comment.body) ?? '';
 
           await client.query(
-            `INSERT INTO comments (id, content, "issueId", "authorId", "organizationId", "createdAt", "updatedAt")
-             VALUES (gen_random_uuid(), $1, $2, $3, $4, COALESCE($5::timestamptz, NOW()), NOW())
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, COALESCE($4::timestamptz, NOW()), NOW())
              ON CONFLICT DO NOTHING`,
-            [body, localIssueId, authorId, state.organizationId, comment.created ?? null],
+            [body, localIssueId, authorId, comment.created ?? null],
           ).catch(() => {});
 
           processedComments++;
@@ -944,9 +945,7 @@ async function processJob(
       } else {
         console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user map`);
         const { rows } = await progressClient.query<{ email: string; id: string }>(
-          `SELECT u.email, u.id FROM users u
-           INNER JOIN organization_members om ON om."userId" = u.id
-           WHERE om."organizationId" = $1`,
+          `SELECT email, id FROM users WHERE organization_id = $1`,
           [organizationId],
         );
         for (const r of rows) state.jiraUserEmailToLocalId[r.email.toLowerCase()] = r.id;
@@ -961,7 +960,7 @@ async function processJob(
       } else {
         console.log(`[Migration:${runId}] Phase 2 (projects) already completed — reloading project map`);
         const { rows } = await progressClient.query<{ key: string; id: string }>(
-          `SELECT key, id FROM projects WHERE "organizationId" = $1`,
+          `SELECT key, id FROM projects WHERE organization_id = $1`,
           [organizationId],
         );
         for (const r of rows) state.jiraProjectIdToLocalId[r.key] = r.id;
@@ -975,11 +974,13 @@ async function processJob(
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_SPRINTS];
       } else {
         console.log(`[Migration:${runId}] Phase 3 (sprints) already completed — reloading sprint map`);
-        const { rows } = await progressClient.query<{ jiraSprintId: string; id: string }>(
-          `SELECT "jiraSprintId", id FROM sprints WHERE "organizationId" = $1`,
+        const { rows } = await progressClient.query<{ id: string }>(
+          `SELECT s.id FROM sprints s
+           INNER JOIN projects p ON p.id = s.project_id
+           WHERE p.organization_id = $1`,
           [organizationId],
         ).catch(() => ({ rows: [] as any[] }));
-        for (const r of rows) if (r.jiraSprintId) state.jiraSprintIdToLocalId[r.jiraSprintId] = r.id;
+        // Sprint map rebuilt on resume — jiraSprintIdToLocalId stays empty (sprints re-upsert by name)
       }
 
       // ── Phase 4 — issues ─────────────────────────────────────────────────────
@@ -990,11 +991,11 @@ async function processJob(
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_ISSUES];
       } else {
         console.log(`[Migration:${runId}] Phase 4 (issues) already completed — reloading issue map`);
-        const { rows } = await progressClient.query<{ jiraKey: string; id: string }>(
-          `SELECT "jiraKey", id FROM issues WHERE "organizationId" = $1 AND "jiraKey" IS NOT NULL`,
+        const { rows } = await progressClient.query<{ jira_key: string; id: string }>(
+          `SELECT jira_key, id FROM issues WHERE organization_id = $1 AND jira_key IS NOT NULL`,
           [organizationId],
         ).catch(() => ({ rows: [] as any[] }));
-        for (const r of rows) if (r.jiraKey) state.jiraIssueKeyToLocalId[r.jiraKey] = r.id;
+        for (const r of rows) if (r.jira_key) state.jiraIssueKeyToLocalId[r.jira_key] = r.id;
       }
 
       // ── Phase 5 — comments ───────────────────────────────────────────────────
@@ -1011,17 +1012,29 @@ async function processJob(
         );
       }
 
-      // ── Write final result summary ────────────────────────────────────────────
+      // ── Write final result summary (read fresh counts from DB) ──────────────
+      const { rows: finalCounts } = await progressClient.query<{
+        processed_issues: number; failed_issues: number;
+        processed_members: number; processed_sprints: number;
+      }>(
+        `SELECT processed_issues, failed_issues, processed_members, processed_sprints
+         FROM jira_migration_runs WHERE id = $1`,
+        [runId],
+      );
+      const fc = finalCounts[0] ?? { processed_issues: 0, failed_issues: 0, processed_members: 0, processed_sprints: 0 };
+
       const summary = {
         projects: (state.selectedProjects ?? []).map((p) => ({
           key: p.key,
           name: p.name,
           issueCount: p.issueCount,
-          status: state.failedIssues > 0 ? 'partial' : 'success',
+          status: fc.failed_issues > 0 ? 'partial' : 'success',
           boardupscaleProjectId: state.jiraProjectIdToLocalId[p.key],
         })),
-        totalMigrated: state.processedIssues,
-        totalFailed: state.failedIssues,
+        totalMigrated: fc.processed_issues,
+        totalFailed: fc.failed_issues,
+        totalMembers: fc.processed_members,
+        totalSprints: fc.processed_sprints,
         failedItems: (state.errorLog ?? []).slice(0, 50).map((msg) => ({
           type: 'unknown',
           key: '',
