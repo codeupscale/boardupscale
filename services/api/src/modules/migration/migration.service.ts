@@ -4,12 +4,15 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
+import * as https from 'https';
+import * as querystring from 'querystring';
 
 import { JiraMigrationRun } from './entities/jira-migration-run.entity';
 import { JiraConnection } from '../import/entities/jira-connection.entity';
@@ -21,11 +24,20 @@ import { StartMigrationDto, PreviewMigrationDto } from './dto/start-migration.dt
 
 export interface ConnectResult {
   runId: string;
+  connectionId: string;
   displayName: string;
   orgName: string;
   projectCount: number;
   memberCount: number;
   projects: Array<{ key: string; name: string; description?: string }>;
+}
+
+export interface JiraMember {
+  accountId: string;
+  displayName: string;
+  email: string | null;
+  avatarUrl: string | null;
+  active: boolean;
 }
 
 export interface PreviewResult {
@@ -125,6 +137,7 @@ export class MigrationService {
 
     return {
       runId: savedRun.id,
+      connectionId: savedConn.id,
       displayName: testResult.displayName ?? dto.email,
       orgName: this.extractOrgName(baseUrl),
       projectCount: projects.length,
@@ -249,6 +262,9 @@ export class MigrationService {
         runId: run.id,
         organizationId,
         connectionId: run.connectionId,
+        // Pass selected member IDs so the worker can filter them.
+        // Empty array or undefined means "import all".
+        selectedMemberIds: dto.selectedMemberIds ?? [],
       },
       {
         jobId: `migration-${run.id}`,
@@ -356,6 +372,170 @@ export class MigrationService {
     return { data, total, page, limit };
   }
 
+  // ── 8. Get Jira members for selection ─────────────────────────────────────
+
+  async getMigrationMembers(
+    connectionId: string,
+    organizationId: string,
+  ): Promise<JiraMember[]> {
+    const conn = await this.connectionRepository.findOne({
+      where: { id: connectionId, organizationId, isActive: true },
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+    });
+    if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    const { decrypt } = await import('../import/crypto.util');
+    const credentials = {
+      baseUrl: conn.jiraUrl,
+      email: conn.jiraEmail,
+      apiToken: decrypt(conn.apiTokenEnc, this.appSecret),
+    };
+
+    let users: Array<{ accountId: string; emailAddress?: string; displayName?: string; active?: boolean; avatarUrls?: Record<string, string> }> = [];
+    try {
+      users = await this.jiraApiService.fetchOrgUsers(credentials);
+    } catch (err: any) {
+      this.logger.warn(`getMigrationMembers: fetchOrgUsers error — ${err.message}`);
+    }
+
+    return users.map((u) => ({
+      accountId: u.accountId,
+      displayName: u.displayName ?? u.emailAddress ?? u.accountId,
+      email: u.emailAddress ?? null,
+      avatarUrl: u.avatarUrls?.['48x48'] ?? null,
+      active: u.active !== false,
+    }));
+  }
+
+  // ── 9. Atlassian OAuth 2.0 — 3-legged flow ────────────────────────────────
+
+  buildOAuthAuthorizeUrl(state: string): string {
+    const clientId = this.configService.get<string>('atlassian.clientId');
+    const callbackUrl = this.configService.get<string>('atlassian.callbackUrl');
+
+    if (!clientId) {
+      throw new InternalServerErrorException(
+        'ATLASSIAN_CLIENT_ID is not configured. Set it in the environment and restart the API.',
+      );
+    }
+
+    const params = new URLSearchParams({
+      audience: 'api.atlassian.com',
+      client_id: clientId,
+      scope: 'read:jira-work read:jira-user offline_access',
+      redirect_uri: callbackUrl,
+      state,
+      response_type: 'code',
+      prompt: 'consent',
+    });
+
+    return `https://auth.atlassian.com/authorize?${params.toString()}`;
+  }
+
+  async exchangeOAuthCode(
+    code: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<{ runId: string; connectionId: string; orgName: string; projectCount: number; memberCount: number }> {
+    const clientId = this.configService.get<string>('atlassian.clientId');
+    const clientSecret = this.configService.get<string>('atlassian.clientSecret');
+    const callbackUrl = this.configService.get<string>('atlassian.callbackUrl');
+
+    if (!clientId || !clientSecret) {
+      throw new InternalServerErrorException(
+        'Atlassian OAuth credentials are not configured (ATLASSIAN_CLIENT_ID / ATLASSIAN_CLIENT_SECRET).',
+      );
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await this.atlassianTokenRequest({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri: callbackUrl,
+    });
+
+    const { access_token, refresh_token } = tokenResponse as {
+      access_token: string;
+      refresh_token?: string;
+    };
+
+    // Fetch accessible resources to get the cloud site
+    const resources = await this.atlassianApiGet<
+      Array<{ id: string; name: string; url: string; scopes: string[] }>
+    >(access_token, 'https://api.atlassian.com/oauth/token/accessible-resources');
+
+    if (!resources.length) {
+      throw new BadRequestException(
+        'No Atlassian cloud sites found for this account. Ensure the account has access to at least one Jira Cloud instance.',
+      );
+    }
+
+    const site = resources[0]; // Use first (most common case)
+    const baseUrl = site.url.replace(/\/$/, '');
+
+    // Fetch Jira projects via the cloud API
+    const credentials = {
+      baseUrl,
+      email: '',          // Not used for OAuth — token auth
+      apiToken: access_token, // OAuth bearer
+    };
+
+    const projects = await this.jiraApiService.listProjects(credentials).catch(() => []);
+
+    let memberCount = 0;
+    try {
+      const members = await this.jiraApiService.fetchOrgUsers(credentials);
+      memberCount = members.length;
+    } catch {
+      // non-fatal
+    }
+
+    // Fetch the authenticated user's display name
+    const me = await this.atlassianApiGet<{ displayName?: string; emailAddress?: string }>(
+      access_token,
+      `https://api.atlassian.com/ex/jira/${site.id}/rest/api/3/myself`,
+    ).catch(() => ({} as any));
+
+    // Encrypt and store the access token (treat same as API token for now)
+    const tokenEnc = encrypt(access_token, this.appSecret);
+    await this.connectionRepository.update({ organizationId }, { isActive: false });
+
+    const connection = this.connectionRepository.create({
+      organizationId,
+      createdById: userId,
+      jiraUrl: baseUrl,
+      jiraEmail: me.emailAddress?.trim().toLowerCase() ?? '',
+      apiTokenEnc: tokenEnc,
+      isActive: true,
+      lastTestedAt: new Date(),
+      lastTestOk: true,
+    });
+    const savedConn = await this.connectionRepository.save(connection);
+
+    const run = this.runRepository.create({
+      organizationId,
+      triggeredById: userId,
+      connectionId: savedConn.id,
+      status: 'pending',
+      currentPhase: 0,
+    });
+    const savedRun = await this.runRepository.save(run);
+
+    this.logger.log(
+      `OAuth migration run ${savedRun.id} created for org ${organizationId} — site: ${site.name}`,
+    );
+
+    return {
+      runId: savedRun.id,
+      connectionId: savedConn.id,
+      orgName: site.name,
+      projectCount: projects.length,
+      memberCount,
+    };
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private async findRun(runId: string, organizationId: string): Promise<JiraMigrationRun> {
@@ -396,5 +576,84 @@ export class MigrationService {
     } catch {
       return baseUrl;
     }
+  }
+
+  /** POST to Atlassian token endpoint and return the parsed JSON response. */
+  private atlassianTokenRequest(body: Record<string, string>): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const payload = querystring.stringify(body);
+      const options: https.RequestOptions = {
+        hostname: 'auth.atlassian.com',
+        path: '/oauth/token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(payload),
+        },
+        timeout: 15000,
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => (data += chunk.toString()));
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 400) {
+            return void reject(
+              new BadRequestException(
+                `Atlassian token exchange failed (${res.statusCode}): ${data.slice(0, 300)}`,
+              ),
+            );
+          }
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            reject(new InternalServerErrorException('Invalid JSON from Atlassian token endpoint'));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(new InternalServerErrorException(`Atlassian token request error: ${err.message}`)));
+      req.on('timeout', () => { req.destroy(); reject(new InternalServerErrorException('Atlassian token request timed out')); });
+      req.write(payload);
+      req.end();
+    });
+  }
+
+  /** GET a JSON resource from the Atlassian API using an OAuth bearer token. */
+  private atlassianApiGet<T>(accessToken: string, url: string): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const options: https.RequestOptions = {
+        hostname: parsed.hostname,
+        path: parsed.pathname + parsed.search,
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+        timeout: 15000,
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk: Buffer) => (data += chunk.toString()));
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 400) {
+            return void reject(
+              new BadRequestException(`Atlassian API error (${res.statusCode}): ${data.slice(0, 300)}`),
+            );
+          }
+          try {
+            resolve(JSON.parse(data) as T);
+          } catch {
+            reject(new InternalServerErrorException('Invalid JSON from Atlassian API'));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(new InternalServerErrorException(`Atlassian API request error: ${err.message}`)));
+      req.on('timeout', () => { req.destroy(); reject(new InternalServerErrorException('Atlassian API request timed out')); });
+      req.end();
+    });
   }
 }

@@ -71,19 +71,25 @@ export function JiraMigrationPage() {
 
   // Wizard state accumulated across steps
   const [connectResult, setConnectResult] = useState<ConnectJiraResult | null>(null)
+  const [connectionId, setConnectionId] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
   const [selectedProjects, setSelectedProjects] = useState<PreviewProject[]>([])
   const [migrationPayload, setMigrationPayload] = useState<StartMigrationPayload | null>(null)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
 
   function handleConnect(result: ConnectJiraResult) {
     setConnectResult(result)
+    if (result.connectionId) {
+      setConnectionId(result.connectionId)
+    }
     setStep(2)
   }
 
-  function handlePreview(keys: string[], projects: PreviewProject[]) {
+  function handlePreview(keys: string[], projects: PreviewProject[], memberIds: string[]) {
     setSelectedKeys(keys)
     setSelectedProjects(projects)
+    setSelectedMemberIds(memberIds)
     setStep(3)
   }
 
@@ -96,6 +102,7 @@ export function JiraMigrationPage() {
     const payload: StartMigrationPayload = {
       runId: connectResult.runId,
       projectKeys: selectedKeys,
+      selectedMemberIds,
       statusMapping: config.statusMapping,
       roleMapping: config.roleMapping,
       options: config.options,
@@ -132,6 +139,7 @@ export function JiraMigrationPage() {
             <PreviewStep
               runId={connectResult.runId}
               connectResult={connectResult}
+              connectionId={connectionId ?? undefined}
               onNext={handlePreview}
               onBack={() => setStep(1)}
             />

@@ -46,6 +46,8 @@ interface MigrationJobData {
   runId: string;
   organizationId: string;
   connectionId: string;
+  /** Jira accountIds to import. Empty array means import all members. */
+  selectedMemberIds?: string[];
 }
 
 interface JiraCredentials {
@@ -86,6 +88,8 @@ interface RunState {
   jiraUserEmailToLocalId: Record<string, string>;
   jiraIssueKeyToLocalId: Record<string, string>;
   jiraSprintIdToLocalId: Record<string, string>;
+  /** If non-empty, only these accountIds will be imported in the members phase. */
+  selectedMemberIds: string[];
 }
 
 // ─── Jira HTTP client (no axios) ─────────────────────────────────────────────
@@ -188,6 +192,7 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
     jiraUserEmailToLocalId: {},
     jiraIssueKeyToLocalId: {},
     jiraSprintIdToLocalId: {},
+    selectedMemberIds: [],
   };
 }
 
@@ -280,6 +285,39 @@ function addError(state: RunState, msg: string) {
   state.errorLog = [...(state.errorLog ?? []), msg].slice(-100);
 }
 
+/**
+ * Retry a phase function up to MAX_PHASE_RETRIES times with exponential backoff.
+ * If the phase still fails after all retries the error is recorded but execution
+ * continues to the next phase — a single failing phase must not abort the whole job.
+ */
+const MAX_PHASE_RETRIES = 3;
+const PHASE_RETRY_BASE_DELAY_MS = 2000;
+
+async function runPhaseWithRetry(
+  phaseName: string,
+  state: RunState,
+  fn: () => Promise<void>,
+): Promise<void> {
+  for (let attempt = 1; attempt <= MAX_PHASE_RETRIES; attempt++) {
+    try {
+      await fn();
+      return; // success
+    } catch (err: any) {
+      const msg = `[Phase:${phaseName}] attempt ${attempt}/${MAX_PHASE_RETRIES} failed: ${err.message}`;
+      console.error(`[Migration:${state.id}] ${msg}`);
+      addError(state, msg);
+
+      if (attempt < MAX_PHASE_RETRIES) {
+        const backoff = PHASE_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[Migration:${state.id}] Retrying ${phaseName} in ${backoff}ms...`);
+        await delay(backoff);
+      } else {
+        console.error(`[Migration:${state.id}] Phase ${phaseName} gave up after ${MAX_PHASE_RETRIES} attempts. Continuing with next phase.`);
+      }
+    }
+  }
+}
+
 // ─── Phase 1: Members ─────────────────────────────────────────────────────────
 
 async function runMembersPhase(
@@ -310,14 +348,20 @@ async function runMembersPhase(
     addError(state, `members fetch: ${err.message}`);
   }
 
+  // Filter to only selected members when a selection was made
+  const filterIds = new Set(state.selectedMemberIds ?? []);
+  const filteredUsers = filterIds.size > 0
+    ? users.filter((u) => filterIds.has(u.accountId))
+    : users;
+
   await updateRunProgress(client, state.id, {
     status: 'processing',
     currentPhase: PHASE_MEMBERS,
-    totalMembers: users.length,
+    totalMembers: filteredUsers.length,
   }, io);
 
   let processed = 0;
-  for (const jiraUser of users) {
+  for (const jiraUser of filteredUsers) {
     if (!jiraUser.emailAddress) continue;
     const email = jiraUser.emailAddress.toLowerCase();
     try {
@@ -353,7 +397,7 @@ async function runMembersPhase(
     completedPhase: PHASE_MEMBERS,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${users.length} members`);
+  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
 }
 
 // ─── Phase 2: Projects ────────────────────────────────────────────────────────
@@ -860,9 +904,9 @@ async function processJob(
   db: Pool,
   io: IORedis | null,
 ): Promise<void> {
-  const { runId, organizationId, connectionId } = job.data;
+  const { runId, organizationId, connectionId, selectedMemberIds = [] } = job.data;
 
-  console.log(`[Migration] Starting job for run ${runId}`);
+  console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
   const client = await db.connect();
   try {
@@ -874,6 +918,9 @@ async function processJob(
       await client.query('COMMIT');
       return;
     }
+
+    // Propagate selectedMemberIds from the job payload into run state
+    state.selectedMemberIds = selectedMemberIds;
 
     const credentials = await loadCredentials(client, state.connectionId ?? connectionId);
     await client.query('COMMIT');
@@ -888,12 +935,14 @@ async function processJob(
 
       const completed = new Set<number>(state.completedPhases ?? []);
 
-      // Phase 1 — members
+      // ── Phase 1 — members ────────────────────────────────────────────────────
       if (!completed.has(PHASE_MEMBERS)) {
-        await runMembersPhase(progressClient, state, credentials, io);
+        await runPhaseWithRetry('members', state, () =>
+          runMembersPhase(progressClient, state, credentials, io),
+        );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_MEMBERS];
       } else {
-        // Re-load user map from DB for subsequent phases
+        console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user map`);
         const { rows } = await progressClient.query<{ email: string; id: string }>(
           `SELECT u.email, u.id FROM users u
            INNER JOIN organization_members om ON om."userId" = u.id
@@ -903,11 +952,14 @@ async function processJob(
         for (const r of rows) state.jiraUserEmailToLocalId[r.email.toLowerCase()] = r.id;
       }
 
-      // Phase 2 — projects
+      // ── Phase 2 — projects ───────────────────────────────────────────────────
       if (!completed.has(PHASE_PROJECTS)) {
-        await runProjectsPhase(progressClient, state, credentials, io);
+        await runPhaseWithRetry('projects', state, () =>
+          runProjectsPhase(progressClient, state, credentials, io),
+        );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_PROJECTS];
       } else {
+        console.log(`[Migration:${runId}] Phase 2 (projects) already completed — reloading project map`);
         const { rows } = await progressClient.query<{ key: string; id: string }>(
           `SELECT key, id FROM projects WHERE "organizationId" = $1`,
           [organizationId],
@@ -915,41 +967,51 @@ async function processJob(
         for (const r of rows) state.jiraProjectIdToLocalId[r.key] = r.id;
       }
 
-      // Phase 3 — sprints
+      // ── Phase 3 — sprints ────────────────────────────────────────────────────
       if (!completed.has(PHASE_SPRINTS)) {
-        await runSprintsPhase(progressClient, state, credentials, io);
+        await runPhaseWithRetry('sprints', state, () =>
+          runSprintsPhase(progressClient, state, credentials, io),
+        );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_SPRINTS];
       } else {
-        const { rows } = await progressClient.query<{ "jiraSprintId": string; id: string }>(
+        console.log(`[Migration:${runId}] Phase 3 (sprints) already completed — reloading sprint map`);
+        const { rows } = await progressClient.query<{ jiraSprintId: string; id: string }>(
           `SELECT "jiraSprintId", id FROM sprints WHERE "organizationId" = $1`,
           [organizationId],
         ).catch(() => ({ rows: [] as any[] }));
         for (const r of rows) if (r.jiraSprintId) state.jiraSprintIdToLocalId[r.jiraSprintId] = r.id;
       }
 
-      // Phase 4 — issues
+      // ── Phase 4 — issues ─────────────────────────────────────────────────────
       if (!completed.has(PHASE_ISSUES)) {
-        await runIssuesPhase(progressClient, state, credentials, io);
+        await runPhaseWithRetry('issues', state, () =>
+          runIssuesPhase(progressClient, state, credentials, io),
+        );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_ISSUES];
       } else {
-        const { rows } = await progressClient.query<{ "jiraKey": string; id: string }>(
+        console.log(`[Migration:${runId}] Phase 4 (issues) already completed — reloading issue map`);
+        const { rows } = await progressClient.query<{ jiraKey: string; id: string }>(
           `SELECT "jiraKey", id FROM issues WHERE "organizationId" = $1 AND "jiraKey" IS NOT NULL`,
           [organizationId],
         ).catch(() => ({ rows: [] as any[] }));
         for (const r of rows) if (r.jiraKey) state.jiraIssueKeyToLocalId[r.jiraKey] = r.id;
       }
 
-      // Phase 5 — comments
+      // ── Phase 5 — comments ───────────────────────────────────────────────────
       if (!completed.has(PHASE_COMMENTS)) {
-        await runCommentsPhase(progressClient, state, credentials, io);
+        await runPhaseWithRetry('comments', state, () =>
+          runCommentsPhase(progressClient, state, credentials, io),
+        );
       }
 
-      // Phase 6 — attachments
+      // ── Phase 6 — attachments ────────────────────────────────────────────────
       if (!completed.has(PHASE_ATTACHMENTS)) {
-        await runAttachmentsPhase(progressClient, state, io);
+        await runPhaseWithRetry('attachments', state, () =>
+          runAttachmentsPhase(progressClient, state, io),
+        );
       }
 
-      // Write final result summary
+      // ── Write final result summary ────────────────────────────────────────────
       const summary = {
         projects: (state.selectedProjects ?? []).map((p) => ({
           key: p.key,
@@ -988,12 +1050,12 @@ async function processJob(
         })).catch(() => {});
       }
 
-      console.log(`[Migration:${runId}] Completed successfully`);
+      console.log(`[Migration:${runId}] Completed successfully — ${state.processedIssues} issues, ${state.processedMembers} members`);
     } finally {
       progressClient.release();
     }
   } catch (err: any) {
-    console.error(`[Migration:${runId}] Fatal error:`, err.message);
+    console.error(`[Migration:${runId}] Fatal error:`, err.message, err.stack);
     const errClient = await db.connect();
     try {
       await errClient.query(
@@ -1005,6 +1067,8 @@ async function processJob(
          WHERE id = $1`,
         [runId, JSON.stringify([`Fatal: ${err.message}`])],
       );
+    } catch (dbErr: any) {
+      console.error(`[Migration:${runId}] Failed to write failure status to DB:`, dbErr.message);
     } finally {
       errClient.release();
     }
@@ -1034,16 +1098,23 @@ export function createJiraMigrationWorker(
     },
   );
 
+  // Startup confirmation — visible in worker logs on every boot
+  console.log(`[JiraMigrationWorker] Started — listening on queue "${QUEUE_NAME}" (concurrency: 2)`);
+
   worker.on('completed', (job) => {
     console.log(`[JiraMigrationWorker] Job ${job.id} completed`);
   });
 
   worker.on('failed', (job, err) => {
-    console.error(`[JiraMigrationWorker] Job ${job?.id} failed:`, err.message);
+    console.error(`[JiraMigrationWorker] Job ${job?.id} failed (attempt ${job?.attemptsMade ?? '?'}/${job?.opts?.attempts ?? '?'}):`, err.message);
   });
 
   worker.on('error', (err) => {
-    console.error('[JiraMigrationWorker] Worker error:', err.message);
+    console.error('[JiraMigrationWorker] Worker-level error (queue connectivity issue):', err.message);
+  });
+
+  worker.on('stalled', (jobId) => {
+    console.warn(`[JiraMigrationWorker] Job ${jobId} stalled — lock may have expired`);
   });
 
   return worker;
