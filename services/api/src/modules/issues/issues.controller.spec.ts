@@ -7,6 +7,7 @@ import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 import { ResolveProjectBodyInterceptor } from '../../common/interceptors/resolve-project-body.interceptor';
 import { REQUEST } from '@nestjs/core';
 import { mockIssue, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 describe('IssuesController', () => {
   let controller: IssuesController;
@@ -40,7 +41,10 @@ describe('IssuesController', () => {
         { provide: ResolveProjectBodyInterceptor, useValue: { intercept: jest.fn((_, next) => next.handle()) } },
         { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
-    }).compile();
+    })
+      .overridePipe(ResolveProjectPipe)
+      .useValue({ transform: (value: string) => value })
+      .compile();
 
     controller = await module.resolve<IssuesController>(IssuesController);
   });
