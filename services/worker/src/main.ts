@@ -9,6 +9,7 @@ import { createWebhookWorker } from './webhook/webhook.worker';
 import { createAutomationWorker } from './automation/automation.worker';
 import { createAiWorker } from './ai/ai.worker';
 import { createImportWorker } from './import/import.worker';
+import { createJiraMigrationWorker } from './migration/jira-migration.processor';
 
 async function main(): Promise<void> {
   console.log('[Main] Boardupscale Worker starting up...');
@@ -81,6 +82,14 @@ async function main(): Promise<void> {
   } catch (err: any) {
     // Import worker failure is non-fatal — log and continue
     console.error('[Main] Failed to start ImportWorker (import disabled):', err.message);
+  }
+
+  try {
+    const jiraMigrationWorker = createJiraMigrationWorker(db, null);
+    workers.push(jiraMigrationWorker);
+  } catch (err: any) {
+    // Migration worker failure is non-fatal — log and continue
+    console.error('[Main] Failed to start JiraMigrationWorker (migration disabled):', err.message);
   }
 
   console.log(`[Main] All workers running (${workers.length} active). Waiting for jobs...`);
