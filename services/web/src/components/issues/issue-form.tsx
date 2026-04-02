@@ -10,7 +10,6 @@ import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
-import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
 import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
@@ -120,9 +119,6 @@ export function IssueForm({
         error={errors.title?.message}
         {...register('title')}
       />
-
-      {/* Duplicate Detection */}
-      <SimilarIssuesPanel title={watchedTitle} projectId={projectId} />
 
       {/* AI Suggestions */}
       <AiSuggestionsPanel

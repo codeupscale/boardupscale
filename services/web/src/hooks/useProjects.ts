@@ -42,7 +42,7 @@ export function useCreateProject() {
       toast('Project created successfully')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create project', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create project', 'error'),
   })
 }
 

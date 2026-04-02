@@ -194,8 +194,48 @@ export class IssuesService {
     return issue;
   }
 
+  /**
+   * Validates parent-child type hierarchy:
+   *   Epic -> Story
+   *   Story -> Task, Bug
+   *   Task, Bug -> Subtask
+   *   Subtask -> (none)
+   */
+  private validateChildTypeHierarchy(parentType: string, childType: string): void {
+    const allowedChildren: Record<string, string[]> = {
+      epic: ['story'],
+      story: ['task', 'bug'],
+      task: ['subtask'],
+      bug: ['subtask'],
+    };
+
+    const allowed = allowedChildren[parentType];
+    if (!allowed) {
+      throw new BadRequestException(
+        `Issues of type "${parentType}" cannot have child issues`,
+      );
+    }
+
+    if (!allowed.includes(childType)) {
+      throw new BadRequestException(
+        `A "${parentType}" can only have children of type: ${allowed.join(', ')}. Got "${childType}"`,
+      );
+    }
+  }
+
   async create(dto: CreateIssueDto, organizationId: string, userId: string): Promise<Issue> {
     const project = await this.projectsService.findById(dto.projectId, organizationId);
+
+    // Validate parent-child hierarchy if parentId is set
+    if (dto.parentId) {
+      const parent = await this.issueRepository.findOne({
+        where: { id: dto.parentId, organizationId },
+      });
+      if (!parent) {
+        throw new NotFoundException('Parent issue not found');
+      }
+      this.validateChildTypeHierarchy(parent.type, dto.type || 'task');
+    }
 
     let statusId = dto.statusId;
     if (!statusId) {
