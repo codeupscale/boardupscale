@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FolderOpen,
-  CircleDot,
   Bell,
   Settings,
   ChevronLeft,
@@ -56,7 +55,6 @@ export function Sidebar() {
   const navItems = [
     { icon: LayoutDashboard, label: t('nav.dashboard'), href: '/dashboard' },
     { icon: FolderOpen, label: t('nav.projects'), href: '/projects' },
-    { icon: CircleDot, label: t('nav.myIssues'), href: '/issues' },
     { icon: Clock, label: 'Timesheet', href: '/timesheet' },
     { icon: Bell, label: t('nav.notifications'), href: '/notifications' },
     { icon: Settings, label: t('nav.settings'), href: '/settings' },
