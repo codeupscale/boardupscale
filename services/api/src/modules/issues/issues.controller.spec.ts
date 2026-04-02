@@ -42,7 +42,7 @@ describe('IssuesController', () => {
       ],
     }).compile();
 
-    controller = module.get<IssuesController>(IssuesController);
+    controller = await module.resolve<IssuesController>(IssuesController);
   });
 
   describe('GET /issues', () => {
