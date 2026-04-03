@@ -75,6 +75,9 @@ jobs:
     name: Deploy to production
     runs-on: ubuntu-latest
     needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
 
     # Run when:
     #   - automatic: build succeeded (workflow_run path)
@@ -102,10 +105,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          # GHCR_TOKEN: a PAT with read:packages scope, stored as a repo secret.
-          # The deploy server uses this to pull private GHCR images.
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-          GHCR_USER: ${{ github.repository_owner }}
+          # Use the workflow's GITHUB_TOKEN — it has read:packages from the
+          # job-level packages:read permission, so no separate PAT is needed.
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
           IMAGE_TAG: ${{ steps.tag.outputs.value }}
         with:
           host: ${{ secrets.SSH_HOST }}
