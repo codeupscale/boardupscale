@@ -121,7 +121,7 @@ jobs:
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
             # ── 2. Pull latest repo config (compose file, migrations, etc.) ─
-            cd /opt/boardupscale
+            cd /home/ubuntu/boardupscale
             git pull origin main
 
             # ── 3. Pull pre-built images from GHCR ───────────────────────
