@@ -123,18 +123,17 @@ jobs:
             # ── 1. Authenticate with GHCR ─────────────────────────────────
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # ── 2. Pull latest repo config (compose file, migrations, etc.) ─
-            cd /home/ubuntu/boardupscale
-            git fetch origin main
-            git reset --hard origin/main
+            # ── 2. Pull latest images from GHCR ──────────────────────────
+            docker pull ghcr.io/codeupscale/boardupscale-api:${IMAGE_TAG}
+            docker pull ghcr.io/codeupscale/boardupscale-web:${IMAGE_TAG}
+            docker pull ghcr.io/codeupscale/boardupscale-worker:${IMAGE_TAG}
 
-            # ── 3. Pull pre-built images from GHCR ───────────────────────
-            # Export IMAGE_TAG so docker compose interpolates it in the compose file
-            export IMAGE_TAG
-            docker compose -f docker-compose.prod.yml pull api web worker
-
-            # ── 4. Restart services with the new images ───────────────────
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
+            # ── 3. Restart boardupscale services in unified infra compose ─
+            # Production runs from /home/ubuntu/infra which hosts both
+            # Trackflow and Boardupscale sharing one postgres + redis.
+            cd /home/ubuntu/infra
+            export BU_IMAGE_TAG="${IMAGE_TAG}"
+            docker compose up -d --no-deps --force-recreate bu-api bu-web bu-worker
 
             # ── 5. Reclaim disk space from old image layers ───────────────
             docker image prune -f
