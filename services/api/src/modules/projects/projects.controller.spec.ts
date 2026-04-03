@@ -37,7 +37,8 @@ describe("ProjectsController", () => {
           useValue: { user: { organizationId: TEST_IDS.ORG_ID } },
         },
       ],
-    }).compile();
+    })
+      .compile();
 
     controller = await module.resolve<ProjectsController>(ProjectsController);
   });
