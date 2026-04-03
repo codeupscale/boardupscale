@@ -5,6 +5,23 @@ import { useAuthStore } from '@/store/auth.store'
 import { toast } from '@/store/ui.store'
 import { User } from '@/types'
 
+interface AuthProviders {
+  google: boolean
+  github: boolean
+  saml: boolean
+}
+
+export function useAuthProviders() {
+  return useQuery({
+    queryKey: ['auth-providers'],
+    queryFn: async () => {
+      const { data } = await api.get('/auth/providers')
+      return data as AuthProviders
+    },
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  })
+}
+
 export function useMe() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({

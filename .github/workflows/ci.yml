@@ -103,7 +103,7 @@ jobs:
           cache-dependency-path: services/web/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --force
 
       - name: TypeScript compile check
         run: npx tsc --noEmit

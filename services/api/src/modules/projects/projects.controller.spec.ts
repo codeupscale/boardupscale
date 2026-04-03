@@ -24,7 +24,8 @@ describe('ProjectsController', () => {
         { provide: ResolveProjectPipe, useValue: { transform: jest.fn((v) => v) } },
         { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
-    }).compile();
+    })
+      .compile();
 
     controller = await module.resolve<ProjectsController>(ProjectsController);
   });
@@ -38,7 +39,11 @@ describe('ProjectsController', () => {
       const result = await controller.findAll(TEST_IDS.ORG_ID, user);
 
       expect(result).toEqual({ data: projects });
-      expect(projectsService.findAll).toHaveBeenCalledWith(TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
+      expect(projectsService.findAll).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        undefined,
+      );
     });
   });
 

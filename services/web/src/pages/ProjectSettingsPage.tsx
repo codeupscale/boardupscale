@@ -338,6 +338,13 @@ export function ProjectSettingsPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.user')}</label>
             <UserSelect value={newMemberId} onChange={setNewMemberId} />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Only users in your organization are shown.{' '}
+              <Link to="/settings/team" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                Invite new users from Settings &rarr; Team
+              </Link>{' '}
+              first, then add them to this project.
+            </p>
           </div>
           <Select
             label={t('settings.role')}

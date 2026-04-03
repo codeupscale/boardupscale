@@ -30,7 +30,7 @@ import {
   useDeleteSprint,
   useUpdateSprint,
 } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
@@ -65,10 +65,14 @@ function DraggableIssueRow({
   issue,
   index,
   selectable,
+  statuses,
+  onUpdateIssue,
 }: {
   issue: Issue
   index: number
   selectable?: boolean
+  statuses?: Array<{ id: string; name: string }>
+  onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
 }) {
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
@@ -143,9 +147,37 @@ function DraggableIssueRow({
             <PriorityBadge priority={issue.priority} />
           </td>
 
-          {/* Status */}
-          <td className="px-3 py-3 w-32">
-            <StatusBadge status={issue.status} />
+          {/* Status — inline editable */}
+          <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
+            {statuses && onUpdateIssue ? (
+              <select
+                value={issue.statusId || ''}
+                onChange={(e) => onUpdateIssue(issue.id, { statusId: e.target.value })}
+                className="text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+              >
+                {statuses.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            ) : (
+              <StatusBadge status={issue.status} />
+            )}
+          </td>
+
+          {/* Due Date — inline editable */}
+          <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
+            {onUpdateIssue ? (
+              <input
+                type="date"
+                value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : ''}
+                onChange={(e) => onUpdateIssue(issue.id, { dueDate: e.target.value || null })}
+                className="text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            ) : (
+              <span className="text-xs text-gray-500">
+                {issue.dueDate ? formatDate(issue.dueDate) : '--'}
+              </span>
+            )}
           </td>
 
           {/* Assignee */}
@@ -181,10 +213,14 @@ function SprintSection({
   sprint,
   issues,
   projectId,
+  statuses,
+  onUpdateIssue,
 }: {
   sprint: any
   issues: Issue[]
   projectId: string
+  statuses?: Array<{ id: string; name: string }>
+  onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
 }) {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(false)
@@ -393,12 +429,12 @@ function SprintSection({
                           className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </th>
-                      <th colSpan={5} />
+                      <th colSpan={6} />
                     </tr>
                   </thead>
                   <tbody>
                     {issues.map((issue, index) => (
-                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
                     ))}
                     {provided.placeholder}
                   </tbody>
@@ -506,9 +542,13 @@ function SprintSection({
 function BacklogSection({
   issues,
   onCreateIssue,
+  statuses,
+  onUpdateIssue,
 }: {
   issues: Issue[]
   onCreateIssue: () => void
+  statuses?: Array<{ id: string; name: string }>
+  onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
 }) {
   const { t } = useTranslation()
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
@@ -572,7 +612,7 @@ function BacklogSection({
                         className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
-                    <th colSpan={5} />
+                    <th colSpan={6} />
                   </tr>
                 </thead>
                 <tbody>
@@ -618,6 +658,7 @@ export function ProjectBacklogPage() {
   const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectKey! })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
+  const updateIssue = useUpdateIssue()
   const moveIssue = useMoveIssueSprint()
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
@@ -638,6 +679,18 @@ export function ProjectBacklogPage() {
   const backlogIssues = useMemo(
     () => allIssues.filter((i) => !i.sprintId),
     [allIssues],
+  )
+
+  const boardStatuses = useMemo(
+    () => board?.statuses?.map((s) => ({ id: s.id, name: s.name })) || [],
+    [board],
+  )
+
+  const handleInlineUpdate = useCallback(
+    (issueId: string, updates: Record<string, unknown>) => {
+      updateIssue.mutate({ id: issueId, ...updates } as Parameters<typeof updateIssue.mutate>[0])
+    },
+    [updateIssue],
   )
 
   // Clear selection on unmount
@@ -739,6 +792,8 @@ export function ProjectBacklogPage() {
               sprint={sprint}
               issues={getSprintIssues(sprint.id)}
               projectId={projectKey!}
+              statuses={boardStatuses}
+              onUpdateIssue={handleInlineUpdate}
             />
           ))}
 
@@ -746,6 +801,8 @@ export function ProjectBacklogPage() {
           <BacklogSection
             issues={backlogIssues}
             onCreateIssue={() => setShowCreateIssue(true)}
+            statuses={boardStatuses}
+            onUpdateIssue={handleInlineUpdate}
           />
         </div>
       </DragDropContext>

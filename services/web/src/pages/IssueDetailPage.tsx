@@ -4,6 +4,8 @@ import { Send, Edit2, Trash2, Clock, Plus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   useIssue,
+  useIssues,
+  useCreateIssue,
   useUpdateIssue,
   useDeleteIssue,
   useWorkLogs,
@@ -170,8 +172,17 @@ export function IssueDetailPage() {
   const { data: orgUsers } = useUsers()
   const updateIssue = useUpdateIssue()
   const deleteIssue = useDeleteIssue()
+  const createIssue = useCreateIssue()
   const createComment = useCreateComment()
   const addWorkLog = useAddWorkLog()
+
+  // Child issues
+  const { data: childIssuesData } = useIssues(
+    issue ? { projectId: issue.projectId } : undefined,
+  )
+  const childIssues = (childIssuesData?.data || []).filter(
+    (i) => i.parentId === issueId,
+  )
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
@@ -182,6 +193,8 @@ export function IssueDetailPage() {
   const [workLogTime, setWorkLogTime] = useState('')
   const [workLogDesc, setWorkLogDesc] = useState('')
   const [showDeleteIssue, setShowDeleteIssue] = useState(false)
+  const [showCreateChild, setShowCreateChild] = useState(false)
+  const [childTitle, setChildTitle] = useState('')
   const [labelInput, setLabelInput] = useState('')
   const [labels, setLabels] = useState<string[]>(issue?.labels || [])
 
@@ -337,6 +350,54 @@ export function IssueDetailPage() {
             projectId={issue.projectId}
             excludeIssueId={issue.id}
           />
+
+          {/* Child Issues */}
+          {issue.type !== 'subtask' && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  Child Issues ({childIssues.length})
+                </h3>
+                <Button size="sm" variant="outline" onClick={() => setShowCreateChild(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Create child issue
+                </Button>
+              </div>
+              {childIssues.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {childIssues.map((child) => (
+                    <Link
+                      key={child.id}
+                      to={`/issues/${child.id}`}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
+                    >
+                      <IssueTypeIcon type={child.type} />
+                      <span className="text-xs font-mono text-blue-600 font-medium">{child.key}</span>
+                      <span className="text-sm text-gray-900 truncate flex-1">{child.title}</span>
+                      <StatusBadge status={child.status} />
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No child issues yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Parent Issue */}
+          {issue.parentId && issue.parent && (
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Parent Issue</h3>
+              <Link
+                to={`/issues/${issue.parentId}`}
+                className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <IssueTypeIcon type={issue.parent.type} />
+                <span className="text-xs font-mono text-blue-600 font-medium">{issue.parent.key}</span>
+                <span className="text-sm text-gray-900 truncate flex-1">{issue.parent.title}</span>
+              </Link>
+            </div>
+          )}
 
           {/* Comments */}
           <div>
@@ -917,7 +978,7 @@ export function IssueDetailPage() {
                 addWorkLog.mutate(
                   {
                     issueId: issue.id,
-                    timeSpent: parseInt(workLogTime),
+                    timeSpent: parseInt(workLogTime) * 60,
                     description: workLogDesc || undefined,
                     loggedAt: new Date().toISOString(),
                   },
@@ -934,6 +995,82 @@ export function IssueDetailPage() {
               {t('issues.addWorkLog')}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Child Issue Dialog */}
+      <Dialog
+        open={showCreateChild}
+        onClose={() => setShowCreateChild(false)}
+        className="max-w-sm"
+      >
+        <DialogHeader onClose={() => setShowCreateChild(false)}>
+          <DialogTitle>Create Child Issue</DialogTitle>
+        </DialogHeader>
+        <DialogContent className="space-y-4">
+          {(() => {
+            const childTypeMap: Record<string, { types: string[]; default: string }> = {
+              epic: { types: ['story'], default: 'story' },
+              story: { types: ['task', 'bug'], default: 'task' },
+              task: { types: ['subtask'], default: 'subtask' },
+              bug: { types: ['subtask'], default: 'subtask' },
+            }
+            const config = childTypeMap[issue.type]
+            if (!config) return <p className="text-sm text-gray-500">This issue type cannot have children.</p>
+
+            return (
+              <>
+                <Input
+                  label="Title"
+                  placeholder="Child issue title"
+                  value={childTitle}
+                  onChange={(e) => setChildTitle(e.target.value)}
+                  autoFocus
+                />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Type
+                  </label>
+                  <p className="text-sm text-gray-700">
+                    {config.default.charAt(0).toUpperCase() + config.default.slice(1)}
+                    {config.types.length > 1 && (
+                      <span className="text-gray-400 ml-1">
+                        (allowed: {config.types.join(', ')})
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowCreateChild(false)}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    disabled={!childTitle.trim()}
+                    isLoading={createIssue.isPending}
+                    onClick={() => {
+                      createIssue.mutate(
+                        {
+                          projectId: issue.projectId,
+                          title: childTitle.trim(),
+                          type: config.default,
+                          priority: 'medium',
+                          parentId: issue.id,
+                        },
+                        {
+                          onSuccess: () => {
+                            setShowCreateChild(false)
+                            setChildTitle('')
+                          },
+                        },
+                      )
+                    }}
+                  >
+                    Create
+                  </Button>
+                </div>
+              </>
+            )
+          })()}
         </DialogContent>
       </Dialog>
 

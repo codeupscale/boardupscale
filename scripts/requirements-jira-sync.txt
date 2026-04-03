@@ -1,0 +1,2 @@
+# Optional deps for Jira → Boardupscale DB scripts (install: pip install -r scripts/requirements-jira-sync.txt)
+psycopg2-binary>=2.9.9

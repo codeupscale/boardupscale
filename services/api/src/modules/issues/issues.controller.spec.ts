@@ -40,7 +40,8 @@ describe('IssuesController', () => {
         { provide: ResolveProjectBodyInterceptor, useValue: { intercept: jest.fn((_, next) => next.handle()) } },
         { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
-    }).compile();
+    })
+      .compile();
 
     controller = await module.resolve<IssuesController>(IssuesController);
   });

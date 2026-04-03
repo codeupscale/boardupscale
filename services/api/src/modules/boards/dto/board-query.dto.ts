@@ -27,8 +27,8 @@ export class BoardQueryDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by sprint ID' })
+  @ApiPropertyOptional({ description: 'Filter by sprint ID (UUID or "backlog" for unassigned)' })
   @IsOptional()
-  @IsUUID()
+  @IsString()
   sprintId?: string;
 }

@@ -1,10 +1,10 @@
 export const config = {
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL || 'redis://localhost:6380',
   },
 
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardupscale',
+    url: process.env.DATABASE_URL || 'postgresql://copilot:copilot@localhost:5433/boardupscale',
   },
 
   elasticsearch: {
@@ -22,4 +22,10 @@ export const config = {
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000',
   },
+
+  /**
+   * AES-256-GCM key for decrypting Jira API tokens stored in jira_connections.
+   * Must match APP_SECRET used by the API service.
+   */
+  appSecret: process.env.APP_SECRET || 'boardupscale-dev-secret-change-before-production',
 };

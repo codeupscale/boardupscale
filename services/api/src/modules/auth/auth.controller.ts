@@ -208,6 +208,19 @@ export class AuthController {
     return this.authService.regenerateBackupCodes(user.id, dto.password);
   }
 
+  // ── Auth Providers (public) ──────────────────────────────────────────
+
+  @Get('providers')
+  @ApiOperation({ summary: 'List available authentication providers' })
+  @ApiResponse({ status: 200, description: 'Available auth providers' })
+  async getProviders() {
+    return {
+      google: !!this.configService.get<string>('oauth.google.clientId'),
+      github: !!this.configService.get<string>('oauth.github.clientId'),
+      saml: !!this.configService.get<string>('saml.entryPoint'),
+    };
+  }
+
   // ── Google OAuth ──────────────────────────────────────────────────────
 
   @Get('google')

@@ -4,6 +4,9 @@ export default () => ({
     nodeEnv: process.env.NODE_ENV || 'development',
     frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
     corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    // AES-256-GCM key for encrypting Jira API tokens in jira_connections.
+    // Falls back to process.env.APP_SECRET for backwards compatibility.
+    secret: process.env.APP_SECRET || 'dev-only-app-secret-change-before-deploy',
   },
   database: {
     url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boardupscale',
@@ -79,6 +82,17 @@ export default () => ({
   },
   github: {
     webhookSecret: process.env.GITHUB_APP_WEBHOOK_SECRET || '',
+  },
+  atlassian: {
+    clientId: process.env.ATLASSIAN_CLIENT_ID || '',
+    clientSecret: process.env.ATLASSIAN_CLIENT_SECRET || '',
+    // Must match the redirect URI registered in the Atlassian Developer Console
+    callbackUrl:
+      process.env.ATLASSIAN_CALLBACK_URL ||
+      'http://localhost:4000/api/migration/jira/oauth/callback',
+    frontendRedirectUrl:
+      process.env.ATLASSIAN_FRONTEND_REDIRECT_URL ||
+      'http://localhost:3000/settings/migrate/jira',
   },
   // Enterprise Edition features — requires ENTERPRISE_ENABLED=true.
   // Self-hosters with a commercial licence set this to true.

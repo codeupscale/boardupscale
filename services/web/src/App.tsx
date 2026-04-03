@@ -79,6 +79,12 @@ const TeamPage = React.lazy(() =>
 const ImportPage = React.lazy(() =>
   import('@/pages/ImportPage').then(m => ({ default: m.ImportPage }))
 )
+const JiraMigrationPage = React.lazy(() =>
+  import('@/pages/migrate/JiraMigrationPage').then(m => ({ default: m.JiraMigrationPage }))
+)
+const MigrationHistoryPage = React.lazy(() =>
+  import('@/pages/migrate/MigrationHistoryPage').then(m => ({ default: m.MigrationHistoryPage }))
+)
 const BillingPage = React.lazy(() =>
   import('@/pages/BillingPage').then(m => ({ default: m.BillingPage }))
 )
@@ -146,6 +152,8 @@ export default function App() {
           <Route path="/settings/billing" element={<BillingPage />} />
           <Route path="/admin/audit-logs" element={<AuditLogPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/settings/migrate/jira" element={<JiraMigrationPage />} />
+          <Route path="/settings/migrate/history" element={<MigrationHistoryPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
