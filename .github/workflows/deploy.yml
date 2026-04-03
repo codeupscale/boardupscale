@@ -122,7 +122,8 @@ jobs:
 
             # ── 2. Pull latest repo config (compose file, migrations, etc.) ─
             cd /home/ubuntu/boardupscale
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             # ── 3. Pull pre-built images from GHCR ───────────────────────
             # Export IMAGE_TAG so docker compose interpolates it in the compose file
