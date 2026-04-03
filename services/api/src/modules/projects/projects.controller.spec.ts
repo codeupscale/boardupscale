@@ -3,6 +3,8 @@ import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { DataSource } from 'typeorm';
 import { PermissionsService } from '../permissions/permissions.service';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
+import { REQUEST } from '@nestjs/core';
 import { mockProject, mockProjectMember, TEST_IDS } from '../../test/mock-factories';
 import { createMockProjectsService } from '../../test/test-utils';
 
@@ -19,10 +21,12 @@ describe('ProjectsController', () => {
         { provide: ProjectsService, useValue: projectsService },
         { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true) } },
         { provide: DataSource, useValue: { getRepository: jest.fn() } },
+        { provide: ResolveProjectPipe, useValue: { transform: jest.fn((v) => v) } },
+        { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
     }).compile();
 
-    controller = module.get<ProjectsController>(ProjectsController);
+    controller = await module.resolve<ProjectsController>(ProjectsController);
   });
 
   describe('GET /projects', () => {

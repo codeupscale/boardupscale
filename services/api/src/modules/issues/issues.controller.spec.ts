@@ -3,6 +3,9 @@ import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
 import { DataSource } from 'typeorm';
 import { PermissionsService } from '../permissions/permissions.service';
+import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
+import { ResolveProjectBodyInterceptor } from '../../common/interceptors/resolve-project-body.interceptor';
+import { REQUEST } from '@nestjs/core';
 import { mockIssue, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
 
 describe('IssuesController', () => {
@@ -33,10 +36,13 @@ describe('IssuesController', () => {
         { provide: IssuesService, useValue: issuesService },
         { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true) } },
         { provide: DataSource, useValue: { getRepository: jest.fn() } },
+        { provide: ResolveProjectPipe, useValue: { transform: jest.fn((v) => v) } },
+        { provide: ResolveProjectBodyInterceptor, useValue: { intercept: jest.fn((_, next) => next.handle()) } },
+        { provide: REQUEST, useValue: { user: { organizationId: TEST_IDS.ORG_ID } } },
       ],
     }).compile();
 
-    controller = module.get<IssuesController>(IssuesController);
+    controller = await module.resolve<IssuesController>(IssuesController);
   });
 
   describe('GET /issues', () => {
