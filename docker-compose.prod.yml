@@ -5,9 +5,7 @@ version: '3.9'
 
 services:
   web:
-    build:
-      context: ./services/web
-      dockerfile: Dockerfile
+    image: ghcr.io/codeupscale/boardupscale-web:${IMAGE_TAG:-main}
     ports:
       - '3000:3000'
     networks:
@@ -20,9 +18,7 @@ services:
           cpus: '0.25'
 
   api:
-    build:
-      context: ./services/api
-      dockerfile: Dockerfile
+    image: ghcr.io/codeupscale/boardupscale-api:${IMAGE_TAG:-main}
     ports:
       - '4000:4000'
     environment:
@@ -84,9 +80,7 @@ services:
           cpus: '0.5'
 
   worker:
-    build:
-      context: ./services/worker
-      dockerfile: Dockerfile
+    image: ghcr.io/codeupscale/boardupscale-worker:${IMAGE_TAG:-main}
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}

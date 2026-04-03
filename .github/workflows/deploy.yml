@@ -1,0 +1,141 @@
+name: Deploy
+
+on:
+  # Auto-deploy to production after CI passes on main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger — use for rollbacks or forcing a redeploy without a code push
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g. sha-abc1234, main, v1.2.3). Build step is skipped.'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: read
+  packages: write  # needed to push to GHCR
+
+# Never cancel an in-flight deploy — queue the next one instead
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/boardupscale
+
+jobs:
+  # ── Build & push Docker images ────────────────────────────────────────────
+  # Only runs on automatic triggers (workflow_run) after CI succeeds.
+  # Skipped on workflow_dispatch — the caller supplies an already-built tag.
+  build-and-push:
+    name: Build & push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+
+    strategy:
+      matrix:
+        service: [api, web, worker]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the exact commit CI tested, not HEAD
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/${{ matrix.service }}
+          push: true
+          # Tag with both a stable "main" pointer and an immutable SHA tag
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:main
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:sha-${{ github.event.workflow_run.head_sha }}
+          # Reuse layer cache across runs to keep builds fast
+          cache-from: type=gha,scope=deploy-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.service }}
+
+  # ── Deploy to production server ───────────────────────────────────────────
+  deploy:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
+
+    # Run when:
+    #   - automatic: build succeeded (workflow_run path)
+    #   - manual: workflow_dispatch (build job was skipped, use supplied tag)
+    if: |
+      always() && (
+        (github.event_name == 'workflow_run' && needs.build-and-push.result == 'success') ||
+        github.event_name == 'workflow_dispatch'
+      )
+
+    # Adds a required-approval gate + deployment tracking in the GitHub UI.
+    # Create an environment called "production" in repo Settings → Environments.
+    environment: production
+
+    steps:
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=sha-${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Use the workflow's GITHUB_TOKEN — it has read:packages from the
+          # job-level packages:read permission, so no separate PAT is needed.
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE_TAG: ${{ steps.tag.outputs.value }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # SSH_PORT defaults to 22 if the secret is not set
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG
+          script: |
+            set -euo pipefail
+
+            # ── 1. Authenticate with GHCR ─────────────────────────────────
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # ── 2. Pull latest images from GHCR ──────────────────────────
+            docker pull ghcr.io/codeupscale/boardupscale-api:${IMAGE_TAG}
+            docker pull ghcr.io/codeupscale/boardupscale-web:${IMAGE_TAG}
+            docker pull ghcr.io/codeupscale/boardupscale-worker:${IMAGE_TAG}
+
+            # ── 3. Restart boardupscale services in unified infra compose ─
+            # Production runs from /home/ubuntu/infra which hosts both
+            # Trackflow and Boardupscale sharing one postgres + redis.
+            cd /home/ubuntu/infra
+            export BU_IMAGE_TAG="${IMAGE_TAG}"
+            docker compose up -d --no-deps --force-recreate bu-api bu-web bu-worker
+
+            # ── 5. Reclaim disk space from old image layers ───────────────
+            docker image prune -f
+
+            echo "Deployed $IMAGE_TAG successfully"
