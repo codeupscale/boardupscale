@@ -89,6 +89,11 @@ interface RunState {
   jiraUserEmailToLocalId: Record<string, string>;
   jiraIssueKeyToLocalId: Record<string, string>;
   jiraSprintIdToLocalId: Record<string, string>;
+  /**
+   * Per-project map: projectId → (jiraStatusName → localStatusId).
+   * Populated in Phase 2 so Phase 4 can resolve status_id without extra queries.
+   */
+  projectStatusMap: Record<string, Record<string, string>>;
   /** If non-empty, only these accountIds will be imported in the members phase. */
   selectedMemberIds: string[];
 }
@@ -194,6 +199,7 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
     jiraUserEmailToLocalId: {},
     jiraIssueKeyToLocalId: {},
     jiraSprintIdToLocalId: {},
+    projectStatusMap: {},
     selectedMemberIds: [],
   };
 }
@@ -396,6 +402,43 @@ async function runMembersPhase(
 
 // ─── Phase 2: Projects ────────────────────────────────────────────────────────
 
+/**
+ * Maps a Jira status category name to our internal category enum value.
+ * Jira categories: "To Do", "In Progress", "Done" (statusCategory.name),
+ * or we fall back to matching on the status name itself.
+ */
+function mapJiraStatusCategory(
+  statusName: string,
+  jiraCategoryName: string,
+  statusMapping: Record<string, string>,
+): 'todo' | 'in_progress' | 'done' {
+  // Apply user-supplied mapping first
+  const mapped = (statusMapping[statusName] ?? statusName).toLowerCase();
+  if (mapped.includes('progress') || mapped.includes('review') || mapped.includes('testing')) {
+    return 'in_progress';
+  }
+  if (
+    mapped.includes('done') || mapped.includes('complete') || mapped.includes('closed') ||
+    mapped.includes('resolved') || mapped.includes('fixed') || mapped.includes('released')
+  ) {
+    return 'done';
+  }
+  // Use Jira's own category as the ground truth
+  const cat = jiraCategoryName.toLowerCase();
+  if (cat === 'in progress') return 'in_progress';
+  if (cat === 'done') return 'done';
+  return 'todo';
+}
+
+const STATUS_CATEGORY_COLORS: Record<'todo' | 'in_progress' | 'done', string> = {
+  todo: '#6B7280',
+  in_progress: '#3B82F6',
+  done: '#10B981',
+};
+
+/** Project color palette — cycle through these for migrated projects */
+const PROJECT_COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
+
 async function runProjectsPhase(
   client: PoolClient,
   state: RunState,
@@ -411,52 +454,143 @@ async function runProjectsPhase(
 
   const selectedKeys = new Set((state.selectedProjects ?? []).map((p) => p.key));
   let processedProjects = 0;
+  let colorIdx = 0;
 
   for (const proj of state.selectedProjects ?? []) {
     if (!selectedKeys.has(proj.key)) continue;
     try {
-      // Create project
-      const { rows: projRows } = await client.query<{ id: string }>(
-        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, NOW(), NOW())
-         ON CONFLICT (organization_id, key) DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()
-         RETURNING id`,
-        [proj.name || proj.key, proj.key, state.organizationId, state.triggeredById],
-      );
+      const projectColor = PROJECT_COLORS[colorIdx % PROJECT_COLORS.length];
+      colorIdx++;
 
-      if (!projRows[0]) continue;
-      const projectId = projRows[0].id;
-      state.jiraProjectIdToLocalId[proj.key] = projectId;
+      // Upsert project using a safe two-step pattern that avoids PostgreSQL type-inference
+      // failures that occur with ON CONFLICT DO UPDATE + COALESCE on parameterized queries.
+      // Step 1: Try INSERT — ignore conflict.
+      // Step 2: Always SELECT to get the authoritative id.
+      // Step 3: Patch name/color on the existing row if needed.
+      let projectId: string | undefined;
 
-      // Create default issue statuses (no organization_id column in issue_statuses)
-      const defaultStatuses = [
-        { name: 'To Do', category: 'todo', color: '#6B7280', position: 0 },
-        { name: 'In Progress', category: 'in_progress', color: '#3B82F6', position: 1 },
-        { name: 'Done', category: 'done', color: '#10B981', position: 2 },
-      ];
+      // Step 1 — INSERT (ignore conflict on org+key)
+      await client.query(
+        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, type, color, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, 'scrum', $5, NOW(), NOW())
+         ON CONFLICT (organization_id, key) DO NOTHING`,
+        [proj.name || proj.key, proj.key, state.organizationId, state.triggeredById, projectColor],
+      ).catch((err: any) => addError(state, `project insert ${proj.key}: ${err.message}`));
 
-      // Apply status mapping if provided
-      const statusMapping = state.statusMapping ?? {};
-      const allStatusNames = new Set([
-        ...defaultStatuses.map((s) => s.name),
-        ...Object.keys(statusMapping),
-      ]);
+      // Step 2 — SELECT the row (works whether just inserted or already existed)
+      const { rows: lookupRows } = await client.query<{ id: string }>(
+        `SELECT id FROM projects WHERE organization_id = $1 AND key = $2 LIMIT 1`,
+        [state.organizationId, proj.key],
+      ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+      projectId = lookupRows[0]?.id;
 
-      let position = 0;
-      for (const statusName of allStatusNames) {
-        const mapped = statusMapping[statusName] ?? statusName;
-        const category = mapped.toLowerCase().includes('progress') ? 'in_progress'
-          : mapped.toLowerCase().includes('done') || mapped.toLowerCase().includes('complete') ? 'done'
-          : 'todo';
-        const color = category === 'done' ? '#10B981' : category === 'in_progress' ? '#3B82F6' : '#6B7280';
-        await client.query(
-          `INSERT INTO issue_statuses (id, name, category, color, position, project_id, created_at, updated_at)
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())
-           ON CONFLICT (project_id, name) DO NOTHING`,
-          [mapped, category, color, position++, projectId],
-        ).catch(() => {});
+      if (!projectId) {
+        addError(state, `project ${proj.key}: could not create or find project — skipping`);
+        continue;
       }
 
+      // Step 3 — Patch name and color in case the row pre-existed with stale data.
+      // Use explicit varchar cast on $2 to prevent PostgreSQL COALESCE type-inference errors.
+      await client.query(
+        `UPDATE projects SET name = $1, color = COALESCE(color, $2::varchar), updated_at = NOW() WHERE id = $3::uuid`,
+        [proj.name || proj.key, projectColor, projectId],
+      ).catch((err: any) => addError(state, `project patch ${proj.key}: ${err.message}`));
+
+      state.jiraProjectIdToLocalId[proj.key] = projectId;
+
+      // ── Fetch real Jira statuses for this project ────────────────────────────
+      // GET /rest/api/3/project/{projectKey}/statuses returns an array of issue
+      // type objects, each with a `statuses` array. We deduplicate by status id.
+      interface JiraStatusEntry {
+        id: string;
+        name: string;
+        statusCategory: { name: string };
+      }
+      interface JiraIssueTypeStatuses {
+        statuses: JiraStatusEntry[];
+      }
+
+      let jiraStatuses: JiraStatusEntry[] = [];
+      try {
+        const issueTypeStatuses = await jiraGet<JiraIssueTypeStatuses[]>(
+          credentials,
+          `/rest/api/3/project/${proj.key}/statuses`,
+        );
+        // Deduplicate by Jira status id — different issue types share statuses
+        const seen = new Set<string>();
+        for (const issueType of issueTypeStatuses ?? []) {
+          for (const s of issueType.statuses ?? []) {
+            if (!seen.has(s.id)) {
+              seen.add(s.id);
+              jiraStatuses.push(s);
+            }
+          }
+        }
+      } catch (err: any) {
+        addError(state, `statuses fetch for ${proj.key}: ${err.message} — falling back to defaults`);
+      }
+
+      // Fall back to sensible defaults when Jira API returned nothing
+      if (jiraStatuses.length === 0) {
+        jiraStatuses = [
+          { id: 'todo', name: 'To Do', statusCategory: { name: 'To Do' } },
+          { id: 'inprogress', name: 'In Progress', statusCategory: { name: 'In Progress' } },
+          { id: 'done', name: 'Done', statusCategory: { name: 'Done' } },
+        ];
+      }
+
+      // Sort: todo → in_progress → done so positions are stable
+      const ORDER: Record<'todo' | 'in_progress' | 'done', number> = { todo: 0, in_progress: 1, done: 2 };
+      const statusMapping = state.statusMapping ?? {};
+      jiraStatuses.sort((a, b) => {
+        const catA = mapJiraStatusCategory(a.name, a.statusCategory.name, statusMapping);
+        const catB = mapJiraStatusCategory(b.name, b.statusCategory.name, statusMapping);
+        return ORDER[catA] - ORDER[catB];
+      });
+
+      // ── Upsert issue_statuses rows ───────────────────────────────────────────
+      // There is NO unique constraint on (project_id, name) — must use WHERE NOT EXISTS.
+      state.projectStatusMap[projectId] = {};
+      let position = 0;
+      for (const jiraStatus of jiraStatuses) {
+        const displayName = (statusMapping[jiraStatus.name] ?? jiraStatus.name).trim();
+        const category = mapJiraStatusCategory(jiraStatus.name, jiraStatus.statusCategory.name, statusMapping);
+        const color = STATUS_CATEGORY_COLORS[category];
+
+        const { rows: statusRows } = await client.query<{ id: string }>(
+          `INSERT INTO issue_statuses (id, name, category, color, position, project_id, created_at, updated_at)
+           SELECT gen_random_uuid(), $1::varchar, $2::varchar, $3::varchar, $4::int, $5::uuid, NOW(), NOW()
+           WHERE NOT EXISTS (
+             SELECT 1 FROM issue_statuses WHERE project_id = $5::uuid AND name = $1::varchar
+           )
+           RETURNING id`,
+          [displayName, category, color, position, projectId],
+        );
+
+        let statusId: string;
+        if (statusRows[0]) {
+          statusId = statusRows[0].id;
+        } else {
+          // Row already existed — look it up
+          const { rows: existing } = await client.query<{ id: string }>(
+            `SELECT id FROM issue_statuses WHERE project_id = $1 AND name = $2 LIMIT 1`,
+            [projectId, displayName],
+          );
+          statusId = existing[0]?.id ?? '';
+        }
+
+        if (statusId) {
+          // Map both the original Jira name AND the display name so issue lookup works either way
+          state.projectStatusMap[projectId][jiraStatus.name] = statusId;
+          state.projectStatusMap[projectId][displayName] = statusId;
+        }
+        position++;
+      }
+
+      console.log(
+        `[Migration:${state.id}] Project ${proj.key} — created ${jiraStatuses.length} statuses: ` +
+        jiraStatuses.map((s) => s.name).join(', '),
+      );
       processedProjects++;
     } catch (err: any) {
       addError(state, `project ${proj.key}: ${err.message}`);
@@ -519,17 +653,26 @@ async function runSprintsPhase(
       for (const sprint of sprints) {
         try {
           // sprints table: id, project_id, name, goal, status, start_date, end_date, completed_at, created_at, updated_at
+          const sprintStatus = sprint.state === 'active' ? 'active' : sprint.state === 'closed' ? 'completed' : 'planned';
+          // completed_at: use endDate when available for closed sprints, otherwise NOW()
+          const completedAt = sprintStatus === 'completed'
+            ? (sprint.endDate ?? 'NOW()')
+            : null;
           const { rows } = await client.query<{ id: string }>(
-            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, project_id, created_at, updated_at)
-             SELECT gen_random_uuid(), $1::text, $2::text, $3::text, $4::timestamptz, $5::timestamptz, $6::uuid, NOW(), NOW()
-             WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $6::uuid AND name = $1::text)
+            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
+             SELECT gen_random_uuid(), $1::text, $2::text, $3::text,
+                    $4::date, $5::date,
+                    $6::timestamp,
+                    $7::uuid, NOW(), NOW()
+             WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1::text)
              RETURNING id`,
             [
               sprint.name,
-              sprint.state === 'active' ? 'active' : sprint.state === 'closed' ? 'completed' : 'planned',
+              sprintStatus,
               sprint.goal ?? null,
-              sprint.startDate ?? null,
-              sprint.endDate ?? null,
+              sprint.startDate ? sprint.startDate.substring(0, 10) : null,
+              sprint.endDate ? sprint.endDate.substring(0, 10) : null,
+              completedAt,
               projectId,
             ],
           );
@@ -591,16 +734,28 @@ async function runIssuesPhase(
   let processedIssues = 0;
   let failedIssues = 0;
 
-  const statusMapping = state.statusMapping ?? {};
-
   for (const proj of state.selectedProjects ?? []) {
     const projectId = state.jiraProjectIdToLocalId[proj.key];
     if (!projectId) continue;
+
+    // Reload the per-project status map in case Phase 2 was already completed
+    // (resume path) and projectStatusMap is empty.
+    if (!state.projectStatusMap[projectId] || Object.keys(state.projectStatusMap[projectId]).length === 0) {
+      const { rows: statusRows } = await client.query<{ id: string; name: string }>(
+        `SELECT id, name FROM issue_statuses WHERE project_id = $1`,
+        [projectId],
+      );
+      state.projectStatusMap[projectId] = {};
+      for (const r of statusRows) {
+        state.projectStatusMap[projectId][r.name] = r.id;
+      }
+    }
 
     const jql = `project = "${proj.key}" ORDER BY created ASC`;
     let startAt = state.currentOffset; // resume support
     let hasMore = true;
     let firstPage = true;
+    let projectIssueCount = 0;
 
     while (hasMore) {
       const encoded = encodeURIComponent(jql);
@@ -625,15 +780,27 @@ async function runIssuesPhase(
           const type = mapIssueType(fields.issuetype?.name);
           const priority = mapPriority(fields.priority?.name);
 
-          // Status → find or use default "To Do"
+          // Resolve status_id from the in-memory map built in Phase 2.
+          // Try exact Jira status name first, then fall back to 'To Do'.
           const jiraStatusName = fields.status?.name ?? 'To Do';
-          const mappedStatus = statusMapping[jiraStatusName] ?? jiraStatusName;
+          const projectStatuses = state.projectStatusMap[projectId] ?? {};
+          const statusMapping = state.statusMapping ?? {};
+          const mappedStatusName = (statusMapping[jiraStatusName] ?? jiraStatusName).trim();
+          const statusId =
+            projectStatuses[jiraStatusName] ??
+            projectStatuses[mappedStatusName] ??
+            // Last resort: find any status with category 'todo' as the default column
+            null;
 
-          const { rows: statusRows } = await client.query<{ id: string }>(
-            `SELECT id FROM issue_statuses WHERE project_id = $1 AND name = $2 LIMIT 1`,
-            [projectId, mappedStatus],
-          );
-          const statusId = statusRows[0]?.id ?? null;
+          // If we still couldn't find it, try a live DB lookup (handles resume path)
+          let resolvedStatusId = statusId;
+          if (!resolvedStatusId) {
+            const { rows: fallbackRows } = await client.query<{ id: string }>(
+              `SELECT id FROM issue_statuses WHERE project_id = $1 AND category = 'todo' ORDER BY position LIMIT 1`,
+              [projectId],
+            );
+            resolvedStatusId = fallbackRows[0]?.id ?? null;
+          }
 
           // Assignee / reporter
           const assigneeEmail = fields.assignee?.emailAddress?.toLowerCase();
@@ -649,10 +816,12 @@ async function runIssuesPhase(
             sprintId = state.jiraSprintIdToLocalId[String(activeSprint.id)] ?? null;
           }
 
-          // Stript ADF description → plaintext
+          // Strip ADF description → plaintext
           const description = extractDescription(fields.description);
 
-          // Extract numeric part from Jira key (e.g. DROM-46 → 46)
+          // Extract numeric part from Jira key (e.g. DROM-46 → 46).
+          // Use the DB sequence to avoid collisions on the (project_id, number) unique constraint:
+          // if the Jira number is already taken by a different jira_key, auto-assign the next free number.
           const issueNumber = parseInt(issue.key.split('-').pop() ?? '0', 10) || 0;
           // reporter_id is NOT NULL — fall back to migration owner
           const safeReporterId = reporterId ?? state.triggeredById;
@@ -670,7 +839,13 @@ async function runIssuesPhase(
                gen_random_uuid(), $1::text, $2::text, $3::text, $4::text,
                $5::uuid, $6::uuid, $7::uuid,
                $8::uuid, $9::uuid, $10::uuid,
-               $11::text, $12::int, $13::text, $14::text[], $15::int,
+               $11::text,
+               CASE
+                 WHEN NOT EXISTS (SELECT 1 FROM issues WHERE project_id = $6::uuid AND number = $12::int)
+                 THEN $12::int
+                 ELSE (SELECT COALESCE(MAX(number), 0) + 1 FROM issues WHERE project_id = $6::uuid)
+               END,
+               $13::text, $14::text[], $15::int,
                $16::int, $17::int,
                COALESCE($18::timestamptz, NOW()), COALESCE($19::timestamptz, NOW())
              WHERE NOT EXISTS (
@@ -682,7 +857,7 @@ async function runIssuesPhase(
               description,
               type,
               priority,
-              statusId,
+              resolvedStatusId,
               projectId,
               state.organizationId,
               assigneeId,
@@ -703,6 +878,7 @@ async function runIssuesPhase(
           if (issueRows[0]) {
             state.jiraIssueKeyToLocalId[issue.key] = issueRows[0].id;
             processedIssues++;
+            projectIssueCount++;
           } else {
             // Already exists — look up ID for the comments phase
             const { rows: existing } = await client.query<{ id: string }>(
@@ -711,6 +887,7 @@ async function runIssuesPhase(
             );
             if (existing[0]) state.jiraIssueKeyToLocalId[issue.key] = existing[0].id;
             processedIssues++;
+            projectIssueCount++;
           }
         } catch (err: any) {
           addError(state, `issue ${issue.key}: ${err.message}`);
@@ -731,6 +908,32 @@ async function runIssuesPhase(
 
       if (hasMore) await delay(REQUEST_DELAY_MS);
     }
+
+    // ── Update projects.next_issue_number so new issues get correct numbers ──
+    await client.query(
+      `UPDATE projects
+       SET next_issue_number = (
+         SELECT COALESCE(MAX(number), 0) + 1 FROM issues WHERE project_id = $1
+       ),
+       updated_at = NOW()
+       WHERE id = $1`,
+      [projectId],
+    ).catch((err: any) => addError(state, `next_issue_number update for ${proj.key}: ${err.message}`));
+
+    // ── Verification log per project ─────────────────────────────────────────
+    const { rows: verifyRows } = await client.query<{
+      issue_count: number; sprint_count: number; status_count: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*) FROM issues WHERE project_id = $1)::int AS issue_count,
+         (SELECT COUNT(*) FROM sprints WHERE project_id = $1)::int AS sprint_count,
+         (SELECT COUNT(*) FROM issue_statuses WHERE project_id = $1)::int AS status_count`,
+      [projectId],
+    ).catch(() => ({ rows: [] as any[] }));
+    const v = verifyRows[0] ?? { issue_count: 0, sprint_count: 0, status_count: 0 };
+    console.log(
+      `[Migration] ${proj.key}: ${v.issue_count} issues imported, ${v.sprint_count} sprints, ${v.status_count} statuses`,
+    );
 
     // Reset offset for next project
     state.currentOffset = 0;
@@ -958,12 +1161,27 @@ async function processJob(
         );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_PROJECTS];
       } else {
-        console.log(`[Migration:${runId}] Phase 2 (projects) already completed — reloading project map`);
+        console.log(`[Migration:${runId}] Phase 2 (projects) already completed — reloading project + status maps`);
         const { rows } = await progressClient.query<{ key: string; id: string }>(
           `SELECT key, id FROM projects WHERE organization_id = $1`,
           [organizationId],
         );
         for (const r of rows) state.jiraProjectIdToLocalId[r.key] = r.id;
+
+        // Rebuild per-project status map so Phase 4 can resolve status_id
+        const { rows: statusRows } = await progressClient.query<{
+          project_id: string; id: string; name: string;
+        }>(
+          `SELECT s.project_id, s.id, s.name
+           FROM issue_statuses s
+           INNER JOIN projects p ON p.id = s.project_id
+           WHERE p.organization_id = $1`,
+          [organizationId],
+        ).catch(() => ({ rows: [] as any[] }));
+        for (const r of statusRows) {
+          if (!state.projectStatusMap[r.project_id]) state.projectStatusMap[r.project_id] = {};
+          state.projectStatusMap[r.project_id][r.name] = r.id;
+        }
       }
 
       // ── Phase 3 — sprints ────────────────────────────────────────────────────
