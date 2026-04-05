@@ -540,11 +540,14 @@ export class MigrationService {
     }
 
     const site = resources[0]; // Use first (most common case)
-    const baseUrl = site.url.replace(/\/$/, '');
+    // Atlassian OAuth Bearer tokens must be used against api.atlassian.com/ex/jira/{cloudId},
+    // NOT against the site URL (e.g. codeupscale.atlassian.net). Using the site URL causes
+    // silent 401/403 errors. The REST path is appended by JiraApiService.get().
+    const apiBaseUrl = `https://api.atlassian.com/ex/jira/${site.id}`;
 
     // Fetch Jira projects via the cloud API
     const credentials = {
-      baseUrl,
+      baseUrl: apiBaseUrl,
       email: '',          // Not used for OAuth — token auth
       apiToken: access_token, // OAuth bearer
     };
@@ -572,7 +575,9 @@ export class MigrationService {
     const connection = this.connectionRepository.create({
       organizationId,
       createdById: userId,
-      jiraUrl: baseUrl,
+      // Store the API base URL (api.atlassian.com/ex/jira/{id}) so all subsequent
+      // credential lookups (preview, migration worker, member fetch) use the correct URL.
+      jiraUrl: apiBaseUrl,
       // OAuth connections use Bearer auth — email must be empty so JiraApiService
       // sends Authorization: Bearer instead of Authorization: Basic email:token
       jiraEmail: '',
