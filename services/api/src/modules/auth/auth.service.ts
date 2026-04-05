@@ -49,6 +49,11 @@ export class AuthService {
       return null;
     }
 
+    // OAuth-only accounts have no password hash — reject password login gracefully
+    if (!user.passwordHash) {
+      return null;
+    }
+
     // Check if account is locked
     if (this.usersService.isAccountLocked(user)) {
       const lockedUntil = new Date(user.lockedUntil);

@@ -48,13 +48,13 @@ export class UsersService {
 
     const qb = this.usersRepository
       .createQueryBuilder('user')
-      .where('user.organization_id = :organizationId', { organizationId })
-      .andWhere('user.is_active = true')
-      .orderBy('user.display_name', 'ASC');
+      .where('user.organizationId = :organizationId', { organizationId })
+      .andWhere('user.isActive = true')
+      .orderBy('user.displayName', 'ASC');
 
     if (options?.search) {
       qb.andWhere(
-        '(user.display_name ILIKE :search OR user.email ILIKE :search)',
+        '(user.displayName ILIKE :search OR user.email ILIKE :search)',
         { search: `%${options.search}%` },
       );
     }
@@ -78,10 +78,10 @@ export class UsersService {
   ): Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'>[]> {
     return this.usersRepository
       .createQueryBuilder('user')
-      .select(['user.id', 'user.email', 'user.display_name', 'user.avatar_url'])
-      .where('user.organization_id = :organizationId', { organizationId })
-      .andWhere('user.is_active = true')
-      .orderBy('user.display_name', 'ASC')
+      .select(['user.id', 'user.email', 'user.displayName', 'user.avatarUrl'])
+      .where('user.organizationId = :organizationId', { organizationId })
+      .andWhere('user.isActive = true')
+      .orderBy('user.displayName', 'ASC')
       .getMany() as Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'>[]>;
   }
 

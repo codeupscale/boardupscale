@@ -87,10 +87,10 @@ describe('UsersService', () => {
         limit: 20,
       });
       expect(qb.where).toHaveBeenCalledWith(
-        'user.organization_id = :organizationId',
+        'user.organizationId = :organizationId',
         { organizationId: TEST_IDS.ORG_ID },
       );
-      expect(qb.andWhere).toHaveBeenCalledWith('user.is_active = true');
+      expect(qb.andWhere).toHaveBeenCalledWith('user.isActive = true');
     });
   });
 
