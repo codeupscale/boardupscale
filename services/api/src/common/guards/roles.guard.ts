@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Inject } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY, RequiredPermission } from '../decorators/require-permission.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { PermissionsService } from '../../modules/permissions/permissions.service';
 
 export const ROLES_KEY = 'roles';
@@ -24,6 +25,14 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
     const { user } = request;
 

@@ -240,9 +240,3 @@ export function useRetryMigrationFromHistory() {
   })
 }
 
-export function useOAuthAuthorizeUrl(): string {
-  // Build the URL the frontend can use to initiate the Atlassian OAuth flow
-  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : '') || 'http://localhost:4000'
-  // We hit the API endpoint which does a server-side redirect to Atlassian
-  return `/api/migration/jira/oauth/authorize?state=boardupscale-jira-oauth`
-}

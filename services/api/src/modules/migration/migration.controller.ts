@@ -23,6 +23,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 
@@ -178,20 +179,21 @@ export class MigrationController {
   }
 
   /**
-   * GET /api/migration/jira/oauth/authorize
-   * Build the Atlassian OAuth 2.0 (3-legged) authorization URL and redirect.
-   * Scopes: read:jira-work read:jira-user offline_access
-   *
-   * The `state` param is an opaque value the frontend can use for CSRF protection.
+   * GET /api/migration/jira/oauth/authorize-url
+   * Returns the Atlassian OAuth URL with a signed `state` (user + org + expiry).
+   * Browsers cannot send Bearer tokens on full-page navigation; the frontend must call
+   * this endpoint via XHR first, then set window.location to `data.url`.
    */
-  @Get('oauth/authorize')
-  @ApiOperation({ summary: 'Redirect to Atlassian OAuth consent screen' })
-  @ApiQuery({ name: 'state', required: false, type: String })
-  @ApiResponse({ status: 302, description: 'Redirects to Atlassian OAuth' })
-  @Redirect()
-  oauthAuthorize(@Query('state') state = '') {
-    const url = this.migrationService.buildOAuthAuthorizeUrl(state || 'boardupscale-jira-oauth');
-    return { url, statusCode: 302 };
+  @Get('oauth/authorize-url')
+  @ApiOperation({ summary: 'Get Atlassian OAuth URL (signed state)' })
+  @ApiResponse({ status: 200, description: 'JSON with url to open in the browser' })
+  oauthAuthorizeUrl(
+    @CurrentUser('id') userId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const signed = this.migrationService.signOAuthState(userId, organizationId);
+    const url = this.migrationService.buildOAuthAuthorizeUrl(signed);
+    return { url };
   }
 
   /**
@@ -199,20 +201,21 @@ export class MigrationController {
    * Atlassian OAuth callback — exchanges code for tokens, creates migration run,
    * and redirects the browser back to the frontend wizard with runId + metadata.
    */
+  @Public()
   @Get('oauth/callback')
   @ApiOperation({ summary: 'Atlassian OAuth callback — exchanges code and creates migration run' })
   @ApiQuery({ name: 'code', required: true, type: String })
-  @ApiQuery({ name: 'state', required: false, type: String })
+  @ApiQuery({ name: 'state', required: true, type: String })
   @ApiResponse({ status: 302, description: 'Redirects to frontend wizard' })
   @Redirect()
-  async oauthCallback(
-    @Query('code') code: string,
-    @Query('state') _state: string,
-    @OrgId() organizationId: string,
-    @CurrentUser('id') userId: string,
-  ) {
+  async oauthCallback(@Query('code') code: string, @Query('state') state: string) {
     const frontendUrl = this.configService.get<string>('atlassian.frontendRedirectUrl');
+    if (!code || !state) {
+      const params = new URLSearchParams({ oauthError: 'Missing OAuth code or state' });
+      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+    }
     try {
+      const { userId, organizationId } = this.migrationService.verifyOAuthState(state);
       const result = await this.migrationService.exchangeOAuthCode(code, organizationId, userId);
       const params = new URLSearchParams({
         oauth: '1',

@@ -373,13 +373,24 @@ async function runMembersPhase(
     if (!jiraUser.emailAddress) continue;
     const email = jiraUser.emailAddress.toLowerCase();
     try {
-      // Upsert user record
+      // Apply role mapping: prefer lookup by accountId, fall back to email, then 'member'
+      const roleMappingRecord = state.roleMapping ?? {};
+      const mappedRole = roleMappingRecord[jiraUser.accountId] ?? roleMappingRecord[email] ?? 'member';
+      const safeRole = ['admin', 'manager', 'member', 'viewer'].includes(mappedRole) ? mappedRole : 'member';
+
+      // Upsert user — membership is via users.organization_id (single-org model).
+      // ON CONFLICT: update display_name + role; set organization_id only when unset
+      // so we never move an existing user between orgs.
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, true, false, 'member', NOW(), NOW())
-         ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = NOW()
+         VALUES (gen_random_uuid(), $1, $2, $3, true, false, $4, NOW(), NOW())
+         ON CONFLICT (email) DO UPDATE SET
+           display_name = EXCLUDED.display_name,
+           organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
+           role = EXCLUDED.role,
+           updated_at = NOW()
          RETURNING id`,
-        [email, jiraUser.displayName ?? email.split('@')[0], state.organizationId],
+        [email, jiraUser.displayName ?? email.split('@')[0], state.organizationId, safeRole],
       ).catch(() => ({ rows: [] as Array<{ id: string }> }));
 
       if (rows[0]) {
@@ -406,13 +417,26 @@ async function runMembersPhase(
  * Maps a Jira status category name to our internal category enum value.
  * Jira categories: "To Do", "In Progress", "Done" (statusCategory.name),
  * or we fall back to matching on the status name itself.
+ *
+ * BUG FIX: Check Jira's authoritative category FIRST. Only fall back to
+ * keyword heuristics on the user-mapped name when the native category is
+ * unknown/missing. Previously the keyword check ran first, causing names
+ * like "Done Review" to match 'review' → 'in_progress' instead of Jira's
+ * own 'done' category.
  */
 function mapJiraStatusCategory(
   statusName: string,
   jiraCategoryName: string,
   statusMapping: Record<string, string>,
 ): 'todo' | 'in_progress' | 'done' {
-  // Apply user-supplied mapping first
+  // 1. Check Jira's native category first — it is authoritative
+  const cat = jiraCategoryName.toLowerCase();
+  if (cat === 'in progress') return 'in_progress';
+  if (cat === 'done') return 'done';
+  if (cat === 'to do') return 'todo';
+
+  // 2. Fall back to keyword heuristics on the (possibly user-mapped) name
+  //    only when Jira's category is unknown/missing
   const mapped = (statusMapping[statusName] ?? statusName).toLowerCase();
   if (mapped.includes('progress') || mapped.includes('review') || mapped.includes('testing')) {
     return 'in_progress';
@@ -423,10 +447,6 @@ function mapJiraStatusCategory(
   ) {
     return 'done';
   }
-  // Use Jira's own category as the ground truth
-  const cat = jiraCategoryName.toLowerCase();
-  if (cat === 'in progress') return 'in_progress';
-  if (cat === 'done') return 'done';
   return 'todo';
 }
 
@@ -727,12 +747,16 @@ async function runIssuesPhase(
     'summary', 'description', 'issuetype', 'priority', 'status',
     'assignee', 'reporter', 'created', 'updated', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
-    'subtasks', 'parent', 'comment',
+    'subtasks', 'parent', 'comment', 'issuelinks',
   ].join(',');
 
   let totalIssues = 0;
   let processedIssues = 0;
   let failedIssues = 0;
+
+  // Accumulated across all projects for the post-import pass
+  const parentMap: Record<string, string> = {};         // jiraKey → parentJiraKey
+  const issueLinkAccum: Array<{ sourceKey: string; links: any[] }> = [];
 
   for (const proj of state.selectedProjects ?? []) {
     const projectId = state.jiraProjectIdToLocalId[proj.key];
@@ -889,6 +913,15 @@ async function runIssuesPhase(
             processedIssues++;
             projectIssueCount++;
           }
+
+          // Track parent key for the post-import parent-link pass
+          if (fields.parent?.key) {
+            parentMap[issue.key] = fields.parent.key;
+          }
+          // Track issue links for the post-import link pass
+          if (Array.isArray(fields.issuelinks) && fields.issuelinks.length > 0) {
+            issueLinkAccum.push({ sourceKey: issue.key, links: fields.issuelinks });
+          }
         } catch (err: any) {
           addError(state, `issue ${issue.key}: ${err.message}`);
           failedIssues++;
@@ -940,8 +973,9 @@ async function runIssuesPhase(
     await updateRunProgress(client, state.id, { currentOffset: 0 }, null);
   }
 
-  // Second pass: link parent/subtask relationships
-  await linkParentIssues(client, state, credentials);
+  // Second pass: link parent/subtask relationships + issue links
+  await linkParentIssues(client, state, parentMap);
+  await importIssueLinks(client, state, issueLinkAccum);
 
   await updateRunProgress(client, state.id, {
     totalIssues,
@@ -956,15 +990,59 @@ async function runIssuesPhase(
 async function linkParentIssues(
   client: PoolClient,
   state: RunState,
-  credentials: JiraCredentials,
+  parentMap: Record<string, string>, // jiraKey → parentJiraKey
 ): Promise<void> {
-  // For each issue with a parent, set parent_id
-  for (const [jiraKey, localId] of Object.entries(state.jiraIssueKeyToLocalId)) {
-    // We stored parent key in description metadata — instead re-fetch from Jira if needed
-    // For simplicity: query our DB for issues that need parent linkage would require jiraKey index
-    // This is a best-effort pass; parent links are set during initial upsert via jiraKey lookup
-    void jiraKey; void localId; // covered in main upsert via jiraIssueKeyToLocalId
+  let linked = 0;
+  for (const [jiraKey, parentJiraKey] of Object.entries(parentMap)) {
+    const localId = state.jiraIssueKeyToLocalId[jiraKey];
+    const parentLocalId = state.jiraIssueKeyToLocalId[parentJiraKey];
+    if (!localId || !parentLocalId) continue; // parent from a different org/not selected — skip
+    await client.query(
+      `UPDATE issues SET parent_id = $1, updated_at = NOW()
+       WHERE id = $2 AND organization_id = $3`,
+      [parentLocalId, localId, state.organizationId],
+    ).catch((err: any) =>
+      console.error(`[Migration] parent link ${jiraKey} → ${parentJiraKey}: ${err.message}`),
+    );
+    linked++;
   }
+  console.log(`[Migration] Parent links set: ${linked}`);
+}
+
+async function importIssueLinks(
+  client: PoolClient,
+  state: RunState,
+  issueLinkAccum: Array<{ sourceKey: string; links: any[] }>,
+): Promise<void> {
+  let linked = 0;
+  for (const { sourceKey, links } of issueLinkAccum) {
+    const sourceId = state.jiraIssueKeyToLocalId[sourceKey];
+    if (!sourceId) continue;
+    for (const link of links) {
+      // Jira returns either outwardIssue or inwardIssue depending on link direction
+      const targetKey = link.outwardIssue?.key ?? link.inwardIssue?.key;
+      const targetId = targetKey ? state.jiraIssueKeyToLocalId[targetKey] : null;
+      if (!targetId) continue; // target not imported (different project / not selected)
+      const linkType = mapIssueLinkType(link.type?.name);
+      await client.query(
+        `INSERT INTO issue_links (id, source_issue_id, target_issue_id, link_type, created_by, created_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())
+         ON CONFLICT (source_issue_id, target_issue_id, link_type) DO NOTHING`,
+        [sourceId, targetId, linkType, state.triggeredById],
+      ).catch(() => {}); // silently skip duplicate / FK violations
+      linked++;
+    }
+  }
+  console.log(`[Migration] Issue links imported: ${linked}`);
+}
+
+function mapIssueLinkType(name?: string): string {
+  if (!name) return 'relates';
+  const n = name.toLowerCase();
+  if (n.includes('block')) return 'blocks';
+  if (n.includes('duplicat')) return 'duplicates';
+  if (n.includes('clone')) return 'clones';
+  return 'relates';
 }
 
 // ─── Phase 5: Comments ────────────────────────────────────────────────────────
@@ -992,14 +1070,25 @@ async function runCommentsPhase(
 
   for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
     try {
-      const resp = await jiraGet<{ comments: any[] }>(
-        credentials,
-        `/rest/api/3/issue/${jiraKey}/comment?maxResults=100`,
-      ).catch(() => ({ comments: [] }));
+      // Paginate comments — Jira caps at 100 per page
+      const allComments: any[] = [];
+      let commentStart = 0;
+      const COMMENT_PAGE = 100;
+      let hasMoreComments = true;
+      while (hasMoreComments) {
+        const resp = await jiraGet<{ comments: any[]; total: number }>(
+          credentials,
+          `/rest/api/3/issue/${jiraKey}/comment?startAt=${commentStart}&maxResults=${COMMENT_PAGE}`,
+        ).catch(() => ({ comments: [], total: 0 }));
+        allComments.push(...(resp.comments ?? []));
+        commentStart += COMMENT_PAGE;
+        hasMoreComments = allComments.length < (resp.total ?? 0);
+        if (hasMoreComments) await delay(REQUEST_DELAY_MS);
+      }
 
-      totalComments += resp.comments.length;
+      totalComments += allComments.length;
 
-      for (const comment of resp.comments) {
+      for (const comment of allComments) {
         try {
           const authorEmail = comment.author?.emailAddress?.toLowerCase();
           const authorId = authorEmail ? state.jiraUserEmailToLocalId[authorEmail] ?? null : null;

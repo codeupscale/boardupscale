@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import * as querystring from 'querystring';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 import { JiraMigrationRun } from './entities/jira-migration-run.entity';
 import { JiraConnection } from '../import/entities/jira-connection.entity';
@@ -408,6 +410,48 @@ export class MigrationService {
   }
 
   // ── 9. Atlassian OAuth 2.0 — 3-legged flow ────────────────────────────────
+
+  /**
+   * Signed state for OAuth (browser redirects cannot send Authorization headers).
+   * Verified on `/oauth/callback` with APP_SECRET.
+   */
+  signOAuthState(userId: string, organizationId: string): string {
+    const secret = this.configService.get<string>('app.secret');
+    const exp = Date.now() + 15 * 60 * 1000;
+    const body = Buffer.from(JSON.stringify({ userId, organizationId, exp }), 'utf8').toString(
+      'base64url',
+    );
+    const sig = createHmac('sha256', secret).update(body).digest('base64url');
+    return `${body}.${sig}`;
+  }
+
+  verifyOAuthState(state: string): { userId: string; organizationId: string } {
+    const secret = this.configService.get<string>('app.secret');
+    const parts = state.split('.');
+    if (parts.length !== 2) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    const [body, sig] = parts;
+    const expectedSig = createHmac('sha256', secret).update(body).digest('base64url');
+    const sigBuf = Buffer.from(sig, 'utf8');
+    const expBuf = Buffer.from(expectedSig, 'utf8');
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    let parsed: { userId: string; organizationId: string; exp: number };
+    try {
+      parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    } catch {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    if (!parsed.exp || parsed.exp < Date.now()) {
+      throw new UnauthorizedException('OAuth session expired — please start again from the migration wizard');
+    }
+    if (!parsed.userId || !parsed.organizationId) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    return { userId: parsed.userId, organizationId: parsed.organizationId };
+  }
 
   buildOAuthAuthorizeUrl(state: string): string {
     const clientId = this.configService.get<string>('atlassian.clientId');
