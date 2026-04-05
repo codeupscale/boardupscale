@@ -265,8 +265,8 @@ export class MigrationService {
         organizationId,
         connectionId: run.connectionId,
         // Pass selected member IDs so the worker can filter them.
-        // Empty array or undefined means "import all".
-        selectedMemberIds: dto.selectedMemberIds ?? [],
+        // null = import all (no selection made), [] = import none, [...ids] = specific selection.
+        selectedMemberIds: dto.selectedMemberIds ?? null,
       },
       {
         jobId: `migration-${run.id}`,

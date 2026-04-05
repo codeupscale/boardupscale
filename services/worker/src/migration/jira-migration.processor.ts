@@ -46,8 +46,12 @@ interface MigrationJobData {
   runId: string;
   organizationId: string;
   connectionId: string;
-  /** Jira accountIds to import. Empty array means import all members. */
-  selectedMemberIds?: string[];
+  /**
+   * null/undefined = import all members.
+   * [] = import none.
+   * [...ids] = import only the specified Jira accountIds.
+   */
+  selectedMemberIds?: string[] | null;
 }
 
 interface JiraCredentials {
@@ -96,8 +100,12 @@ interface RunState {
    * Populated in Phase 2 so Phase 4 can resolve status_id without extra queries.
    */
   projectStatusMap: Record<string, Record<string, string>>;
-  /** If non-empty, only these accountIds will be imported in the members phase. */
-  selectedMemberIds: string[];
+  /**
+   * null = import all members (no filter applied).
+   * [] = import none.
+   * [...ids] = import only the specified Jira accountIds.
+   */
+  selectedMemberIds: string[] | null;
   /**
    * Issues where inline comments in Phase 4 were partial (comment.total > comment.maxResults).
    * Maps jiraKey → startAt for the next comment page to fetch in Phase 5.
@@ -402,14 +410,19 @@ async function updateRunProgress(
       runId,
       phase: state.currentPhase,
       status: state.status,
+      completedPhases: state.completedPhases ?? [],
       counts: {
         processedProjects: state.processedProjects,
         totalProjects: state.totalProjects,
         processedIssues: state.processedIssues,
         totalIssues: state.totalIssues,
+        failedIssues: state.failedIssues,
         processedMembers: state.processedMembers,
+        totalMembers: state.totalMembers,
         processedSprints: state.processedSprints,
+        totalSprints: state.totalSprints,
         processedComments: state.processedComments,
+        totalComments: state.totalComments,
       },
     })).catch(() => {});
   }
@@ -482,9 +495,12 @@ async function runMembersPhase(
     addError(state, `members fetch: ${err.message}`);
   }
 
-  // Filter to only selected members when a selection was made
-  const filterIds = new Set(state.selectedMemberIds ?? []);
-  const filteredUsers = filterIds.size > 0
+  // null = import all (no filter UI shown), [] = import none, [...ids] = specific selection
+  const filterIds = state.selectedMemberIds != null
+    ? new Set(state.selectedMemberIds)
+    : null; // null means "no filter — import everyone"
+
+  const filteredUsers = filterIds !== null
     ? users.filter((u) => filterIds.has(u.accountId))
     : users;
 
@@ -1749,7 +1765,8 @@ async function processJob(
   db: Pool,
   io: IORedis | null,
 ): Promise<void> {
-  const { runId, organizationId, connectionId, selectedMemberIds = [] } = job.data;
+  // selectedMemberIds: null/undefined = import all, [] = import none, [...ids] = specific filter
+  const { runId, organizationId, connectionId, selectedMemberIds = null } = job.data;
 
   console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
@@ -1927,11 +1944,17 @@ async function processJob(
           runId,
           phase: PHASE_ATTACHMENTS,
           status: 'completed',
+          completedPhases: [1, 2, 3, 4, 5, 6],
           counts: {
-            processedProjects: state.processedProjects,
-            totalProjects: state.totalProjects,
-            processedIssues: state.processedIssues,
-            totalIssues: state.totalIssues,
+            processedIssues: fc.processed_issues,
+            totalIssues: fc.processed_issues,
+            failedIssues: fc.failed_issues,
+            processedMembers: fc.processed_members,
+            totalMembers: fc.processed_members,
+            processedSprints: fc.processed_sprints,
+            totalSprints: fc.processed_sprints,
+            processedComments: fc.processed_comments,
+            totalComments: fc.processed_comments,
           },
         })).catch(() => {});
       }
