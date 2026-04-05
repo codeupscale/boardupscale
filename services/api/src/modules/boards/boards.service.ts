@@ -203,13 +203,16 @@ export class BoardsService {
       }
     }
 
-    const updates = dto.items.map((item) =>
-      this.issueRepository.update(item.issueId, {
-        statusId: item.statusId,
-        position: item.position,
-      }),
+    // Single bulk UPDATE using VALUES list — avoids N individual round trips
+    const values = dto.items
+      .map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}::uuid, $${i * 3 + 3}::float)`)
+      .join(', ');
+    const params = dto.items.flatMap((item) => [item.issueId, item.statusId, item.position]);
+    await this.issueRepository.query(
+      `UPDATE issues SET status_id = v.status_id, position = v.position, updated_at = NOW()
+       FROM (VALUES ${values}) AS v(id, status_id, position)
+       WHERE issues.id = v.id AND issues.organization_id = $${params.length + 1}`,
+      [...params, organizationId],
     );
-
-    await Promise.all(updates);
   }
 }

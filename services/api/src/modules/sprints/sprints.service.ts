@@ -42,6 +42,7 @@ export class SprintsService {
     return this.sprintRepository.find({
       where: { projectId },
       order: { createdAt: 'DESC' },
+      take: 200,
     });
   }
 

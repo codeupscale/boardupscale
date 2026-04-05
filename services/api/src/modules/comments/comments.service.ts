@@ -232,7 +232,7 @@ export class CommentsService {
     while ((match = plainMentionRegex.exec(strippedContent)) !== null) {
       const mentionText = match[1].toLowerCase();
       try {
-        const orgUsers = await this.usersService.findByOrg(issue.organizationId);
+        const { items: orgUsers } = await this.usersService.findByOrg(issue.organizationId, { limit: 100 });
         for (const user of orgUsers) {
           if (user.id === authorId) continue;
           if (mentionedUserIds.has(user.id)) continue;

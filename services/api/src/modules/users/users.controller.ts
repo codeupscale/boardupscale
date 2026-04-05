@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -17,6 +18,7 @@ import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -26,9 +28,32 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List all users in organization' })
-  async findAll(@OrgId() organizationId: string) {
-    const users = await this.usersService.findByOrg(organizationId);
+  @ApiOperation({ summary: 'List users in organization (paginated)' })
+  async findAll(
+    @OrgId() organizationId: string,
+    @Query() pagination: PaginationDto,
+    @Query('search') search?: string,
+  ) {
+    const result = await this.usersService.findByOrg(organizationId, {
+      search,
+      page: pagination.page,
+      limit: pagination.limit,
+    });
+    return {
+      data: result.items,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    };
+  }
+
+  @Get('dropdown')
+  @ApiOperation({ summary: 'List minimal user fields for dropdowns (no pagination, safe fields only)' })
+  async findForDropdown(@OrgId() organizationId: string) {
+    const users = await this.usersService.findAllForDropdown(organizationId);
     return { data: users };
   }
 

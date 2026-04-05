@@ -33,16 +33,22 @@ describe('ProjectsController', () => {
   describe('GET /projects', () => {
     it('should return paginated projects', async () => {
       const projects = [mockProject()];
-      projectsService.findAll.mockResolvedValue(projects);
+      const paginatedResult = { items: projects, total: 1, page: 1, limit: 20 };
+      projectsService.findAll.mockResolvedValue(paginatedResult);
       const user = { id: TEST_IDS.USER_ID };
+      const pagination = { page: 1, limit: 20 };
 
-      const result = await controller.findAll(TEST_IDS.ORG_ID, user);
+      const result = await controller.findAll(TEST_IDS.ORG_ID, user, pagination as any, undefined);
 
-      expect(result).toEqual({ data: projects });
+      expect(result).toEqual({
+        data: projects,
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      });
       expect(projectsService.findAll).toHaveBeenCalledWith(
         TEST_IDS.ORG_ID,
         TEST_IDS.USER_ID,
         undefined,
+        { search: undefined, page: 1, limit: 20 },
       );
     });
   });

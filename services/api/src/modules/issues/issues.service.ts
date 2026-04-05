@@ -135,8 +135,10 @@ export class IssuesService {
     const qb = this.issueRepository
       .createQueryBuilder('issue')
       .leftJoinAndSelect('issue.status', 'status')
-      .leftJoinAndSelect('issue.assignee', 'assignee')
-      .leftJoinAndSelect('issue.reporter', 'reporter')
+      .leftJoin('issue.assignee', 'assignee')
+      .addSelect(['assignee.id', 'assignee.displayName', 'assignee.avatarUrl', 'assignee.email'])
+      .leftJoin('issue.reporter', 'reporter')
+      .addSelect(['reporter.id', 'reporter.displayName', 'reporter.avatarUrl', 'reporter.email'])
       .leftJoinAndSelect('issue.sprint', 'sprint')
       .where('issue.organization_id = :organizationId', { organizationId });
 
@@ -771,19 +773,47 @@ export class IssuesService {
       where: { id: In(dto.issueIds), organizationId, deletedAt: IsNull() },
     });
 
-    let affected = 0;
-    for (const issue of issues) {
-      const issueNumber = await this.projectsService.getNextIssueNumber(dto.targetProjectId);
-      const newKey = `${targetProject.key}-${issueNumber}`;
-      await this.issueRepository.update(issue.id, {
-        projectId: dto.targetProjectId,
-        key: newKey,
-        number: issueNumber,
-        statusId: targetStatusId || issue.statusId,
-        sprintId: null as any, // Clear sprint when moving projects
+    const affected = issues.length;
+    if (affected === 0) {
+      this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-moved', {
+        issueIds: dto.issueIds,
+        targetProjectId: dto.targetProjectId,
       });
-      affected++;
+      return { affected };
     }
+
+    // Reserve a consecutive block of issue numbers atomically (2 DB round trips total)
+    const { rows } = await this.issueRepository.query(
+      `UPDATE projects
+       SET next_issue_number = next_issue_number + $1
+       WHERE id = $2
+       RETURNING next_issue_number - $1 AS first_number`,
+      [affected, dto.targetProjectId],
+    );
+    const firstNumber: number = Number(rows[0].first_number);
+
+    // Build a single bulk UPDATE assigning new keys and moving issues
+    const valuesList = issues
+      .map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}::varchar, $${i * 3 + 3}::int)`)
+      .join(', ');
+    const bulkParams = issues.flatMap((issue, i) => {
+      const issueNumber = firstNumber + i;
+      const newKey = `${targetProject.key}-${issueNumber}`;
+      return [issue.id, newKey, issueNumber];
+    });
+
+    await this.issueRepository.query(
+      `UPDATE issues SET
+         project_id = $${bulkParams.length + 1},
+         key = v.new_key,
+         number = v.new_number,
+         status_id = COALESCE($${bulkParams.length + 2}, status_id),
+         sprint_id = NULL,
+         updated_at = NOW()
+       FROM (VALUES ${valuesList}) AS v(id, new_key, new_number)
+       WHERE issues.id = v.id AND issues.organization_id = $${bulkParams.length + 3}`,
+      [...bulkParams, dto.targetProjectId, targetStatusId ?? null, organizationId],
+    );
 
     this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-moved', {
       issueIds: dto.issueIds,

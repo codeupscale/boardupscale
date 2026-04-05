@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -22,6 +23,7 @@ import { OrgId } from '../../common/decorators/org-id.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('projects')
 @ApiBearerAuth()
@@ -43,9 +45,26 @@ export class ProjectsController {
   })
   @ApiResponse({ status: 200, description: 'List of projects' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findAll(@OrgId() organizationId: string, @CurrentUser() user: any) {
-    const projects = await this.projectsService.findAll(organizationId, user.id, user.role);
-    return { data: projects };
+  async findAll(
+    @OrgId() organizationId: string,
+    @CurrentUser() user: any,
+    @Query() pagination: PaginationDto,
+    @Query('search') search?: string,
+  ) {
+    const result = await this.projectsService.findAll(organizationId, user.id, user.role, {
+      search,
+      page: pagination.page,
+      limit: pagination.limit,
+    });
+    return {
+      data: result.items,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: Math.ceil(result.total / result.limit),
+      },
+    };
   }
 
   @Post()
