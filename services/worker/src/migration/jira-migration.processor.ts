@@ -204,13 +204,13 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
   };
 }
 
-async function loadCredentials(client: PoolClient, connectionId: string): Promise<JiraCredentials> {
+async function loadCredentials(client: PoolClient, connectionId: string, organizationId: string): Promise<JiraCredentials> {
   const { rows } = await client.query(
     `SELECT jira_url AS "baseUrl", jira_email AS email, api_token_enc AS "apiTokenEnc"
-     FROM jira_connections WHERE id = $1`,
-    [connectionId],
+     FROM jira_connections WHERE id = $1 AND organization_id = $2`,
+    [connectionId, organizationId],
   );
-  if (!rows[0]) throw new Error(`Jira connection ${connectionId} not found`);
+  if (!rows[0]) throw new Error(`Jira connection ${connectionId} not found for org ${organizationId}`);
   const { baseUrl, email, apiTokenEnc } = rows[0];
   const apiToken = decryptToken(apiTokenEnc, config.appSecret);
   return { baseUrl, email, apiToken };
@@ -1215,7 +1215,7 @@ async function processJob(
     // Propagate selectedMemberIds from the job payload into run state
     state.selectedMemberIds = selectedMemberIds;
 
-    const credentials = await loadCredentials(client, state.connectionId ?? connectionId);
+    const credentials = await loadCredentials(client, state.connectionId ?? connectionId, organizationId);
     await client.query('COMMIT');
 
     // Update to processing
