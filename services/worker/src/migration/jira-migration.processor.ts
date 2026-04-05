@@ -625,12 +625,24 @@ async function runProjectsPhase(
         continue;
       }
 
-      // Step 3 — Patch name and color in case the row pre-existed with stale data.
-      // Use explicit varchar cast on $2 to prevent PostgreSQL COALESCE type-inference errors.
+      // Step 3 — Patch name, color, and status on the existing row.
+      // Always reset status to 'active' so previously-archived projects become visible again.
       await client.query(
-        `UPDATE projects SET name = $1, color = COALESCE(color, $2::varchar), updated_at = NOW() WHERE id = $3::uuid`,
+        `UPDATE projects
+            SET name = $1, color = COALESCE(color, $2::varchar), status = 'active', updated_at = NOW()
+          WHERE id = $3::uuid`,
         [proj.name || proj.key, projectColor, projectId],
       ).catch((err: any) => addError(state, `project patch ${proj.key}: ${err.message}`));
+
+      // Step 4 — Ensure the migration owner is a project member so they can see it.
+      // Non-admin users are shown only projects where they have a project_members row.
+      // project_members schema: id, project_id, user_id, role, role_id (nullable), created_at
+      await client.query(
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'admin', NOW())
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, state.triggeredById],
+      ).catch((err: any) => addError(state, `project member insert ${proj.key}: ${err.message}`));
 
       state.jiraProjectIdToLocalId[proj.key] = projectId;
 
@@ -773,17 +785,33 @@ async function runSprintsPhase(
       const boardId = boardsResp?.values?.[0]?.id;
       if (!boardId) continue;
 
-      const sprintsResp = await jiraGet<{
-        values: Array<{
-          id: number; name: string; state: string;
-          startDate?: string; endDate?: string; goal?: string;
-        }>
-      }>(
-        credentials,
-        `/rest/agile/1.0/board/${boardId}/sprint`,
-      ).catch(() => ({ values: [] }));
+      // Paginate through ALL sprints — Jira Agile API default page size is 50.
+      // Boards with many sprints (e.g. 100+) silently lose data without pagination.
+      const SPRINT_PAGE = 50;
+      const allSprints: Array<{
+        id: number; name: string; state: string;
+        startDate?: string; endDate?: string; goal?: string;
+      }> = [];
+      let sprintStart = 0;
+      let sprintHasMore = true;
+      while (sprintHasMore) {
+        const sprintsResp = await jiraGet<{
+          values: Array<{ id: number; name: string; state: string; startDate?: string; endDate?: string; goal?: string }>;
+          isLast?: boolean;
+          total?: number;
+        }>(
+          credentials,
+          `/rest/agile/1.0/board/${boardId}/sprint?startAt=${sprintStart}&maxResults=${SPRINT_PAGE}`,
+        ).catch(() => ({ values: [], isLast: true }));
 
-      const sprints = sprintsResp?.values ?? [];
+        const page = sprintsResp?.values ?? [];
+        allSprints.push(...page);
+
+        // Jira Agile API signals last page via isLast=true OR by returning < maxResults
+        sprintHasMore = !sprintsResp?.isLast && page.length === SPRINT_PAGE;
+        sprintStart += SPRINT_PAGE;
+      }
+      const sprints = allSprints;
       totalSprints += sprints.length;
 
       for (const sprint of sprints) {
