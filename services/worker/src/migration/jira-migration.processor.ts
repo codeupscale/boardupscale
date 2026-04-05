@@ -1031,8 +1031,8 @@ async function runIssuesPhase(
                 ? (activeSprint.endDate ? activeSprint.endDate.substring(0, 10) : null) : null;
               const { rows: spRows } = await client.query<{ id: string }>(
                 `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-                 SELECT gen_random_uuid(), $1, $2, $3, $4::date, $5::date, $6::date, $7::uuid, NOW(), NOW()
-                 WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1)
+                 SELECT gen_random_uuid(), $1::text, $2::text, $3::text, $4::date, $5::date, $6::timestamp, $7::uuid, NOW(), NOW()
+                 WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1::text)
                  RETURNING id`,
                 [
                   activeSprint.name,
