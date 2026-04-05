@@ -4,7 +4,7 @@ import { NotFoundException, ConflictException, BadRequestException } from '@nest
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { createMockRepository, mockUpdateResult } from '../../test/test-utils';
+import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, TEST_IDS } from '../../test/mock-factories';
 
 jest.mock('bcryptjs');
@@ -70,17 +70,27 @@ describe('UsersService', () => {
   });
 
   describe('findByOrg', () => {
-    it('should return active users for organization', async () => {
+    it('should return active users for organization (paginated)', async () => {
       const users = [mockUser(), mockUser({ id: 'other-user-id', email: 'other@example.com' })];
-      userRepo.find.mockResolvedValue(users);
+      const qb = createMockQueryBuilder(users);
+      // Service calls getCount() then getMany() separately
+      qb.getCount.mockResolvedValue(users.length);
+      qb.getMany.mockResolvedValue(users);
+      userRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await service.findByOrg(TEST_IDS.ORG_ID);
 
-      expect(result).toEqual(users);
-      expect(userRepo.find).toHaveBeenCalledWith({
-        where: { organizationId: TEST_IDS.ORG_ID, isActive: true },
-        order: { displayName: 'ASC' },
+      expect(result).toEqual({
+        items: users,
+        total: users.length,
+        page: 1,
+        limit: 20,
       });
+      expect(qb.where).toHaveBeenCalledWith(
+        'user.organization_id = :organizationId',
+        { organizationId: TEST_IDS.ORG_ID },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith('user.is_active = true');
     });
   });
 

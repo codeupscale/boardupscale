@@ -70,6 +70,7 @@ describe('SprintsService', () => {
       expect(sprintRepo.find).toHaveBeenCalledWith({
         where: { projectId: TEST_IDS.PROJECT_ID },
         order: { createdAt: 'DESC' },
+        take: 200,
       });
     });
 

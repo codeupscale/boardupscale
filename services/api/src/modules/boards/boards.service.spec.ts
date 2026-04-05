@@ -326,7 +326,8 @@ describe('BoardsService', () => {
         .mockResolvedValueOnce(status1)
         .mockResolvedValueOnce(status2);
 
-      issueRepo.update.mockResolvedValue(mockUpdateResult());
+      // New implementation uses a single batch UPDATE via issueRepository.query()
+      issueRepo.query.mockResolvedValue([]);
 
       await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         items: [
@@ -336,10 +337,12 @@ describe('BoardsService', () => {
         ],
       });
 
-      expect(issueRepo.update).toHaveBeenCalledTimes(3);
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-1', { statusId: 'status-1', position: 0 });
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-2', { statusId: 'status-2', position: 1 });
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-3', { statusId: 'status-1', position: 2 });
+      // Single batch query instead of N individual updates — no N+1
+      expect(issueRepo.query).toHaveBeenCalledTimes(1);
+      expect(issueRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE issues'),
+        expect.arrayContaining(['issue-1', 'issue-2', 'issue-3', TEST_IDS.ORG_ID]),
+      );
     });
 
     it('should throw BadRequestException when WIP limit exceeded', async () => {

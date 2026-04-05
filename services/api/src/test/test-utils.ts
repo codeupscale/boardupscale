@@ -28,6 +28,7 @@ export function createMockRepository<T = any>(): jest.Mocked<Repository<T>> {
     preload: jest.fn(),
     insert: jest.fn(),
     upsert: jest.fn(),
+    query: jest.fn(),
     exist: jest.fn(),
     exists: jest.fn(),
     increment: jest.fn(),
