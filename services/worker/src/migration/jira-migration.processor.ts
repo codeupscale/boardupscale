@@ -844,8 +844,11 @@ async function runSprintsPhase(
         );
         boardValues = boardsResp?.values ?? [];
       } catch (err: any) {
-        addError(state, `boards fetch for ${proj.key}: ${err.message} — sprints will be skipped`);
-        console.warn(`[Migration:${state.id}] Boards API error for ${proj.key}: ${err.message}`);
+        // 401 "scope does not match" means the OAuth token lacks read:board-scope:jira-software.
+        // This is non-fatal — phase 4 extracts sprint data from customfield_10020 on each issue.
+        // Do NOT call addError() here; that would show a red error in the UI for a graceful fallback.
+        const is401 = String(err.message).includes('401');
+        console.warn(`[Migration:${state.id}] Boards API ${is401 ? '401 (agile scope missing)' : 'error'} for ${proj.key}: ${err.message} — sprints will be extracted from issue fields in Phase 4`);
         continue;
       }
 
