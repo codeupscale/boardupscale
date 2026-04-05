@@ -43,9 +43,9 @@ export class ProjectsService {
     const qb = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.owner', 'owner')
-      .where('project.organization_id = :organizationId', { organizationId })
+      .where('project.organizationId = :organizationId', { organizationId })
       .andWhere('project.status != :archived', { archived: 'archived' })
-      .orderBy('project.created_at', 'DESC');
+      .orderBy('project.createdAt', 'DESC');
 
     const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin';
     if (!isOrgAdmin) {

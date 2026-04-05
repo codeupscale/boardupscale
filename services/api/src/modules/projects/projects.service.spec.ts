@@ -49,7 +49,7 @@ describe('ProjectsService', () => {
       const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'member');
 
       expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
-      expect(qb.where).toHaveBeenCalledWith('project.organization_id = :organizationId', {
+      expect(qb.where).toHaveBeenCalledWith('project.organizationId = :organizationId', {
         organizationId: TEST_IDS.ORG_ID,
       });
       expect(qb.innerJoin).toHaveBeenCalled();
