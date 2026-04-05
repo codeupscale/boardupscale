@@ -105,7 +105,12 @@ function jiraGet<T>(
   path: string,
   attempt = 1,
 ): Promise<T> {
-  const token = Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64');
+  // OAuth connections have an empty email — use Bearer auth.
+  // API-token connections have a non-empty email — use Basic auth.
+  const authHeader = credentials.email
+    ? `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`
+    : `Bearer ${credentials.apiToken}`;
+
   const rawUrl = credentials.baseUrl.replace(/\/$/, '') + path;
   const parsed = new URL(rawUrl);
   const isHttps = parsed.protocol === 'https:';
@@ -117,7 +122,7 @@ function jiraGet<T>(
     path: parsed.pathname + parsed.search,
     method: 'GET',
     headers: {
-      Authorization: `Basic ${token}`,
+      Authorization: authHeader,
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
