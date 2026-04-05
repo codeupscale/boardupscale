@@ -8,9 +8,10 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  Redirect,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -225,12 +226,16 @@ export class MigrationController {
   @ApiQuery({ name: 'code', required: true, type: String })
   @ApiQuery({ name: 'state', required: true, type: String })
   @ApiResponse({ status: 302, description: 'Redirects to frontend wizard' })
-  @Redirect()
-  async oauthCallback(@Query('code') code: string, @Query('state') state: string) {
+  async oauthCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ): Promise<void> {
     const frontendUrl = this.configService.get<string>('atlassian.frontendRedirectUrl');
     if (!code || !state) {
       const params = new URLSearchParams({ oauthError: 'Missing OAuth code or state' });
-      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
+      return;
     }
     try {
       const { userId, organizationId } = this.migrationService.verifyOAuthState(state);
@@ -243,10 +248,10 @@ export class MigrationController {
         projectCount: String(result.projectCount),
         memberCount: String(result.memberCount),
       });
-      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
     } catch (err: any) {
       const params = new URLSearchParams({ oauthError: err.message ?? 'OAuth failed' });
-      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
     }
   }
 }
