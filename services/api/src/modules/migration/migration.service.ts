@@ -573,7 +573,9 @@ export class MigrationService {
       organizationId,
       createdById: userId,
       jiraUrl: baseUrl,
-      jiraEmail: me.emailAddress?.trim().toLowerCase() ?? '',
+      // OAuth connections use Bearer auth — email must be empty so JiraApiService
+      // sends Authorization: Bearer instead of Authorization: Basic email:token
+      jiraEmail: '',
       apiTokenEnc: tokenEnc,
       isActive: true,
       lastTestedAt: new Date(),
