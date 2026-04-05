@@ -98,6 +98,13 @@ interface RunState {
   projectStatusMap: Record<string, Record<string, string>>;
   /** If non-empty, only these accountIds will be imported in the members phase. */
   selectedMemberIds: string[];
+  /**
+   * Issues where inline comments in Phase 4 were partial (comment.total > comment.maxResults).
+   * Maps jiraKey → startAt for the next comment page to fetch in Phase 5.
+   * NOT persisted to DB — only lives in memory during the current process run.
+   * If the worker restarts, Phase 5 falls back to fetching all issues (isResume path).
+   */
+  issuesNeedingCommentPagination?: Map<string, number>;
 }
 
 // ─── Jira HTTP client (no axios) ─────────────────────────────────────────────
@@ -961,10 +968,11 @@ async function runIssuesPhase(
     'summary', 'description', 'issuetype', 'priority', 'status',
     'assignee', 'reporter', 'created', 'updated', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
-    'subtasks', 'parent', 'issuelinks',
-    // NOTE: 'comment' intentionally omitted — comments are fetched in Phase 5
-    // and including them here bloats responses by ~10x with no benefit.
+    'subtasks', 'parent', 'issuelinks', 'comment',
   ].join(',');
+
+  // Initialize the pagination map — Phase 5 checks for its presence to detect resume.
+  state.issuesNeedingCommentPagination = new Map<string, number>();
 
   let totalIssues = 0;
   let processedIssues = 0;
@@ -1353,6 +1361,48 @@ async function runIssuesPhase(
         }
       }
 
+      // ── Bulk-insert inline comments returned with this page ─────────────────
+      // The 'comment' field returns up to maxResults comments inline.
+      // Issues with total > maxResults are recorded for Phase 5 to paginate.
+      if (state.options?.importComments) {
+        const commentPlaceholders: string[] = [];
+        const commentParams: unknown[] = [];
+        for (const issue of page.issues ?? []) {
+          const localIssueId = state.jiraIssueKeyToLocalId[issue.key];
+          if (!localIssueId) continue;
+          const commentData = issue.fields?.comment;
+          if (!commentData) continue;
+          const inlineComments: any[] = commentData.comments ?? [];
+          const commentTotal: number = commentData.total ?? 0;
+          // If more pages exist, record startAt for Phase 5
+          if (commentTotal > inlineComments.length) {
+            state.issuesNeedingCommentPagination!.set(issue.key, inlineComments.length);
+          }
+          for (const comment of inlineComments) {
+            const authorAccountId = comment.author?.accountId;
+            const authorEmail = comment.author?.emailAddress?.toLowerCase();
+            const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
+              ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
+              ?? state.triggeredById;
+            if (!authorId) continue;
+            const body = extractDescription(comment.body) ?? '';
+            const j = commentPlaceholders.length;
+            commentPlaceholders.push(
+              `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+            );
+            commentParams.push(body, localIssueId, authorId, comment.created ?? null);
+          }
+        }
+        if (commentPlaceholders.length > 0) {
+          await client.query(
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+             VALUES ${commentPlaceholders.join(', ')}
+             ON CONFLICT DO NOTHING`,
+            commentParams,
+          ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
+        }
+      }
+
       // Advance cursor — absent nextPageToken means this was the last page
       nextPageToken = page.nextPageToken;
       hasMore = !!nextPageToken;
@@ -1513,27 +1563,52 @@ async function runCommentsPhase(
     currentPhase: PHASE_COMMENTS,
   }, io);
 
+  // Determine which issues need comment fetching:
+  // - issuesNeedingCommentPagination present → Phase 4 ran in this process; only paginate issues
+  //   where inline comments were partial (total > maxResults returned inline).
+  // - issuesNeedingCommentPagination absent → worker restarted (resume path); fetch all issues
+  //   from startAt=0 since inline comments were not captured.
+  const isResume = !state.issuesNeedingCommentPagination;
+
+  // Build work list: issues to paginate with their starting offset
+  const workList: Array<{ jiraKey: string; localIssueId: string; startAt: number }> = [];
+  for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+    if (isResume) {
+      workList.push({ jiraKey, localIssueId, startAt: 0 });
+    } else {
+      const startAt = state.issuesNeedingCommentPagination!.get(jiraKey);
+      if (startAt !== undefined) {
+        workList.push({ jiraKey, localIssueId, startAt });
+      }
+    }
+  }
+
+  console.log(
+    `[Migration:${state.id}] Phase 5 — ${workList.length} issues to paginate (resume=${isResume})`,
+  );
+
   let totalComments = 0;
   let processedComments = 0;
-  let commentIssueIdx = 0;
-  const COMMENT_FLUSH_EVERY = 50;
+  let doneCount = 0;
+  const total = workList.length;
+  const CONCURRENCY = 20;
+  const COMMENT_PAGE = 100;
+  const FLUSH_EVERY = 10;
 
-  for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+  async function processOneIssue(item: { jiraKey: string; localIssueId: string; startAt: number }) {
     try {
-      // Paginate comments — Jira caps at 100 per page
       const allComments: any[] = [];
-      let commentStart = 0;
-      const COMMENT_PAGE = 100;
-      let hasMoreComments = true;
-      while (hasMoreComments) {
+      let commentStart = item.startAt;
+      let hasMore = true;
+
+      while (hasMore) {
         const resp = await jiraGet<{ comments: any[]; total: number }>(
           credentials,
-          `/rest/api/3/issue/${jiraKey}/comment?startAt=${commentStart}&maxResults=${COMMENT_PAGE}`,
+          `/rest/api/3/issue/${item.jiraKey}/comment?startAt=${commentStart}&maxResults=${COMMENT_PAGE}`,
         ).catch(() => ({ comments: [], total: 0 }));
         allComments.push(...(resp.comments ?? []));
         commentStart += COMMENT_PAGE;
-        hasMoreComments = allComments.length < (resp.total ?? 0);
-        if (hasMoreComments) await delay(REQUEST_DELAY_MS);
+        hasMore = allComments.length < (resp.total ?? 0);
       }
 
       totalComments += allComments.length;
@@ -1549,43 +1624,46 @@ async function runCommentsPhase(
           const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
             ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
             ?? state.triggeredById;
-          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment
-          // rather than letting the bulk INSERT fail with author_id NOT NULL violation.
+          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment.
           if (!authorId) continue;
           const body = extractDescription(comment.body) ?? '';
           const j = placeholders.length;
-          placeholders.push(`(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`);
-          params.push(body, localIssueId, authorId, comment.created ?? null);
+          placeholders.push(
+            `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+          );
+          params.push(body, item.localIssueId, authorId, comment.created ?? null);
         }
         if (placeholders.length > 0) {
-          try {
-            await client.query(
-              `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
-               VALUES ${placeholders.join(', ')}
-               ON CONFLICT DO NOTHING`,
-              params,
-            );
-            processedComments += placeholders.length;
-          } catch (err: any) {
-            addError(state, `comments bulk insert ${jiraKey}: ${err.message}`);
-            // processedComments is NOT incremented — only count successfully inserted comments
-          }
+          await client.query(
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+             VALUES ${placeholders.join(', ')}
+             ON CONFLICT DO NOTHING`,
+            params,
+          ).catch((err: any) => addError(state, `comments bulk insert ${item.jiraKey}: ${err.message}`));
+          processedComments += placeholders.length;
         }
       }
-
-      await delay(REQUEST_DELAY_MS);
     } catch (err: any) {
-      addError(state, `comments for ${jiraKey}: ${err.message}`);
+      addError(state, `comments for ${item.jiraKey}: ${err.message}`);
     }
 
-    commentIssueIdx++;
-    if (commentIssueIdx % COMMENT_FLUSH_EVERY === 0) {
-      await updateRunProgress(client, state.id, {
-        totalComments,
-        processedComments,
-      }, io);
+    doneCount++;
+    if (doneCount % FLUSH_EVERY === 0) {
+      await updateRunProgress(client, state.id, { totalComments, processedComments }, io);
     }
   }
+
+  // Run a concurrency-limited worker pool — no artificial delay needed at concurrency 20
+  let idx = 0;
+  async function worker() {
+    while (idx < total) {
+      const item = workList[idx++];
+      await processOneIssue(item);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(CONCURRENCY, total) }, () => worker());
+  await Promise.all(workers);
 
   await updateRunProgress(client, state.id, {
     totalComments,
@@ -1593,7 +1671,7 @@ async function runCommentsPhase(
     completedPhase: PHASE_COMMENTS,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 5 done — ${processedComments} comments`);
+  console.log(`[Migration:${state.id}] Phase 5 done — ${processedComments} comments inserted`);
 }
 
 // ─── Phase 6: Attachments ─────────────────────────────────────────────────────
