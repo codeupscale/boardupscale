@@ -665,6 +665,19 @@ async function runProjectsPhase(
         [projectId, state.triggeredById],
       ).catch((err: any) => addError(state, `project member insert ${proj.key}: ${err.message}`));
 
+      // Add all existing org members as project members (viewer role) so the project
+      // is visible to everyone in the org after migration — not just the migration owner.
+      await client.query(
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+         SELECT gen_random_uuid(), $1::uuid, u.id, 'member', NOW()
+         FROM users u
+         WHERE u.organization_id = $2::uuid
+           AND u.is_active = true
+           AND u.id != $3::uuid
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, state.organizationId, state.triggeredById],
+      ).catch((err: any) => addError(state, `bulk project members insert ${proj.key}: ${err.message}`));
+
       state.jiraProjectIdToLocalId[proj.key] = projectId;
 
       // ── Fetch real Jira statuses for this project ────────────────────────────
