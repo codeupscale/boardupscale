@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ChevronRight, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { ChevronRight, CheckCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConnectStep } from './steps/ConnectStep'
 import { PreviewStep } from './steps/PreviewStep'
@@ -67,7 +68,9 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
 }
 
 export function JiraMigrationPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [step, setStep] = useState<WizardStep>(1)
+  const [oauthError, setOauthError] = useState<string | null>(null)
 
   // Wizard state accumulated across steps
   const [connectResult, setConnectResult] = useState<ConnectJiraResult | null>(null)
@@ -77,6 +80,44 @@ export function JiraMigrationPage() {
   const [selectedProjects, setSelectedProjects] = useState<PreviewProject[]>([])
   const [migrationPayload, setMigrationPayload] = useState<StartMigrationPayload | null>(null)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
+
+  // On mount: restore state from OAuth redirect params
+  // Atlassian redirects back with ?oauth=1&runId=...&connectionId=...&orgName=...
+  useEffect(() => {
+    const isOAuth = searchParams.get('oauth') === '1'
+    const oauthErr = searchParams.get('oauthError')
+    const runId = searchParams.get('runId')
+    const connId = searchParams.get('connectionId')
+    const orgName = searchParams.get('orgName') ?? 'Jira'
+    const projectCount = parseInt(searchParams.get('projectCount') ?? '0', 10)
+    const memberCount = parseInt(searchParams.get('memberCount') ?? '0', 10)
+
+    // Clean up URL params so browser back/refresh doesn't re-trigger
+    if (isOAuth || oauthErr) {
+      setSearchParams({}, { replace: true })
+    }
+
+    if (oauthErr) {
+      setOauthError(oauthErr)
+      return
+    }
+
+    if (isOAuth && runId && connId) {
+      // Build a minimal ConnectJiraResult from the URL params and jump to Preview
+      const result: ConnectJiraResult = {
+        runId,
+        connectionId: connId,
+        displayName: orgName,
+        orgName,
+        projectCount,
+        memberCount,
+        projects: [], // Preview step fetches its own project list via connectionId
+      }
+      setConnectResult(result)
+      setConnectionId(connId)
+      setStep(2)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleConnect(result: ConnectJiraResult) {
     setConnectResult(result)
@@ -132,6 +173,13 @@ export function JiraMigrationPage() {
         <Stepper currentStep={step} />
 
         {/* Step content */}
+        {oauthError && (
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span><strong>Atlassian connection failed:</strong> {oauthError}. Please try again.</span>
+          </div>
+        )}
+
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 sm:p-8">
           {step === 1 && <ConnectStep onNext={handleConnect} />}
 
