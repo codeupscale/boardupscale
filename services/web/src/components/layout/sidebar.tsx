@@ -34,7 +34,8 @@ export function Sidebar() {
   const location = useLocation()
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useUiStore()
   const user = useAuthStore((s) => s.user)
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
 
   // Close sidebar on mobile on initial mount
   useEffect(() => {

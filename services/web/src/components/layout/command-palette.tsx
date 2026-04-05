@@ -96,7 +96,8 @@ export function CommandPalette() {
 
   // ─── Data ────────────────────────────────────────────────
 
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
   const isCommandMode = query.startsWith('>')
   const searchQuery = isCommandMode ? '' : query
   const { data: searchData, isLoading: isSearching } = useSearch(searchQuery)

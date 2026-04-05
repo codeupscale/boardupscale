@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 export function ProjectPagesPage() {
   const { key } = useParams<{ key: string }>()
   const navigate = useNavigate()
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
   const project = projects?.find((p) => p.key === key)
 
   const { data: pages = [], isLoading } = usePageTree(project?.id)

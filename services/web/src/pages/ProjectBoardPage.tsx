@@ -97,7 +97,8 @@ export function ProjectBoardPage() {
   const { data: board, isLoading } = useBoard(projectKey!, filters)
   const { data: sprints } = useSprints(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
-  const { data: orgUsers } = useUsers()
+  const { data: usersResult } = useUsers()
+  const orgUsers = usersResult?.data
   const reorderIssues = useReorderIssues()
   const createIssue = useCreateIssue()
   const updateStatus = useUpdateStatus()

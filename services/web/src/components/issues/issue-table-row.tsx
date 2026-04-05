@@ -28,8 +28,9 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
         }
       }}
       className={cn(
-        'hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0',
-        selectable && isSelected && 'bg-blue-50 hover:bg-blue-50',
+        'cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
+        'hover:bg-blue-50/50 dark:hover:bg-blue-900/10',
+        selectable && isSelected && 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20',
         className,
       )}
     >
@@ -56,7 +57,9 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
       >
         <div className="flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} />
-          <span className="text-xs font-mono text-blue-600 font-medium">{issue.key}</span>
+          <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-400">
+            {issue.key}
+          </span>
         </div>
       </td>
 

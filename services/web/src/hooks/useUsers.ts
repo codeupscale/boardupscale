@@ -3,13 +3,43 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { User } from '@/types'
 
-export function useUsers() {
+interface UserFilters {
+  page?: number
+  limit?: number
+}
+
+export interface DropdownUser {
+  id: string
+  email: string
+  displayName: string
+  avatarUrl?: string
+}
+
+export function useUsers(filters: UserFilters = {}) {
   return useQuery({
-    queryKey: ['users'],
+    queryKey: ['users', filters],
     queryFn: async () => {
-      const { data } = await api.get('/users')
-      return data.data as User[]
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== undefined),
+      )
+      const { data } = await api.get('/users', { params })
+      return {
+        data: data.data as User[],
+        meta: data.meta as { total: number; page: number; limit: number; totalPages: number },
+      }
     },
+    staleTime: 30_000,
+  })
+}
+
+export function useUsersDropdown() {
+  return useQuery({
+    queryKey: ['users-dropdown'],
+    queryFn: async () => {
+      const { data } = await api.get('/users/dropdown')
+      return data.data as DropdownUser[]
+    },
+    staleTime: 60_000,
   })
 }
 

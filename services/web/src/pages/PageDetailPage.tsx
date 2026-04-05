@@ -27,13 +27,15 @@ export function PageDetailPage() {
   const { key, pageId } = useParams<{ key: string; pageId: string }>()
   const navigate = useNavigate()
 
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
   const project = projects?.find((p) => p.key === key)
 
   const { data: page, isLoading: pageLoading } = usePage(pageId)
   const { data: ancestors = [] } = usePageAncestors(pageId)
   const { data: pageTree = [], isLoading: treeLoading } = usePageTree(project?.id)
-  const { data: orgUsers = [] } = useUsers()
+  const { data: usersResult } = useUsers()
+  const orgUsers = usersResult?.data ?? []
 
   const updatePage = useUpdatePage()
   const createPage = useCreatePage()

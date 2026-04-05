@@ -55,7 +55,8 @@ export function ProjectSettingsPage() {
   const { data: project, isLoading } = useProject(projectKey!)
   const { data: board } = useBoard(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
-  const { data: users } = useUsers()
+  const { data: usersResult } = useUsers()
+  const users = usersResult?.data
 
   const updateProject = useUpdateProject()
   const deleteProject = useDeleteProject()
