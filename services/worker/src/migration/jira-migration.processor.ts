@@ -484,38 +484,39 @@ async function runMembersPhase(
     totalMembers: filteredUsers.length,
   }, io);
 
+  const MEMBER_CHUNK = 500;
   let processed = 0;
-  for (const jiraUser of filteredUsers) {
-    if (!jiraUser.emailAddress) continue;
-    const email = jiraUser.emailAddress.toLowerCase();
-    try {
-      // Apply role mapping: prefer lookup by accountId, fall back to email, then 'member'
+  for (let ci = 0; ci < filteredUsers.length; ci += MEMBER_CHUNK) {
+    const chunk = filteredUsers.slice(ci, ci + MEMBER_CHUNK).filter(u => !!u.emailAddress);
+    if (!chunk.length) continue;
+
+    const placeholders: string[] = [];
+    const params: unknown[] = [];
+    chunk.forEach((u, j) => {
+      const b = j * 4;
+      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, NOW(), NOW())`);
+      const email = u.emailAddress!.toLowerCase();
       const roleMappingRecord = state.roleMapping ?? {};
-      const mappedRole = roleMappingRecord[jiraUser.accountId] ?? roleMappingRecord[email] ?? 'member';
-      const safeRole = ['admin', 'manager', 'member', 'viewer'].includes(mappedRole) ? mappedRole : 'member';
+      const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
+      const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
+      params.push(email, u.displayName ?? email.split('@')[0], state.organizationId, safeRole);
+    });
 
-      // Upsert user — membership is via users.organization_id (single-org model).
-      // ON CONFLICT: update display_name + role; set organization_id only when unset
-      // so we never move an existing user between orgs.
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, true, false, $4, NOW(), NOW())
-         ON CONFLICT (email) DO UPDATE SET
-           display_name = EXCLUDED.display_name,
-           organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
-           role = EXCLUDED.role,
-           updated_at = NOW()
-         RETURNING id`,
-        [email, jiraUser.displayName ?? email.split('@')[0], state.organizationId, safeRole],
-      ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+    const { rows } = await client.query<{ id: string; email: string }>(
+      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
+       VALUES ${placeholders.join(', ')}
+       ON CONFLICT (email) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
+         role = EXCLUDED.role,
+         updated_at = NOW()
+       RETURNING id, email`,
+      params,
+    ).catch((err: any) => { addError(state, `members bulk upsert: ${err.message}`); return { rows: [] as any[] }; });
 
-      if (rows[0]) {
-        state.jiraUserEmailToLocalId[email] = rows[0].id;
-      }
-
+    for (const row of rows) {
+      state.jiraUserEmailToLocalId[row.email] = row.id;
       processed++;
-    } catch (err: any) {
-      addError(state, `member upsert ${email}: ${err.message}`);
     }
   }
 
@@ -981,167 +982,229 @@ async function runIssuesPhase(
       }
       pageNumber++;
 
+      // ── Bulk-upsert new sprints encountered in this page ─────────────────────
+      // Collect unique new sprints (by Jira sprint id) before inserting issues.
+      // If Phase 3 (Agile API) failed due to missing OAuth scope, we create sprints
+      // here on-the-fly from the issue's own sprint field data — no extra scope needed.
+      const newSprintsById = new Map<string, {
+        name: string; state: string; goal?: string;
+        startDate?: string; endDate?: string;
+      }>();
+      for (const issue of page.issues ?? []) {
+        const sprintArr = Array.isArray(issue.fields?.customfield_10020) ? issue.fields.customfield_10020 : [];
+        for (const sp of sprintArr) {
+          const key = String(sp.id);
+          if (!state.jiraSprintIdToLocalId[key] && !newSprintsById.has(key)) {
+            newSprintsById.set(key, sp);
+          }
+        }
+      }
+
+      if (newSprintsById.size > 0) {
+        const sprintEntries = [...newSprintsById.entries()];
+        const spPlaceholders: string[] = [];
+        const spParams: unknown[] = [projectId];
+        sprintEntries.forEach(([, sp], j) => {
+          const b = j * 6 + 2;
+          const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
+          const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
+          spPlaceholders.push(`($${b}::text, $${b+1}::text, $${b+2}::text, $${b+3}::date, $${b+4}::date, $${b+5}::timestamp)`);
+          spParams.push(
+            sp.name, spStatus, sp.goal ?? null,
+            sp.startDate ? sp.startDate.substring(0, 10) : null,
+            sp.endDate ? sp.endDate.substring(0, 10) : null,
+            completedAt,
+          );
+        });
+
+        const { rows: insertedSprints } = await client.query<{ id: string; name: string }>(
+          `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
+           SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, NOW(), NOW()
+           FROM (VALUES ${spPlaceholders.join(', ')}) AS v(name, status, goal, start_date, end_date, completed_at)
+           WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $1::uuid AND name = v.name)
+           RETURNING id, name`,
+          spParams,
+        ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+
+        const nameToId = new Map<string, string>(insertedSprints.map(r => [r.name, r.id] as [string, string]));
+
+        // Fetch IDs for sprints that already existed (not returned by INSERT)
+        const insertedNames = new Set(insertedSprints.map(r => r.name));
+        const existingNames = sprintEntries.map(([, sp]) => sp.name).filter(n => !insertedNames.has(n));
+        if (existingNames.length > 0) {
+          const { rows: existingSprints } = await client.query<{ id: string; name: string }>(
+            `SELECT id, name FROM sprints WHERE project_id = $1 AND name = ANY($2::text[])`,
+            [projectId, existingNames],
+          ).catch(() => ({ rows: [] as any[] }));
+          for (const r of existingSprints) nameToId.set(r.name, r.id);
+        }
+
+        for (const [jiraId, sp] of sprintEntries) {
+          const localId = nameToId.get(sp.name) ?? undefined;
+          if (localId) state.jiraSprintIdToLocalId[jiraId] = localId;
+        }
+      }
+
+      // ── Bulk-insert all issues in this page ──────────────────────────────────
+      interface IssueRow {
+        title: string; description: string | null; type: string; priority: string;
+        statusId: string | null; assigneeId: string | null; reporterId: string;
+        sprintId: string | null; jiraKey: string; jiraNum: number;
+        labels: string[]; storyPoints: number | null;
+        timeEstimate: number | null; timeSpent: number;
+        createdAt: string | null; updatedAt: string | null;
+      }
+
+      const issueRowsToInsert: IssueRow[] = [];
+
       for (const issue of page.issues ?? []) {
         try {
           const fields = issue.fields ?? {};
           const type = mapIssueType(fields.issuetype?.name);
           const priority = mapPriority(fields.priority?.name);
 
-          // Resolve status_id from the in-memory map built in Phase 2.
-          // Try exact Jira status name first, then fall back to 'To Do'.
           const jiraStatusName = fields.status?.name ?? 'To Do';
           const projectStatuses = state.projectStatusMap[projectId] ?? {};
           const statusMapping = state.statusMapping ?? {};
           const mappedStatusName = (statusMapping[jiraStatusName] ?? jiraStatusName).trim();
-          const statusId =
-            projectStatuses[jiraStatusName] ??
-            projectStatuses[mappedStatusName] ??
-            // Last resort: find any status with category 'todo' as the default column
-            null;
-
-          // If we still couldn't find it, try a live DB lookup (handles resume path)
-          let resolvedStatusId = statusId;
-          if (!resolvedStatusId) {
+          let statusId = projectStatuses[jiraStatusName] ?? projectStatuses[mappedStatusName] ?? null;
+          if (!statusId) {
             const { rows: fallbackRows } = await client.query<{ id: string }>(
               `SELECT id FROM issue_statuses WHERE project_id = $1 AND category = 'todo' ORDER BY position LIMIT 1`,
               [projectId],
             );
-            resolvedStatusId = fallbackRows[0]?.id ?? null;
+            statusId = fallbackRows[0]?.id ?? null;
           }
 
-          // Assignee / reporter
           const assigneeEmail = fields.assignee?.emailAddress?.toLowerCase();
           const reporterEmail = fields.reporter?.emailAddress?.toLowerCase();
           const assigneeId = assigneeEmail ? state.jiraUserEmailToLocalId[assigneeEmail] ?? null : null;
           const reporterId = reporterEmail ? state.jiraUserEmailToLocalId[reporterEmail] ?? null : null;
 
-          // Sprint (customfield_10020 is an array in Cloud API v3).
-          // If Phase 3 (Agile API) failed due to missing OAuth scope, we create sprints
-          // here on-the-fly from the issue's own sprint field data — no extra scope needed.
+          // Sprint — already created in bulk above
           let sprintId: string | null = null;
           const sprintArr = Array.isArray(fields.customfield_10020) ? fields.customfield_10020 : [];
           const activeSprint = sprintArr.find((s: any) => s.state === 'active') ?? sprintArr[0];
-          if (activeSprint) {
-            const jiraSprintKey = String(activeSprint.id);
-            if (!state.jiraSprintIdToLocalId[jiraSprintKey]) {
-              // Sprint not yet created — upsert it now from issue field data
-              const spStatus = activeSprint.state === 'active' ? 'active'
-                : activeSprint.state === 'closed' ? 'completed' : 'planned';
-              const spCompletedAt = spStatus === 'completed'
-                ? (activeSprint.endDate ? activeSprint.endDate.substring(0, 10) : null) : null;
-              const { rows: spRows } = await client.query<{ id: string }>(
-                `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-                 SELECT gen_random_uuid(), $1::text, $2::text, $3::text, $4::date, $5::date, $6::timestamp, $7::uuid, NOW(), NOW()
-                 WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1::text)
-                 RETURNING id`,
-                [
-                  activeSprint.name,
-                  spStatus,
-                  activeSprint.goal ?? null,
-                  activeSprint.startDate ? activeSprint.startDate.substring(0, 10) : null,
-                  activeSprint.endDate ? activeSprint.endDate.substring(0, 10) : null,
-                  spCompletedAt,
-                  projectId,
-                ],
-              );
-              let localSprintId = spRows[0]?.id;
-              if (!localSprintId) {
-                const { rows: ex } = await client.query<{ id: string }>(
-                  `SELECT id FROM sprints WHERE project_id = $1 AND name = $2 LIMIT 1`,
-                  [projectId, activeSprint.name],
-                );
-                localSprintId = ex[0]?.id;
-              }
-              if (localSprintId) state.jiraSprintIdToLocalId[jiraSprintKey] = localSprintId;
-            }
-            sprintId = state.jiraSprintIdToLocalId[jiraSprintKey] ?? null;
-          }
+          if (activeSprint) sprintId = state.jiraSprintIdToLocalId[String(activeSprint.id)] ?? null;
 
-          // Strip ADF description → plaintext
-          const description = extractDescription(fields.description);
-
-          // Extract numeric part from Jira key (e.g. DROM-46 → 46).
-          // Use the DB sequence to avoid collisions on the (project_id, number) unique constraint:
-          // if the Jira number is already taken by a different jira_key, auto-assign the next free number.
           const issueNumber = parseInt(issue.key.split('-').pop() ?? '0', 10) || 0;
-          // reporter_id is NOT NULL — fall back to migration owner
           const safeReporterId = reporterId ?? state.triggeredById;
 
-          const { rows: issueRows } = await client.query<{ id: string }>(
-            `INSERT INTO issues (
-               id, title, description, type, priority,
-               status_id, project_id, organization_id,
-               assignee_id, reporter_id, sprint_id,
-               key, number, jira_key, labels, story_points,
-               time_estimate, time_spent,
-               created_at, updated_at
-             )
-             SELECT
-               gen_random_uuid(), $1::text, $2::text, $3::text, $4::text,
-               $5::uuid, $6::uuid, $7::uuid,
-               $8::uuid, $9::uuid, $10::uuid,
-               $11::text,
-               CASE
-                 WHEN NOT EXISTS (SELECT 1 FROM issues WHERE project_id = $6::uuid AND number = $12::int)
-                 THEN $12::int
-                 ELSE (SELECT COALESCE(MAX(number), 0) + 1 FROM issues WHERE project_id = $6::uuid)
-               END,
-               $13::text, $14::text[], $15::int,
-               $16::int, $17::int,
-               COALESCE($18::timestamptz, NOW()), COALESCE($19::timestamptz, NOW())
-             WHERE NOT EXISTS (
-               SELECT 1 FROM issues WHERE project_id = $6::uuid AND jira_key = $13::text
-             )
-             RETURNING id`,
-            [
-              fields.summary ?? issue.key,
-              description,
-              type,
-              priority,
-              resolvedStatusId,
-              projectId,
-              state.organizationId,
-              assigneeId,
-              safeReporterId,
-              sprintId,
-              issue.key,
-              issueNumber,
-              issue.key,
-              Array.isArray(fields.labels) ? fields.labels : [],
-              fields.customfield_10016 ?? null,
-              fields.timetracking?.originalEstimateSeconds ?? null,
-              fields.timetracking?.timeSpentSeconds ?? 0,
-              fields.created ?? null,
-              fields.updated ?? null,
-            ],
-          );
-
-          if (issueRows[0]) {
-            state.jiraIssueKeyToLocalId[issue.key] = issueRows[0].id;
-            processedIssues++;
-            projectIssueCount++;
-          } else {
-            // Already exists — look up ID for the comments phase
-            const { rows: existing } = await client.query<{ id: string }>(
-              `SELECT id FROM issues WHERE project_id = $1 AND jira_key = $2 LIMIT 1`,
-              [projectId, issue.key],
-            );
-            if (existing[0]) state.jiraIssueKeyToLocalId[issue.key] = existing[0].id;
-            processedIssues++;
-            projectIssueCount++;
-          }
-
-          // Track parent key for the post-import parent-link pass
-          if (fields.parent?.key) {
-            parentMap[issue.key] = fields.parent.key;
-          }
-          // Track issue links for the post-import link pass
+          if (fields.parent?.key) parentMap[issue.key] = fields.parent.key;
           if (Array.isArray(fields.issuelinks) && fields.issuelinks.length > 0) {
             issueLinkAccum.push({ sourceKey: issue.key, links: fields.issuelinks });
           }
+
+          issueRowsToInsert.push({
+            title: fields.summary ?? issue.key,
+            description: extractDescription(fields.description),
+            type, priority, statusId, assigneeId,
+            reporterId: safeReporterId,
+            sprintId, jiraKey: issue.key, jiraNum: issueNumber,
+            labels: Array.isArray(fields.labels) ? fields.labels : [],
+            storyPoints: fields.customfield_10016 ?? null,
+            timeEstimate: fields.timetracking?.originalEstimateSeconds ?? null,
+            timeSpent: fields.timetracking?.timeSpentSeconds ?? 0,
+            createdAt: fields.created ?? null,
+            updatedAt: fields.updated ?? null,
+          });
         } catch (err: any) {
           addError(state, `issue ${issue.key}: ${err.message}`);
           failedIssues++;
+        }
+      }
+
+      // One bulk INSERT for all issues in this page
+      if (issueRowsToInsert.length > 0) {
+        const valPlaceholders: string[] = [];
+        const valParams: unknown[] = [projectId, state.organizationId];
+        let pIdx = 3;
+
+        for (const r of issueRowsToInsert) {
+          valPlaceholders.push(
+            `(gen_random_uuid(), $${pIdx}::text, $${pIdx+1}::text, $${pIdx+2}::text, $${pIdx+3}::text, ` +
+            `$${pIdx+4}::uuid, $${pIdx+5}::uuid, $${pIdx+6}::uuid, $${pIdx+7}::uuid, $${pIdx+8}::text, ` +
+            `$${pIdx+9}::text[], $${pIdx+10}::int, $${pIdx+11}::int, $${pIdx+12}::int, ` +
+            `COALESCE($${pIdx+13}::timestamptz, NOW()), COALESCE($${pIdx+14}::timestamptz, NOW()))`,
+          );
+          valParams.push(
+            r.title, r.description, r.type, r.priority,
+            r.statusId, r.assigneeId, r.reporterId, r.sprintId,
+            r.jiraKey,
+            r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
+            r.createdAt, r.updatedAt,
+          );
+          pIdx += 15;
+        }
+
+        // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn
+        const { rows: insertedIssues } = await client.query<{ id: string; jira_key: string }>(
+          `WITH max_num AS (
+             SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1
+           ),
+           incoming AS (
+             SELECT v.*, ROW_NUMBER() OVER (ORDER BY v.jira_key) AS rn
+             FROM (VALUES ${valPlaceholders.join(', ')}) AS v(
+               id, title, description, type, priority,
+               status_id, assignee_id, reporter_id, sprint_id,
+               jira_key, labels, story_points, time_estimate, time_spent,
+               created_at, updated_at
+             )
+             WHERE NOT EXISTS (
+               SELECT 1 FROM issues WHERE project_id = $1 AND jira_key = v.jira_key
+             )
+           )
+           INSERT INTO issues (
+             id, title, description, type, priority,
+             status_id, project_id, organization_id,
+             assignee_id, reporter_id, sprint_id,
+             key, number, jira_key, labels, story_points,
+             time_estimate, time_spent, created_at, updated_at
+           )
+           SELECT
+             i.id, i.title, i.description, i.type, i.priority,
+             i.status_id, $1::uuid, $2::uuid,
+             i.assignee_id, i.reporter_id, i.sprint_id,
+             i.jira_key,
+             CASE WHEN NOT EXISTS (
+               SELECT 1 FROM issues WHERE project_id = $1 AND number = i.jira_key_num
+             ) THEN i.jira_key_num
+             ELSE (SELECT n FROM max_num) + i.rn
+             END,
+             i.jira_key, i.labels, i.story_points,
+             i.time_estimate, i.time_spent, i.created_at, i.updated_at
+           FROM (
+             SELECT *,
+               (regexp_match(jira_key, '\\d+$'))[1]::int AS jira_key_num
+             FROM incoming
+           ) i
+           RETURNING id, jira_key`,
+          valParams,
+        ).catch((err: any) => {
+          addError(state, `issues bulk insert page: ${err.message}`);
+          return { rows: [] as any[] };
+        });
+
+        for (const row of insertedIssues) {
+          state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+          processedIssues++;
+          projectIssueCount++;
+        }
+
+        // For issues that already existed (WHERE NOT EXISTS filtered them out — not in RETURNING),
+        // look up their IDs so the comments phase can reference them.
+        const insertedKeys = new Set(insertedIssues.map(r => r.jira_key));
+        const existingKeys = issueRowsToInsert.map(r => r.jiraKey).filter(k => !insertedKeys.has(k));
+        if (existingKeys.length > 0) {
+          const { rows: existingIssues } = await client.query<{ id: string; jira_key: string }>(
+            `SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key = ANY($2::text[])`,
+            [projectId, existingKeys],
+          ).catch(() => ({ rows: [] as any[] }));
+          for (const row of existingIssues) {
+            state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+            processedIssues++;
+            projectIssueCount++;
+          }
         }
       }
 
@@ -1209,21 +1272,24 @@ async function linkParentIssues(
   state: RunState,
   parentMap: Record<string, string>, // jiraKey → parentJiraKey
 ): Promise<void> {
-  let linked = 0;
-  for (const [jiraKey, parentJiraKey] of Object.entries(parentMap)) {
-    const localId = state.jiraIssueKeyToLocalId[jiraKey];
-    const parentLocalId = state.jiraIssueKeyToLocalId[parentJiraKey];
-    if (!localId || !parentLocalId) continue; // parent from a different org/not selected — skip
+  const pairs = Object.entries(parentMap)
+    .map(([jiraKey, parentJiraKey]) => ({
+      id: state.jiraIssueKeyToLocalId[jiraKey],
+      parentId: state.jiraIssueKeyToLocalId[parentJiraKey],
+    }))
+    .filter(p => p.id && p.parentId);
+
+  if (pairs.length > 0) {
+    const placeholders = pairs.map((_, i) => `($${i*2+1}::uuid, $${i*2+2}::uuid)`).join(', ');
+    const params = pairs.flatMap(p => [p.id, p.parentId]);
     await client.query(
-      `UPDATE issues SET parent_id = $1, updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3`,
-      [parentLocalId, localId, state.organizationId],
-    ).catch((err: any) =>
-      console.error(`[Migration] parent link ${jiraKey} → ${parentJiraKey}: ${err.message}`),
-    );
-    linked++;
+      `UPDATE issues SET parent_id = v.parent_id, updated_at = NOW()
+       FROM (VALUES ${placeholders}) AS v(issue_id, parent_id)
+       WHERE issues.id = v.issue_id AND issues.organization_id = $${params.length + 1}`,
+      [...params, state.organizationId],
+    ).catch((err: any) => console.error(`[Migration] parent links batch: ${err.message}`));
   }
-  console.log(`[Migration] Parent links set: ${linked}`);
+  console.log(`[Migration] Parent links set: ${pairs.length}`);
 }
 
 async function importIssueLinks(
@@ -1231,7 +1297,7 @@ async function importIssueLinks(
   state: RunState,
   issueLinkAccum: Array<{ sourceKey: string; links: any[] }>,
 ): Promise<void> {
-  let linked = 0;
+  const allLinks: Array<[string, string, string, string]> = []; // [sourceId, targetId, linkType, createdBy]
   for (const { sourceKey, links } of issueLinkAccum) {
     const sourceId = state.jiraIssueKeyToLocalId[sourceKey];
     if (!sourceId) continue;
@@ -1240,17 +1306,24 @@ async function importIssueLinks(
       const targetKey = link.outwardIssue?.key ?? link.inwardIssue?.key;
       const targetId = targetKey ? state.jiraIssueKeyToLocalId[targetKey] : null;
       if (!targetId) continue; // target not imported (different project / not selected)
-      const linkType = mapIssueLinkType(link.type?.name);
-      await client.query(
-        `INSERT INTO issue_links (id, source_issue_id, target_issue_id, link_type, created_by, created_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())
-         ON CONFLICT (source_issue_id, target_issue_id, link_type) DO NOTHING`,
-        [sourceId, targetId, linkType, state.triggeredById],
-      ).catch(() => {}); // silently skip duplicate / FK violations
-      linked++;
+      allLinks.push([sourceId, targetId, mapIssueLinkType(link.type?.name), state.triggeredById]);
     }
   }
-  console.log(`[Migration] Issue links imported: ${linked}`);
+
+  if (allLinks.length > 0) {
+    const LINK_CHUNK = 500;
+    for (let i = 0; i < allLinks.length; i += LINK_CHUNK) {
+      const chunk = allLinks.slice(i, i + LINK_CHUNK);
+      const placeholders = chunk.map((_, j) => `(gen_random_uuid(), $${j*4+1}::uuid, $${j*4+2}::uuid, $${j*4+3}::text, $${j*4+4}::uuid, NOW())`).join(', ');
+      await client.query(
+        `INSERT INTO issue_links (id, source_issue_id, target_issue_id, link_type, created_by, created_at)
+         VALUES ${placeholders}
+         ON CONFLICT (source_issue_id, target_issue_id, link_type) DO NOTHING`,
+        chunk.flat(),
+      ).catch(() => {}); // silently skip duplicate / FK violations
+    }
+  }
+  console.log(`[Migration] Issue links imported: ${allLinks.length}`);
 }
 
 function mapIssueLinkType(name?: string): string {
@@ -1305,23 +1378,24 @@ async function runCommentsPhase(
 
       totalComments += allComments.length;
 
-      for (const comment of allComments) {
-        try {
+      if (allComments.length > 0) {
+        const placeholders: string[] = [];
+        const params: unknown[] = [];
+        for (const comment of allComments) {
           const authorEmail = comment.author?.emailAddress?.toLowerCase();
           const authorId = authorEmail ? state.jiraUserEmailToLocalId[authorEmail] ?? null : null;
           const body = extractDescription(comment.body) ?? '';
-
-          await client.query(
-            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
-             VALUES (gen_random_uuid(), $1, $2, $3, COALESCE($4::timestamptz, NOW()), NOW())
-             ON CONFLICT DO NOTHING`,
-            [body, localIssueId, authorId, comment.created ?? null],
-          ).catch(() => {});
-
-          processedComments++;
-        } catch (err: any) {
-          addError(state, `comment on ${jiraKey}: ${err.message}`);
+          const j = placeholders.length;
+          placeholders.push(`(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`);
+          params.push(body, localIssueId, authorId, comment.created ?? null);
         }
+        await client.query(
+          `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT DO NOTHING`,
+          params,
+        ).catch((err: any) => addError(state, `comments bulk insert ${jiraKey}: ${err.message}`));
+        processedComments += allComments.length;
       }
 
       await delay(REQUEST_DELAY_MS);
