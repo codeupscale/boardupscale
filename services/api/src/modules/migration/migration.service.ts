@@ -493,12 +493,14 @@ export class MigrationService {
     const params = new URLSearchParams({
       audience: 'api.atlassian.com',
       client_id: clientId,
-      // read:jira-work                — issues, projects, statuses, sprint fields (REST API v3)
-      // read:jira-user                — user/member data
-      // read:board-scope:jira-software — Agile board list (needed for sprint pre-import in phase 3)
-      // read:sprint:jira-software     — sprint data via Agile REST API
-      // offline_access                — refresh token for long migrations (>1 hour)
-      scope: 'read:jira-work read:jira-user read:board-scope:jira-software read:sprint:jira-software offline_access',
+      // read:jira-work  — issues, projects, statuses, sprint fields on issues (REST API v3)
+      // read:jira-user  — user/member data
+      // offline_access  — enables refresh token for long migrations (>1 hour)
+      // NOTE: read:board-scope:jira-software and read:sprint:jira-software require the scopes
+      // to be enabled in the Atlassian developer app console before they can be requested.
+      // Sprints are extracted from customfield_10020 embedded in each issue (phase 4) so
+      // the Agile board API is not required.
+      scope: 'read:jira-work read:jira-user offline_access',
       redirect_uri: callbackUrl,
       state,
       response_type: 'code',
