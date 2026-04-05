@@ -206,14 +206,125 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
 
 async function loadCredentials(client: PoolClient, connectionId: string, organizationId: string): Promise<JiraCredentials> {
   const { rows } = await client.query(
-    `SELECT jira_url AS "baseUrl", jira_email AS email, api_token_enc AS "apiTokenEnc"
+    `SELECT jira_url AS "baseUrl", jira_email AS email, api_token_enc AS "apiTokenEnc",
+            refresh_token_enc AS "refreshTokenEnc", token_expires_at AS "tokenExpiresAt"
      FROM jira_connections WHERE id = $1 AND organization_id = $2`,
     [connectionId, organizationId],
   );
   if (!rows[0]) throw new Error(`Jira connection ${connectionId} not found for org ${organizationId}`);
-  const { baseUrl, email, apiTokenEnc } = rows[0];
+
+  const row = rows[0];
+
+  // Proactively refresh the OAuth access token if it expires within 5 minutes.
+  // API-token connections have null tokenExpiresAt — skip refresh for those.
+  if (row.refreshTokenEnc && row.tokenExpiresAt) {
+    const expiresAt = new Date(row.tokenExpiresAt).getTime();
+    const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000;
+    if (expiresAt <= fiveMinutesFromNow) {
+      console.log(`[Migration] Refreshing OAuth token for connection ${connectionId} (expires ${row.tokenExpiresAt})`);
+      const freshToken = await refreshAtlassianToken(client, connectionId, row.refreshTokenEnc);
+      if (freshToken) {
+        row.apiTokenEnc = freshToken;
+      }
+    }
+  }
+
+  const { baseUrl, email, apiTokenEnc } = row;
   const apiToken = decryptToken(apiTokenEnc, config.appSecret);
   return { baseUrl, email, apiToken };
+}
+
+/**
+ * Exchange a refresh token for a new Atlassian access token.
+ * Updates api_token_enc, refresh_token_enc, and token_expires_at in DB.
+ * Returns the new (encrypted) apiTokenEnc value, or null on failure.
+ */
+async function refreshAtlassianToken(
+  client: PoolClient,
+  connectionId: string,
+  refreshTokenEnc: string,
+): Promise<string | null> {
+  const { clientId, clientSecret } = config.atlassian;
+  if (!clientId || !clientSecret) {
+    console.error('[Migration] ATLASSIAN_CLIENT_ID/SECRET not set — cannot refresh token');
+    return null;
+  }
+
+  const refreshToken = decryptToken(refreshTokenEnc, config.appSecret);
+
+  try {
+    const tokenResponse = await atlassianTokenPost({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }) as { access_token: string; refresh_token?: string };
+
+    const newAccessTokenEnc = encryptToken(tokenResponse.access_token, config.appSecret);
+    const newRefreshTokenEnc = tokenResponse.refresh_token
+      ? encryptToken(tokenResponse.refresh_token, config.appSecret)
+      : refreshTokenEnc; // keep existing if Atlassian doesn't rotate
+    const newExpiresAt = new Date(Date.now() + 3600 * 1000);
+
+    await client.query(
+      `UPDATE jira_connections
+         SET api_token_enc = $1, refresh_token_enc = $2, token_expires_at = $3
+       WHERE id = $4`,
+      [newAccessTokenEnc, newRefreshTokenEnc, newExpiresAt, connectionId],
+    );
+
+    console.log(`[Migration] OAuth token refreshed for connection ${connectionId}, new expiry: ${newExpiresAt}`);
+    return newAccessTokenEnc;
+  } catch (err: any) {
+    console.error(`[Migration] OAuth token refresh failed for connection ${connectionId}: ${err.message}`);
+    return null; // non-fatal — let the migration attempt proceed with existing token
+  }
+}
+
+/** AES-256-GCM encrypt — mirrors crypto.util.ts in the API service */
+function encryptToken(plaintext: string, secret: string): string {
+  const key = crypto.createHash('sha256').update(secret).digest();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, encrypted, tag]).toString('base64');
+}
+
+/** POST to Atlassian /oauth/token — returns parsed JSON response */
+function atlassianTokenPost(body: Record<string, string>): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const payload = Object.entries(body)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&');
+
+    const options: https.RequestOptions = {
+      hostname: 'auth.atlassian.com',
+      path: '/oauth/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk: Buffer) => (data += chunk.toString()));
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          return void reject(new Error(`Atlassian token refresh failed (${res.statusCode}): ${data.slice(0, 200)}`));
+        }
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error(`Non-JSON from Atlassian: ${data.slice(0, 100)}`)); }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Atlassian token request timed out')); });
+    req.write(payload);
+    req.end();
+  });
 }
 
 async function updateRunProgress(

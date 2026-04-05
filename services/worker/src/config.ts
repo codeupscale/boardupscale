@@ -28,4 +28,13 @@ export const config = {
    * Must match APP_SECRET used by the API service.
    */
   appSecret: process.env.APP_SECRET || 'boardupscale-dev-secret-change-before-production',
+
+  /**
+   * Atlassian OAuth 2.0 credentials — needed by the worker to refresh access
+   * tokens mid-migration when they expire (Atlassian tokens expire after 1 hour).
+   */
+  atlassian: {
+    clientId: process.env.ATLASSIAN_CLIENT_ID || '',
+    clientSecret: process.env.ATLASSIAN_CLIENT_SECRET || '',
+  },
 };

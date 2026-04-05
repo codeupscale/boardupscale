@@ -382,9 +382,11 @@ export class MigrationService {
   ): Promise<Array<{ key: string; name: string; description?: string }>> {
     const conn = await this.connectionRepository.findOne({
       where: { id: connectionId, organizationId, isActive: true },
-      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
     });
     if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    await this.refreshOAuthTokenIfNeeded(conn);
 
     const { decrypt } = await import('../import/crypto.util');
     const credentials = {
@@ -405,9 +407,11 @@ export class MigrationService {
   ): Promise<JiraMember[]> {
     const conn = await this.connectionRepository.findOne({
       where: { id: connectionId, organizationId, isActive: true },
-      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
     });
     if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    await this.refreshOAuthTokenIfNeeded(conn);
 
     const { decrypt } = await import('../import/crypto.util');
     const credentials = {
@@ -568,8 +572,13 @@ export class MigrationService {
       `https://api.atlassian.com/ex/jira/${site.id}/rest/api/3/myself`,
     ).catch(() => ({} as any));
 
-    // Encrypt and store the access token (treat same as API token for now)
+    // Encrypt and store both the access token and (if present) the refresh token.
+    // Atlassian access tokens expire after 3600 seconds; we store tokenExpiresAt
+    // so the service and worker can proactively refresh before a long migration fails.
     const tokenEnc = encrypt(access_token, this.appSecret);
+    const refreshTokenEnc = refresh_token ? encrypt(refresh_token, this.appSecret) : null;
+    const tokenExpiresAt = new Date(Date.now() + 3600 * 1000); // Atlassian access tokens = 1 hour
+
     await this.connectionRepository.update({ organizationId }, { isActive: false });
 
     const connection = this.connectionRepository.create({
@@ -582,6 +591,8 @@ export class MigrationService {
       // sends Authorization: Bearer instead of Authorization: Basic email:token
       jiraEmail: '',
       apiTokenEnc: tokenEnc,
+      refreshTokenEnc,
+      tokenExpiresAt,
       isActive: true,
       lastTestedAt: new Date(),
       lastTestOk: true,
@@ -627,10 +638,13 @@ export class MigrationService {
 
     const conn = await this.connectionRepository.findOne({
       where: { id: run.connectionId, organizationId: run.organizationId, isActive: true },
-      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
     });
 
     if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    // Auto-refresh OAuth token if it expires within the next 5 minutes
+    await this.refreshOAuthTokenIfNeeded(conn);
 
     const { decrypt } = await import('../import/crypto.util');
     const apiToken = decrypt(conn.apiTokenEnc, this.appSecret);
@@ -640,6 +654,60 @@ export class MigrationService {
       email: conn.jiraEmail,
       apiToken,
     };
+  }
+
+  /**
+   * Refreshes the Atlassian OAuth access token for a connection if it expires
+   * within the next 5 minutes. Mutates `conn.apiTokenEnc` and `conn.tokenExpiresAt`
+   * in-place and persists both to the DB.
+   *
+   * No-ops for API-token connections (tokenExpiresAt is null).
+   */
+  private async refreshOAuthTokenIfNeeded(conn: any): Promise<void> {
+    if (!conn.tokenExpiresAt || !conn.refreshTokenEnc) return;
+
+    const expiresAt = new Date(conn.tokenExpiresAt).getTime();
+    const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000;
+    if (expiresAt > fiveMinutesFromNow) return; // still fresh
+
+    this.logger.log(`Refreshing OAuth token for connection ${conn.id} (expires ${conn.tokenExpiresAt})`);
+
+    const clientId = this.configService.get<string>('atlassian.clientId');
+    const clientSecret = this.configService.get<string>('atlassian.clientSecret');
+    if (!clientId || !clientSecret) {
+      throw new InternalServerErrorException('Atlassian OAuth credentials not configured for token refresh');
+    }
+
+    const { decrypt } = await import('../import/crypto.util');
+    const refreshToken = decrypt(conn.refreshTokenEnc, this.appSecret);
+
+    const tokenResponse = await this.atlassianTokenRequest({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }) as { access_token: string; refresh_token?: string };
+
+    const newAccessToken = tokenResponse.access_token;
+    const newRefreshToken = tokenResponse.refresh_token; // Atlassian may rotate the refresh token
+    const newExpiresAt = new Date(Date.now() + 3600 * 1000);
+
+    const newAccessTokenEnc = encrypt(newAccessToken, this.appSecret);
+    const newRefreshTokenEnc = newRefreshToken
+      ? encrypt(newRefreshToken, this.appSecret)
+      : conn.refreshTokenEnc; // keep existing if not rotated
+
+    await this.connectionRepository.update(conn.id, {
+      apiTokenEnc: newAccessTokenEnc,
+      refreshTokenEnc: newRefreshTokenEnc,
+      tokenExpiresAt: newExpiresAt,
+    });
+
+    // Mutate in-place so the caller gets the fresh token without re-fetching
+    conn.apiTokenEnc = newAccessTokenEnc;
+    conn.tokenExpiresAt = newExpiresAt;
+
+    this.logger.log(`OAuth token refreshed for connection ${conn.id}, new expiry: ${newExpiresAt}`);
   }
 
   private extractOrgName(baseUrl: string): string {
