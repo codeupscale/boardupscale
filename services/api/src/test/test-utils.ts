@@ -68,6 +68,11 @@ export function createMockQueryBuilder<T = any>(result?: T | T[]): Record<string
     set: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
     from: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
+    having: jest.fn().mockReturnThis(),
+    distinct: jest.fn().mockReturnThis(),
+    distinctOn: jest.fn().mockReturnThis(),
   };
   return qb;
 }

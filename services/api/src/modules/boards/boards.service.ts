@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, SelectQueryBuilder } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
@@ -23,61 +23,127 @@ export class BoardsService {
     private projectsService: ProjectsService,
   ) {}
 
+  /** Applies shared filter predicates to an issue query builder. */
+  private applyBoardFilters(
+    qb: SelectQueryBuilder<Issue>,
+    query?: BoardQueryDto,
+  ): void {
+    if (query?.assigneeId) {
+      qb.andWhere('issue.assigneeId = :assigneeId', { assigneeId: query.assigneeId });
+    }
+    if (query?.type) {
+      qb.andWhere('issue.type = :type', { type: query.type });
+    }
+    if (query?.priority) {
+      qb.andWhere('issue.priority = :priority', { priority: query.priority });
+    }
+    if (query?.label) {
+      qb.andWhere(':label = ANY(issue.labels)', { label: query.label });
+    }
+    if (query?.search) {
+      qb.andWhere('issue.title ILIKE :search', { search: `%${query.search}%` });
+    }
+    if (query?.sprintId) {
+      if (query.sprintId === 'backlog') {
+        qb.andWhere('issue.sprintId IS NULL');
+      } else {
+        qb.andWhere('issue.sprintId = :sprintId', { sprintId: query.sprintId });
+      }
+    }
+  }
+
   async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {
     await this.projectsService.findById(projectId, organizationId);
+
+    const columnLimit = query?.columnLimit ?? 50;
 
     const statuses = await this.issueStatusRepository.find({
       where: { projectId },
       order: { position: 'ASC' },
     });
 
-    // Build issue query with optional filters
-    const qb: SelectQueryBuilder<Issue> = this.issueRepository
+    if (statuses.length === 0) {
+      return [];
+    }
+
+    // Fetch enough issues to fill all columns up to columnLimit each
+    const qb = this.issueRepository
       .createQueryBuilder('issue')
       .leftJoinAndSelect('issue.assignee', 'assignee')
       .leftJoinAndSelect('issue.status', 'status')
       .leftJoinAndSelect('issue.reporter', 'reporter')
-      .where('issue.project_id = :projectId', { projectId })
-      .andWhere('issue.deleted_at IS NULL');
+      .where('issue.projectId = :projectId', { projectId })
+      .andWhere('issue.deletedAt IS NULL');
 
-    if (query?.assigneeId) {
-      qb.andWhere('issue.assignee_id = :assigneeId', { assigneeId: query.assigneeId });
-    }
+    this.applyBoardFilters(qb, query);
+    qb.orderBy('issue.position', 'ASC');
 
-    if (query?.type) {
-      qb.andWhere('issue.type = :type', { type: query.type });
-    }
+    const allIssues = await qb
+      .take(columnLimit * statuses.length + statuses.length)
+      .getMany();
 
-    if (query?.priority) {
-      qb.andWhere('issue.priority = :priority', { priority: query.priority });
-    }
-
-    if (query?.label) {
-      qb.andWhere(':label = ANY(issue.labels)', { label: query.label });
-    }
-
-    if (query?.search) {
-      qb.andWhere('issue.title ILIKE :search', { search: `%${query.search}%` });
-    }
-
-    if (query?.sprintId) {
-      if (query.sprintId === 'backlog') {
-        qb.andWhere('issue.sprint_id IS NULL');
-      } else {
-        qb.andWhere('issue.sprint_id = :sprintId', { sprintId: query.sprintId });
+    // Group by status, capped at columnLimit per column
+    const issuesByStatus: Record<string, Issue[]> = {};
+    for (const issue of allIssues) {
+      if (!issuesByStatus[issue.statusId]) issuesByStatus[issue.statusId] = [];
+      if (issuesByStatus[issue.statusId].length < columnLimit) {
+        issuesByStatus[issue.statusId].push(issue);
       }
     }
 
-    qb.orderBy('issue.position', 'ASC');
+    // Count totals per column (same filters, grouped by statusId)
+    const countQb = this.issueRepository
+      .createQueryBuilder('issue')
+      .select('issue.statusId', 'statusId')
+      .addSelect('COUNT(*)', 'total')
+      .where('issue.projectId = :projectId', { projectId })
+      .andWhere('issue.deletedAt IS NULL');
 
-    const issues = await qb.getMany();
+    this.applyBoardFilters(countQb, query);
+    countQb.groupBy('issue.statusId');
 
-    const board = statuses.map((status) => ({
+    const countRows: Array<{ statusId: string; total: string }> =
+      await countQb.getRawMany();
+
+    const totalByStatus: Record<string, number> = {};
+    for (const row of countRows) {
+      totalByStatus[row.statusId] = parseInt(row.total, 10);
+    }
+
+    return statuses.map((status) => ({
       ...status,
-      issues: issues.filter((issue) => issue.statusId === status.id),
+      issues: issuesByStatus[status.id] ?? [],
+      total: totalByStatus[status.id] ?? 0,
+      hasMore: (totalByStatus[status.id] ?? 0) > columnLimit,
     }));
+  }
 
-    return board;
+  async getColumnIssues(
+    projectId: string,
+    statusId: string,
+    organizationId: string,
+    query: BoardQueryDto,
+    offset = 0,
+  ) {
+    await this.projectsService.findById(projectId, organizationId);
+
+    const limit = query?.columnLimit ?? 50;
+
+    const qb = this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoinAndSelect('issue.assignee', 'assignee')
+      .leftJoinAndSelect('issue.status', 'status')
+      .leftJoinAndSelect('issue.reporter', 'reporter')
+      .where('issue.projectId = :projectId', { projectId })
+      .andWhere('issue.statusId = :statusId', { statusId })
+      .andWhere('issue.deletedAt IS NULL');
+
+    this.applyBoardFilters(qb, query);
+    qb.orderBy('issue.position', 'ASC').skip(offset).take(limit);
+
+    const [issues, total] = await qb.getManyAndCount();
+
+    return { issues, total, offset, limit, hasMore: offset + issues.length < total };
   }
 
   async createStatus(projectId: string, organizationId: string, dto: CreateStatusDto): Promise<IssueStatus> {
@@ -87,7 +153,7 @@ export class BoardsService {
     if (position === undefined) {
       const maxPosition = await this.issueStatusRepository
         .createQueryBuilder('s')
-        .where('s.project_id = :projectId', { projectId })
+        .where('s.projectId = :projectId', { projectId })
         .select('MAX(s.position)', 'max')
         .getRawOne();
       position = (maxPosition?.max ?? -1) + 1;
@@ -145,7 +211,7 @@ export class BoardsService {
       .createQueryBuilder()
       .update()
       .set({ statusId: fallbackStatus.id })
-      .where('status_id = :statusId', { statusId })
+      .where('statusId = :statusId', { statusId })
       .execute();
 
     await this.issueStatusRepository.remove(status);
@@ -174,9 +240,9 @@ export class BoardsService {
         // Count existing issues in this status that are NOT being moved
         const currentCount = await this.issueRepository
           .createQueryBuilder('issue')
-          .where('issue.status_id = :statusId', { statusId })
-          .andWhere('issue.project_id = :projectId', { projectId })
-          .andWhere('issue.deleted_at IS NULL')
+          .where('issue.statusId = :statusId', { statusId })
+          .andWhere('issue.projectId = :projectId', { projectId })
+          .andWhere('issue.deletedAt IS NULL')
           .getCount();
 
         // Count how many issues are being moved OUT of this status
@@ -187,9 +253,9 @@ export class BoardsService {
         // The issues moving into this column that aren't already there
         const existingInTarget = await this.issueRepository
           .createQueryBuilder('issue')
-          .where('issue.status_id = :statusId', { statusId })
+          .where('issue.statusId = :statusId', { statusId })
           .andWhere('issue.id IN (:...ids)', { ids: issueIdsMoving.length > 0 ? issueIdsMoving : ['00000000-0000-0000-0000-000000000000'] })
-          .andWhere('issue.deleted_at IS NULL')
+          .andWhere('issue.deletedAt IS NULL')
           .getCount();
 
         const newIssuesCount = issuesMovingToStatus.length - existingInTarget;

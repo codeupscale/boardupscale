@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class BoardQueryDto {
   @ApiPropertyOptional({ description: 'Filter by assignee user ID' })
@@ -31,4 +32,12 @@ export class BoardQueryDto {
   @IsOptional()
   @IsString()
   sprintId?: string;
+
+  @ApiPropertyOptional({ description: 'Max issues per column (1–200, default 50)', default: 50 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  columnLimit?: number = 50;
 }

@@ -207,10 +207,20 @@ export interface WorkLog {
 
 export interface BoardColumn extends IssueStatus {
   issues: Issue[]
+  total: number
+  hasMore: boolean
 }
 
 export interface BoardData {
   statuses: BoardColumn[]
+}
+
+export interface ColumnPageResult {
+  issues: Issue[]
+  total: number
+  offset: number
+  limit: number
+  hasMore: boolean
 }
 
 export interface BoardFilters {
