@@ -87,6 +87,8 @@ interface RunState {
   errorLog: string[];
   jiraProjectIdToLocalId: Record<string, string>;
   jiraUserEmailToLocalId: Record<string, string>;
+  /** Parallel map keyed by Jira accountId — more reliable than email for Jira Cloud (GDPR hides emails). */
+  jiraAccountIdToLocalId: Record<string, string>;
   jiraIssueKeyToLocalId: Record<string, string>;
   jiraSprintIdToLocalId: Record<string, string>;
   /**
@@ -202,6 +204,7 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
     errorLog: rows[0].errorLog ?? [],
     jiraProjectIdToLocalId: {},
     jiraUserEmailToLocalId: {},
+    jiraAccountIdToLocalId: {},
     jiraIssueKeyToLocalId: {},
     jiraSprintIdToLocalId: {},
     projectStatusMap: {},
@@ -487,19 +490,30 @@ async function runMembersPhase(
   const MEMBER_CHUNK = 500;
   let processed = 0;
   for (let ci = 0; ci < filteredUsers.length; ci += MEMBER_CHUNK) {
-    const chunk = filteredUsers.slice(ci, ci + MEMBER_CHUNK).filter(u => !!u.emailAddress);
+    // Import ALL users — do NOT filter on emailAddress.
+    // Jira Cloud hides emails by default (GDPR). Users without an email get a
+    // synthetic address so the NOT NULL constraint on the users table is satisfied.
+    const chunk = filteredUsers.slice(ci, ci + MEMBER_CHUNK);
     if (!chunk.length) continue;
 
     const placeholders: string[] = [];
     const params: unknown[] = [];
+    // Keep a parallel list so we can populate jiraAccountIdToLocalId after RETURNING.
+    const chunkAccountIds: string[] = [];
+
     chunk.forEach((u, j) => {
       const b = j * 4;
       placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, NOW(), NOW())`);
-      const email = u.emailAddress!.toLowerCase();
+      // Use real email when available; fall back to a synthetic address keyed by accountId.
+      const email = u.emailAddress
+        ? u.emailAddress.toLowerCase()
+        : `jira-${u.accountId}@migrated.jira.local`;
+      const displayName = u.displayName || email.split('@')[0];
       const roleMappingRecord = state.roleMapping ?? {};
       const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
       const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
-      params.push(email, u.displayName ?? email.split('@')[0], state.organizationId, safeRole);
+      params.push(email, displayName, state.organizationId, safeRole);
+      chunkAccountIds.push(u.accountId);
     });
 
     const { rows } = await client.query<{ id: string; email: string }>(
@@ -514,8 +528,14 @@ async function runMembersPhase(
       params,
     ).catch((err: any) => { addError(state, `members bulk upsert: ${err.message}`); return { rows: [] as any[] }; });
 
-    for (const row of rows) {
+    // Build both lookup maps from the RETURNING rows.
+    // The rows come back in INSERT order which matches chunkAccountIds order.
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri];
       state.jiraUserEmailToLocalId[row.email] = row.id;
+      // Also index by accountId (more reliable for Jira Cloud where emails are hidden).
+      const accountId = chunkAccountIds[ri];
+      if (accountId) state.jiraAccountIdToLocalId[accountId] = row.id;
       processed++;
     }
   }
@@ -933,6 +953,10 @@ async function runIssuesPhase(
   let totalIssues = 0;
   let processedIssues = 0;
   let failedIssues = 0;
+  // Count sprints created inline (Phase 3 may have been skipped due to 401 from Agile API).
+  let inlineSprintsCreated = 0;
+  // Dedicated issue error log — never evicted by comment errors in the shared 100-slot ring buffer.
+  const issueErrors: string[] = [];
 
   // Accumulated across all projects for the post-import pass
   const parentMap: Record<string, string> = {};         // jiraKey → parentJiraKey
@@ -1026,6 +1050,8 @@ async function runIssuesPhase(
           spParams,
         ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
 
+        inlineSprintsCreated += insertedSprints.length;
+
         const nameToId = new Map<string, string>(insertedSprints.map(r => [r.name, r.id] as [string, string]));
 
         // Fetch IDs for sprints that already existed (not returned by INSERT)
@@ -1076,10 +1102,19 @@ async function runIssuesPhase(
             statusId = fallbackRows[0]?.id ?? null;
           }
 
+          const assigneeAccountId = fields.assignee?.accountId;
+          const reporterAccountId = fields.reporter?.accountId;
           const assigneeEmail = fields.assignee?.emailAddress?.toLowerCase();
           const reporterEmail = fields.reporter?.emailAddress?.toLowerCase();
-          const assigneeId = assigneeEmail ? state.jiraUserEmailToLocalId[assigneeEmail] ?? null : null;
-          const reporterId = reporterEmail ? state.jiraUserEmailToLocalId[reporterEmail] ?? null : null;
+
+          // Look up by accountId first (works even when Jira hides the email).
+          // Fall back to email lookup for pre-Cloud instances that exposed emails.
+          const assigneeId = (assigneeAccountId && state.jiraAccountIdToLocalId[assigneeAccountId])
+            ?? (assigneeEmail && state.jiraUserEmailToLocalId[assigneeEmail])
+            ?? null;
+          const reporterId = (reporterAccountId && state.jiraAccountIdToLocalId[reporterAccountId])
+            ?? (reporterEmail && state.jiraUserEmailToLocalId[reporterEmail])
+            ?? null;
 
           // Sprint — already created in bulk above
           let sprintId: string | null = null;
@@ -1138,8 +1173,7 @@ async function runIssuesPhase(
         }
 
         // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn
-        const { rows: insertedIssues } = await client.query<{ id: string; jira_key: string }>(
-          `WITH max_num AS (
+        const issueCteQuery = `WITH max_num AS (
              SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1
            ),
            incoming AS (
@@ -1178,12 +1212,73 @@ async function runIssuesPhase(
                (regexp_match(jira_key, '\\d+$'))[1]::int AS jira_key_num
              FROM incoming
            ) i
-           RETURNING id, jira_key`,
+           RETURNING id, jira_key`;
+
+        let bulkInsertFailed = false;
+        const { rows: insertedIssues } = await client.query<{ id: string; jira_key: string }>(
+          issueCteQuery,
           valParams,
         ).catch((err: any) => {
-          addError(state, `issues bulk insert page: ${err.message}`);
+          const errMsg = `issues bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`;
+          addError(state, errMsg);
+          issueErrors.push(errMsg);
+          console.error(`[Migration:${state.id}] ${errMsg}`);
+          failedIssues += issueRowsToInsert.length;
+          bulkInsertFailed = true;
           return { rows: [] as any[] };
         });
+
+        // Fallback: if the page bulk INSERT failed, attempt individual single-row inserts
+        // so issues are never silently skipped due to a transient page-level failure.
+        if (bulkInsertFailed && issueRowsToInsert.length > 0) {
+          for (const r of issueRowsToInsert) {
+            try {
+              const { rows: singleRows } = await client.query<{ id: string; jira_key: string }>(
+                `WITH max_num AS (SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1)
+                 INSERT INTO issues (
+                   id, title, description, type, priority,
+                   status_id, project_id, organization_id,
+                   assignee_id, reporter_id, sprint_id,
+                   key, number, jira_key, labels, story_points,
+                   time_estimate, time_spent, created_at, updated_at
+                 )
+                 SELECT
+                   gen_random_uuid(), $3::text, $4::text, $5::text, $6::text,
+                   $7::uuid, $1::uuid, $2::uuid,
+                   $8::uuid, $9::uuid, $10::uuid,
+                   $11::text,
+                   CASE WHEN NOT EXISTS (
+                     SELECT 1 FROM issues WHERE project_id = $1 AND number = (regexp_match($11, '\\d+$'))[1]::int
+                   ) THEN (regexp_match($11, '\\d+$'))[1]::int
+                   ELSE (SELECT n FROM max_num) + 1
+                   END,
+                   $11::text, $12::text[], $13::int, $14::int, $15::int,
+                   COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW())
+                 WHERE NOT EXISTS (SELECT 1 FROM issues WHERE project_id = $1 AND jira_key = $11)
+                 RETURNING id, jira_key`,
+                [
+                  projectId, state.organizationId,
+                  r.title, r.description, r.type, r.priority,
+                  r.statusId, r.assigneeId, r.reporterId, r.sprintId,
+                  r.jiraKey,
+                  r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
+                  r.createdAt, r.updatedAt,
+                ],
+              );
+              if (singleRows[0]) {
+                state.jiraIssueKeyToLocalId[singleRows[0].jira_key] = singleRows[0].id;
+                processedIssues++;
+                projectIssueCount++;
+                // This issue was counted as failed in the bulk attempt — correct the counter
+                failedIssues = Math.max(0, failedIssues - 1);
+              }
+            } catch (singleErr: any) {
+              const singleErrMsg = `issue fallback insert ${r.jiraKey}: ${singleErr.message}`;
+              issueErrors.push(singleErrMsg);
+              addError(state, singleErrMsg);
+            }
+          }
+        }
 
         for (const row of insertedIssues) {
           state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
@@ -1217,6 +1312,8 @@ async function runIssuesPhase(
         processedIssues,
         failedIssues,
         totalIssues,
+        processedSprints: inlineSprintsCreated,
+        errorLog: state.errorLog,
       }, io);
 
       if (hasMore) await delay(REQUEST_DELAY_MS);
@@ -1257,14 +1354,25 @@ async function runIssuesPhase(
   await linkParentIssues(client, state, parentMap);
   await importIssueLinks(client, state, issueLinkAccum);
 
+  // Dump accumulated issue errors to worker logs so they are never lost
+  // (the shared errorLog ring buffer only keeps 100 entries and comment errors can evict these).
+  if (issueErrors.length > 0) {
+    console.error(
+      `[Migration:${state.id}] Phase 4 — ${issueErrors.length} issue insert error(s):\n` +
+      issueErrors.join('\n'),
+    );
+  }
+
   await updateRunProgress(client, state.id, {
     totalIssues,
     processedIssues,
     failedIssues,
+    processedSprints: inlineSprintsCreated,
+    totalSprints: inlineSprintsCreated,
     completedPhase: PHASE_ISSUES,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed`);
+  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints`);
 }
 
 async function linkParentIssues(
@@ -1382,20 +1490,35 @@ async function runCommentsPhase(
         const placeholders: string[] = [];
         const params: unknown[] = [];
         for (const comment of allComments) {
+          // Look up author by accountId first — Jira Cloud hides emails (GDPR).
+          // Always fall back to the migration owner so author_id is never null.
+          const authorAccountId = comment.author?.accountId;
           const authorEmail = comment.author?.emailAddress?.toLowerCase();
-          const authorId = authorEmail ? state.jiraUserEmailToLocalId[authorEmail] ?? null : null;
+          const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
+            ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
+            ?? state.triggeredById;
+          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment
+          // rather than letting the bulk INSERT fail with author_id NOT NULL violation.
+          if (!authorId) continue;
           const body = extractDescription(comment.body) ?? '';
           const j = placeholders.length;
           placeholders.push(`(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`);
           params.push(body, localIssueId, authorId, comment.created ?? null);
         }
-        await client.query(
-          `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
-           VALUES ${placeholders.join(', ')}
-           ON CONFLICT DO NOTHING`,
-          params,
-        ).catch((err: any) => addError(state, `comments bulk insert ${jiraKey}: ${err.message}`));
-        processedComments += allComments.length;
+        if (placeholders.length > 0) {
+          try {
+            await client.query(
+              `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+               VALUES ${placeholders.join(', ')}
+               ON CONFLICT DO NOTHING`,
+              params,
+            );
+            processedComments += placeholders.length;
+          } catch (err: any) {
+            addError(state, `comments bulk insert ${jiraKey}: ${err.message}`);
+            // processedComments is NOT incremented — only count successfully inserted comments
+          }
+        }
       }
 
       await delay(REQUEST_DELAY_MS);
@@ -1526,12 +1649,26 @@ async function processJob(
         );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_MEMBERS];
       } else {
-        console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user map`);
+        console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user maps`);
+        // Rebuild email → localId map for all users in the org.
         const { rows } = await progressClient.query<{ email: string; id: string }>(
           `SELECT email, id FROM users WHERE organization_id = $1`,
           [organizationId],
         );
         for (const r of rows) state.jiraUserEmailToLocalId[r.email.toLowerCase()] = r.id;
+
+        // Rebuild accountId → localId map from synthetic-email users only.
+        // Real email users cannot be reverse-mapped to accountId without the original
+        // Jira list (which is only in memory during Phase 1 execution), so we rely on
+        // the email map for those. Synthetic-email users encode accountId in the address.
+        const { rows: syntheticRows } = await progressClient.query<{ email: string; id: string }>(
+          `SELECT email, id FROM users WHERE organization_id = $1 AND email LIKE 'jira-%@migrated.jira.local'`,
+          [organizationId],
+        );
+        for (const r of syntheticRows) {
+          const accountId = r.email.replace('jira-', '').replace('@migrated.jira.local', '');
+          if (accountId) state.jiraAccountIdToLocalId[accountId] = r.id;
+        }
       }
 
       // ── Phase 2 — projects ───────────────────────────────────────────────────
@@ -1613,13 +1750,13 @@ async function processJob(
       // ── Write final result summary (read fresh counts from DB) ──────────────
       const { rows: finalCounts } = await progressClient.query<{
         processed_issues: number; failed_issues: number;
-        processed_members: number; processed_sprints: number;
+        processed_members: number; processed_sprints: number; processed_comments: number;
       }>(
-        `SELECT processed_issues, failed_issues, processed_members, processed_sprints
+        `SELECT processed_issues, failed_issues, processed_members, processed_sprints, processed_comments
          FROM jira_migration_runs WHERE id = $1`,
         [runId],
       );
-      const fc = finalCounts[0] ?? { processed_issues: 0, failed_issues: 0, processed_members: 0, processed_sprints: 0 };
+      const fc = finalCounts[0] ?? { processed_issues: 0, failed_issues: 0, processed_members: 0, processed_sprints: 0, processed_comments: 0 };
 
       const summary = {
         projects: (state.selectedProjects ?? []).map((p) => ({
@@ -1661,7 +1798,7 @@ async function processJob(
         })).catch(() => {});
       }
 
-      console.log(`[Migration:${runId}] Completed successfully — ${state.processedIssues} issues, ${state.processedMembers} members`);
+      console.log(`[Migration:${runId}] Completed successfully — ${fc.processed_issues} issues, ${fc.processed_members} members, ${fc.processed_sprints} sprints, ${fc.processed_comments} comments`);
     } finally {
       progressClient.release();
     }
