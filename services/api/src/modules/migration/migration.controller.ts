@@ -161,6 +161,24 @@ export class MigrationController {
   }
 
   /**
+   * GET /api/migration/jira/projects?connectionId=xxx
+   * Return the list of Jira projects for the given connection.
+   * Called by the PreviewStep when coming from OAuth (connectResult.projects is empty).
+   */
+  @Get('projects')
+  @ApiOperation({ summary: 'List Jira projects for a connection' })
+  @ApiQuery({ name: 'connectionId', required: true, type: String })
+  @ApiResponse({ status: 200, description: 'List of Jira projects' })
+  @ApiResponse({ status: 404, description: 'Connection not found' })
+  async getProjects(
+    @Query('connectionId') connectionId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const data = await this.migrationService.getMigrationProjects(connectionId, organizationId);
+    return { status: true, message: 'OK', data };
+  }
+
+  /**
    * GET /api/migration/jira/members?connectionId=xxx
    * Return all Jira users for the given connection so the user can select which
    * members to import. Returns accountId, displayName, email, avatarUrl, active.

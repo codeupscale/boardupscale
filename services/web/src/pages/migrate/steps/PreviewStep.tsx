@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import { usePreviewMigration, useMigrationMembers, PreviewProject, JiraMember } from '@/hooks/useMigration'
+import { usePreviewMigration, useMigrationMembers, useMigrationProjects, PreviewProject, JiraMember } from '@/hooks/useMigration'
 import { ConnectJiraResult } from '@/hooks/useMigration'
 
 interface PreviewStepProps {
@@ -39,16 +39,23 @@ export function PreviewStep({
 
   const previewMutation = usePreviewMigration()
   const membersQuery = useMigrationMembers(connectionId ?? null)
+  // Fetch project list via connectionId when coming from OAuth (connectResult.projects is empty)
+  const projectsQuery = useMigrationProjects(
+    connectResult.projects.length === 0 && connectionId ? connectionId : null,
+  )
 
-  // Auto-fetch preview on mount with all available project keys
+  // Merged project list: prefer the pre-loaded list, fall back to the fetched one
+  const availableProjects =
+    connectResult.projects.length > 0 ? connectResult.projects : (projectsQuery.data ?? [])
+
+  // Auto-fetch preview when we have a project list (either pre-loaded or fetched)
   useEffect(() => {
-    const allKeys = connectResult.projects.map((p) => p.key)
-    // If projects came back from OAuth they may be empty — skip until we have keys
+    const allKeys = availableProjects.map((p) => p.key)
     if (allKeys.length > 0) {
       previewMutation.mutate({ runId, projectKeys: allKeys })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId])
+  }, [runId, availableProjects.length])
 
   // Pre-select all members when the list first loads
   useEffect(() => {
@@ -59,11 +66,11 @@ export function PreviewStep({
   }, [membersQuery.data, membersInitialised])
 
   const projects = previewMutation.data?.projects ?? []
-  const isLoading = previewMutation.isPending
+  const isLoading = previewMutation.isPending || projectsQuery.isLoading
 
-  // Merge project names from connectResult into preview data
+  // Merge project names from the available project list into preview data
   const enrichedProjects = projects.map((p) => {
-    const conn = connectResult.projects.find((cp) => cp.key === p.key)
+    const conn = availableProjects.find((cp) => cp.key === p.key)
     return { ...p, name: conn?.name || p.name || p.key }
   })
 

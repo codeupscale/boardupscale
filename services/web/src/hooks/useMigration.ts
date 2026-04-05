@@ -211,6 +211,19 @@ export function useMigrationHistory(page = 1, limit = 20) {
   })
 }
 
+export function useMigrationProjects(connectionId: string | null) {
+  return useQuery({
+    queryKey: ['migration-projects', connectionId],
+    queryFn: async () => {
+      const { data } = await api.get('/migration/jira/projects', {
+        params: { connectionId },
+      })
+      return data.data as Array<{ key: string; name: string; description?: string }>
+    },
+    enabled: !!connectionId,
+  })
+}
+
 export function useMigrationMembers(connectionId: string | null) {
   return useQuery({
     queryKey: ['migration-members', connectionId],

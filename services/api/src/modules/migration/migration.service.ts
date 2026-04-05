@@ -374,7 +374,30 @@ export class MigrationService {
     return { data, total, page, limit };
   }
 
-  // ── 8. Get Jira members for selection ─────────────────────────────────────
+  // ── 8. Get Jira projects for selection (used after OAuth when project list is empty) ──
+
+  async getMigrationProjects(
+    connectionId: string,
+    organizationId: string,
+  ): Promise<Array<{ key: string; name: string; description?: string }>> {
+    const conn = await this.connectionRepository.findOne({
+      where: { id: connectionId, organizationId, isActive: true },
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+    });
+    if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    const { decrypt } = await import('../import/crypto.util');
+    const credentials = {
+      baseUrl: conn.jiraUrl,
+      email: conn.jiraEmail,
+      apiToken: decrypt(conn.apiTokenEnc, this.appSecret),
+    };
+
+    const projects = await this.jiraApiService.listProjects(credentials).catch(() => []);
+    return projects.map((p) => ({ key: p.key, name: p.name, description: p.description }));
+  }
+
+  // ── 9. Get Jira members for selection ─────────────────────────────────────
 
   async getMigrationMembers(
     connectionId: string,
@@ -409,7 +432,7 @@ export class MigrationService {
     }));
   }
 
-  // ── 9. Atlassian OAuth 2.0 — 3-legged flow ────────────────────────────────
+  // ── 10. Atlassian OAuth 2.0 — 3-legged flow ───────────────────────────────
 
   /**
    * Signed state for OAuth (browser redirects cannot send Authorization headers).
