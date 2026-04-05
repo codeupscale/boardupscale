@@ -777,41 +777,70 @@ async function runSprintsPhase(
 
     try {
       // Find board for this project
-      const boardsResp = await jiraGet<{ values: Array<{ id: number; name: string }> }>(
-        credentials,
-        `/rest/agile/1.0/board?projectKeyOrId=${proj.key}`,
-      ).catch(() => ({ values: [] }));
+      // Fetch ALL boards for this project (a project can have multiple boards).
+      // Log any error — previously this was silently swallowed causing 0/0 sprints.
+      let boardValues: Array<{ id: number; name: string }> = [];
+      try {
+        const boardsResp = await jiraGet<{ values: Array<{ id: number; name: string }> }>(
+          credentials,
+          `/rest/agile/1.0/board?projectKeyOrId=${proj.key}&maxResults=50`,
+        );
+        boardValues = boardsResp?.values ?? [];
+      } catch (err: any) {
+        addError(state, `boards fetch for ${proj.key}: ${err.message} — sprints will be skipped`);
+        console.warn(`[Migration:${state.id}] Boards API error for ${proj.key}: ${err.message}`);
+        continue;
+      }
 
-      const boardId = boardsResp?.values?.[0]?.id;
-      if (!boardId) continue;
+      if (boardValues.length === 0) {
+        console.log(`[Migration:${state.id}] No boards found for project ${proj.key} — no sprints to import`);
+        continue;
+      }
 
-      // Paginate through ALL sprints — Jira Agile API default page size is 50.
-      // Boards with many sprints (e.g. 100+) silently lose data without pagination.
+      // Collect sprints across ALL boards for this project (deduplicate by sprint id)
+      const seenSprintIds = new Set<number>();
+
+      // Paginate through ALL sprints across ALL boards for this project.
+      // Jira Agile API default page size is 50; boards with many sprints need pagination.
       const SPRINT_PAGE = 50;
       const allSprints: Array<{
         id: number; name: string; state: string;
         startDate?: string; endDate?: string; goal?: string;
       }> = [];
-      let sprintStart = 0;
-      let sprintHasMore = true;
-      while (sprintHasMore) {
-        const sprintsResp = await jiraGet<{
-          values: Array<{ id: number; name: string; state: string; startDate?: string; endDate?: string; goal?: string }>;
-          isLast?: boolean;
-          total?: number;
-        }>(
-          credentials,
-          `/rest/agile/1.0/board/${boardId}/sprint?startAt=${sprintStart}&maxResults=${SPRINT_PAGE}`,
-        ).catch(() => ({ values: [], isLast: true }));
 
-        const page = sprintsResp?.values ?? [];
-        allSprints.push(...page);
+      for (const board of boardValues) {
+        let sprintStart = 0;
+        let sprintHasMore = true;
+        while (sprintHasMore) {
+          let sprintsResp: { values: typeof allSprints; isLast?: boolean };
+          try {
+            sprintsResp = await jiraGet<{ values: typeof allSprints; isLast?: boolean }>(
+              credentials,
+              `/rest/agile/1.0/board/${board.id}/sprint?startAt=${sprintStart}&maxResults=${SPRINT_PAGE}`,
+            );
+          } catch (err: any) {
+            console.warn(`[Migration:${state.id}] Sprint fetch error board ${board.id}: ${err.message}`);
+            addError(state, `sprint fetch board ${board.id}: ${err.message}`);
+            break;
+          }
 
-        // Jira Agile API signals last page via isLast=true OR by returning < maxResults
-        sprintHasMore = !sprintsResp?.isLast && page.length === SPRINT_PAGE;
-        sprintStart += SPRINT_PAGE;
+          const page = sprintsResp?.values ?? [];
+          // Deduplicate sprints that appear on multiple boards
+          for (const s of page) {
+            if (!seenSprintIds.has(s.id)) {
+              seenSprintIds.add(s.id);
+              allSprints.push(s);
+            }
+          }
+
+          // isLast=true signals final page; also stop if page returned fewer than requested
+          sprintHasMore = !sprintsResp?.isLast && page.length === SPRINT_PAGE;
+          sprintStart += SPRINT_PAGE;
+        }
       }
+
       const sprints = allSprints;
+      console.log(`[Migration:${state.id}] Project ${proj.key}: found ${boardValues.length} board(s), ${sprints.length} sprint(s)`);
       totalSprints += sprints.length;
 
       for (const sprint of sprints) {
@@ -887,11 +916,19 @@ async function runIssuesPhase(
   }, io);
 
   const PAGE_SIZE = 100;
+  // Use the classic /rest/api/3/search endpoint (NOT /search/jql) because the newer
+  // /search/jql endpoint uses cursor-based pagination (nextPageToken) and does NOT
+  // return a `total` field — causing our offset loop to stop after the first 100 issues.
+  // The classic endpoint returns { total, startAt, maxResults, issues } which maps
+  // exactly to our pagination pattern.
+  const SEARCH_PATH_BASE = '/rest/api/3/search';
   const FIELDS = [
     'summary', 'description', 'issuetype', 'priority', 'status',
     'assignee', 'reporter', 'created', 'updated', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
-    'subtasks', 'parent', 'comment', 'issuelinks',
+    'subtasks', 'parent', 'issuelinks',
+    // NOTE: 'comment' intentionally omitted — comments are fetched in Phase 5
+    // and including them here bloats responses by ~10x with no benefit.
   ].join(',');
 
   let totalIssues = 0;
@@ -927,7 +964,7 @@ async function runIssuesPhase(
 
     while (hasMore) {
       const encoded = encodeURIComponent(jql);
-      const path = `/rest/api/3/search/jql?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
+      const path = `${SEARCH_PATH_BASE}?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
 
       let page: { total: number; issues: any[] };
       try {
