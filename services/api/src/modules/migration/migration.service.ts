@@ -493,7 +493,12 @@ export class MigrationService {
     const params = new URLSearchParams({
       audience: 'api.atlassian.com',
       client_id: clientId,
-      scope: 'read:jira-work read:jira-user offline_access',
+      // read:jira-work     — issues, projects, statuses (REST API v3)
+      // read:jira-user     — user/member data
+      // read:board-scope:jira-software  — board listing (Agile API)
+      // read:sprint:jira-software       — sprint data (Agile API)
+      // offline_access     — enables refresh token for long migrations
+      scope: 'read:jira-work read:jira-user read:board-scope:jira-software read:sprint:jira-software offline_access',
       redirect_uri: callbackUrl,
       state,
       response_type: 'code',

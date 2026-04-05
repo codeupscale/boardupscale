@@ -916,12 +916,10 @@ async function runIssuesPhase(
   }, io);
 
   const PAGE_SIZE = 100;
-  // Use the classic /rest/api/3/search endpoint (NOT /search/jql) because the newer
-  // /search/jql endpoint uses cursor-based pagination (nextPageToken) and does NOT
-  // return a `total` field — causing our offset loop to stop after the first 100 issues.
-  // The classic endpoint returns { total, startAt, maxResults, issues } which maps
-  // exactly to our pagination pattern.
-  const SEARCH_PATH_BASE = '/rest/api/3/search';
+  // /rest/api/3/search was permanently removed (410). Must use /rest/api/3/search/jql.
+  // This endpoint uses cursor-based pagination: pass nextPageToken from the previous
+  // response until it is absent (last page). There is no `total` field — we count
+  // processed issues as we go.
   const FIELDS = [
     'summary', 'description', 'issuetype', 'priority', 'status',
     'assignee', 'reporter', 'created', 'updated', 'labels',
@@ -957,27 +955,31 @@ async function runIssuesPhase(
     }
 
     const jql = `project = "${proj.key}" ORDER BY created ASC`;
-    let startAt = state.currentOffset; // resume support
+    // Cursor-based pagination — nextPageToken absent means last page reached.
+    let nextPageToken: string | undefined = undefined;
     let hasMore = true;
-    let firstPage = true;
+    let pageNumber = 0;
     let projectIssueCount = 0;
 
     while (hasMore) {
-      const encoded = encodeURIComponent(jql);
-      const path = `${SEARCH_PATH_BASE}?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
+      const params = new URLSearchParams({
+        jql,
+        maxResults: String(PAGE_SIZE),
+        fields: FIELDS,
+      });
+      if (nextPageToken) params.set('nextPageToken', nextPageToken);
 
-      let page: { total: number; issues: any[] };
+      let page: { issues: any[]; nextPageToken?: string };
       try {
-        page = await jiraGet<{ total: number; issues: any[] }>(credentials, path);
+        page = await jiraGet<{ issues: any[]; nextPageToken?: string }>(
+          credentials,
+          `/rest/api/3/search/jql?${params.toString()}`,
+        );
       } catch (err: any) {
-        addError(state, `issues page ${proj.key}@${startAt}: ${err.message}`);
+        addError(state, `issues page ${proj.key}@${pageNumber * PAGE_SIZE}: ${err.message}`);
         break;
       }
-
-      if (firstPage) {
-        totalIssues += page.total ?? 0;
-        firstPage = false;
-      }
+      pageNumber++;
 
       for (const issue of page.issues ?? []) {
         try {
@@ -1013,12 +1015,46 @@ async function runIssuesPhase(
           const assigneeId = assigneeEmail ? state.jiraUserEmailToLocalId[assigneeEmail] ?? null : null;
           const reporterId = reporterEmail ? state.jiraUserEmailToLocalId[reporterEmail] ?? null : null;
 
-          // Sprint (customfield_10020 is an array in Cloud API v3)
+          // Sprint (customfield_10020 is an array in Cloud API v3).
+          // If Phase 3 (Agile API) failed due to missing OAuth scope, we create sprints
+          // here on-the-fly from the issue's own sprint field data — no extra scope needed.
           let sprintId: string | null = null;
           const sprintArr = Array.isArray(fields.customfield_10020) ? fields.customfield_10020 : [];
           const activeSprint = sprintArr.find((s: any) => s.state === 'active') ?? sprintArr[0];
           if (activeSprint) {
-            sprintId = state.jiraSprintIdToLocalId[String(activeSprint.id)] ?? null;
+            const jiraSprintKey = String(activeSprint.id);
+            if (!state.jiraSprintIdToLocalId[jiraSprintKey]) {
+              // Sprint not yet created — upsert it now from issue field data
+              const spStatus = activeSprint.state === 'active' ? 'active'
+                : activeSprint.state === 'closed' ? 'completed' : 'planned';
+              const spCompletedAt = spStatus === 'completed'
+                ? (activeSprint.endDate ? activeSprint.endDate.substring(0, 10) : null) : null;
+              const { rows: spRows } = await client.query<{ id: string }>(
+                `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
+                 SELECT gen_random_uuid(), $1, $2, $3, $4::date, $5::date, $6::date, $7::uuid, NOW(), NOW()
+                 WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1)
+                 RETURNING id`,
+                [
+                  activeSprint.name,
+                  spStatus,
+                  activeSprint.goal ?? null,
+                  activeSprint.startDate ? activeSprint.startDate.substring(0, 10) : null,
+                  activeSprint.endDate ? activeSprint.endDate.substring(0, 10) : null,
+                  spCompletedAt,
+                  projectId,
+                ],
+              );
+              let localSprintId = spRows[0]?.id;
+              if (!localSprintId) {
+                const { rows: ex } = await client.query<{ id: string }>(
+                  `SELECT id FROM sprints WHERE project_id = $1 AND name = $2 LIMIT 1`,
+                  [projectId, activeSprint.name],
+                );
+                localSprintId = ex[0]?.id;
+              }
+              if (localSprintId) state.jiraSprintIdToLocalId[jiraSprintKey] = localSprintId;
+            }
+            sprintId = state.jiraSprintIdToLocalId[jiraSprintKey] ?? null;
           }
 
           // Strip ADF description → plaintext
@@ -1109,12 +1145,12 @@ async function runIssuesPhase(
         }
       }
 
-      startAt += PAGE_SIZE;
-      hasMore = startAt < (page.total ?? 0);
+      // Advance cursor — absent nextPageToken means this was the last page
+      nextPageToken = page.nextPageToken;
+      hasMore = !!nextPageToken;
+      totalIssues += page.issues?.length ?? 0;
 
-      // Update offset for resume
       await updateRunProgress(client, state.id, {
-        currentOffset: startAt,
         processedIssues,
         failedIssues,
         totalIssues,
