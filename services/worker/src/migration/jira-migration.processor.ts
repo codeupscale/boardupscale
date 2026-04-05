@@ -934,6 +934,9 @@ async function runIssuesPhase(
   await updateRunProgress(client, state.id, {
     status: 'processing',
     currentPhase: PHASE_ISSUES,
+    totalIssues: 0,
+    processedIssues: 0,
+    failedIssues: 0,
   }, io);
 
   const PAGE_SIZE = 100;
@@ -1159,7 +1162,7 @@ async function runIssuesPhase(
           valPlaceholders.push(
             `(gen_random_uuid(), $${pIdx}::text, $${pIdx+1}::text, $${pIdx+2}::text, $${pIdx+3}::text, ` +
             `$${pIdx+4}::uuid, $${pIdx+5}::uuid, $${pIdx+6}::uuid, $${pIdx+7}::uuid, $${pIdx+8}::text, ` +
-            `$${pIdx+9}::text[], $${pIdx+10}::int, $${pIdx+11}::int, $${pIdx+12}::int, ` +
+            `$${pIdx+9}::text[], $${pIdx+10}::numeric, $${pIdx+11}::int, $${pIdx+12}::int, ` +
             `COALESCE($${pIdx+13}::timestamptz, NOW()), COALESCE($${pIdx+14}::timestamptz, NOW()))`,
           );
           valParams.push(
@@ -1172,7 +1175,10 @@ async function runIssuesPhase(
           pIdx += 15;
         }
 
-        // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn
+        // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn.
+        // ON CONFLICT DO UPDATE makes this a true upsert — re-runs update existing issues
+        // and RETURNING returns ALL rows (new inserts + updates), so no existingKeys
+        // lookup is needed.
         const issueCteQuery = `WITH max_num AS (
              SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1
            ),
@@ -1183,9 +1189,6 @@ async function runIssuesPhase(
                status_id, assignee_id, reporter_id, sprint_id,
                jira_key, labels, story_points, time_estimate, time_spent,
                created_at, updated_at
-             )
-             WHERE NOT EXISTS (
-               SELECT 1 FROM issues WHERE project_id = $1 AND jira_key = v.jira_key
              )
            )
            INSERT INTO issues (
@@ -1212,6 +1215,20 @@ async function runIssuesPhase(
                (regexp_match(jira_key, '\\d+$'))[1]::int AS jira_key_num
              FROM incoming
            ) i
+           ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
+             title         = EXCLUDED.title,
+             description   = EXCLUDED.description,
+             type          = EXCLUDED.type,
+             priority      = EXCLUDED.priority,
+             status_id     = EXCLUDED.status_id,
+             assignee_id   = EXCLUDED.assignee_id,
+             reporter_id   = EXCLUDED.reporter_id,
+             sprint_id     = EXCLUDED.sprint_id,
+             labels        = EXCLUDED.labels,
+             story_points  = EXCLUDED.story_points,
+             time_estimate = EXCLUDED.time_estimate,
+             time_spent    = EXCLUDED.time_spent,
+             updated_at    = EXCLUDED.updated_at
            RETURNING id, jira_key`;
 
         let bulkInsertFailed = false;
@@ -1252,9 +1269,22 @@ async function runIssuesPhase(
                    ) THEN (regexp_match($11, '\\d+$'))[1]::int
                    ELSE (SELECT n FROM max_num) + 1
                    END,
-                   $11::text, $12::text[], $13::int, $14::int, $15::int,
+                   $11::text, $12::text[], $13::numeric, $14::int, $15::int,
                    COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW())
-                 WHERE NOT EXISTS (SELECT 1 FROM issues WHERE project_id = $1 AND jira_key = $11)
+                 ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
+                   title         = EXCLUDED.title,
+                   description   = EXCLUDED.description,
+                   type          = EXCLUDED.type,
+                   priority      = EXCLUDED.priority,
+                   status_id     = EXCLUDED.status_id,
+                   assignee_id   = EXCLUDED.assignee_id,
+                   reporter_id   = EXCLUDED.reporter_id,
+                   sprint_id     = EXCLUDED.sprint_id,
+                   labels        = EXCLUDED.labels,
+                   story_points  = EXCLUDED.story_points,
+                   time_estimate = EXCLUDED.time_estimate,
+                   time_spent    = EXCLUDED.time_spent,
+                   updated_at    = EXCLUDED.updated_at
                  RETURNING id, jira_key`,
                 [
                   projectId, state.organizationId,
@@ -1280,25 +1310,32 @@ async function runIssuesPhase(
           }
         }
 
-        for (const row of insertedIssues) {
-          state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
-          processedIssues++;
-          projectIssueCount++;
-        }
-
-        // For issues that already existed (WHERE NOT EXISTS filtered them out — not in RETURNING),
-        // look up their IDs so the comments phase can reference them.
-        const insertedKeys = new Set(insertedIssues.map(r => r.jira_key));
-        const existingKeys = issueRowsToInsert.map(r => r.jiraKey).filter(k => !insertedKeys.has(k));
-        if (existingKeys.length > 0) {
-          const { rows: existingIssues } = await client.query<{ id: string; jira_key: string }>(
-            `SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key = ANY($2::text[])`,
-            [projectId, existingKeys],
-          ).catch(() => ({ rows: [] as any[] }));
-          for (const row of existingIssues) {
+        if (!bulkInsertFailed) {
+          // Normal path: ON CONFLICT DO UPDATE upsert — RETURNING gives ALL rows (new + updated).
+          // No existingKeys lookup needed.
+          for (const row of insertedIssues) {
             state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
             processedIssues++;
             projectIssueCount++;
+          }
+        } else {
+          // Fallback path: individual inserts already ran above and incremented processedIssues
+          // for each successful upsert. Now populate jiraIssueKeyToLocalId for any issues
+          // not yet mapped (were already in DB but the fallback INSERT also upserted them,
+          // so they should be in the map — this is a safety net only).
+          const unmappedKeys = issueRowsToInsert
+            .map(r => r.jiraKey)
+            .filter(k => !state.jiraIssueKeyToLocalId[k]);
+          if (unmappedKeys.length > 0) {
+            const { rows: preExisting } = await client.query<{ id: string; jira_key: string }>(
+              `SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key = ANY($2::text[])`,
+              [projectId, unmappedKeys],
+            ).catch(() => ({ rows: [] as any[] }));
+            for (const row of preExisting) {
+              // Populate map so comments phase works, but do NOT increment processedIssues —
+              // these were already counted as failed and will stay that way.
+              state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+            }
           }
         }
       }
@@ -1465,6 +1502,8 @@ async function runCommentsPhase(
 
   let totalComments = 0;
   let processedComments = 0;
+  let commentIssueIdx = 0;
+  const COMMENT_FLUSH_EVERY = 50;
 
   for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
     try {
@@ -1524,6 +1563,14 @@ async function runCommentsPhase(
       await delay(REQUEST_DELAY_MS);
     } catch (err: any) {
       addError(state, `comments for ${jiraKey}: ${err.message}`);
+    }
+
+    commentIssueIdx++;
+    if (commentIssueIdx % COMMENT_FLUSH_EVERY === 0) {
+      await updateRunProgress(client, state.id, {
+        totalComments,
+        processedComments,
+      }, io);
     }
   }
 
