@@ -97,6 +97,9 @@ export class User {
   @Exclude()
   backupCodes: string[];
 
+  @Column({ name: 'jira_account_id', type: 'varchar', length: 255, nullable: true })
+  jiraAccountId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
