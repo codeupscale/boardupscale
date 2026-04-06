@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Droppable, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import {
   Plus,
@@ -8,8 +8,9 @@ import {
   Gauge,
   Trash2,
   AlertCircle,
-  ChevronDown,
+  Loader2,
 } from 'lucide-react'
+import { useScrollPagination } from '@/hooks/useScrollPagination'
 import { useTranslation } from 'react-i18next'
 import { BoardColumn as BoardColumnType, Issue } from '@/types'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,10 @@ export function BoardColumn({
   const { t } = useTranslation()
   const [showWipSettings, setShowWipSettings] = useState(false)
 
+  // Ref to the Droppable scroll container — used as IntersectionObserver root
+  // so rootMargin is measured relative to the column bounds, not the viewport.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+
   const displayedIssues = [...column.issues, ...extraIssues]
   const issueCount = displayedIssues.length
   const totalCount = column.total ?? column.issues.length
@@ -54,6 +59,13 @@ export function BoardColumn({
 
   const remainingCount = totalCount - issueCount
   const showLoadMore = (column.hasMore ?? false) && remainingCount > 0
+
+  const sentinelRef = useScrollPagination(
+    showLoadMore,
+    !!isLoadingMore,
+    () => onLoadMore?.(column.id),
+    scrollContainerRef,
+  )
 
   return (
     <div className="flex flex-col h-full min-h-0 w-[280px] flex-shrink-0 bg-gray-50/80 dark:bg-gray-800/50 rounded-xl border border-gray-200/60 dark:border-gray-700/40 shadow-sm overflow-hidden">
@@ -185,60 +197,59 @@ export function BoardColumn({
 
       {/* Droppable area */}
       <Droppable droppableId={column.id} type="ISSUE">
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={cn(
-              'flex-1 flex flex-col gap-2 px-2 py-2 min-h-[180px] overflow-y-auto',
-              'scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent',
-              snapshot.isDraggingOver && !isAtLimit
-                ? 'bg-blue-50/60 dark:bg-blue-950/30'
-                : snapshot.isDraggingOver && isAtLimit
-                  ? 'bg-red-50/60 dark:bg-red-950/30'
-                  : '',
-            )}
-          >
-            {displayedIssues.map((issue, index) => (
-              <BoardCard key={issue.id} issue={issue} index={index} />
-            ))}
-            {provided.placeholder}
+        {(provided, snapshot) => {
+          // Merge DnD ref with our scroll-container ref
+          const mergedRef = (el: HTMLDivElement | null) => {
+            provided.innerRef(el)
+            scrollContainerRef.current = el
+          }
 
-            {/* Empty state */}
-            {displayedIssues.length === 0 && !snapshot.isDraggingOver && (
-              <div className="flex flex-col items-center justify-center flex-1 py-8 gap-2">
-                <div
-                  className="w-8 h-8 rounded-full opacity-20 flex-shrink-0"
-                  style={{ backgroundColor: column.color ?? '#6b7280' }}
-                />
-                <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
-                  {t('issues.noIssuesBoard')}
-                </p>
-              </div>
-            )}
+          return (
+            <div
+              ref={mergedRef}
+              {...provided.droppableProps}
+              className={cn(
+                'flex-1 flex flex-col gap-2 px-2 py-2 min-h-[180px] overflow-y-auto',
+                'scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent',
+                snapshot.isDraggingOver && !isAtLimit
+                  ? 'bg-blue-50/60 dark:bg-blue-950/30'
+                  : snapshot.isDraggingOver && isAtLimit
+                    ? 'bg-red-50/60 dark:bg-red-950/30'
+                    : '',
+              )}
+            >
+              {displayedIssues.map((issue, index) => (
+                <BoardCard key={issue.id} issue={issue} index={index} />
+              ))}
+              {provided.placeholder}
 
-            {/* Load more button */}
-            {showLoadMore && (
-              <button
-                onClick={() => onLoadMore?.(column.id)}
-                disabled={isLoadingMore}
-                className={cn(
-                  'w-full py-2 text-xs font-medium rounded-lg transition-all duration-150',
-                  'flex items-center justify-center gap-1.5',
-                  'text-blue-600 dark:text-blue-400',
-                  'hover:text-blue-700 dark:hover:text-blue-300',
-                  'hover:bg-blue-50 dark:hover:bg-blue-900/20',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
-              >
-                <ChevronDown className={cn('h-3.5 w-3.5', isLoadingMore && 'animate-bounce')} />
-                {isLoadingMore
-                  ? 'Loading...'
-                  : `Load ${remainingCount > 50 ? '50' : remainingCount} more`}
-              </button>
-            )}
-          </div>
-        )}
+              {/* Empty state */}
+              {displayedIssues.length === 0 && !snapshot.isDraggingOver && (
+                <div className="flex flex-col items-center justify-center flex-1 py-8 gap-2">
+                  <div
+                    className="w-8 h-8 rounded-full opacity-20 flex-shrink-0"
+                    style={{ backgroundColor: column.color ?? '#6b7280' }}
+                  />
+                  <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
+                    {t('issues.noIssuesBoard')}
+                  </p>
+                </div>
+              )}
+
+              {/* Invisible scroll sentinel — triggers load when scrolled into view */}
+              {showLoadMore && (
+                <div ref={sentinelRef} className="h-px w-full flex-shrink-0" aria-hidden="true" />
+              )}
+
+              {/* Loading indicator while fetching next page */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center py-3 flex-shrink-0">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-600" />
+                </div>
+              )}
+            </div>
+          )
+        }}
       </Droppable>
     </div>
   )
