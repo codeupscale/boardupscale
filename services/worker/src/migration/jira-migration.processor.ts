@@ -433,6 +433,32 @@ function addError(state: RunState, msg: string) {
 }
 
 /**
+ * Sentinel error thrown when the DB run status has been set to 'cancelled'.
+ * Caught in processJob to stop cleanly without marking the run as 'failed'.
+ */
+class MigrationCancelledError extends Error {
+  constructor(runId: string) {
+    super(`Migration run ${runId} was cancelled`);
+    this.name = 'MigrationCancelledError';
+  }
+}
+
+/**
+ * Re-read the run status from DB and throw MigrationCancelledError if it has
+ * been set to 'cancelled' while the job was executing.
+ * Called between each phase so cancellation takes effect within one phase boundary.
+ */
+async function checkCancelled(client: PoolClient, runId: string): Promise<void> {
+  const { rows } = await client.query<{ status: string }>(
+    `SELECT status FROM jira_migration_runs WHERE id = $1`,
+    [runId],
+  );
+  if (rows[0]?.status === 'cancelled') {
+    throw new MigrationCancelledError(runId);
+  }
+}
+
+/**
  * Retry a phase function up to MAX_PHASE_RETRIES times with exponential backoff.
  * If the phase still fails after all retries the error is recorded but execution
  * continues to the next phase — a single failing phase must not abort the whole job.
@@ -1822,6 +1848,9 @@ async function processJob(
         }
       }
 
+      // Cancel check after Phase 1
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 2 — projects ───────────────────────────────────────────────────
       if (!completed.has(PHASE_PROJECTS)) {
         await runPhaseWithRetry('projects', state, () =>
@@ -1852,6 +1881,9 @@ async function processJob(
         }
       }
 
+      // Cancel check after Phase 2
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 3 — sprints ────────────────────────────────────────────────────
       if (!completed.has(PHASE_SPRINTS)) {
         await runPhaseWithRetry('sprints', state, () =>
@@ -1869,6 +1901,9 @@ async function processJob(
         // Sprint map rebuilt on resume — jiraSprintIdToLocalId stays empty (sprints re-upsert by name)
       }
 
+      // Cancel check after Phase 3
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 4 — issues ─────────────────────────────────────────────────────
       if (!completed.has(PHASE_ISSUES)) {
         await runPhaseWithRetry('issues', state, () =>
@@ -1884,12 +1919,18 @@ async function processJob(
         for (const r of rows) if (r.jira_key) state.jiraIssueKeyToLocalId[r.jira_key] = r.id;
       }
 
+      // Cancel check after Phase 4
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 5 — comments ───────────────────────────────────────────────────
       if (!completed.has(PHASE_COMMENTS)) {
         await runPhaseWithRetry('comments', state, () =>
           runCommentsPhase(progressClient, state, credentials, io),
         );
       }
+
+      // Cancel check after Phase 5
+      await checkCancelled(progressClient, runId);
 
       // ── Phase 6 — attachments ────────────────────────────────────────────────
       if (!completed.has(PHASE_ATTACHMENTS)) {
@@ -1960,6 +2001,13 @@ async function processJob(
       progressClient.release();
     }
   } catch (err: any) {
+    // Graceful stop — run was cancelled via the API; DB already has status='cancelled'.
+    // Do NOT overwrite it with 'failed' and do NOT ask BullMQ to retry.
+    if (err instanceof MigrationCancelledError) {
+      console.log(`[Migration:${runId}] Stopped cleanly after cancellation.`);
+      return;
+    }
+
     console.error(`[Migration:${runId}] Fatal error:`, err.message, err.stack);
     const errClient = await db.connect();
     try {

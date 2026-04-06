@@ -56,7 +56,7 @@ describe('MigrationService', () => {
   let runRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; update: jest.Mock; findAndCount: jest.Mock };
   let connRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; update: jest.Mock };
   let jiraApi: { testConnection: jest.Mock; listProjects: jest.Mock; fetchOrgUsers: jest.Mock; fetchIssuesByJql: jest.Mock };
-  let queue: { add: jest.Mock };
+  let queue: { add: jest.Mock; getJob: jest.Mock };
   let configService: { get: jest.Mock };
 
   beforeEach(async () => {
@@ -82,7 +82,7 @@ describe('MigrationService', () => {
       fetchIssuesByJql: jest.fn(),
     };
 
-    queue = { add: jest.fn() };
+    queue = { add: jest.fn(), getJob: jest.fn() };
 
     configService = {
       get: jest.fn().mockReturnValue('test-secret-32-chars-long-padded'),
@@ -254,6 +254,101 @@ describe('MigrationService', () => {
       expect(runRepo.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({ where: { organizationId: 'org-1' } }),
       );
+    });
+  });
+
+  // ── cancel ────────────────────────────────────────────────────────────────
+
+  describe('cancel', () => {
+    it('throws NotFoundException when run does not exist', async () => {
+      runRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.cancel('bad-run', 'org-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException when run is already completed', async () => {
+      runRepo.findOne.mockResolvedValue(makeRun({ status: 'completed' }));
+
+      await expect(service.cancel('run-1', 'org-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when run is already cancelled', async () => {
+      runRepo.findOne.mockResolvedValue(makeRun({ status: 'cancelled' }));
+
+      await expect(service.cancel('run-1', 'org-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when run is failed', async () => {
+      runRepo.findOne.mockResolvedValue(makeRun({ status: 'failed' }));
+
+      await expect(service.cancel('run-1', 'org-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('cancels a pending run — marks DB as cancelled and removes waiting BullMQ job', async () => {
+      const run = makeRun({ id: 'run-1', status: 'pending' });
+      runRepo.findOne.mockResolvedValue(run);
+      runRepo.update.mockResolvedValue(undefined);
+
+      const mockJob = { getState: jest.fn().mockResolvedValue('waiting'), remove: jest.fn().mockResolvedValue(undefined) };
+      queue.getJob.mockResolvedValue(mockJob);
+
+      const result = await service.cancel('run-1', 'org-1');
+
+      expect(result.runId).toBe('run-1');
+      expect(runRepo.update).toHaveBeenCalledWith('run-1', { status: 'cancelled' });
+      expect(queue.getJob).toHaveBeenCalledWith('migration-run-1');
+      expect(mockJob.remove).toHaveBeenCalled();
+    });
+
+    it('cancels a processing run — marks DB as cancelled and warns about active job', async () => {
+      const run = makeRun({ id: 'run-2', status: 'processing' });
+      runRepo.findOne.mockResolvedValue(run);
+      runRepo.update.mockResolvedValue(undefined);
+
+      // Active jobs cannot be removed; service should NOT call job.remove()
+      const mockJob = { getState: jest.fn().mockResolvedValue('active'), remove: jest.fn() };
+      queue.getJob.mockResolvedValue(mockJob);
+
+      const result = await service.cancel('run-2', 'org-1');
+
+      expect(result.runId).toBe('run-2');
+      expect(runRepo.update).toHaveBeenCalledWith('run-2', { status: 'cancelled' });
+      // DB status is the real cancel signal for active jobs — remove must NOT be called
+      expect(mockJob.remove).not.toHaveBeenCalled();
+    });
+
+    it('cancels gracefully when BullMQ job is not found (already completed)', async () => {
+      const run = makeRun({ id: 'run-3', status: 'pending' });
+      runRepo.findOne.mockResolvedValue(run);
+      runRepo.update.mockResolvedValue(undefined);
+      queue.getJob.mockResolvedValue(null); // job already gone
+
+      const result = await service.cancel('run-3', 'org-1');
+
+      expect(result.runId).toBe('run-3');
+      expect(runRepo.update).toHaveBeenCalledWith('run-3', { status: 'cancelled' });
+    });
+
+    it('cancels gracefully even when getJob throws (non-fatal queue error)', async () => {
+      const run = makeRun({ id: 'run-4', status: 'pending' });
+      runRepo.findOne.mockResolvedValue(run);
+      runRepo.update.mockResolvedValue(undefined);
+      queue.getJob.mockRejectedValue(new Error('Redis connection error'));
+
+      // Should not throw — queue errors are non-fatal
+      const result = await service.cancel('run-4', 'org-1');
+
+      expect(result.runId).toBe('run-4');
+      // DB cancel must still have been written despite the queue error
+      expect(runRepo.update).toHaveBeenCalledWith('run-4', { status: 'cancelled' });
+    });
+
+    it('does not cancel a run belonging to a different org', async () => {
+      // findOne scopes by (id, organizationId) — returns null for wrong org
+      runRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.cancel('run-1', 'other-org')).rejects.toThrow(NotFoundException);
+      expect(runRepo.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -342,15 +342,31 @@ export class MigrationService {
       throw new BadRequestException('Only active migrations can be cancelled');
     }
 
-    // Mark as cancelled in DB — the worker checks this flag and will stop after its current chunk.
+    // Mark as cancelled in DB first — the worker polls this flag between phases
+    // and will stop gracefully after finishing its current chunk.
     await this.runRepository.update(run.id, { status: 'cancelled' });
 
-    // Best-effort: remove from BullMQ queue in case it hasn't started yet.
+    // Best-effort: also remove/obliterate the BullMQ job.
+    // - Waiting/delayed jobs can be removed immediately.
+    // - Active jobs cannot be removed — they are allowed to finish the current phase
+    //   and will self-terminate when they detect the 'cancelled' DB status.
     try {
       const job = await this.migrationQueue.getJob(`migration-${run.id}`);
-      if (job) await job.remove();
-    } catch {
-      // Job may already be active / not removable — the DB status update is the real signal.
+      if (job) {
+        const state = await job.getState();
+        if (state === 'active') {
+          // Cannot force-remove an active job; the DB flag is the stop signal.
+          this.logger.warn(
+            `Migration job migration-${run.id} is active — worker will stop at next phase boundary`,
+          );
+        } else {
+          await job.remove();
+          this.logger.log(`Removed BullMQ job migration-${run.id} (was ${state})`);
+        }
+      }
+    } catch (err: any) {
+      // Non-fatal — DB status is the authoritative cancel signal.
+      this.logger.warn(`Could not remove BullMQ job for run ${run.id}: ${err.message}`);
     }
 
     this.logger.log(`Migration run ${run.id} cancelled by user`);
