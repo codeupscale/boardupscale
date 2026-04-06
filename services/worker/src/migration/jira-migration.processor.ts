@@ -1448,10 +1448,13 @@ async function runIssuesPhase(
         }
       }
 
-      // Advance cursor — absent nextPageToken means this was the last page
+      // Advance cursor — absent nextPageToken OR empty page means this was the last page.
+      // Guard: if the token is present but Jira returns zero issues (e.g. GDPR-filtered
+      // or permission-restricted pages) we must stop to avoid an infinite loop.
       nextPageToken = page.nextPageToken;
-      hasMore = !!nextPageToken;
-      totalIssues += page.issues?.length ?? 0;
+      const pageSize = page.issues?.length ?? 0;
+      hasMore = !!nextPageToken && pageSize > 0;
+      totalIssues += pageSize;
 
       await updateRunProgress(client, state.id, {
         processedIssues,
@@ -1927,6 +1930,7 @@ async function processJob(
         await runPhaseWithRetry('comments', state, () =>
           runCommentsPhase(progressClient, state, credentials, io),
         );
+        state.completedPhases = [...(state.completedPhases ?? []), PHASE_COMMENTS];
       }
 
       // Cancel check after Phase 5
@@ -1937,6 +1941,7 @@ async function processJob(
         await runPhaseWithRetry('attachments', state, () =>
           runAttachmentsPhase(progressClient, state, io),
         );
+        state.completedPhases = [...(state.completedPhases ?? []), PHASE_ATTACHMENTS];
       }
 
       // ── Write final result summary (read fresh counts from DB) ──────────────
