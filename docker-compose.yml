@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://boardupscale:boardupscale@postgres:5432/boardupscale
+      - DATABASE_URL=postgresql://boardupscale:${POSTGRES_PASSWORD:-boardupscale}@postgres:5432/boardupscale
       - REDIS_URL=redis://redis:6379
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - MINIO_ENDPOINT=minio
@@ -85,7 +85,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://boardupscale:boardupscale@postgres:5432/boardupscale
+      - DATABASE_URL=postgresql://boardupscale:${POSTGRES_PASSWORD:-boardupscale}@postgres:5432/boardupscale
       - REDIS_URL=redis://redis:6379
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - MINIO_ENDPOINT=minio
@@ -102,6 +102,9 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      - APP_SECRET=${APP_SECRET:-boardupscale-dev-secret-change-before-production}
+      - ATLASSIAN_CLIENT_ID=${ATLASSIAN_CLIENT_ID:-}
+      - ATLASSIAN_CLIENT_SECRET=${ATLASSIAN_CLIENT_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -19,6 +19,9 @@ import {
   Upload,
   CreditCard,
   BookOpen,
+  User,
+  History,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { useTranslation } from 'react-i18next'
@@ -59,15 +62,26 @@ export function Sidebar() {
     { icon: Clock, label: 'Timesheet', href: '/timesheet' },
     { icon: Bell, label: t('nav.notifications'), href: '/notifications' },
     { icon: Settings, label: t('nav.settings'), href: '/settings' },
+  ]
+
+  const settingsSubNav = [
+    { icon: User, label: 'Profile', href: '/settings' },
     ...(isAdmin ? [{ icon: Users, label: 'Team', href: '/settings/team' }] : []),
     { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
+    ...(isAdmin ? [{ icon: Shield, label: 'Roles', href: '/settings/roles' }] : []),
     ...(isAdmin ? [{ icon: Upload, label: 'Import', href: '/import' }] : []),
-    ...(isAdmin ? [{ icon: Upload, label: 'Migrate from Jira', href: '/settings/migrate/jira' }] : []),
-    ...(isAdmin ? [{ icon: Shield, label: t('nav.auditLogs'), href: '/admin/audit-logs' }] : []),
+    ...(isAdmin ? [{ icon: ArrowLeftRight, label: 'Migrate from Jira', href: '/settings/migrate/jira' }] : []),
+    ...(isAdmin ? [{ icon: History, label: t('nav.auditLogs'), href: '/admin/audit-logs' }] : []),
   ]
+
+  const isOnSettingsPath =
+    location.pathname.startsWith('/settings') ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname === '/import'
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return location.pathname === href
+    if (href === '/settings') return isOnSettingsPath
     return location.pathname.startsWith(href)
   }
 
@@ -178,6 +192,43 @@ export function Sidebar() {
                     )}
                   >
                     <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')} />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Settings Sub-Navigation */}
+        {isSidebarOpen && isOnSettingsPath && (
+          <div className="mt-4 px-4">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+              Account & Settings
+            </p>
+            <div className="space-y-0.5">
+              {settingsSubNav.map(({ icon: Icon, label, href }) => {
+                const active =
+                  href === '/settings'
+                    ? location.pathname === '/settings'
+                    : location.pathname.startsWith(href)
+                return (
+                  <Link
+                    key={href}
+                    to={href}
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      active
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-4 w-4 flex-shrink-0',
+                        active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500',
+                      )}
+                    />
                     <span className="truncate">{label}</span>
                   </Link>
                 )

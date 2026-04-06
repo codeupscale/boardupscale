@@ -3,20 +3,33 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, ShieldCheck, ShieldOff, Copy, RefreshCw } from 'lucide-react'
+import {
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  ShieldOff,
+  Copy,
+  RefreshCw,
+  User,
+  KeyRound,
+  Building2,
+  Crown,
+  Shield,
+  User2,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '@/store/auth.store'
 import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
 import { useMe, useSetup2FA, useConfirm2FA, useDisable2FA, useRegenerateBackupCodes } from '@/hooks/useAuth'
-import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Avatar } from '@/components/ui/avatar'
-import { Tabs } from '@/components/ui/tabs'
 import { LoadingPage } from '@/components/ui/spinner'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
 import { toast } from '@/store/ui.store'
+import { cn } from '@/lib/utils'
+
+// ─── Schemas ─────────────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
   displayName: z.string().min(1, 'Display name is required'),
@@ -44,6 +57,44 @@ const timezoneOptions = [
   'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Dubai', 'Asia/Karachi',
   'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney',
 ].map((tz) => ({ value: tz, label: tz }))
+
+// ─── Role badge helper ────────────────────────────────────────────────────────
+
+function getRoleBadge(role: string) {
+  switch (role) {
+    case 'owner':
+      return {
+        label: 'Owner',
+        cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
+        Icon: Crown,
+      }
+    case 'admin':
+      return {
+        label: 'Admin',
+        cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+        Icon: Shield,
+      }
+    default:
+      return {
+        label: 'Member',
+        cls: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
+        Icon: User2,
+      }
+  }
+}
+
+// ─── Content section wrapper ──────────────────────────────────────────────────
+
+function SectionHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+    </div>
+  )
+}
+
+// ─── Profile Tab ─────────────────────────────────────────────────────────────
 
 function ProfileTab() {
   const { t, i18n } = useTranslation()
@@ -78,7 +129,6 @@ function ProfileTab() {
   if (isLoading) return <LoadingPage />
 
   const handleProfileSubmit = (data: ProfileValues) => {
-    // Change i18n language when user saves profile
     if (data.language && data.language !== i18n.language) {
       i18n.changeLanguage(data.language)
     }
@@ -86,51 +136,58 @@ function ProfileTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit(handleProfileSubmit)} className="space-y-6 max-w-lg">
-      <div className="flex items-center gap-4">
-        <Avatar src={avatarUrl || me?.avatarUrl} name={me?.displayName || 'User'} size="lg" />
-        <div className="flex-1">
-          <Input
-            label={t('settings.avatarUrl')}
-            placeholder="https://example.com/avatar.jpg"
-            error={errors.avatarUrl?.message}
-            {...register('avatarUrl')}
+    <>
+      <SectionHeader title="Profile" description="Update your avatar, display name, and regional preferences" />
+      <form onSubmit={handleSubmit(handleProfileSubmit)} className="space-y-5 max-w-lg">
+        {/* Avatar row */}
+        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <Avatar src={avatarUrl || me?.avatarUrl} name={me?.displayName || 'User'} size="lg" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Avatar URL</p>
+            <Input
+              placeholder="https://example.com/avatar.jpg"
+              error={errors.avatarUrl?.message}
+              {...register('avatarUrl')}
+            />
+          </div>
+        </div>
+
+        <Input
+          label={t('auth.displayName')}
+          placeholder="Your name"
+          error={errors.displayName?.message}
+          {...register('displayName')}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Select
+            label={t('settings.timezone')}
+            options={timezoneOptions}
+            {...register('timezone')}
+          />
+          <Select
+            label={t('settings.language')}
+            options={languageOptions}
+            {...register('language')}
           />
         </div>
-      </div>
 
-      <Input
-        label={t('auth.displayName')}
-        placeholder="Your name"
-        error={errors.displayName?.message}
-        {...register('displayName')}
-      />
+        {/* Email (read-only) */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('settings.emailAddress')}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">{me?.email}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('settings.emailCannotChange')}</p>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Select
-          label={t('settings.timezone')}
-          options={timezoneOptions}
-          {...register('timezone')}
-        />
-        <Select
-          label={t('settings.language')}
-          options={languageOptions}
-          {...register('language')}
-        />
-      </div>
-
-      <div>
-        <p className="text-sm text-gray-500 mb-2">{t('settings.emailAddress')}</p>
-        <p className="text-sm font-medium text-gray-900">{me?.email}</p>
-        <p className="text-xs text-gray-500 mt-1">{t('settings.emailCannotChange')}</p>
-      </div>
-
-      <Button type="submit" isLoading={updateProfile.isPending} disabled={!isDirty}>
-        {t('settings.saveChanges')}
-      </Button>
-    </form>
+        <Button type="submit" isLoading={updateProfile.isPending} disabled={!isDirty}>
+          {t('settings.saveChanges')}
+        </Button>
+      </form>
+    </>
   )
 }
+
+// ─── Account Tab ─────────────────────────────────────────────────────────────
 
 function AccountTab() {
   const { t } = useTranslation()
@@ -156,64 +213,69 @@ function AccountTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
-      <h3 className="font-semibold text-gray-900">{t('settings.changePassword')}</h3>
+    <>
+      <SectionHeader title="Account" description="Manage your password and account credentials" />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-lg">
+        <div className="relative">
+          <Input
+            label={t('settings.currentPassword')}
+            type={showCurrentPassword ? 'text' : 'password'}
+            error={errors.currentPassword?.message}
+            {...register('currentPassword')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            tabIndex={-1}
+          >
+            {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <div className="relative">
+          <Input
+            label={t('settings.newPassword')}
+            type={showNewPassword ? 'text' : 'password'}
+            error={errors.newPassword?.message}
+            {...register('newPassword')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword(!showNewPassword)}
+            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            tabIndex={-1}
+          >
+            {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <div className="relative">
+          <Input
+            label={t('settings.confirmNewPassword')}
+            type={showConfirmPassword ? 'text' : 'password'}
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword')}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            tabIndex={-1}
+          >
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
 
-      <div className="relative">
-        <Input
-          label={t('settings.currentPassword')}
-          type={showCurrentPassword ? 'text' : 'password'}
-          error={errors.currentPassword?.message}
-          {...register('currentPassword')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-          className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      <div className="relative">
-        <Input
-          label={t('settings.newPassword')}
-          type={showNewPassword ? 'text' : 'password'}
-          error={errors.newPassword?.message}
-          {...register('newPassword')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowNewPassword(!showNewPassword)}
-          className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      <div className="relative">
-        <Input
-          label={t('settings.confirmNewPassword')}
-          type={showConfirmPassword ? 'text' : 'password'}
-          error={errors.confirmPassword?.message}
-          {...register('confirmPassword')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-          className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-
-      <Button type="submit" isLoading={changePassword.isPending}>
-        {t('settings.updatePassword')}
-      </Button>
-    </form>
+        <div className="pt-1">
+          <Button type="submit" isLoading={changePassword.isPending}>
+            {t('settings.updatePassword')}
+          </Button>
+        </div>
+      </form>
+    </>
   )
 }
+
+// ─── Security Tab ─────────────────────────────────────────────────────────────
 
 function SecurityTab() {
   const { data: me } = useMe()
@@ -233,9 +295,7 @@ function SecurityTab() {
   const is2FAEnabled = me?.twoFaEnabled ?? false
 
   const handleSetup = () => {
-    setup2FA.mutate(undefined, {
-      onSuccess: (data) => setSetupData(data),
-    })
+    setup2FA.mutate(undefined, { onSuccess: (data) => setSetupData(data) })
   }
 
   const handleConfirm = () => {
@@ -275,190 +335,329 @@ function SecurityTab() {
   }
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div>
-        <h3 className="font-semibold text-gray-900">Two-Factor Authentication</h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Add an extra layer of security to your account using a TOTP authenticator app.
-        </p>
-      </div>
+    <>
+      <SectionHeader title="Security" description="Protect your account with two-factor authentication" />
+      <div className="space-y-5 max-w-lg">
+        {/* 2FA status card */}
+        <div
+          className={cn(
+            'flex items-start gap-4 p-4 rounded-xl border',
+            is2FAEnabled
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+          )}
+        >
+          <div
+            className={cn(
+              'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0',
+              is2FAEnabled
+                ? 'bg-green-100 dark:bg-green-900/40'
+                : 'bg-gray-200 dark:bg-gray-700',
+            )}
+          >
+            {is2FAEnabled ? (
+              <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+            ) : (
+              <ShieldOff className="h-5 w-5 text-gray-400" />
+            )}
+          </div>
+          <div className="flex-1">
+            <p className={cn('text-sm font-semibold', is2FAEnabled ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300')}>
+              {is2FAEnabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is disabled'}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {is2FAEnabled
+                ? 'Your account is protected. Use your authenticator app when signing in.'
+                : 'Add an extra layer of security using a TOTP authenticator app.'}
+            </p>
+          </div>
+        </div>
 
-      {/* Status */}
-      <div className={`flex items-center gap-3 p-4 rounded-lg border ${is2FAEnabled ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-        {is2FAEnabled ? (
-          <ShieldCheck className="h-5 w-5 text-green-600" />
-        ) : (
-          <ShieldOff className="h-5 w-5 text-gray-400" />
+        {/* Enable button */}
+        {!is2FAEnabled && !setupData && (
+          <Button onClick={handleSetup} isLoading={setup2FA.isPending}>
+            Enable Two-Factor Authentication
+          </Button>
         )}
-        <div>
-          <p className={`text-sm font-medium ${is2FAEnabled ? 'text-green-700' : 'text-gray-700'}`}>
-            {is2FAEnabled ? '2FA is enabled' : '2FA is not enabled'}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {is2FAEnabled
-              ? 'Your account is protected with two-factor authentication.'
-              : 'Enable 2FA to add an extra layer of security.'}
-          </p>
-        </div>
-      </div>
 
-      {/* Setup flow */}
-      {!is2FAEnabled && !setupData && (
-        <Button onClick={handleSetup} isLoading={setup2FA.isPending}>
-          Enable Two-Factor Authentication
-        </Button>
-      )}
-
-      {/* QR Code step */}
-      {setupData && (
-        <div className="space-y-4 p-4 bg-white border border-gray-200 rounded-lg">
-          <p className="text-sm font-medium text-gray-900">
-            Scan this QR code with your authenticator app:
-          </p>
-          <div className="flex justify-center">
-            <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-48 h-48" />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Or enter this secret manually:</p>
-            <code className="block text-xs bg-gray-100 px-3 py-2 rounded font-mono break-all select-all">
-              {setupData.secret}
-            </code>
-          </div>
-          <div className="space-y-2">
-            <Input
-              label="Verification Code"
-              placeholder="Enter 6-digit code"
-              value={confirmCode}
-              onChange={(e) => setConfirmCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
-            />
-            <div className="flex gap-2">
-              <Button onClick={handleConfirm} isLoading={confirm2FA.isPending} disabled={!confirmCode}>
-                Verify & Enable
-              </Button>
-              <Button variant="outline" onClick={() => { setSetupData(null); setConfirmCode('') }}>
-                Cancel
-              </Button>
+        {/* QR Code setup */}
+        {setupData && (
+          <div className="space-y-4 p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              Scan this QR code with your authenticator app
+            </p>
+            <div className="flex justify-center p-4 bg-white rounded-lg border border-gray-100">
+              <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-44 h-44" />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Backup codes display */}
-      {backupCodes && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
-          <p className="text-sm font-medium text-amber-800">
-            Save these backup codes in a safe place. Each code can only be used once.
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {backupCodes.map((code, i) => (
-              <code key={i} className="text-sm bg-white px-3 py-1.5 rounded border border-amber-200 font-mono text-center">
-                {code}
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Or enter this secret manually:</p>
+              <code className="block text-xs bg-gray-50 dark:bg-gray-900 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 font-mono break-all select-all text-gray-700 dark:text-gray-300">
+                {setupData.secret}
               </code>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={copyBackupCodes}>
-              <Copy className="h-4 w-4 mr-1" /> Copy All
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setBackupCodes(null)}>
-              Done
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Disable / Regenerate (when enabled) */}
-      {is2FAEnabled && !setupData && !backupCodes && (
-        <div className="space-y-3">
-          {!showDisableConfirm && !showRegenConfirm && (
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowRegenConfirm(true)}>
-                <RefreshCw className="h-4 w-4 mr-1" /> Regenerate Backup Codes
-              </Button>
-              <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => setShowDisableConfirm(true)}>
-                Disable 2FA
-              </Button>
             </div>
-          )}
-
-          {showDisableConfirm && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg space-y-3">
-              <p className="text-sm text-red-700 font-medium">Enter your password to disable 2FA:</p>
+            <div className="space-y-3">
               <Input
-                type="password"
-                placeholder="Your password"
-                value={disablePassword}
-                onChange={(e) => setDisablePassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleDisable()}
+                label="Verification Code"
+                placeholder="Enter 6-digit code"
+                value={confirmCode}
+                onChange={(e) => setConfirmCode(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
               />
               <div className="flex gap-2">
-                <Button
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={handleDisable}
-                  isLoading={disable2FA.isPending}
-                  disabled={!disablePassword}
+                <Button onClick={handleConfirm} isLoading={confirm2FA.isPending} disabled={!confirmCode}>
+                  Verify & Enable
+                </Button>
+                <Button variant="outline" onClick={() => { setSetupData(null); setConfirmCode('') }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Backup codes display */}
+        {backupCodes && (
+          <div className="p-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl space-y-3">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              Save these backup codes in a safe place
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">Each code can only be used once.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {backupCodes.map((code, i) => (
+                <code
+                  key={i}
+                  className="text-sm bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-700 font-mono text-center text-gray-800 dark:text-gray-200"
                 >
-                  Confirm Disable
-                </Button>
-                <Button variant="outline" onClick={() => { setShowDisableConfirm(false); setDisablePassword('') }}>
-                  Cancel
-                </Button>
-              </div>
+                  {code}
+                </code>
+              ))}
             </div>
-          )}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={copyBackupCodes}>
+                <Copy className="h-4 w-4 mr-1" /> Copy All
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setBackupCodes(null)}>
+                Done
+              </Button>
+            </div>
+          </div>
+        )}
 
-          {showRegenConfirm && (
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
-              <p className="text-sm text-gray-700 font-medium">Enter your password to regenerate backup codes:</p>
-              <Input
-                type="password"
-                placeholder="Your password"
-                value={regenPassword}
-                onChange={(e) => setRegenPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRegenCodes()}
-              />
-              <div className="flex gap-2">
-                <Button onClick={handleRegenCodes} isLoading={regenCodes.isPending} disabled={!regenPassword}>
-                  Regenerate
+        {/* Manage 2FA when enabled */}
+        {is2FAEnabled && !setupData && !backupCodes && (
+          <div className="space-y-3">
+            {!showDisableConfirm && !showRegenConfirm && (
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowRegenConfirm(true)}>
+                  <RefreshCw className="h-4 w-4 mr-1.5" /> Regenerate Backup Codes
                 </Button>
-                <Button variant="outline" onClick={() => { setShowRegenConfirm(false); setRegenPassword('') }}>
-                  Cancel
+                <Button
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20"
+                  onClick={() => setShowDisableConfirm(true)}
+                >
+                  Disable 2FA
                 </Button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            )}
+
+            {showDisableConfirm && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl space-y-3">
+                <p className="text-sm font-semibold text-red-700 dark:text-red-300">Confirm your password to disable 2FA</p>
+                <Input
+                  type="password"
+                  placeholder="Your password"
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleDisable()}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={handleDisable}
+                    isLoading={disable2FA.isPending}
+                    disabled={!disablePassword}
+                  >
+                    Confirm Disable
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowDisableConfirm(false); setDisablePassword('') }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showRegenConfirm && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Confirm your password to regenerate backup codes</p>
+                <Input
+                  type="password"
+                  placeholder="Your password"
+                  value={regenPassword}
+                  onChange={(e) => setRegenPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRegenCodes()}
+                />
+                <div className="flex gap-2">
+                  <Button onClick={handleRegenCodes} isLoading={regenCodes.isPending} disabled={!regenPassword}>
+                    Regenerate
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowRegenConfirm(false); setRegenPassword('') }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+const NAV_ITEMS = [
+  { id: 'profile', label: 'Profile', description: 'Avatar, name & preferences', icon: User },
+  { id: 'account', label: 'Account', description: 'Password & credentials', icon: KeyRound },
+  { id: 'security', label: 'Security', description: 'Two-factor authentication', icon: ShieldCheck },
+]
+
 export function UserSettingsPage() {
   const { t } = useTranslation()
-  const { data: me } = useMe()
+  const { data: me, isLoading } = useMe()
   const [activeTab, setActiveTab] = useState('profile')
 
-  const isOrgAdmin = me?.role === UserRole.ADMIN
+  const isOrgAdmin = me?.role === UserRole.ADMIN || (me?.role as string) === 'owner'
 
-  const TABS = [
-    { id: 'profile', label: t('settings.profile') },
-    { id: 'account', label: t('settings.account') },
-    { id: 'security', label: 'Security' },
-    ...(isOrgAdmin ? [{ id: 'sso', label: 'SSO' }] : []),
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(isOrgAdmin
+      ? [{ id: 'sso', label: 'SSO / SAML', description: 'Enterprise authentication', icon: Building2 }]
+      : []),
   ]
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <PageHeader title={t('settings.title')} />
+  if (isLoading) return <LoadingPage />
 
-      <div className="mt-6">
-        <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
-        <div className="mt-6">
-          {activeTab === 'profile' && <ProfileTab />}
-          {activeTab === 'account' && <AccountTab />}
-          {activeTab === 'security' && <SecurityTab />}
-          {activeTab === 'sso' && isOrgAdmin && <SamlConfigForm />}
+  const roleBadge = getRoleBadge(me?.role || 'member')
+  const RoleIcon = roleBadge.Icon
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      {/* ── Profile Banner ────────────────────────────────────────────── */}
+      <div className="mb-8 rounded-2xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
+        {/* Gradient strip */}
+        <div className="h-24 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-500" />
+        {/* Profile card */}
+        <div className="bg-white dark:bg-gray-900 px-6 pb-5">
+          <div className="flex items-end gap-4 -mt-8">
+            <div className="ring-4 ring-white dark:ring-gray-900 rounded-full flex-shrink-0">
+              <Avatar
+                src={me?.avatarUrl}
+                name={me?.displayName || 'User'}
+                size="lg"
+                className="h-16 w-16 text-lg"
+              />
+            </div>
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                  {me?.displayName || 'User'}
+                </h1>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium',
+                    roleBadge.cls,
+                  )}
+                >
+                  <RoleIcon className="h-3 w-3" />
+                  {roleBadge.label}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{me?.email}</p>
+            </div>
+            <div className="hidden sm:flex items-center gap-5 pb-1 text-center">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {me?.timezone?.split('/')[1]?.replace('_', ' ') || me?.timezone || 'UTC'}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Timezone</p>
+              </div>
+              <div className="w-px h-8 bg-gray-200 dark:bg-gray-700" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
+                  {me?.language || 'EN'}
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Language</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Two-column layout ─────────────────────────────────────────── */}
+      <div className="flex gap-6">
+        {/* Left nav */}
+        <nav className="w-52 flex-shrink-0 space-y-1">
+          {navItems.map(({ id, label, description, icon: Icon }) => {
+            const active = activeTab === id
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
+                  active
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 shadow-sm'
+                    : 'border border-transparent hover:bg-gray-50 dark:hover:bg-gray-800',
+                )}
+              >
+                <div
+                  className={cn(
+                    'h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                    active
+                      ? 'bg-blue-100 dark:bg-blue-900/40'
+                      : 'bg-gray-100 dark:bg-gray-800',
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'h-4 w-4',
+                      active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400',
+                    )}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p
+                    className={cn(
+                      'text-sm font-medium truncate',
+                      active ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300',
+                    )}
+                  >
+                    {label}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{description}</p>
+                </div>
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Content card */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+            {activeTab === 'profile' && <ProfileTab />}
+            {activeTab === 'account' && <AccountTab />}
+            {activeTab === 'security' && <SecurityTab />}
+            {activeTab === 'sso' && isOrgAdmin && (
+              <>
+                <SectionHeader
+                  title="SSO / SAML"
+                  description="Configure enterprise single sign-on for your organization"
+                />
+                <SamlConfigForm />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
