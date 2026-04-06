@@ -3,12 +3,31 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Notification } from '@/types'
 
-export function useNotifications() {
+interface NotificationFilters {
+  page?: number
+  limit?: number
+}
+
+interface NotificationMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  unreadCount: number
+}
+
+export function useNotifications(filters: NotificationFilters = {}) {
   return useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', filters],
     queryFn: async () => {
-      const { data } = await api.get('/notifications')
-      return data.data as Notification[]
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== undefined),
+      )
+      const { data } = await api.get('/notifications', { params })
+      return {
+        data: data.data as Notification[],
+        meta: data.meta as NotificationMeta,
+      }
     },
     refetchInterval: 30_000,
   })
@@ -18,8 +37,14 @@ export function useUnreadCount() {
   return useQuery({
     queryKey: ['notifications-unread-count'],
     queryFn: async () => {
-      const { data } = await api.get('/notifications/unread-count')
-      return data.data as { count: number }
+      // Try to get unreadCount from the notifications meta first;
+      // fall back to the dedicated endpoint for compatibility
+      const { data } = await api.get('/notifications', { params: { limit: 1 } })
+      if (data.meta?.unreadCount !== undefined) {
+        return { count: data.meta.unreadCount as number }
+      }
+      const fallback = await api.get('/notifications/unread-count')
+      return fallback.data.data as { count: number }
     },
     refetchInterval: 30_000,
   })

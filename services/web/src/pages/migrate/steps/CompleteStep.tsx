@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -10,6 +10,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -21,10 +22,18 @@ interface CompleteStepProps {
 
 export function CompleteStep({ runId }: CompleteStepProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [failedExpanded, setFailedExpanded] = useState(false)
   const [projectsExpanded, setProjectsExpanded] = useState(true)
   const { data: report, isLoading } = useMigrationReport(runId)
   const retryMutation = useRetryMigration()
+
+  // Invalidate projects + issues cache immediately when migration completes
+  // so projects appear in the sidebar/projects page without manual refresh
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] })
+    queryClient.invalidateQueries({ queryKey: ['issues'] })
+  }, []) // eslint-disable-line
 
   const summary = report?.resultSummary
   const failedItems = summary?.failedItems ?? []
@@ -220,7 +229,10 @@ export function CompleteStep({ runId }: CompleteStepProps) {
         </Button>
         <Button
           className="flex items-center gap-2 sm:ml-auto"
-          onClick={() => navigate('/projects')}
+          onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] })
+            navigate('/projects')
+          }}
         >
           Go to Workspace
           <ArrowRight className="h-4 w-4" />

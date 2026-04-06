@@ -54,7 +54,7 @@ export interface JiraMember {
 export interface StartMigrationPayload {
   runId: string
   projectKeys: string[]
-  /** Jira accountIds to import. Empty array = import all. */
+  /** Jira accountIds to import. Undefined/omitted = import all, [] = import none, [...ids] = specific selection. */
   selectedMemberIds?: string[]
   statusMapping?: Record<string, string>
   roleMapping?: Record<string, string>
@@ -77,6 +77,7 @@ export interface MigrationStatus {
   processedSprints: number
   totalComments: number
   processedComments: number
+  completedPhases: number[]
   startedAt: string | null
   completedAt: string | null
   createdAt: string
@@ -211,6 +212,19 @@ export function useMigrationHistory(page = 1, limit = 20) {
   })
 }
 
+export function useMigrationProjects(connectionId: string | null) {
+  return useQuery({
+    queryKey: ['migration-projects', connectionId],
+    queryFn: async () => {
+      const { data } = await api.get('/migration/jira/projects', {
+        params: { connectionId },
+      })
+      return data.data as Array<{ key: string; name: string; description?: string }>
+    },
+    enabled: !!connectionId,
+  })
+}
+
 export function useMigrationMembers(connectionId: string | null) {
   return useQuery({
     queryKey: ['migration-members', connectionId],
@@ -221,6 +235,22 @@ export function useMigrationMembers(connectionId: string | null) {
       return data.data as JiraMember[]
     },
     enabled: !!connectionId,
+  })
+}
+
+export function useCancelMigration() {
+  return useMutation({
+    mutationFn: async (runId: string) => {
+      const { data } = await api.post(`/migration/jira/cancel/${runId}`)
+      return data.data as { runId: string }
+    },
+    onSuccess: () => {
+      toast('Migration cancelled', 'success')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Failed to cancel migration'
+      toast(msg, 'error')
+    },
   })
 }
 
@@ -240,9 +270,3 @@ export function useRetryMigrationFromHistory() {
   })
 }
 
-export function useOAuthAuthorizeUrl(): string {
-  // Build the URL the frontend can use to initiate the Atlassian OAuth flow
-  const baseUrl = (typeof window !== 'undefined' ? window.location.origin : '') || 'http://localhost:4000'
-  // We hit the API endpoint which does a server-side redirect to Atlassian
-  return `/api/migration/jira/oauth/authorize?state=boardupscale-jira-oauth`
-}

@@ -31,20 +31,41 @@ export class ProjectsService {
    * List projects: org owner/admin see every non-archived project in the org;
    * other roles only see projects they belong to (project_members).
    */
-  async findAll(organizationId: string, userId: string, orgRole?: string): Promise<Project[]> {
+  async findAll(
+    organizationId: string,
+    userId: string,
+    orgRole?: string,
+    options?: { search?: string; page?: number; limit?: number },
+  ): Promise<{ items: Project[]; total: number; page: number; limit: number }> {
+    const page = Math.max(1, options?.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options?.limit ?? 20));
+
     const qb = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.owner', 'owner')
-      .where('project.organization_id = :organizationId', { organizationId })
+      .where('project.organizationId = :organizationId', { organizationId })
       .andWhere('project.status != :archived', { archived: 'archived' })
-      .orderBy('project.created_at', 'DESC');
+      .orderBy('project.createdAt', 'DESC');
 
     const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin';
     if (!isOrgAdmin) {
       qb.innerJoin('project_members', 'pm', 'pm.project_id = project.id AND pm.user_id = :userId', { userId });
     }
 
-    return qb.getMany();
+    if (options?.search) {
+      qb.andWhere(
+        '(project.name ILIKE :search OR project.key ILIKE :search)',
+        { search: `%${options.search}%` },
+      );
+    }
+
+    const total = await qb.getCount();
+    const items = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { items, total, page, limit };
   }
 
   async findById(id: string, organizationId: string): Promise<Project> {

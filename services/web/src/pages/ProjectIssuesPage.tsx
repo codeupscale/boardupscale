@@ -23,6 +23,7 @@ import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { useExportIssues } from '@/hooks/useReports'
 import { useSavedViews, useCreateSavedView, useDeleteSavedView } from '@/hooks/useSavedViews'
 import { useAuthStore } from '@/store/auth.store'
+import { Pagination } from '@/components/ui/pagination'
 
 export function ProjectIssuesPage() {
   const { t } = useTranslation()
@@ -41,10 +42,12 @@ export function ProjectIssuesPage() {
 
   const currentUser = useAuthStore((s) => s.user)
   const { data: project } = useProject(projectKey!)
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
   const { data: board } = useBoard(projectKey!)
   const { data: sprints } = useSprints(projectKey!)
-  const { data: users } = useUsers()
+  const { data: usersResult } = useUsers()
+  const users = usersResult?.data
   const { data: issuesData, isLoading } = useIssues({
     projectId: projectKey!,
     search: search || undefined,
@@ -187,77 +190,85 @@ export function ProjectIssuesPage() {
       />
 
       <div className="p-6 space-y-4">
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-48">
-            <Input
-              placeholder={t('issues.searchIssues')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
-            />
-          </div>
+        {/* Filters card */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">
+          {/* Stats strip */}
+          {total > 0 && (
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {total} issue{total !== 1 ? 's' : ''}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-48">
+              <Input
+                placeholder={t('issues.searchIssues')}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+              />
+            </div>
 
-          <Select
-            options={[
-              { value: '', label: t('issues.allTypes') },
-              { value: IssueType.EPIC, label: t('issues.epic') },
-              { value: IssueType.STORY, label: t('issues.story') },
-              { value: IssueType.TASK, label: t('issues.task') },
-              { value: IssueType.BUG, label: t('issues.bug') },
-              { value: IssueType.SUBTASK, label: t('issues.subtask') },
-            ]}
-            value={filterType}
-            onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
-            className="w-36"
-          />
-
-          <Select
-            options={[
-              { value: '', label: t('issues.allPriorities') },
-              { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-              { value: IssuePriority.HIGH, label: t('priorities.high') },
-              { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-              { value: IssuePriority.LOW, label: t('priorities.low') },
-            ]}
-            value={filterPriority}
-            onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
-            className="w-40"
-          />
-
-          <Select
-            options={[
-              { value: '', label: t('issues.allStatuses') },
-              ...(board?.statuses?.map((s) => ({ value: s.id, label: s.name })) || []),
-            ]}
-            value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
-            className="w-40"
-          />
-
-          <Select
-            options={[
-              { value: '', label: t('issues.allAssignees') },
-              ...(users?.map((u) => ({ value: u.id, label: u.displayName })) || []),
-            ]}
-            value={filterAssignee}
-            onChange={(e) => { setFilterAssignee(e.target.value); setPage(1) }}
-            className="w-40"
-          />
-
-          {sprints && sprints.length > 0 && (
             <Select
               options={[
-                { value: '', label: t('issues.allSprints') },
-                ...(sprints?.map((s) => ({ value: s.id, label: s.name })) || []),
+                { value: '', label: t('issues.allTypes') },
+                { value: IssueType.EPIC, label: t('issues.epic') },
+                { value: IssueType.STORY, label: t('issues.story') },
+                { value: IssueType.TASK, label: t('issues.task') },
+                { value: IssueType.BUG, label: t('issues.bug') },
+                { value: IssueType.SUBTASK, label: t('issues.subtask') },
               ]}
-              value={filterSprint}
-              onChange={(e) => { setFilterSprint(e.target.value); setPage(1) }}
+              value={filterType}
+              onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
+              className="w-36"
+            />
+
+            <Select
+              options={[
+                { value: '', label: t('issues.allPriorities') },
+                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
+                { value: IssuePriority.HIGH, label: t('priorities.high') },
+                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
+                { value: IssuePriority.LOW, label: t('priorities.low') },
+              ]}
+              value={filterPriority}
+              onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
               className="w-40"
             />
-          )}
+
+            <Select
+              options={[
+                { value: '', label: t('issues.allStatuses') },
+                ...(board?.statuses?.map((s) => ({ value: s.id, label: s.name })) || []),
+              ]}
+              value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
+              className="w-40"
+            />
+
+            <Select
+              options={[
+                { value: '', label: t('issues.allAssignees') },
+                ...(users?.map((u) => ({ value: u.id, label: u.displayName })) || []),
+              ]}
+              value={filterAssignee}
+              onChange={(e) => { setFilterAssignee(e.target.value); setPage(1) }}
+              className="w-40"
+            />
+
+            {sprints && sprints.length > 0 && (
+              <Select
+                options={[
+                  { value: '', label: t('issues.allSprints') },
+                  ...(sprints?.map((s) => ({ value: s.id, label: s.name })) || []),
+                ]}
+                value={filterSprint}
+                onChange={(e) => { setFilterSprint(e.target.value); setPage(1) }}
+                className="w-40"
+              />
+            )}
+          </div>
         </div>
 
         {/* Saved Views */}
@@ -346,10 +357,10 @@ export function ProjectIssuesPage() {
         {isLoading ? (
           <LoadingPage />
         ) : issues.length > 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
+                <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">
                   <th className="px-4 py-2.5 w-10">
                     <input
                       type="checkbox"
@@ -359,18 +370,19 @@ export function ProjectIssuesPage() {
                       }}
                       onChange={() => selectAll(allIssueIds)}
                       className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      aria-label="Select all issues"
                     />
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">{t('common.status')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">{t('common.assignee')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">SP</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-32">Key</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-28">{t('issues.dueDate')}</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-16">SP</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {issues.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
@@ -378,31 +390,13 @@ export function ProjectIssuesPage() {
             </table>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                <span className="text-sm text-gray-500">
-                  {t('common.showing', { from: (page - 1) * 25 + 1, to: Math.min(page * 25, total), total })}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    {t('common.previous')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    {t('common.next')}
-                  </Button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={25}
+              onPageChange={setPage}
+            />
           </div>
         ) : (
           <EmptyState

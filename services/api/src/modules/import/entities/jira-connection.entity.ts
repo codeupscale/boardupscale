@@ -47,6 +47,20 @@ export class JiraConnection {
   @Column({ name: 'api_token_enc', type: 'text', select: false })
   apiTokenEnc: string;
 
+  /**
+   * AES-256-GCM encrypted OAuth refresh token.
+   * NULL for API-token connections (they don't expire).
+   */
+  @Column({ name: 'refresh_token_enc', type: 'text', nullable: true, select: false })
+  refreshTokenEnc: string | null;
+
+  /**
+   * When the current OAuth access token expires.
+   * NULL for API-token connections.
+   */
+  @Column({ name: 'token_expires_at', type: 'timestamptz', nullable: true })
+  tokenExpiresAt: Date | null;
+
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 

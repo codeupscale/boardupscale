@@ -50,14 +50,23 @@ describe('BoardsService', () => {
 
       const issue1 = mockIssue({ id: 'issue-1', statusId: 'status-1' });
       const issue2 = mockIssue({ id: 'issue-2', statusId: 'status-2' });
-      const issueQb = createMockQueryBuilder([issue1, issue2]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([issue1, issue2]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([
+        { statusId: 'status-1', total: '1' },
+        { statusId: 'status-2', total: '1' },
+      ]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       const result = await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
       expect(result).toHaveLength(2);
       expect(result[0].issues).toEqual([issue1]);
       expect(result[1].issues).toEqual([issue2]);
+      expect(result[0].total).toBe(1);
+      expect(result[0].hasMore).toBe(false);
     });
 
     it('should verify project exists', async () => {
@@ -69,26 +78,40 @@ describe('BoardsService', () => {
     it('should return empty issues for statuses with no issues', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       const result = await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
       expect(result[0].issues).toEqual([]);
+      expect(result[0].total).toBe(0);
+      expect(result[0].hasMore).toBe(false);
     });
 
     it('should apply assignee filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         assigneeId: TEST_IDS.USER_ID,
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith(
-        'issue.assignee_id = :assigneeId',
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        'issue.assigneeId = :assigneeId',
+        { assigneeId: TEST_IDS.USER_ID },
+      );
+      expect(countQb.andWhere).toHaveBeenCalledWith(
+        'issue.assigneeId = :assigneeId',
         { assigneeId: TEST_IDS.USER_ID },
       );
     });
@@ -96,14 +119,18 @@ describe('BoardsService', () => {
     it('should apply type filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         type: 'bug',
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith(
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
         'issue.type = :type',
         { type: 'bug' },
       );
@@ -112,14 +139,18 @@ describe('BoardsService', () => {
     it('should apply priority filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         priority: 'critical',
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith(
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
         'issue.priority = :priority',
         { priority: 'critical' },
       );
@@ -128,14 +159,18 @@ describe('BoardsService', () => {
     it('should apply search filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         search: 'login bug',
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith(
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
         'issue.title ILIKE :search',
         { search: '%login bug%' },
       );
@@ -144,15 +179,19 @@ describe('BoardsService', () => {
     it('should apply sprint filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         sprintId: TEST_IDS.SPRINT_ID,
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith(
-        'issue.sprint_id = :sprintId',
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        'issue.sprintId = :sprintId',
         { sprintId: TEST_IDS.SPRINT_ID },
       );
     });
@@ -160,14 +199,62 @@ describe('BoardsService', () => {
     it('should filter backlog (no sprint) when sprintId is "backlog"', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
-      const issueQb = createMockQueryBuilder([]);
-      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         sprintId: 'backlog',
       });
 
-      expect(issueQb.andWhere).toHaveBeenCalledWith('issue.sprint_id IS NULL');
+      expect(mainQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NULL');
+    });
+  });
+
+  describe('getColumnIssues', () => {
+    it('should return paginated issues for a column', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      const issue1 = mockIssue({ id: 'issue-1', statusId: TEST_IDS.STATUS_ID });
+      const qb = createMockQueryBuilder([issue1]);
+      qb.getManyAndCount.mockResolvedValue([[issue1], 1]);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getColumnIssues(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.STATUS_ID,
+        TEST_IDS.ORG_ID,
+        {},
+        0,
+      );
+
+      expect(result.issues).toHaveLength(1);
+      expect(result.total).toBe(1);
+      expect(result.hasMore).toBe(false);
+      expect(result.offset).toBe(0);
+    });
+
+    it('should indicate hasMore when more issues remain', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      const issues = Array.from({ length: 50 }, (_, i) =>
+        mockIssue({ id: `issue-${i}`, statusId: TEST_IDS.STATUS_ID }),
+      );
+      const qb = createMockQueryBuilder(issues);
+      qb.getManyAndCount.mockResolvedValue([issues, 100]);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getColumnIssues(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.STATUS_ID,
+        TEST_IDS.ORG_ID,
+        { columnLimit: 50 },
+        0,
+      );
+
+      expect(result.hasMore).toBe(true);
+      expect(result.total).toBe(100);
     });
   });
 
@@ -326,7 +413,8 @@ describe('BoardsService', () => {
         .mockResolvedValueOnce(status1)
         .mockResolvedValueOnce(status2);
 
-      issueRepo.update.mockResolvedValue(mockUpdateResult());
+      // New implementation uses a single batch UPDATE via issueRepository.query()
+      issueRepo.query.mockResolvedValue([]);
 
       await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
         items: [
@@ -336,10 +424,12 @@ describe('BoardsService', () => {
         ],
       });
 
-      expect(issueRepo.update).toHaveBeenCalledTimes(3);
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-1', { statusId: 'status-1', position: 0 });
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-2', { statusId: 'status-2', position: 1 });
-      expect(issueRepo.update).toHaveBeenCalledWith('issue-3', { statusId: 'status-1', position: 2 });
+      // Single batch query instead of N individual updates — no N+1
+      expect(issueRepo.query).toHaveBeenCalledTimes(1);
+      expect(issueRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE issues'),
+        expect.arrayContaining(['issue-1', 'issue-2', 'issue-3', TEST_IDS.ORG_ID]),
+      );
     });
 
     it('should throw BadRequestException when WIP limit exceeded', async () => {

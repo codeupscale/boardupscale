@@ -39,11 +39,50 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  async findByOrg(organizationId: string): Promise<User[]> {
-    return this.usersRepository.find({
-      where: { organizationId, isActive: true },
-      order: { displayName: 'ASC' },
-    });
+  async findByOrg(
+    organizationId: string,
+    options?: { search?: string; page?: number; limit?: number },
+  ): Promise<{ items: User[]; total: number; page: number; limit: number }> {
+    const page = Math.max(1, options?.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options?.limit ?? 20));
+
+    const qb = this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.organizationId = :organizationId', { organizationId })
+      .andWhere('user.isActive = true')
+      .orderBy('user.displayName', 'ASC');
+
+    if (options?.search) {
+      qb.andWhere(
+        '(user.displayName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${options.search}%` },
+      );
+    }
+
+    const total = await qb.getCount();
+    const items = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
+
+    return { items, total, page, limit };
+  }
+
+  /**
+   * Returns minimal user fields for dropdown/select components.
+   * No pagination — dropdowns need the full list.
+   * Only selects id, email, displayName, avatarUrl — never sensitive fields.
+   */
+  async findAllForDropdown(
+    organizationId: string,
+  ): Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'>[]> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.email', 'user.displayName', 'user.avatarUrl'])
+      .where('user.organizationId = :organizationId', { organizationId })
+      .andWhere('user.isActive = true')
+      .orderBy('user.displayName', 'ASC')
+      .getMany() as Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'>[]>;
   }
 
   async create(data: {

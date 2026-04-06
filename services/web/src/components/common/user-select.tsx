@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X, Sparkles } from 'lucide-react'
-import { useUsers } from '@/hooks/useUsers'
+import { useUsersDropdown } from '@/hooks/useUsers'
 import { useAiAssignees, useAiStatus, AssigneeSuggestion } from '@/hooks/useAi'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -18,7 +18,7 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
-  const { data: users = [] } = useUsers()
+  const { data: users = [] } = useUsersDropdown()
   const { data: aiStatus } = useAiStatus()
   const { data: aiSuggestions = [] } = useAiAssignees(projectId, issueType)
 

@@ -233,7 +233,8 @@ function PreviewStep({
   onContinue: () => void
   isLoading: boolean
 }) {
-  const { data: users } = useUsers()
+  const { data: usersResult } = useUsers()
+  const users = usersResult?.data
 
   return (
     <div className="space-y-6">

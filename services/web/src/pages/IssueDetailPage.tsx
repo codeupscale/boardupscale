@@ -169,7 +169,8 @@ export function IssueDetailPage() {
   const { data: issueVersions } = useIssueVersions(issueId!)
   const setIssueVersions = useSetIssueVersions()
 
-  const { data: orgUsers } = useUsers()
+  const { data: usersResult } = useUsers()
+  const orgUsers = usersResult?.data
   const updateIssue = useUpdateIssue()
   const deleteIssue = useDeleteIssue()
   const createIssue = useCreateIssue()

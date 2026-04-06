@@ -46,8 +46,12 @@ interface MigrationJobData {
   runId: string;
   organizationId: string;
   connectionId: string;
-  /** Jira accountIds to import. Empty array means import all members. */
-  selectedMemberIds?: string[];
+  /**
+   * null/undefined = import all members.
+   * [] = import none.
+   * [...ids] = import only the specified Jira accountIds.
+   */
+  selectedMemberIds?: string[] | null;
 }
 
 interface JiraCredentials {
@@ -87,6 +91,8 @@ interface RunState {
   errorLog: string[];
   jiraProjectIdToLocalId: Record<string, string>;
   jiraUserEmailToLocalId: Record<string, string>;
+  /** Parallel map keyed by Jira accountId — more reliable than email for Jira Cloud (GDPR hides emails). */
+  jiraAccountIdToLocalId: Record<string, string>;
   jiraIssueKeyToLocalId: Record<string, string>;
   jiraSprintIdToLocalId: Record<string, string>;
   /**
@@ -94,8 +100,19 @@ interface RunState {
    * Populated in Phase 2 so Phase 4 can resolve status_id without extra queries.
    */
   projectStatusMap: Record<string, Record<string, string>>;
-  /** If non-empty, only these accountIds will be imported in the members phase. */
-  selectedMemberIds: string[];
+  /**
+   * null = import all members (no filter applied).
+   * [] = import none.
+   * [...ids] = import only the specified Jira accountIds.
+   */
+  selectedMemberIds: string[] | null;
+  /**
+   * Issues where inline comments in Phase 4 were partial (comment.total > comment.maxResults).
+   * Maps jiraKey → startAt for the next comment page to fetch in Phase 5.
+   * NOT persisted to DB — only lives in memory during the current process run.
+   * If the worker restarts, Phase 5 falls back to fetching all issues (isResume path).
+   */
+  issuesNeedingCommentPagination?: Map<string, number>;
 }
 
 // ─── Jira HTTP client (no axios) ─────────────────────────────────────────────
@@ -105,7 +122,12 @@ function jiraGet<T>(
   path: string,
   attempt = 1,
 ): Promise<T> {
-  const token = Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64');
+  // OAuth connections have an empty email — use Bearer auth.
+  // API-token connections have a non-empty email — use Basic auth.
+  const authHeader = credentials.email
+    ? `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`
+    : `Bearer ${credentials.apiToken}`;
+
   const rawUrl = credentials.baseUrl.replace(/\/$/, '') + path;
   const parsed = new URL(rawUrl);
   const isHttps = parsed.protocol === 'https:';
@@ -117,7 +139,7 @@ function jiraGet<T>(
     path: parsed.pathname + parsed.search,
     method: 'GET',
     headers: {
-      Authorization: `Basic ${token}`,
+      Authorization: authHeader,
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
@@ -164,7 +186,7 @@ function decryptToken(encoded: string, secret: string): string {
 
 // ─── DB helpers ──────────────────────────────────────────────────────────────
 
-async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
+async function loadRun(client: PoolClient, runId: string, organizationId: string): Promise<RunState> {
   const { rows } = await client.query<RunState>(
     `SELECT id, organization_id AS "organizationId", connection_id AS "connectionId",
             triggered_by_id AS "triggeredById",
@@ -186,10 +208,10 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
             total_comments AS "totalComments",
             processed_comments AS "processedComments",
             COALESCE(error_log, '[]') AS "errorLog"
-     FROM jira_migration_runs WHERE id = $1`,
-    [runId],
+     FROM jira_migration_runs WHERE id = $1 AND organization_id = $2`,
+    [runId, organizationId],
   );
-  if (!rows[0]) throw new Error(`Migration run ${runId} not found`);
+  if (!rows[0]) throw new Error(`Migration run ${runId} not found for org ${organizationId}`);
 
   return {
     ...rows[0],
@@ -197,6 +219,7 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
     errorLog: rows[0].errorLog ?? [],
     jiraProjectIdToLocalId: {},
     jiraUserEmailToLocalId: {},
+    jiraAccountIdToLocalId: {},
     jiraIssueKeyToLocalId: {},
     jiraSprintIdToLocalId: {},
     projectStatusMap: {},
@@ -204,16 +227,127 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
   };
 }
 
-async function loadCredentials(client: PoolClient, connectionId: string): Promise<JiraCredentials> {
+async function loadCredentials(client: PoolClient, connectionId: string, organizationId: string): Promise<JiraCredentials> {
   const { rows } = await client.query(
-    `SELECT jira_url AS "baseUrl", jira_email AS email, api_token_enc AS "apiTokenEnc"
-     FROM jira_connections WHERE id = $1`,
-    [connectionId],
+    `SELECT jira_url AS "baseUrl", jira_email AS email, api_token_enc AS "apiTokenEnc",
+            refresh_token_enc AS "refreshTokenEnc", token_expires_at AS "tokenExpiresAt"
+     FROM jira_connections WHERE id = $1 AND organization_id = $2`,
+    [connectionId, organizationId],
   );
-  if (!rows[0]) throw new Error(`Jira connection ${connectionId} not found`);
-  const { baseUrl, email, apiTokenEnc } = rows[0];
+  if (!rows[0]) throw new Error(`Jira connection ${connectionId} not found for org ${organizationId}`);
+
+  const row = rows[0];
+
+  // Proactively refresh the OAuth access token if it expires within 5 minutes.
+  // API-token connections have null tokenExpiresAt — skip refresh for those.
+  if (row.refreshTokenEnc && row.tokenExpiresAt) {
+    const expiresAt = new Date(row.tokenExpiresAt).getTime();
+    const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000;
+    if (expiresAt <= fiveMinutesFromNow) {
+      console.log(`[Migration] Refreshing OAuth token for connection ${connectionId} (expires ${row.tokenExpiresAt})`);
+      const freshToken = await refreshAtlassianToken(client, connectionId, row.refreshTokenEnc);
+      if (freshToken) {
+        row.apiTokenEnc = freshToken;
+      }
+    }
+  }
+
+  const { baseUrl, email, apiTokenEnc } = row;
   const apiToken = decryptToken(apiTokenEnc, config.appSecret);
   return { baseUrl, email, apiToken };
+}
+
+/**
+ * Exchange a refresh token for a new Atlassian access token.
+ * Updates api_token_enc, refresh_token_enc, and token_expires_at in DB.
+ * Returns the new (encrypted) apiTokenEnc value, or null on failure.
+ */
+async function refreshAtlassianToken(
+  client: PoolClient,
+  connectionId: string,
+  refreshTokenEnc: string,
+): Promise<string | null> {
+  const { clientId, clientSecret } = config.atlassian;
+  if (!clientId || !clientSecret) {
+    console.error('[Migration] ATLASSIAN_CLIENT_ID/SECRET not set — cannot refresh token');
+    return null;
+  }
+
+  const refreshToken = decryptToken(refreshTokenEnc, config.appSecret);
+
+  try {
+    const tokenResponse = await atlassianTokenPost({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }) as { access_token: string; refresh_token?: string };
+
+    const newAccessTokenEnc = encryptToken(tokenResponse.access_token, config.appSecret);
+    const newRefreshTokenEnc = tokenResponse.refresh_token
+      ? encryptToken(tokenResponse.refresh_token, config.appSecret)
+      : refreshTokenEnc; // keep existing if Atlassian doesn't rotate
+    const newExpiresAt = new Date(Date.now() + 3600 * 1000);
+
+    await client.query(
+      `UPDATE jira_connections
+         SET api_token_enc = $1, refresh_token_enc = $2, token_expires_at = $3
+       WHERE id = $4`,
+      [newAccessTokenEnc, newRefreshTokenEnc, newExpiresAt, connectionId],
+    );
+
+    console.log(`[Migration] OAuth token refreshed for connection ${connectionId}, new expiry: ${newExpiresAt}`);
+    return newAccessTokenEnc;
+  } catch (err: any) {
+    console.error(`[Migration] OAuth token refresh failed for connection ${connectionId}: ${err.message}`);
+    return null; // non-fatal — let the migration attempt proceed with existing token
+  }
+}
+
+/** AES-256-GCM encrypt — mirrors crypto.util.ts in the API service */
+function encryptToken(plaintext: string, secret: string): string {
+  const key = crypto.createHash('sha256').update(secret).digest();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, encrypted, tag]).toString('base64');
+}
+
+/** POST to Atlassian /oauth/token — returns parsed JSON response */
+function atlassianTokenPost(body: Record<string, string>): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const payload = Object.entries(body)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&');
+
+    const options: https.RequestOptions = {
+      hostname: 'auth.atlassian.com',
+      path: '/oauth/token',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk: Buffer) => (data += chunk.toString()));
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 400) {
+          return void reject(new Error(`Atlassian token refresh failed (${res.statusCode}): ${data.slice(0, 200)}`));
+        }
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error(`Non-JSON from Atlassian: ${data.slice(0, 100)}`)); }
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Atlassian token request timed out')); });
+    req.write(payload);
+    req.end();
+  });
 }
 
 async function updateRunProgress(
@@ -276,14 +410,19 @@ async function updateRunProgress(
       runId,
       phase: state.currentPhase,
       status: state.status,
+      completedPhases: state.completedPhases ?? [],
       counts: {
         processedProjects: state.processedProjects,
         totalProjects: state.totalProjects,
         processedIssues: state.processedIssues,
         totalIssues: state.totalIssues,
+        failedIssues: state.failedIssues,
         processedMembers: state.processedMembers,
+        totalMembers: state.totalMembers,
         processedSprints: state.processedSprints,
+        totalSprints: state.totalSprints,
         processedComments: state.processedComments,
+        totalComments: state.totalComments,
       },
     })).catch(() => {});
   }
@@ -291,6 +430,32 @@ async function updateRunProgress(
 
 function addError(state: RunState, msg: string) {
   state.errorLog = [...(state.errorLog ?? []), msg].slice(-100);
+}
+
+/**
+ * Sentinel error thrown when the DB run status has been set to 'cancelled'.
+ * Caught in processJob to stop cleanly without marking the run as 'failed'.
+ */
+class MigrationCancelledError extends Error {
+  constructor(runId: string) {
+    super(`Migration run ${runId} was cancelled`);
+    this.name = 'MigrationCancelledError';
+  }
+}
+
+/**
+ * Re-read the run status from DB and throw MigrationCancelledError if it has
+ * been set to 'cancelled' while the job was executing.
+ * Called between each phase so cancellation takes effect within one phase boundary.
+ */
+async function checkCancelled(client: PoolClient, runId: string): Promise<void> {
+  const { rows } = await client.query<{ status: string }>(
+    `SELECT status FROM jira_migration_runs WHERE id = $1`,
+    [runId],
+  );
+  if (rows[0]?.status === 'cancelled') {
+    throw new MigrationCancelledError(runId);
+  }
 }
 
 /**
@@ -356,9 +521,12 @@ async function runMembersPhase(
     addError(state, `members fetch: ${err.message}`);
   }
 
-  // Filter to only selected members when a selection was made
-  const filterIds = new Set(state.selectedMemberIds ?? []);
-  const filteredUsers = filterIds.size > 0
+  // null = import all (no filter UI shown), [] = import none, [...ids] = specific selection
+  const filterIds = state.selectedMemberIds != null
+    ? new Set(state.selectedMemberIds)
+    : null; // null means "no filter — import everyone"
+
+  const filteredUsers = filterIds !== null
     ? users.filter((u) => filterIds.has(u.accountId))
     : users;
 
@@ -368,27 +536,56 @@ async function runMembersPhase(
     totalMembers: filteredUsers.length,
   }, io);
 
+  const MEMBER_CHUNK = 500;
   let processed = 0;
-  for (const jiraUser of filteredUsers) {
-    if (!jiraUser.emailAddress) continue;
-    const email = jiraUser.emailAddress.toLowerCase();
-    try {
-      // Upsert user record
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, true, false, 'member', NOW(), NOW())
-         ON CONFLICT (email) DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = NOW()
-         RETURNING id`,
-        [email, jiraUser.displayName ?? email.split('@')[0], state.organizationId],
-      ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+  for (let ci = 0; ci < filteredUsers.length; ci += MEMBER_CHUNK) {
+    // Import ALL users — do NOT filter on emailAddress.
+    // Jira Cloud hides emails by default (GDPR). Users without an email get a
+    // synthetic address so the NOT NULL constraint on the users table is satisfied.
+    const chunk = filteredUsers.slice(ci, ci + MEMBER_CHUNK);
+    if (!chunk.length) continue;
 
-      if (rows[0]) {
-        state.jiraUserEmailToLocalId[email] = rows[0].id;
-      }
+    const placeholders: string[] = [];
+    const params: unknown[] = [];
+    // Keep a parallel list so we can populate jiraAccountIdToLocalId after RETURNING.
+    const chunkAccountIds: string[] = [];
 
+    chunk.forEach((u, j) => {
+      const b = j * 4;
+      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, NOW(), NOW())`);
+      // Use real email when available; fall back to a synthetic address keyed by accountId.
+      const email = u.emailAddress
+        ? u.emailAddress.toLowerCase()
+        : `jira-${u.accountId}@migrated.jira.local`;
+      const displayName = u.displayName || email.split('@')[0];
+      const roleMappingRecord = state.roleMapping ?? {};
+      const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
+      const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
+      params.push(email, displayName, state.organizationId, safeRole);
+      chunkAccountIds.push(u.accountId);
+    });
+
+    const { rows } = await client.query<{ id: string; email: string }>(
+      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
+       VALUES ${placeholders.join(', ')}
+       ON CONFLICT (email) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
+         role = EXCLUDED.role,
+         updated_at = NOW()
+       RETURNING id, email`,
+      params,
+    ).catch((err: any) => { addError(state, `members bulk upsert: ${err.message}`); return { rows: [] as any[] }; });
+
+    // Build both lookup maps from the RETURNING rows.
+    // The rows come back in INSERT order which matches chunkAccountIds order.
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri];
+      state.jiraUserEmailToLocalId[row.email] = row.id;
+      // Also index by accountId (more reliable for Jira Cloud where emails are hidden).
+      const accountId = chunkAccountIds[ri];
+      if (accountId) state.jiraAccountIdToLocalId[accountId] = row.id;
       processed++;
-    } catch (err: any) {
-      addError(state, `member upsert ${email}: ${err.message}`);
     }
   }
 
@@ -397,7 +594,7 @@ async function runMembersPhase(
     completedPhase: PHASE_MEMBERS,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
+  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds != null && filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
 }
 
 // ─── Phase 2: Projects ────────────────────────────────────────────────────────
@@ -406,13 +603,26 @@ async function runMembersPhase(
  * Maps a Jira status category name to our internal category enum value.
  * Jira categories: "To Do", "In Progress", "Done" (statusCategory.name),
  * or we fall back to matching on the status name itself.
+ *
+ * BUG FIX: Check Jira's authoritative category FIRST. Only fall back to
+ * keyword heuristics on the user-mapped name when the native category is
+ * unknown/missing. Previously the keyword check ran first, causing names
+ * like "Done Review" to match 'review' → 'in_progress' instead of Jira's
+ * own 'done' category.
  */
 function mapJiraStatusCategory(
   statusName: string,
   jiraCategoryName: string,
   statusMapping: Record<string, string>,
 ): 'todo' | 'in_progress' | 'done' {
-  // Apply user-supplied mapping first
+  // 1. Check Jira's native category first — it is authoritative
+  const cat = jiraCategoryName.toLowerCase();
+  if (cat === 'in progress') return 'in_progress';
+  if (cat === 'done') return 'done';
+  if (cat === 'to do') return 'todo';
+
+  // 2. Fall back to keyword heuristics on the (possibly user-mapped) name
+  //    only when Jira's category is unknown/missing
   const mapped = (statusMapping[statusName] ?? statusName).toLowerCase();
   if (mapped.includes('progress') || mapped.includes('review') || mapped.includes('testing')) {
     return 'in_progress';
@@ -423,10 +633,6 @@ function mapJiraStatusCategory(
   ) {
     return 'done';
   }
-  // Use Jira's own category as the ground truth
-  const cat = jiraCategoryName.toLowerCase();
-  if (cat === 'in progress') return 'in_progress';
-  if (cat === 'done') return 'done';
   return 'todo';
 }
 
@@ -489,12 +695,37 @@ async function runProjectsPhase(
         continue;
       }
 
-      // Step 3 — Patch name and color in case the row pre-existed with stale data.
-      // Use explicit varchar cast on $2 to prevent PostgreSQL COALESCE type-inference errors.
+      // Step 3 — Patch name, color, and status on the existing row.
+      // Always reset status to 'active' so previously-archived projects become visible again.
       await client.query(
-        `UPDATE projects SET name = $1, color = COALESCE(color, $2::varchar), updated_at = NOW() WHERE id = $3::uuid`,
+        `UPDATE projects
+            SET name = $1, color = COALESCE(color, $2::varchar), status = 'active', updated_at = NOW()
+          WHERE id = $3::uuid`,
         [proj.name || proj.key, projectColor, projectId],
       ).catch((err: any) => addError(state, `project patch ${proj.key}: ${err.message}`));
+
+      // Step 4 — Ensure the migration owner is a project member so they can see it.
+      // Non-admin users are shown only projects where they have a project_members row.
+      // project_members schema: id, project_id, user_id, role, role_id (nullable), created_at
+      await client.query(
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'admin', NOW())
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, state.triggeredById],
+      ).catch((err: any) => addError(state, `project member insert ${proj.key}: ${err.message}`));
+
+      // Add all existing org members as project members (viewer role) so the project
+      // is visible to everyone in the org after migration — not just the migration owner.
+      await client.query(
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+         SELECT gen_random_uuid(), $1::uuid, u.id, 'member', NOW()
+         FROM users u
+         WHERE u.organization_id = $2::uuid
+           AND u.is_active = true
+           AND u.id != $3::uuid
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, state.organizationId, state.triggeredById],
+      ).catch((err: any) => addError(state, `bulk project members insert ${proj.key}: ${err.message}`));
 
       state.jiraProjectIdToLocalId[proj.key] = projectId;
 
@@ -629,25 +860,73 @@ async function runSprintsPhase(
 
     try {
       // Find board for this project
-      const boardsResp = await jiraGet<{ values: Array<{ id: number; name: string }> }>(
-        credentials,
-        `/rest/agile/1.0/board?projectKeyOrId=${proj.key}`,
-      ).catch(() => ({ values: [] }));
+      // Fetch ALL boards for this project (a project can have multiple boards).
+      // Log any error — previously this was silently swallowed causing 0/0 sprints.
+      let boardValues: Array<{ id: number; name: string }> = [];
+      try {
+        const boardsResp = await jiraGet<{ values: Array<{ id: number; name: string }> }>(
+          credentials,
+          `/rest/agile/1.0/board?projectKeyOrId=${proj.key}&maxResults=50`,
+        );
+        boardValues = boardsResp?.values ?? [];
+      } catch (err: any) {
+        // 401 "scope does not match" means the OAuth token lacks read:board-scope:jira-software.
+        // This is non-fatal — phase 4 extracts sprint data from customfield_10020 on each issue.
+        // Do NOT call addError() here; that would show a red error in the UI for a graceful fallback.
+        const is401 = String(err.message).includes('401');
+        console.warn(`[Migration:${state.id}] Boards API ${is401 ? '401 (agile scope missing)' : 'error'} for ${proj.key}: ${err.message} — sprints will be extracted from issue fields in Phase 4`);
+        continue;
+      }
 
-      const boardId = boardsResp?.values?.[0]?.id;
-      if (!boardId) continue;
+      if (boardValues.length === 0) {
+        console.log(`[Migration:${state.id}] No boards found for project ${proj.key} — no sprints to import`);
+        continue;
+      }
 
-      const sprintsResp = await jiraGet<{
-        values: Array<{
-          id: number; name: string; state: string;
-          startDate?: string; endDate?: string; goal?: string;
-        }>
-      }>(
-        credentials,
-        `/rest/agile/1.0/board/${boardId}/sprint`,
-      ).catch(() => ({ values: [] }));
+      // Collect sprints across ALL boards for this project (deduplicate by sprint id)
+      const seenSprintIds = new Set<number>();
 
-      const sprints = sprintsResp?.values ?? [];
+      // Paginate through ALL sprints across ALL boards for this project.
+      // Jira Agile API default page size is 50; boards with many sprints need pagination.
+      const SPRINT_PAGE = 50;
+      const allSprints: Array<{
+        id: number; name: string; state: string;
+        startDate?: string; endDate?: string; goal?: string;
+      }> = [];
+
+      for (const board of boardValues) {
+        let sprintStart = 0;
+        let sprintHasMore = true;
+        while (sprintHasMore) {
+          let sprintsResp: { values: typeof allSprints; isLast?: boolean };
+          try {
+            sprintsResp = await jiraGet<{ values: typeof allSprints; isLast?: boolean }>(
+              credentials,
+              `/rest/agile/1.0/board/${board.id}/sprint?startAt=${sprintStart}&maxResults=${SPRINT_PAGE}`,
+            );
+          } catch (err: any) {
+            console.warn(`[Migration:${state.id}] Sprint fetch error board ${board.id}: ${err.message}`);
+            addError(state, `sprint fetch board ${board.id}: ${err.message}`);
+            break;
+          }
+
+          const page = sprintsResp?.values ?? [];
+          // Deduplicate sprints that appear on multiple boards
+          for (const s of page) {
+            if (!seenSprintIds.has(s.id)) {
+              seenSprintIds.add(s.id);
+              allSprints.push(s);
+            }
+          }
+
+          // isLast=true signals final page; also stop if page returned fewer than requested
+          sprintHasMore = !sprintsResp?.isLast && page.length === SPRINT_PAGE;
+          sprintStart += SPRINT_PAGE;
+        }
+      }
+
+      const sprints = allSprints;
+      console.log(`[Migration:${state.id}] Project ${proj.key}: found ${boardValues.length} board(s), ${sprints.length} sprint(s)`);
       totalSprints += sprints.length;
 
       for (const sprint of sprints) {
@@ -720,19 +999,37 @@ async function runIssuesPhase(
   await updateRunProgress(client, state.id, {
     status: 'processing',
     currentPhase: PHASE_ISSUES,
+    totalIssues: 0,
+    processedIssues: 0,
+    failedIssues: 0,
   }, io);
 
   const PAGE_SIZE = 100;
+  // /rest/api/3/search was permanently removed (410). Must use /rest/api/3/search/jql.
+  // This endpoint uses cursor-based pagination: pass nextPageToken from the previous
+  // response until it is absent (last page). There is no `total` field — we count
+  // processed issues as we go.
   const FIELDS = [
     'summary', 'description', 'issuetype', 'priority', 'status',
     'assignee', 'reporter', 'created', 'updated', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
-    'subtasks', 'parent', 'comment',
+    'subtasks', 'parent', 'issuelinks', 'comment',
   ].join(',');
+
+  // Initialize the pagination map — Phase 5 checks for its presence to detect resume.
+  state.issuesNeedingCommentPagination = new Map<string, number>();
 
   let totalIssues = 0;
   let processedIssues = 0;
   let failedIssues = 0;
+  // Count sprints created inline (Phase 3 may have been skipped due to 401 from Agile API).
+  let inlineSprintsCreated = 0;
+  // Dedicated issue error log — never evicted by comment errors in the shared 100-slot ring buffer.
+  const issueErrors: string[] = [];
+
+  // Accumulated across all projects for the post-import pass
+  const parentMap: Record<string, string> = {};         // jiraKey → parentJiraKey
+  const issueLinkAccum: Array<{ sourceKey: string; links: any[] }> = [];
 
   for (const proj of state.selectedProjects ?? []) {
     const projectId = state.jiraProjectIdToLocalId[proj.key];
@@ -752,27 +1049,108 @@ async function runIssuesPhase(
     }
 
     const jql = `project = "${proj.key}" ORDER BY created ASC`;
-    let startAt = state.currentOffset; // resume support
+    // Cursor-based pagination — nextPageToken absent means last page reached.
+    let nextPageToken: string | undefined = undefined;
     let hasMore = true;
-    let firstPage = true;
+    let pageNumber = 0;
     let projectIssueCount = 0;
 
     while (hasMore) {
-      const encoded = encodeURIComponent(jql);
-      const path = `/rest/api/3/search/jql?jql=${encoded}&startAt=${startAt}&maxResults=${PAGE_SIZE}&fields=${FIELDS}`;
+      const params = new URLSearchParams({
+        jql,
+        maxResults: String(PAGE_SIZE),
+        fields: FIELDS,
+      });
+      if (nextPageToken) params.set('nextPageToken', nextPageToken);
 
-      let page: { total: number; issues: any[] };
+      let page: { issues: any[]; nextPageToken?: string };
       try {
-        page = await jiraGet<{ total: number; issues: any[] }>(credentials, path);
+        page = await jiraGet<{ issues: any[]; nextPageToken?: string }>(
+          credentials,
+          `/rest/api/3/search/jql?${params.toString()}`,
+        );
       } catch (err: any) {
-        addError(state, `issues page ${proj.key}@${startAt}: ${err.message}`);
+        addError(state, `issues page ${proj.key}@${pageNumber * PAGE_SIZE}: ${err.message}`);
         break;
       }
+      pageNumber++;
 
-      if (firstPage) {
-        totalIssues += page.total ?? 0;
-        firstPage = false;
+      // ── Bulk-upsert new sprints encountered in this page ─────────────────────
+      // Collect unique new sprints (by Jira sprint id) before inserting issues.
+      // If Phase 3 (Agile API) failed due to missing OAuth scope, we create sprints
+      // here on-the-fly from the issue's own sprint field data — no extra scope needed.
+      const newSprintsById = new Map<string, {
+        name: string; state: string; goal?: string;
+        startDate?: string; endDate?: string;
+      }>();
+      for (const issue of page.issues ?? []) {
+        const sprintArr = Array.isArray(issue.fields?.customfield_10020) ? issue.fields.customfield_10020 : [];
+        for (const sp of sprintArr) {
+          const key = String(sp.id);
+          if (!state.jiraSprintIdToLocalId[key] && !newSprintsById.has(key)) {
+            newSprintsById.set(key, sp);
+          }
+        }
       }
+
+      if (newSprintsById.size > 0) {
+        const sprintEntries = [...newSprintsById.entries()];
+        const spPlaceholders: string[] = [];
+        const spParams: unknown[] = [projectId];
+        sprintEntries.forEach(([, sp], j) => {
+          const b = j * 6 + 2;
+          const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
+          const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
+          spPlaceholders.push(`($${b}::text, $${b+1}::text, $${b+2}::text, $${b+3}::date, $${b+4}::date, $${b+5}::timestamp)`);
+          spParams.push(
+            sp.name, spStatus, sp.goal ?? null,
+            sp.startDate ? sp.startDate.substring(0, 10) : null,
+            sp.endDate ? sp.endDate.substring(0, 10) : null,
+            completedAt,
+          );
+        });
+
+        const { rows: insertedSprints } = await client.query<{ id: string; name: string }>(
+          `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
+           SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, NOW(), NOW()
+           FROM (VALUES ${spPlaceholders.join(', ')}) AS v(name, status, goal, start_date, end_date, completed_at)
+           WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $1::uuid AND name = v.name)
+           RETURNING id, name`,
+          spParams,
+        ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+
+        inlineSprintsCreated += insertedSprints.length;
+
+        const nameToId = new Map<string, string>(insertedSprints.map(r => [r.name, r.id] as [string, string]));
+
+        // Fetch IDs for sprints that already existed (not returned by INSERT)
+        const insertedNames = new Set(insertedSprints.map(r => r.name));
+        const existingNames = sprintEntries.map(([, sp]) => sp.name).filter(n => !insertedNames.has(n));
+        if (existingNames.length > 0) {
+          const { rows: existingSprints } = await client.query<{ id: string; name: string }>(
+            `SELECT id, name FROM sprints WHERE project_id = $1 AND name = ANY($2::text[])`,
+            [projectId, existingNames],
+          ).catch(() => ({ rows: [] as any[] }));
+          for (const r of existingSprints) nameToId.set(r.name, r.id);
+        }
+
+        for (const [jiraId, sp] of sprintEntries) {
+          const localId = nameToId.get(sp.name) ?? undefined;
+          if (localId) state.jiraSprintIdToLocalId[jiraId] = localId;
+        }
+      }
+
+      // ── Bulk-insert all issues in this page ──────────────────────────────────
+      interface IssueRow {
+        title: string; description: string | null; type: string; priority: string;
+        statusId: string | null; assigneeId: string | null; reporterId: string;
+        sprintId: string | null; jiraKey: string; jiraNum: number;
+        labels: string[]; storyPoints: number | null;
+        timeEstimate: number | null; timeSpent: number;
+        createdAt: string | null; updatedAt: string | null;
+      }
+
+      const issueRowsToInsert: IssueRow[] = [];
 
       for (const issue of page.issues ?? []) {
         try {
@@ -780,130 +1158,307 @@ async function runIssuesPhase(
           const type = mapIssueType(fields.issuetype?.name);
           const priority = mapPriority(fields.priority?.name);
 
-          // Resolve status_id from the in-memory map built in Phase 2.
-          // Try exact Jira status name first, then fall back to 'To Do'.
           const jiraStatusName = fields.status?.name ?? 'To Do';
           const projectStatuses = state.projectStatusMap[projectId] ?? {};
           const statusMapping = state.statusMapping ?? {};
           const mappedStatusName = (statusMapping[jiraStatusName] ?? jiraStatusName).trim();
-          const statusId =
-            projectStatuses[jiraStatusName] ??
-            projectStatuses[mappedStatusName] ??
-            // Last resort: find any status with category 'todo' as the default column
-            null;
-
-          // If we still couldn't find it, try a live DB lookup (handles resume path)
-          let resolvedStatusId = statusId;
-          if (!resolvedStatusId) {
+          let statusId = projectStatuses[jiraStatusName] ?? projectStatuses[mappedStatusName] ?? null;
+          if (!statusId) {
             const { rows: fallbackRows } = await client.query<{ id: string }>(
               `SELECT id FROM issue_statuses WHERE project_id = $1 AND category = 'todo' ORDER BY position LIMIT 1`,
               [projectId],
             );
-            resolvedStatusId = fallbackRows[0]?.id ?? null;
+            statusId = fallbackRows[0]?.id ?? null;
           }
 
-          // Assignee / reporter
+          const assigneeAccountId = fields.assignee?.accountId;
+          const reporterAccountId = fields.reporter?.accountId;
           const assigneeEmail = fields.assignee?.emailAddress?.toLowerCase();
           const reporterEmail = fields.reporter?.emailAddress?.toLowerCase();
-          const assigneeId = assigneeEmail ? state.jiraUserEmailToLocalId[assigneeEmail] ?? null : null;
-          const reporterId = reporterEmail ? state.jiraUserEmailToLocalId[reporterEmail] ?? null : null;
 
-          // Sprint (customfield_10020 is an array in Cloud API v3)
+          // Look up by accountId first (works even when Jira hides the email).
+          // Fall back to email lookup for pre-Cloud instances that exposed emails.
+          const assigneeId = (assigneeAccountId && state.jiraAccountIdToLocalId[assigneeAccountId])
+            ?? (assigneeEmail && state.jiraUserEmailToLocalId[assigneeEmail])
+            ?? null;
+          const reporterId = (reporterAccountId && state.jiraAccountIdToLocalId[reporterAccountId])
+            ?? (reporterEmail && state.jiraUserEmailToLocalId[reporterEmail])
+            ?? null;
+
+          // Sprint — already created in bulk above
           let sprintId: string | null = null;
           const sprintArr = Array.isArray(fields.customfield_10020) ? fields.customfield_10020 : [];
           const activeSprint = sprintArr.find((s: any) => s.state === 'active') ?? sprintArr[0];
-          if (activeSprint) {
-            sprintId = state.jiraSprintIdToLocalId[String(activeSprint.id)] ?? null;
-          }
+          if (activeSprint) sprintId = state.jiraSprintIdToLocalId[String(activeSprint.id)] ?? null;
 
-          // Strip ADF description → plaintext
-          const description = extractDescription(fields.description);
-
-          // Extract numeric part from Jira key (e.g. DROM-46 → 46).
-          // Use the DB sequence to avoid collisions on the (project_id, number) unique constraint:
-          // if the Jira number is already taken by a different jira_key, auto-assign the next free number.
           const issueNumber = parseInt(issue.key.split('-').pop() ?? '0', 10) || 0;
-          // reporter_id is NOT NULL — fall back to migration owner
           const safeReporterId = reporterId ?? state.triggeredById;
 
-          const { rows: issueRows } = await client.query<{ id: string }>(
-            `INSERT INTO issues (
-               id, title, description, type, priority,
-               status_id, project_id, organization_id,
-               assignee_id, reporter_id, sprint_id,
-               key, number, jira_key, labels, story_points,
-               time_estimate, time_spent,
-               created_at, updated_at
-             )
-             SELECT
-               gen_random_uuid(), $1::text, $2::text, $3::text, $4::text,
-               $5::uuid, $6::uuid, $7::uuid,
-               $8::uuid, $9::uuid, $10::uuid,
-               $11::text,
-               CASE
-                 WHEN NOT EXISTS (SELECT 1 FROM issues WHERE project_id = $6::uuid AND number = $12::int)
-                 THEN $12::int
-                 ELSE (SELECT COALESCE(MAX(number), 0) + 1 FROM issues WHERE project_id = $6::uuid)
-               END,
-               $13::text, $14::text[], $15::int,
-               $16::int, $17::int,
-               COALESCE($18::timestamptz, NOW()), COALESCE($19::timestamptz, NOW())
-             WHERE NOT EXISTS (
-               SELECT 1 FROM issues WHERE project_id = $6::uuid AND jira_key = $13::text
-             )
-             RETURNING id`,
-            [
-              fields.summary ?? issue.key,
-              description,
-              type,
-              priority,
-              resolvedStatusId,
-              projectId,
-              state.organizationId,
-              assigneeId,
-              safeReporterId,
-              sprintId,
-              issue.key,
-              issueNumber,
-              issue.key,
-              Array.isArray(fields.labels) ? fields.labels : [],
-              fields.customfield_10016 ?? null,
-              fields.timetracking?.originalEstimateSeconds ?? null,
-              fields.timetracking?.timeSpentSeconds ?? 0,
-              fields.created ?? null,
-              fields.updated ?? null,
-            ],
-          );
-
-          if (issueRows[0]) {
-            state.jiraIssueKeyToLocalId[issue.key] = issueRows[0].id;
-            processedIssues++;
-            projectIssueCount++;
-          } else {
-            // Already exists — look up ID for the comments phase
-            const { rows: existing } = await client.query<{ id: string }>(
-              `SELECT id FROM issues WHERE project_id = $1 AND jira_key = $2 LIMIT 1`,
-              [projectId, issue.key],
-            );
-            if (existing[0]) state.jiraIssueKeyToLocalId[issue.key] = existing[0].id;
-            processedIssues++;
-            projectIssueCount++;
+          if (fields.parent?.key) parentMap[issue.key] = fields.parent.key;
+          if (Array.isArray(fields.issuelinks) && fields.issuelinks.length > 0) {
+            issueLinkAccum.push({ sourceKey: issue.key, links: fields.issuelinks });
           }
+
+          issueRowsToInsert.push({
+            title: fields.summary ?? issue.key,
+            description: extractDescription(fields.description),
+            type, priority, statusId, assigneeId,
+            reporterId: safeReporterId,
+            sprintId, jiraKey: issue.key, jiraNum: issueNumber,
+            labels: Array.isArray(fields.labels) ? fields.labels : [],
+            storyPoints: fields.customfield_10016 ?? null,
+            timeEstimate: fields.timetracking?.originalEstimateSeconds ?? null,
+            timeSpent: fields.timetracking?.timeSpentSeconds ?? 0,
+            createdAt: fields.created ?? null,
+            updatedAt: fields.updated ?? null,
+          });
         } catch (err: any) {
           addError(state, `issue ${issue.key}: ${err.message}`);
           failedIssues++;
         }
       }
 
-      startAt += PAGE_SIZE;
-      hasMore = startAt < (page.total ?? 0);
+      // One bulk INSERT for all issues in this page
+      if (issueRowsToInsert.length > 0) {
+        const valPlaceholders: string[] = [];
+        const valParams: unknown[] = [projectId, state.organizationId];
+        let pIdx = 3;
 
-      // Update offset for resume
+        for (const r of issueRowsToInsert) {
+          valPlaceholders.push(
+            `(gen_random_uuid(), $${pIdx}::text, $${pIdx+1}::text, $${pIdx+2}::text, $${pIdx+3}::text, ` +
+            `$${pIdx+4}::uuid, $${pIdx+5}::uuid, $${pIdx+6}::uuid, $${pIdx+7}::uuid, $${pIdx+8}::text, ` +
+            `$${pIdx+9}::text[], $${pIdx+10}::numeric, $${pIdx+11}::int, $${pIdx+12}::int, ` +
+            `COALESCE($${pIdx+13}::timestamptz, NOW()), COALESCE($${pIdx+14}::timestamptz, NOW()))`,
+          );
+          valParams.push(
+            r.title, r.description, r.type, r.priority,
+            r.statusId, r.assigneeId, r.reporterId, r.sprintId,
+            r.jiraKey,
+            r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
+            r.createdAt, r.updatedAt,
+          );
+          pIdx += 15;
+        }
+
+        // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn.
+        // ON CONFLICT DO UPDATE makes this a true upsert — re-runs update existing issues
+        // and RETURNING returns ALL rows (new inserts + updates), so no existingKeys
+        // lookup is needed.
+        const issueCteQuery = `WITH max_num AS (
+             SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1
+           ),
+           incoming AS (
+             SELECT v.*, ROW_NUMBER() OVER (ORDER BY v.jira_key) AS rn
+             FROM (VALUES ${valPlaceholders.join(', ')}) AS v(
+               id, title, description, type, priority,
+               status_id, assignee_id, reporter_id, sprint_id,
+               jira_key, labels, story_points, time_estimate, time_spent,
+               created_at, updated_at
+             )
+           )
+           INSERT INTO issues (
+             id, title, description, type, priority,
+             status_id, project_id, organization_id,
+             assignee_id, reporter_id, sprint_id,
+             key, number, jira_key, labels, story_points,
+             time_estimate, time_spent, created_at, updated_at
+           )
+           SELECT
+             i.id, i.title, i.description, i.type, i.priority,
+             i.status_id, $1::uuid, $2::uuid,
+             i.assignee_id, i.reporter_id, i.sprint_id,
+             i.jira_key,
+             CASE WHEN NOT EXISTS (
+               SELECT 1 FROM issues WHERE project_id = $1 AND number = i.jira_key_num
+             ) THEN i.jira_key_num
+             ELSE (SELECT n FROM max_num) + i.rn
+             END,
+             i.jira_key, i.labels, i.story_points,
+             i.time_estimate, i.time_spent, i.created_at, i.updated_at
+           FROM (
+             SELECT *,
+               (regexp_match(jira_key, '\\d+$'))[1]::int AS jira_key_num
+             FROM incoming
+           ) i
+           ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
+             title         = EXCLUDED.title,
+             description   = EXCLUDED.description,
+             type          = EXCLUDED.type,
+             priority      = EXCLUDED.priority,
+             status_id     = EXCLUDED.status_id,
+             assignee_id   = EXCLUDED.assignee_id,
+             reporter_id   = EXCLUDED.reporter_id,
+             sprint_id     = EXCLUDED.sprint_id,
+             labels        = EXCLUDED.labels,
+             story_points  = EXCLUDED.story_points,
+             time_estimate = EXCLUDED.time_estimate,
+             time_spent    = EXCLUDED.time_spent,
+             updated_at    = EXCLUDED.updated_at
+           RETURNING id, jira_key`;
+
+        let bulkInsertFailed = false;
+        const { rows: insertedIssues } = await client.query<{ id: string; jira_key: string }>(
+          issueCteQuery,
+          valParams,
+        ).catch((err: any) => {
+          const errMsg = `issues bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`;
+          addError(state, errMsg);
+          issueErrors.push(errMsg);
+          console.error(`[Migration:${state.id}] ${errMsg}`);
+          failedIssues += issueRowsToInsert.length;
+          bulkInsertFailed = true;
+          return { rows: [] as any[] };
+        });
+
+        // Fallback: if the page bulk INSERT failed, attempt individual single-row inserts
+        // so issues are never silently skipped due to a transient page-level failure.
+        if (bulkInsertFailed && issueRowsToInsert.length > 0) {
+          for (const r of issueRowsToInsert) {
+            try {
+              const { rows: singleRows } = await client.query<{ id: string; jira_key: string }>(
+                `WITH max_num AS (SELECT COALESCE(MAX(number), 0) AS n FROM issues WHERE project_id = $1)
+                 INSERT INTO issues (
+                   id, title, description, type, priority,
+                   status_id, project_id, organization_id,
+                   assignee_id, reporter_id, sprint_id,
+                   key, number, jira_key, labels, story_points,
+                   time_estimate, time_spent, created_at, updated_at
+                 )
+                 SELECT
+                   gen_random_uuid(), $3::text, $4::text, $5::text, $6::text,
+                   $7::uuid, $1::uuid, $2::uuid,
+                   $8::uuid, $9::uuid, $10::uuid,
+                   $11::text,
+                   CASE WHEN NOT EXISTS (
+                     SELECT 1 FROM issues WHERE project_id = $1 AND number = (regexp_match($11, '\\d+$'))[1]::int
+                   ) THEN (regexp_match($11, '\\d+$'))[1]::int
+                   ELSE (SELECT n FROM max_num) + 1
+                   END,
+                   $11::text, $12::text[], $13::numeric, $14::int, $15::int,
+                   COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW())
+                 ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
+                   title         = EXCLUDED.title,
+                   description   = EXCLUDED.description,
+                   type          = EXCLUDED.type,
+                   priority      = EXCLUDED.priority,
+                   status_id     = EXCLUDED.status_id,
+                   assignee_id   = EXCLUDED.assignee_id,
+                   reporter_id   = EXCLUDED.reporter_id,
+                   sprint_id     = EXCLUDED.sprint_id,
+                   labels        = EXCLUDED.labels,
+                   story_points  = EXCLUDED.story_points,
+                   time_estimate = EXCLUDED.time_estimate,
+                   time_spent    = EXCLUDED.time_spent,
+                   updated_at    = EXCLUDED.updated_at
+                 RETURNING id, jira_key`,
+                [
+                  projectId, state.organizationId,
+                  r.title, r.description, r.type, r.priority,
+                  r.statusId, r.assigneeId, r.reporterId, r.sprintId,
+                  r.jiraKey,
+                  r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
+                  r.createdAt, r.updatedAt,
+                ],
+              );
+              if (singleRows[0]) {
+                state.jiraIssueKeyToLocalId[singleRows[0].jira_key] = singleRows[0].id;
+                processedIssues++;
+                projectIssueCount++;
+                // This issue was counted as failed in the bulk attempt — correct the counter
+                failedIssues = Math.max(0, failedIssues - 1);
+              }
+            } catch (singleErr: any) {
+              const singleErrMsg = `issue fallback insert ${r.jiraKey}: ${singleErr.message}`;
+              issueErrors.push(singleErrMsg);
+              addError(state, singleErrMsg);
+            }
+          }
+        }
+
+        if (!bulkInsertFailed) {
+          // Normal path: ON CONFLICT DO UPDATE upsert — RETURNING gives ALL rows (new + updated).
+          // No existingKeys lookup needed.
+          for (const row of insertedIssues) {
+            state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+            processedIssues++;
+            projectIssueCount++;
+          }
+        } else {
+          // Fallback path: individual inserts already ran above and incremented processedIssues
+          // for each successful upsert. Now populate jiraIssueKeyToLocalId for any issues
+          // not yet mapped (were already in DB but the fallback INSERT also upserted them,
+          // so they should be in the map — this is a safety net only).
+          const unmappedKeys = issueRowsToInsert
+            .map(r => r.jiraKey)
+            .filter(k => !state.jiraIssueKeyToLocalId[k]);
+          if (unmappedKeys.length > 0) {
+            const { rows: preExisting } = await client.query<{ id: string; jira_key: string }>(
+              `SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key = ANY($2::text[])`,
+              [projectId, unmappedKeys],
+            ).catch(() => ({ rows: [] as any[] }));
+            for (const row of preExisting) {
+              // Populate map so comments phase works, but do NOT increment processedIssues —
+              // these were already counted as failed and will stay that way.
+              state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+            }
+          }
+        }
+      }
+
+      // ── Bulk-insert inline comments returned with this page ─────────────────
+      // The 'comment' field returns up to maxResults comments inline.
+      // Issues with total > maxResults are recorded for Phase 5 to paginate.
+      if (state.options?.importComments) {
+        const commentPlaceholders: string[] = [];
+        const commentParams: unknown[] = [];
+        for (const issue of page.issues ?? []) {
+          const localIssueId = state.jiraIssueKeyToLocalId[issue.key];
+          if (!localIssueId) continue;
+          const commentData = issue.fields?.comment;
+          if (!commentData) continue;
+          const inlineComments: any[] = commentData.comments ?? [];
+          const commentTotal: number = commentData.total ?? 0;
+          // If more pages exist, record startAt for Phase 5
+          if (commentTotal > inlineComments.length) {
+            state.issuesNeedingCommentPagination!.set(issue.key, inlineComments.length);
+          }
+          for (const comment of inlineComments) {
+            const authorAccountId = comment.author?.accountId;
+            const authorEmail = comment.author?.emailAddress?.toLowerCase();
+            const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
+              ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
+              ?? state.triggeredById;
+            if (!authorId) continue;
+            const body = extractDescription(comment.body) ?? '';
+            const j = commentPlaceholders.length;
+            commentPlaceholders.push(
+              `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+            );
+            commentParams.push(body, localIssueId, authorId, comment.created ?? null);
+          }
+        }
+        if (commentPlaceholders.length > 0) {
+          await client.query(
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+             VALUES ${commentPlaceholders.join(', ')}
+             ON CONFLICT DO NOTHING`,
+            commentParams,
+          ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
+        }
+      }
+
+      // Advance cursor — absent nextPageToken means this was the last page
+      nextPageToken = page.nextPageToken;
+      hasMore = !!nextPageToken;
+      totalIssues += page.issues?.length ?? 0;
+
       await updateRunProgress(client, state.id, {
-        currentOffset: startAt,
         processedIssues,
         failedIssues,
         totalIssues,
+        processedSprints: inlineSprintsCreated,
+        errorLog: state.errorLog,
       }, io);
 
       if (hasMore) await delay(REQUEST_DELAY_MS);
@@ -940,31 +1495,97 @@ async function runIssuesPhase(
     await updateRunProgress(client, state.id, { currentOffset: 0 }, null);
   }
 
-  // Second pass: link parent/subtask relationships
-  await linkParentIssues(client, state, credentials);
+  // Second pass: link parent/subtask relationships + issue links
+  await linkParentIssues(client, state, parentMap);
+  await importIssueLinks(client, state, issueLinkAccum);
+
+  // Dump accumulated issue errors to worker logs so they are never lost
+  // (the shared errorLog ring buffer only keeps 100 entries and comment errors can evict these).
+  if (issueErrors.length > 0) {
+    console.error(
+      `[Migration:${state.id}] Phase 4 — ${issueErrors.length} issue insert error(s):\n` +
+      issueErrors.join('\n'),
+    );
+  }
 
   await updateRunProgress(client, state.id, {
     totalIssues,
     processedIssues,
     failedIssues,
+    processedSprints: inlineSprintsCreated,
+    totalSprints: inlineSprintsCreated,
     completedPhase: PHASE_ISSUES,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed`);
+  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints`);
 }
 
 async function linkParentIssues(
   client: PoolClient,
   state: RunState,
-  credentials: JiraCredentials,
+  parentMap: Record<string, string>, // jiraKey → parentJiraKey
 ): Promise<void> {
-  // For each issue with a parent, set parent_id
-  for (const [jiraKey, localId] of Object.entries(state.jiraIssueKeyToLocalId)) {
-    // We stored parent key in description metadata — instead re-fetch from Jira if needed
-    // For simplicity: query our DB for issues that need parent linkage would require jiraKey index
-    // This is a best-effort pass; parent links are set during initial upsert via jiraKey lookup
-    void jiraKey; void localId; // covered in main upsert via jiraIssueKeyToLocalId
+  const pairs = Object.entries(parentMap)
+    .map(([jiraKey, parentJiraKey]) => ({
+      id: state.jiraIssueKeyToLocalId[jiraKey],
+      parentId: state.jiraIssueKeyToLocalId[parentJiraKey],
+    }))
+    .filter(p => p.id && p.parentId);
+
+  if (pairs.length > 0) {
+    const placeholders = pairs.map((_, i) => `($${i*2+1}::uuid, $${i*2+2}::uuid)`).join(', ');
+    const params = pairs.flatMap(p => [p.id, p.parentId]);
+    await client.query(
+      `UPDATE issues SET parent_id = v.parent_id, updated_at = NOW()
+       FROM (VALUES ${placeholders}) AS v(issue_id, parent_id)
+       WHERE issues.id = v.issue_id AND issues.organization_id = $${params.length + 1}`,
+      [...params, state.organizationId],
+    ).catch((err: any) => console.error(`[Migration] parent links batch: ${err.message}`));
   }
+  console.log(`[Migration] Parent links set: ${pairs.length}`);
+}
+
+async function importIssueLinks(
+  client: PoolClient,
+  state: RunState,
+  issueLinkAccum: Array<{ sourceKey: string; links: any[] }>,
+): Promise<void> {
+  const allLinks: Array<[string, string, string, string]> = []; // [sourceId, targetId, linkType, createdBy]
+  for (const { sourceKey, links } of issueLinkAccum) {
+    const sourceId = state.jiraIssueKeyToLocalId[sourceKey];
+    if (!sourceId) continue;
+    for (const link of links) {
+      // Jira returns either outwardIssue or inwardIssue depending on link direction
+      const targetKey = link.outwardIssue?.key ?? link.inwardIssue?.key;
+      const targetId = targetKey ? state.jiraIssueKeyToLocalId[targetKey] : null;
+      if (!targetId) continue; // target not imported (different project / not selected)
+      allLinks.push([sourceId, targetId, mapIssueLinkType(link.type?.name), state.triggeredById]);
+    }
+  }
+
+  if (allLinks.length > 0) {
+    const LINK_CHUNK = 500;
+    for (let i = 0; i < allLinks.length; i += LINK_CHUNK) {
+      const chunk = allLinks.slice(i, i + LINK_CHUNK);
+      const placeholders = chunk.map((_, j) => `(gen_random_uuid(), $${j*4+1}::uuid, $${j*4+2}::uuid, $${j*4+3}::text, $${j*4+4}::uuid, NOW())`).join(', ');
+      await client.query(
+        `INSERT INTO issue_links (id, source_issue_id, target_issue_id, link_type, created_by, created_at)
+         VALUES ${placeholders}
+         ON CONFLICT (source_issue_id, target_issue_id, link_type) DO NOTHING`,
+        chunk.flat(),
+      ).catch(() => {}); // silently skip duplicate / FK violations
+    }
+  }
+  console.log(`[Migration] Issue links imported: ${allLinks.length}`);
+}
+
+function mapIssueLinkType(name?: string): string {
+  if (!name) return 'relates';
+  const n = name.toLowerCase();
+  if (n.includes('block')) return 'blocks';
+  if (n.includes('duplicat')) return 'duplicates';
+  if (n.includes('clone')) return 'clones';
+  return 'relates';
 }
 
 // ─── Phase 5: Comments ────────────────────────────────────────────────────────
@@ -987,40 +1608,98 @@ async function runCommentsPhase(
     currentPhase: PHASE_COMMENTS,
   }, io);
 
+  // Determine which issues need comment fetching:
+  // - issuesNeedingCommentPagination present → Phase 4 ran in this process; only paginate issues
+  //   where inline comments were partial (total > maxResults returned inline).
+  // - issuesNeedingCommentPagination absent → worker restarted (resume path); fetch all issues
+  //   from startAt=0 since inline comments were not captured.
+  const isResume = !state.issuesNeedingCommentPagination;
+
+  // Build work list: issues to paginate with their starting offset
+  const workList: Array<{ jiraKey: string; localIssueId: string; startAt: number }> = [];
+  for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+    if (isResume) {
+      workList.push({ jiraKey, localIssueId, startAt: 0 });
+    } else {
+      const startAt = state.issuesNeedingCommentPagination!.get(jiraKey);
+      if (startAt !== undefined) {
+        workList.push({ jiraKey, localIssueId, startAt });
+      }
+    }
+  }
+
+  console.log(
+    `[Migration:${state.id}] Phase 5 — ${workList.length} issues to paginate (resume=${isResume})`,
+  );
+
   let totalComments = 0;
   let processedComments = 0;
+  const COMMENT_PAGE = 100;
+  const FLUSH_EVERY = 10;
 
-  for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+  // Process issues sequentially — a PoolClient is not safe for concurrent use.
+  // Mixing concurrent client.query() calls on the same connection corrupts its
+  // state and causes the phase to hang indefinitely. Sequential processing avoids
+  // this while still pipelining the Jira HTTP fetch (no DB I/O during that await).
+  for (let i = 0; i < workList.length; i++) {
+    const item = workList[i];
     try {
-      const resp = await jiraGet<{ comments: any[] }>(
-        credentials,
-        `/rest/api/3/issue/${jiraKey}/comment?maxResults=100`,
-      ).catch(() => ({ comments: [] }));
+      const allComments: any[] = [];
+      let commentStart = item.startAt;
+      let hasMore = true;
 
-      totalComments += resp.comments.length;
-
-      for (const comment of resp.comments) {
-        try {
-          const authorEmail = comment.author?.emailAddress?.toLowerCase();
-          const authorId = authorEmail ? state.jiraUserEmailToLocalId[authorEmail] ?? null : null;
-          const body = extractDescription(comment.body) ?? '';
-
-          await client.query(
-            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
-             VALUES (gen_random_uuid(), $1, $2, $3, COALESCE($4::timestamptz, NOW()), NOW())
-             ON CONFLICT DO NOTHING`,
-            [body, localIssueId, authorId, comment.created ?? null],
-          ).catch(() => {});
-
-          processedComments++;
-        } catch (err: any) {
-          addError(state, `comment on ${jiraKey}: ${err.message}`);
-        }
+      while (hasMore) {
+        const resp = await jiraGet<{ comments: any[]; total: number }>(
+          credentials,
+          `/rest/api/3/issue/${item.jiraKey}/comment?startAt=${commentStart}&maxResults=${COMMENT_PAGE}`,
+        ).catch(() => ({ comments: [], total: 0 }));
+        const page = resp.comments ?? [];
+        allComments.push(...page);
+        commentStart += COMMENT_PAGE;
+        // Stop if the page returned no items — avoids an infinite loop when Jira
+        // reports total > 0 but serves empty pages (GDPR-hidden or permission-restricted comments).
+        if (page.length === 0) break;
+        hasMore = allComments.length < (resp.total ?? 0);
       }
 
-      await delay(REQUEST_DELAY_MS);
+      totalComments += allComments.length;
+
+      if (allComments.length > 0) {
+        const placeholders: string[] = [];
+        const params: unknown[] = [];
+        for (const comment of allComments) {
+          // Look up author by accountId first — Jira Cloud hides emails (GDPR).
+          // Always fall back to the migration owner so author_id is never null.
+          const authorAccountId = comment.author?.accountId;
+          const authorEmail = comment.author?.emailAddress?.toLowerCase();
+          const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
+            ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
+            ?? state.triggeredById;
+          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment.
+          if (!authorId) continue;
+          const body = extractDescription(comment.body) ?? '';
+          const j = placeholders.length;
+          placeholders.push(
+            `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+          );
+          params.push(body, item.localIssueId, authorId, comment.created ?? null);
+        }
+        if (placeholders.length > 0) {
+          await client.query(
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+             VALUES ${placeholders.join(', ')}
+             ON CONFLICT DO NOTHING`,
+            params,
+          ).catch((err: any) => addError(state, `comments bulk insert ${item.jiraKey}: ${err.message}`));
+          processedComments += placeholders.length;
+        }
+      }
     } catch (err: any) {
-      addError(state, `comments for ${jiraKey}: ${err.message}`);
+      addError(state, `comments for ${item.jiraKey}: ${err.message}`);
+    }
+
+    if ((i + 1) % FLUSH_EVERY === 0) {
+      await updateRunProgress(client, state.id, { totalComments, processedComments }, io);
     }
   }
 
@@ -1030,7 +1709,7 @@ async function runCommentsPhase(
     completedPhase: PHASE_COMMENTS,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 5 done — ${processedComments} comments`);
+  console.log(`[Migration:${state.id}] Phase 5 done — ${processedComments} comments inserted`);
 }
 
 // ─── Phase 6: Attachments ─────────────────────────────────────────────────────
@@ -1108,14 +1787,15 @@ async function processJob(
   db: Pool,
   io: IORedis | null,
 ): Promise<void> {
-  const { runId, organizationId, connectionId, selectedMemberIds = [] } = job.data;
+  // selectedMemberIds: null/undefined = import all, [] = import none, [...ids] = specific filter
+  const { runId, organizationId, connectionId, selectedMemberIds = null } = job.data;
 
   console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    const state = await loadRun(client, runId);
+    const state = await loadRun(client, runId, organizationId);
 
     if (state.status === 'cancelled') {
       console.log(`[Migration:${runId}] Cancelled — skipping`);
@@ -1126,7 +1806,7 @@ async function processJob(
     // Propagate selectedMemberIds from the job payload into run state
     state.selectedMemberIds = selectedMemberIds;
 
-    const credentials = await loadCredentials(client, state.connectionId ?? connectionId);
+    const credentials = await loadCredentials(client, state.connectionId ?? connectionId, organizationId);
     await client.query('COMMIT');
 
     // Update to processing
@@ -1146,13 +1826,30 @@ async function processJob(
         );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_MEMBERS];
       } else {
-        console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user map`);
+        console.log(`[Migration:${runId}] Phase 1 (members) already completed — reloading user maps`);
+        // Rebuild email → localId map for all users in the org.
         const { rows } = await progressClient.query<{ email: string; id: string }>(
           `SELECT email, id FROM users WHERE organization_id = $1`,
           [organizationId],
         );
         for (const r of rows) state.jiraUserEmailToLocalId[r.email.toLowerCase()] = r.id;
+
+        // Rebuild accountId → localId map from synthetic-email users only.
+        // Real email users cannot be reverse-mapped to accountId without the original
+        // Jira list (which is only in memory during Phase 1 execution), so we rely on
+        // the email map for those. Synthetic-email users encode accountId in the address.
+        const { rows: syntheticRows } = await progressClient.query<{ email: string; id: string }>(
+          `SELECT email, id FROM users WHERE organization_id = $1 AND email LIKE 'jira-%@migrated.jira.local'`,
+          [organizationId],
+        );
+        for (const r of syntheticRows) {
+          const accountId = r.email.replace('jira-', '').replace('@migrated.jira.local', '');
+          if (accountId) state.jiraAccountIdToLocalId[accountId] = r.id;
+        }
       }
+
+      // Cancel check after Phase 1
+      await checkCancelled(progressClient, runId);
 
       // ── Phase 2 — projects ───────────────────────────────────────────────────
       if (!completed.has(PHASE_PROJECTS)) {
@@ -1184,6 +1881,9 @@ async function processJob(
         }
       }
 
+      // Cancel check after Phase 2
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 3 — sprints ────────────────────────────────────────────────────
       if (!completed.has(PHASE_SPRINTS)) {
         await runPhaseWithRetry('sprints', state, () =>
@@ -1201,6 +1901,9 @@ async function processJob(
         // Sprint map rebuilt on resume — jiraSprintIdToLocalId stays empty (sprints re-upsert by name)
       }
 
+      // Cancel check after Phase 3
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 4 — issues ─────────────────────────────────────────────────────
       if (!completed.has(PHASE_ISSUES)) {
         await runPhaseWithRetry('issues', state, () =>
@@ -1216,12 +1919,18 @@ async function processJob(
         for (const r of rows) if (r.jira_key) state.jiraIssueKeyToLocalId[r.jira_key] = r.id;
       }
 
+      // Cancel check after Phase 4
+      await checkCancelled(progressClient, runId);
+
       // ── Phase 5 — comments ───────────────────────────────────────────────────
       if (!completed.has(PHASE_COMMENTS)) {
         await runPhaseWithRetry('comments', state, () =>
           runCommentsPhase(progressClient, state, credentials, io),
         );
       }
+
+      // Cancel check after Phase 5
+      await checkCancelled(progressClient, runId);
 
       // ── Phase 6 — attachments ────────────────────────────────────────────────
       if (!completed.has(PHASE_ATTACHMENTS)) {
@@ -1233,13 +1942,13 @@ async function processJob(
       // ── Write final result summary (read fresh counts from DB) ──────────────
       const { rows: finalCounts } = await progressClient.query<{
         processed_issues: number; failed_issues: number;
-        processed_members: number; processed_sprints: number;
+        processed_members: number; processed_sprints: number; processed_comments: number;
       }>(
-        `SELECT processed_issues, failed_issues, processed_members, processed_sprints
+        `SELECT processed_issues, failed_issues, processed_members, processed_sprints, processed_comments
          FROM jira_migration_runs WHERE id = $1`,
         [runId],
       );
-      const fc = finalCounts[0] ?? { processed_issues: 0, failed_issues: 0, processed_members: 0, processed_sprints: 0 };
+      const fc = finalCounts[0] ?? { processed_issues: 0, failed_issues: 0, processed_members: 0, processed_sprints: 0, processed_comments: 0 };
 
       const summary = {
         projects: (state.selectedProjects ?? []).map((p) => ({
@@ -1272,20 +1981,33 @@ async function processJob(
           runId,
           phase: PHASE_ATTACHMENTS,
           status: 'completed',
+          completedPhases: [1, 2, 3, 4, 5, 6],
           counts: {
-            processedProjects: state.processedProjects,
-            totalProjects: state.totalProjects,
-            processedIssues: state.processedIssues,
-            totalIssues: state.totalIssues,
+            processedIssues: fc.processed_issues,
+            totalIssues: fc.processed_issues,
+            failedIssues: fc.failed_issues,
+            processedMembers: fc.processed_members,
+            totalMembers: fc.processed_members,
+            processedSprints: fc.processed_sprints,
+            totalSprints: fc.processed_sprints,
+            processedComments: fc.processed_comments,
+            totalComments: fc.processed_comments,
           },
         })).catch(() => {});
       }
 
-      console.log(`[Migration:${runId}] Completed successfully — ${state.processedIssues} issues, ${state.processedMembers} members`);
+      console.log(`[Migration:${runId}] Completed successfully — ${fc.processed_issues} issues, ${fc.processed_members} members, ${fc.processed_sprints} sprints, ${fc.processed_comments} comments`);
     } finally {
       progressClient.release();
     }
   } catch (err: any) {
+    // Graceful stop — run was cancelled via the API; DB already has status='cancelled'.
+    // Do NOT overwrite it with 'failed' and do NOT ask BullMQ to retry.
+    if (err instanceof MigrationCancelledError) {
+      console.log(`[Migration:${runId}] Stopped cleanly after cancellation.`);
+      return;
+    }
+
     console.error(`[Migration:${runId}] Fatal error:`, err.message, err.stack);
     const errClient = await db.connect();
     try {

@@ -110,9 +110,10 @@ export class JiraApiService {
     path: string,
     attempt = 1,
   ): Promise<T> {
-    const baseToken = Buffer.from(
-      `${credentials.email}:${credentials.apiToken}`,
-    ).toString('base64');
+    // OAuth connections have no email — use Bearer auth; API-token connections use Basic auth
+    const authHeader = credentials.email
+      ? `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`
+      : `Bearer ${credentials.apiToken}`;
 
     const rawUrl = credentials.baseUrl.replace(/\/$/, '') + path;
     const parsedUrl = new URL(rawUrl);
@@ -130,7 +131,7 @@ export class JiraApiService {
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
       headers: {
-        Authorization: `Basic ${baseToken}`,
+        Authorization: authHeader,
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },

@@ -8,9 +8,10 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  Redirect,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -23,6 +24,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 
@@ -125,6 +127,23 @@ export class MigrationController {
   }
 
   /**
+   * POST /api/migration/jira/cancel/:runId
+   * Cancel an active (pending or processing) migration run.
+   */
+  @Post('cancel/:runId')
+  @ApiOperation({ summary: 'Cancel an active migration run' })
+  @ApiParam({ name: 'runId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 201, description: 'Migration cancelled' })
+  @ApiResponse({ status: 400, description: 'Run is not cancellable' })
+  async cancel(
+    @Param('runId', ParseUUIDPipe) runId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const result = await this.migrationService.cancel(runId, organizationId);
+    return { status: true, message: 'Migration cancelled', data: result };
+  }
+
+  /**
    * GET /api/migration/jira/report/:runId
    * Return the full migration run record including result_summary and error_log.
    */
@@ -160,6 +179,24 @@ export class MigrationController {
   }
 
   /**
+   * GET /api/migration/jira/projects?connectionId=xxx
+   * Return the list of Jira projects for the given connection.
+   * Called by the PreviewStep when coming from OAuth (connectResult.projects is empty).
+   */
+  @Get('projects')
+  @ApiOperation({ summary: 'List Jira projects for a connection' })
+  @ApiQuery({ name: 'connectionId', required: true, type: String })
+  @ApiResponse({ status: 200, description: 'List of Jira projects' })
+  @ApiResponse({ status: 404, description: 'Connection not found' })
+  async getProjects(
+    @Query('connectionId') connectionId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const data = await this.migrationService.getMigrationProjects(connectionId, organizationId);
+    return { status: true, message: 'OK', data };
+  }
+
+  /**
    * GET /api/migration/jira/members?connectionId=xxx
    * Return all Jira users for the given connection so the user can select which
    * members to import. Returns accountId, displayName, email, avatarUrl, active.
@@ -178,20 +215,21 @@ export class MigrationController {
   }
 
   /**
-   * GET /api/migration/jira/oauth/authorize
-   * Build the Atlassian OAuth 2.0 (3-legged) authorization URL and redirect.
-   * Scopes: read:jira-work read:jira-user offline_access
-   *
-   * The `state` param is an opaque value the frontend can use for CSRF protection.
+   * GET /api/migration/jira/oauth/authorize-url
+   * Returns the Atlassian OAuth URL with a signed `state` (user + org + expiry).
+   * Browsers cannot send Bearer tokens on full-page navigation; the frontend must call
+   * this endpoint via XHR first, then set window.location to `data.url`.
    */
-  @Get('oauth/authorize')
-  @ApiOperation({ summary: 'Redirect to Atlassian OAuth consent screen' })
-  @ApiQuery({ name: 'state', required: false, type: String })
-  @ApiResponse({ status: 302, description: 'Redirects to Atlassian OAuth' })
-  @Redirect()
-  oauthAuthorize(@Query('state') state = '') {
-    const url = this.migrationService.buildOAuthAuthorizeUrl(state || 'boardupscale-jira-oauth');
-    return { url, statusCode: 302 };
+  @Get('oauth/authorize-url')
+  @ApiOperation({ summary: 'Get Atlassian OAuth URL (signed state)' })
+  @ApiResponse({ status: 200, description: 'JSON with url to open in the browser' })
+  oauthAuthorizeUrl(
+    @CurrentUser('id') userId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const signed = this.migrationService.signOAuthState(userId, organizationId);
+    const url = this.migrationService.buildOAuthAuthorizeUrl(signed);
+    return { url };
   }
 
   /**
@@ -199,20 +237,25 @@ export class MigrationController {
    * Atlassian OAuth callback — exchanges code for tokens, creates migration run,
    * and redirects the browser back to the frontend wizard with runId + metadata.
    */
+  @Public()
   @Get('oauth/callback')
   @ApiOperation({ summary: 'Atlassian OAuth callback — exchanges code and creates migration run' })
   @ApiQuery({ name: 'code', required: true, type: String })
-  @ApiQuery({ name: 'state', required: false, type: String })
+  @ApiQuery({ name: 'state', required: true, type: String })
   @ApiResponse({ status: 302, description: 'Redirects to frontend wizard' })
-  @Redirect()
   async oauthCallback(
     @Query('code') code: string,
-    @Query('state') _state: string,
-    @OrgId() organizationId: string,
-    @CurrentUser('id') userId: string,
-  ) {
+    @Query('state') state: string,
+    @Res() res: Response,
+  ): Promise<void> {
     const frontendUrl = this.configService.get<string>('atlassian.frontendRedirectUrl');
+    if (!code || !state) {
+      const params = new URLSearchParams({ oauthError: 'Missing OAuth code or state' });
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
+      return;
+    }
     try {
+      const { userId, organizationId } = this.migrationService.verifyOAuthState(state);
       const result = await this.migrationService.exchangeOAuthCode(code, organizationId, userId);
       const params = new URLSearchParams({
         oauth: '1',
@@ -222,10 +265,10 @@ export class MigrationController {
         projectCount: String(result.projectCount),
         memberCount: String(result.memberCount),
       });
-      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
     } catch (err: any) {
       const params = new URLSearchParams({ oauthError: err.message ?? 'OAuth failed' });
-      return { url: `${frontendUrl}?${params.toString()}`, statusCode: 302 };
+      res.redirect(302, `${frontendUrl}?${params.toString()}`);
     }
   }
 }

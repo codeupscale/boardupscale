@@ -1,6 +1,8 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
+  ParseIntPipe,
   Post,
   Patch,
   Delete,
@@ -44,6 +46,21 @@ export class BoardsController {
   ) {
     const board = await this.boardsService.getBoardData(projectId, organizationId, query);
     return { data: { statuses: board } };
+  }
+
+  @Get('board/columns/:statusId/issues')
+  @ApiOperation({ summary: 'Load more issues for a specific board column (pagination)' })
+  @ApiQuery({ name: 'offset', required: false, description: 'Pagination offset' })
+  @ApiQuery({ name: 'columnLimit', required: false, description: 'Number of issues to return' })
+  async getColumnIssues(
+    @Param('projectId', ResolveProjectPipe) projectId: string,
+    @Param('statusId') statusId: string,
+    @OrgId() organizationId: string,
+    @Query() query: BoardQueryDto,
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+  ) {
+    const result = await this.boardsService.getColumnIssues(projectId, statusId, organizationId, query, offset);
+    return { data: result };
   }
 
   @Post('statuses')

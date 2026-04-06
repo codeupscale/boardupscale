@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { BoardData, BoardFilters, SwimlaneGroupBy, Issue } from '@/types'
+import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
 import { toast } from '@/store/ui.store'
 
 const CATEGORY_OPTIONS = [
@@ -61,6 +61,10 @@ export function ProjectBoardPage() {
 
   const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null)
 
+  // Load-more state: extra issues appended per column beyond the first page
+  const [extraIssues, setExtraIssues] = useState<Record<string, Issue[]>>({})
+  const [loadingMoreColumn, setLoadingMoreColumn] = useState<string | null>(null)
+
   // Derive filters from URL search params
   const filters: BoardFilters = useMemo(() => {
     const f: BoardFilters = {}
@@ -89,6 +93,8 @@ export function ProjectBoardPage() {
       if (newFilters.search) params.set('search', newFilters.search)
       if (newFilters.sprintId) params.set('sprintId', newFilters.sprintId)
       setSearchParams(params, { replace: true })
+      // Reset load-more state when filters change
+      setExtraIssues({})
     },
     [setSearchParams],
   )
@@ -97,36 +103,80 @@ export function ProjectBoardPage() {
   const { data: board, isLoading } = useBoard(projectKey!, filters)
   const { data: sprints } = useSprints(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
-  const { data: orgUsers } = useUsers()
+  const { data: usersResult } = useUsers()
+  const orgUsers = usersResult?.data
   const reorderIssues = useReorderIssues()
   const createIssue = useCreateIssue()
   const updateStatus = useUpdateStatus()
   const createStatus = useCreateStatus()
   const deleteStatus = useDeleteStatus()
 
+  const handleLoadMore = useCallback(
+    async (statusId: string) => {
+      if (!projectKey || loadingMoreColumn === statusId) return
+      const col = board?.statuses.find((c) => c.id === statusId)
+      if (!col) return
+
+      const currentExtra = extraIssues[statusId] ?? []
+      const offset = col.issues.length + currentExtra.length
+
+      setLoadingMoreColumn(statusId)
+      try {
+        const params = new URLSearchParams()
+        if (filters.assigneeId) params.set('assigneeId', filters.assigneeId)
+        if (filters.type) params.set('type', filters.type)
+        if (filters.priority) params.set('priority', filters.priority)
+        if (filters.label) params.set('label', filters.label)
+        if (filters.search) params.set('search', filters.search)
+        if (filters.sprintId) params.set('sprintId', filters.sprintId)
+        params.set('offset', String(offset))
+        params.set('columnLimit', '50')
+
+        const { data } = await api.get(
+          `/projects/${projectKey}/board/columns/${statusId}/issues?${params.toString()}`,
+        )
+        const result = data.data as ColumnPageResult
+
+        setExtraIssues((prev) => ({
+          ...prev,
+          [statusId]: [...(prev[statusId] ?? []), ...result.issues],
+        }))
+      } catch {
+        toast('Failed to load more issues', 'error')
+      } finally {
+        setLoadingMoreColumn(null)
+      }
+    },
+    [projectKey, board, extraIssues, filters, loadingMoreColumn],
+  )
+
   // Socket.io real-time updates
   useEffect(() => {
     if (!projectKey) return
     const socket = getSocket()
     socket.emit('join:project', projectKey)
-    socket.on('issue:updated', () => {
+    const refresh = () => {
       qc.invalidateQueries({ queryKey: ['board', projectKey] })
-    })
-    socket.on('issue:created', () => {
-      qc.invalidateQueries({ queryKey: ['board', projectKey] })
-    })
+      // Reset load-more state on live updates so stale extra pages don't linger
+      setExtraIssues({})
+    }
+    socket.on('issue:updated', refresh)
+    socket.on('issue:created', refresh)
     return () => {
-      socket.off('issue:updated')
-      socket.off('issue:created')
+      socket.off('issue:updated', refresh)
+      socket.off('issue:created', refresh)
       socket.emit('leave:project', projectKey)
     }
   }, [projectKey, qc])
 
-  // Collect all issues from the board into a flat array
+  // Collect all issues from the board into a flat array (including load-more pages)
   const allIssues = useMemo(() => {
     if (!board) return []
-    return board.statuses.flatMap((col) => col.issues)
-  }, [board])
+    return board.statuses.flatMap((col) => [
+      ...col.issues,
+      ...(extraIssues[col.id] ?? []),
+    ])
+  }, [board, extraIssues])
 
   // Swimlane groups
   const swimlaneGroups = useMemo(() => {
@@ -134,15 +184,16 @@ export function ProjectBoardPage() {
     return groupIssuesBySwimlane(allIssues, groupBy)
   }, [allIssues, groupBy])
 
-  // Check WIP limit for a column
+  // Check WIP limit for a column (accounts for load-more extra issues)
   const isWipExceeded = useCallback(
     (columnId: string, extraCount = 0) => {
       if (!board) return false
       const col = board.statuses.find((c) => c.id === columnId)
       if (!col || !col.wipLimit || col.wipLimit <= 0) return false
-      return col.issues.length + extraCount >= col.wipLimit
+      const displayedCount = col.issues.length + (extraIssues[columnId]?.length ?? 0)
+      return displayedCount + extraCount >= col.wipLimit
     },
-    [board],
+    [board, extraIssues],
   )
 
   const handleDragEnd = (result: DropResult) => {
@@ -197,16 +248,21 @@ export function ProjectBoardPage() {
     // Check WIP limit before allowing move
     if (sourceColumnId !== destColumnId) {
       const destCol = boardData.statuses.find((c) => c.id === destColumnId)
-      if (destCol && destCol.wipLimit > 0 && destCol.issues.length >= destCol.wipLimit) {
+      const destDisplayedCount = (destCol?.issues.length ?? 0) + (extraIssues[destColumnId]?.length ?? 0)
+      if (destCol && destCol.wipLimit > 0 && destDisplayedCount >= destCol.wipLimit) {
         toast(
-          `WIP limit reached for "${destCol.name}" (${destCol.issues.length}/${destCol.wipLimit})`,
+          `WIP limit reached for "${destCol.name}" (${destDisplayedCount}/${destCol.wipLimit})`,
           'error',
         )
         return
       }
     }
 
-    const newStatuses = boardData.statuses.map((col) => ({ ...col, issues: [...col.issues] }))
+    // Merge extra (load-more) issues so drag-and-drop sees the full displayed set
+    const newStatuses = boardData.statuses.map((col) => ({
+      ...col,
+      issues: [...col.issues, ...(extraIssues[col.id] ?? [])],
+    }))
 
     const sourceCol = newStatuses.find((c) => c.id === sourceColumnId)
     const destCol = newStatuses.find((c) => c.id === destColumnId)
@@ -452,8 +508,15 @@ export function ProjectBoardPage() {
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
             {(provided) => (
-              <div className="flex-1 overflow-x-auto" ref={provided.innerRef} {...provided.droppableProps}>
-                <div className="flex gap-4 p-6 h-full min-h-[calc(100vh-200px)]">
+              <div
+                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-gray-50 dark:bg-gray-950"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                <div
+                  className="flex gap-3 p-4 h-full"
+                  style={{ minWidth: `${board.statuses.length * 296 + 312}px` }}
+                >
                   {board.statuses.map((column, index) => (
                     <Draggable key={column.id} draggableId={`col-${column.id}`} index={index}>
                       {(dragProvided, dragSnapshot) => (
@@ -461,16 +524,20 @@ export function ProjectBoardPage() {
                           ref={dragProvided.innerRef}
                           {...dragProvided.draggableProps}
                           className={cn(
+                            'flex flex-col h-full',
                             dragSnapshot.isDragging && 'opacity-90 rotate-1',
                           )}
                         >
                           <BoardColumn
                             column={column}
+                            extraIssues={extraIssues[column.id] ?? []}
                             dragHandleProps={dragProvided.dragHandleProps}
                             onAddIssue={handleAddIssue}
                             onUpdateWipLimit={handleUpdateWipLimit}
                             onEditColumn={handleEditColumn}
                             onDeleteColumn={board.statuses.length > 1 ? handleDeleteColumn : undefined}
+                            onLoadMore={handleLoadMore}
+                            isLoadingMore={loadingMoreColumn === column.id}
                           />
                         </div>
                       )}
@@ -481,7 +548,7 @@ export function ProjectBoardPage() {
                   {/* Add Column Button */}
                   <button
                     onClick={() => setShowAddColumn(true)}
-                    className="flex flex-col items-center justify-center w-72 flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500 hover:bg-gray-50 transition-colors"
+                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-blue-400 dark:hover:border-blue-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all"
                   >
                     <Plus className="h-6 w-6 mb-1" />
                     <span className="text-sm font-medium">Add Column</span>

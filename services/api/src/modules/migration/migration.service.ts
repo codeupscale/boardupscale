@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import * as https from 'https';
 import * as querystring from 'querystring';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 import { JiraMigrationRun } from './entities/jira-migration-run.entity';
 import { JiraConnection } from '../import/entities/jira-connection.entity';
@@ -263,8 +265,8 @@ export class MigrationService {
         organizationId,
         connectionId: run.connectionId,
         // Pass selected member IDs so the worker can filter them.
-        // Empty array or undefined means "import all".
-        selectedMemberIds: dto.selectedMemberIds ?? [],
+        // null = import all (no selection made), [] = import none, [...ids] = specific selection.
+        selectedMemberIds: dto.selectedMemberIds ?? null,
       },
       {
         jobId: `migration-${run.id}`,
@@ -328,7 +330,50 @@ export class MigrationService {
     return { runId: run.id };
   }
 
-  // ── 6. Full report ────────────────────────────────────────────────────────
+  // ── 6. Cancel running run ─────────────────────────────────────────────────
+
+  async cancel(runId: string, organizationId: string): Promise<{ runId: string }> {
+    const run = await this.runRepository.findOne({
+      where: { id: runId, organizationId },
+    });
+
+    if (!run) throw new NotFoundException('Migration run not found');
+    if (run.status !== 'processing' && run.status !== 'pending') {
+      throw new BadRequestException('Only active migrations can be cancelled');
+    }
+
+    // Mark as cancelled in DB first — the worker polls this flag between phases
+    // and will stop gracefully after finishing its current chunk.
+    await this.runRepository.update(run.id, { status: 'cancelled' });
+
+    // Best-effort: also remove/obliterate the BullMQ job.
+    // - Waiting/delayed jobs can be removed immediately.
+    // - Active jobs cannot be removed — they are allowed to finish the current phase
+    //   and will self-terminate when they detect the 'cancelled' DB status.
+    try {
+      const job = await this.migrationQueue.getJob(`migration-${run.id}`);
+      if (job) {
+        const state = await job.getState();
+        if (state === 'active') {
+          // Cannot force-remove an active job; the DB flag is the stop signal.
+          this.logger.warn(
+            `Migration job migration-${run.id} is active — worker will stop at next phase boundary`,
+          );
+        } else {
+          await job.remove();
+          this.logger.log(`Removed BullMQ job migration-${run.id} (was ${state})`);
+        }
+      }
+    } catch (err: any) {
+      // Non-fatal — DB status is the authoritative cancel signal.
+      this.logger.warn(`Could not remove BullMQ job for run ${run.id}: ${err.message}`);
+    }
+
+    this.logger.log(`Migration run ${run.id} cancelled by user`);
+    return { runId: run.id };
+  }
+
+  // ── 7. Full report ────────────────────────────────────────────────────────
 
   async getReport(runId: string, organizationId: string): Promise<JiraMigrationRun> {
     const run = await this.runRepository.findOne({
@@ -372,7 +417,32 @@ export class MigrationService {
     return { data, total, page, limit };
   }
 
-  // ── 8. Get Jira members for selection ─────────────────────────────────────
+  // ── 8. Get Jira projects for selection (used after OAuth when project list is empty) ──
+
+  async getMigrationProjects(
+    connectionId: string,
+    organizationId: string,
+  ): Promise<Array<{ key: string; name: string; description?: string }>> {
+    const conn = await this.connectionRepository.findOne({
+      where: { id: connectionId, organizationId, isActive: true },
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
+    });
+    if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    await this.refreshOAuthTokenIfNeeded(conn);
+
+    const { decrypt } = await import('../import/crypto.util');
+    const credentials = {
+      baseUrl: conn.jiraUrl,
+      email: conn.jiraEmail,
+      apiToken: decrypt(conn.apiTokenEnc, this.appSecret),
+    };
+
+    const projects = await this.jiraApiService.listProjects(credentials).catch(() => []);
+    return projects.map((p) => ({ key: p.key, name: p.name, description: p.description }));
+  }
+
+  // ── 9. Get Jira members for selection ─────────────────────────────────────
 
   async getMigrationMembers(
     connectionId: string,
@@ -380,9 +450,11 @@ export class MigrationService {
   ): Promise<JiraMember[]> {
     const conn = await this.connectionRepository.findOne({
       where: { id: connectionId, organizationId, isActive: true },
-      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
     });
     if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    await this.refreshOAuthTokenIfNeeded(conn);
 
     const { decrypt } = await import('../import/crypto.util');
     const credentials = {
@@ -407,7 +479,49 @@ export class MigrationService {
     }));
   }
 
-  // ── 9. Atlassian OAuth 2.0 — 3-legged flow ────────────────────────────────
+  // ── 10. Atlassian OAuth 2.0 — 3-legged flow ───────────────────────────────
+
+  /**
+   * Signed state for OAuth (browser redirects cannot send Authorization headers).
+   * Verified on `/oauth/callback` with APP_SECRET.
+   */
+  signOAuthState(userId: string, organizationId: string): string {
+    const secret = this.configService.get<string>('app.secret');
+    const exp = Date.now() + 15 * 60 * 1000;
+    const body = Buffer.from(JSON.stringify({ userId, organizationId, exp }), 'utf8').toString(
+      'base64url',
+    );
+    const sig = createHmac('sha256', secret).update(body).digest('base64url');
+    return `${body}.${sig}`;
+  }
+
+  verifyOAuthState(state: string): { userId: string; organizationId: string } {
+    const secret = this.configService.get<string>('app.secret');
+    const parts = state.split('.');
+    if (parts.length !== 2) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    const [body, sig] = parts;
+    const expectedSig = createHmac('sha256', secret).update(body).digest('base64url');
+    const sigBuf = Buffer.from(sig, 'utf8');
+    const expBuf = Buffer.from(expectedSig, 'utf8');
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    let parsed: { userId: string; organizationId: string; exp: number };
+    try {
+      parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    } catch {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    if (!parsed.exp || parsed.exp < Date.now()) {
+      throw new UnauthorizedException('OAuth session expired — please start again from the migration wizard');
+    }
+    if (!parsed.userId || !parsed.organizationId) {
+      throw new UnauthorizedException('Invalid OAuth state');
+    }
+    return { userId: parsed.userId, organizationId: parsed.organizationId };
+  }
 
   buildOAuthAuthorizeUrl(state: string): string {
     const clientId = this.configService.get<string>('atlassian.clientId');
@@ -422,6 +536,13 @@ export class MigrationService {
     const params = new URLSearchParams({
       audience: 'api.atlassian.com',
       client_id: clientId,
+      // read:jira-work  — issues, projects, statuses, sprint fields on issues (REST API v3)
+      // read:jira-user  — user/member data
+      // offline_access  — enables refresh token for long migrations (>1 hour)
+      // NOTE: read:board-scope:jira-software and read:sprint:jira-software require the scopes
+      // to be enabled in the Atlassian developer app console before they can be requested.
+      // Sprints are extracted from customfield_10020 embedded in each issue (phase 4) so
+      // the Agile board API is not required.
       scope: 'read:jira-work read:jira-user offline_access',
       redirect_uri: callbackUrl,
       state,
@@ -473,11 +594,14 @@ export class MigrationService {
     }
 
     const site = resources[0]; // Use first (most common case)
-    const baseUrl = site.url.replace(/\/$/, '');
+    // Atlassian OAuth Bearer tokens must be used against api.atlassian.com/ex/jira/{cloudId},
+    // NOT against the site URL (e.g. codeupscale.atlassian.net). Using the site URL causes
+    // silent 401/403 errors. The REST path is appended by JiraApiService.get().
+    const apiBaseUrl = `https://api.atlassian.com/ex/jira/${site.id}`;
 
     // Fetch Jira projects via the cloud API
     const credentials = {
-      baseUrl,
+      baseUrl: apiBaseUrl,
       email: '',          // Not used for OAuth — token auth
       apiToken: access_token, // OAuth bearer
     };
@@ -498,16 +622,27 @@ export class MigrationService {
       `https://api.atlassian.com/ex/jira/${site.id}/rest/api/3/myself`,
     ).catch(() => ({} as any));
 
-    // Encrypt and store the access token (treat same as API token for now)
+    // Encrypt and store both the access token and (if present) the refresh token.
+    // Atlassian access tokens expire after 3600 seconds; we store tokenExpiresAt
+    // so the service and worker can proactively refresh before a long migration fails.
     const tokenEnc = encrypt(access_token, this.appSecret);
+    const refreshTokenEnc = refresh_token ? encrypt(refresh_token, this.appSecret) : null;
+    const tokenExpiresAt = new Date(Date.now() + 3600 * 1000); // Atlassian access tokens = 1 hour
+
     await this.connectionRepository.update({ organizationId }, { isActive: false });
 
     const connection = this.connectionRepository.create({
       organizationId,
       createdById: userId,
-      jiraUrl: baseUrl,
-      jiraEmail: me.emailAddress?.trim().toLowerCase() ?? '',
+      // Store the API base URL (api.atlassian.com/ex/jira/{id}) so all subsequent
+      // credential lookups (preview, migration worker, member fetch) use the correct URL.
+      jiraUrl: apiBaseUrl,
+      // OAuth connections use Bearer auth — email must be empty so JiraApiService
+      // sends Authorization: Bearer instead of Authorization: Basic email:token
+      jiraEmail: '',
       apiTokenEnc: tokenEnc,
+      refreshTokenEnc,
+      tokenExpiresAt,
       isActive: true,
       lastTestedAt: new Date(),
       lastTestOk: true,
@@ -553,10 +688,13 @@ export class MigrationService {
 
     const conn = await this.connectionRepository.findOne({
       where: { id: run.connectionId, organizationId: run.organizationId, isActive: true },
-      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'isActive'],
+      select: ['id', 'organizationId', 'jiraUrl', 'jiraEmail', 'apiTokenEnc', 'refreshTokenEnc', 'tokenExpiresAt', 'isActive'],
     });
 
     if (!conn) throw new NotFoundException('Jira connection not found or inactive');
+
+    // Auto-refresh OAuth token if it expires within the next 5 minutes
+    await this.refreshOAuthTokenIfNeeded(conn);
 
     const { decrypt } = await import('../import/crypto.util');
     const apiToken = decrypt(conn.apiTokenEnc, this.appSecret);
@@ -566,6 +704,60 @@ export class MigrationService {
       email: conn.jiraEmail,
       apiToken,
     };
+  }
+
+  /**
+   * Refreshes the Atlassian OAuth access token for a connection if it expires
+   * within the next 5 minutes. Mutates `conn.apiTokenEnc` and `conn.tokenExpiresAt`
+   * in-place and persists both to the DB.
+   *
+   * No-ops for API-token connections (tokenExpiresAt is null).
+   */
+  private async refreshOAuthTokenIfNeeded(conn: any): Promise<void> {
+    if (!conn.tokenExpiresAt || !conn.refreshTokenEnc) return;
+
+    const expiresAt = new Date(conn.tokenExpiresAt).getTime();
+    const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000;
+    if (expiresAt > fiveMinutesFromNow) return; // still fresh
+
+    this.logger.log(`Refreshing OAuth token for connection ${conn.id} (expires ${conn.tokenExpiresAt})`);
+
+    const clientId = this.configService.get<string>('atlassian.clientId');
+    const clientSecret = this.configService.get<string>('atlassian.clientSecret');
+    if (!clientId || !clientSecret) {
+      throw new InternalServerErrorException('Atlassian OAuth credentials not configured for token refresh');
+    }
+
+    const { decrypt } = await import('../import/crypto.util');
+    const refreshToken = decrypt(conn.refreshTokenEnc, this.appSecret);
+
+    const tokenResponse = await this.atlassianTokenRequest({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }) as { access_token: string; refresh_token?: string };
+
+    const newAccessToken = tokenResponse.access_token;
+    const newRefreshToken = tokenResponse.refresh_token; // Atlassian may rotate the refresh token
+    const newExpiresAt = new Date(Date.now() + 3600 * 1000);
+
+    const newAccessTokenEnc = encrypt(newAccessToken, this.appSecret);
+    const newRefreshTokenEnc = newRefreshToken
+      ? encrypt(newRefreshToken, this.appSecret)
+      : conn.refreshTokenEnc; // keep existing if not rotated
+
+    await this.connectionRepository.update(conn.id, {
+      apiTokenEnc: newAccessTokenEnc,
+      refreshTokenEnc: newRefreshTokenEnc,
+      tokenExpiresAt: newExpiresAt,
+    });
+
+    // Mutate in-place so the caller gets the fresh token without re-fetching
+    conn.apiTokenEnc = newAccessTokenEnc;
+    conn.tokenExpiresAt = newExpiresAt;
+
+    this.logger.log(`OAuth token refreshed for connection ${conn.id}, new expiry: ${newExpiresAt}`);
   }
 
   private extractOrgName(baseUrl: string): string {

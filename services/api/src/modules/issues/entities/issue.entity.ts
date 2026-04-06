@@ -86,7 +86,7 @@ export class Issue {
   @Column({ type: 'varchar', length: 50, default: 'medium' })
   priority: string;
 
-  @Column({ name: 'story_points', type: 'int', nullable: true })
+  @Column({ name: 'story_points', type: 'decimal', precision: 6, scale: 1, nullable: true })
   storyPoints: number;
 
   @Column({ name: 'time_estimate', type: 'int', nullable: true })

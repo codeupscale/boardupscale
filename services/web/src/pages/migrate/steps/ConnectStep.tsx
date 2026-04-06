@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import api from '@/lib/api'
 import { useConnectJira, ConnectJiraResult } from '@/hooks/useMigration'
 
 interface ConnectStepProps {
@@ -66,10 +67,16 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
     }
   }, [])
 
-  function handleOAuthConnect() {
+  async function handleOAuthConnect() {
     setOauthLoading(true)
-    // Redirect to API endpoint which builds the Atlassian OAuth URL and redirects
-    window.location.href = '/api/migration/jira/oauth/authorize?state=boardupscale-jira-oauth'
+    setError(null)
+    try {
+      const { data } = await api.get<{ data: { url: string } }>('/migration/jira/oauth/authorize-url')
+      window.location.href = data.data.url
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Could not start Atlassian login')
+      setOauthLoading(false)
+    }
   }
 
   async function handleManualTest() {

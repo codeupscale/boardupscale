@@ -3,13 +3,26 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Project, ProjectMember } from '@/types'
 
-export function useProjects() {
+interface ProjectFilters {
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export function useProjects(filters: ProjectFilters = {}) {
   return useQuery({
-    queryKey: ['projects'],
+    queryKey: ['projects', filters],
     queryFn: async () => {
-      const { data } = await api.get('/projects')
-      return data.data as Project[]
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== undefined && v !== ''),
+      )
+      const { data } = await api.get('/projects', { params })
+      return {
+        data: data.data as Project[],
+        meta: data.meta as { total: number; page: number; limit: number; totalPages: number },
+      }
     },
+    staleTime: 30_000,
   })
 }
 

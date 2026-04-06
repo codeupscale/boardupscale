@@ -34,6 +34,7 @@ export class NotificationsController {
         page: result.page,
         limit: result.limit,
         totalPages: Math.ceil(result.total / result.limit),
+        unreadCount: result.unreadCount,
       },
     };
   }

@@ -651,10 +651,12 @@ export function ProjectBacklogPage() {
   const [sprintGoal, setSprintGoal] = useState('')
 
   const { data: project } = useProject(projectKey!)
-  const { data: projects } = useProjects()
+  const { data: projectsResult } = useProjects()
+  const projects = projectsResult?.data
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!)
   const { data: board } = useBoard(projectKey!)
-  const { data: users } = useUsers()
+  const { data: usersResult } = useUsers()
+  const users = usersResult?.data
   const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectKey! })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()

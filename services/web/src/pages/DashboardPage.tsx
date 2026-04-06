@@ -247,7 +247,8 @@ export function DashboardPage() {
     assigneeId: user?.id,
     limit: 10,
   })
-  const { data: projects, isLoading: projectsLoading } = useProjects()
+  const { data: projectsResult, isLoading: projectsLoading } = useProjects()
+  const projects = projectsResult?.data
 
   const myIssues = myIssuesData?.data || []
 

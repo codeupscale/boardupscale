@@ -58,6 +58,18 @@ export class OrganizationsController {
     return this.organizationsService.inviteMember(organizationId, dto, userId);
   }
 
+  @Patch('me/members/:memberId')
+  @ApiOperation({ summary: 'Update a member profile info (displayName, avatarUrl)' })
+  @Roles('admin', 'owner')
+  async updateMember(
+    @OrgId() organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: { displayName?: string; avatarUrl?: string },
+  ) {
+    return this.organizationsService.updateMemberInfo(organizationId, memberId, dto, userId);
+  }
+
   @Patch('me/members/:memberId/role')
   @ApiOperation({ summary: 'Update a member role' })
   @Roles('admin', 'owner')

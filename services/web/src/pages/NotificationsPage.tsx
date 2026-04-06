@@ -81,10 +81,10 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
 export function NotificationsPage() {
   const { t } = useTranslation()
-  const { data: notifications, isLoading } = useNotifications()
+  const { data: notificationsResult, isLoading } = useNotifications()
+  const notifications = notificationsResult?.data
+  const unreadCount = notificationsResult?.meta?.unreadCount ?? notifications?.filter((n) => !n.read).length ?? 0
   const markAllRead = useMarkAllRead()
-
-  const unreadCount = notifications?.filter((n) => !n.read).length || 0
 
   return (
     <div className="flex flex-col h-full">
