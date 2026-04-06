@@ -16,11 +16,13 @@ import {
   ChevronRight,
   Clock,
   CheckCircle2,
+  Pencil,
 } from 'lucide-react'
 import { useMe } from '@/hooks/useAuth'
 import {
   useOrgMembers,
   useInviteMember,
+  useUpdateMember,
   useUpdateMemberRole,
   useDeactivateMember,
   useResendInvitation,
@@ -30,7 +32,6 @@ import { User, UserRole } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -46,6 +47,7 @@ import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
 
+// ─── Role Config ─────────────────────────────────────────────────────────────
 const ROLE_CONFIG = [
   {
     value: 'owner',
@@ -55,7 +57,8 @@ const ROLE_CONFIG = [
     iconColor: 'text-purple-500',
     selectedBg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600',
     defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
-    badgeCls: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
+    badgeCls:
+      'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
   },
   {
     value: 'admin',
@@ -65,7 +68,8 @@ const ROLE_CONFIG = [
     iconColor: 'text-blue-500',
     selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
     defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
-    badgeCls: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+    badgeCls:
+      'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
   },
   {
     value: 'member',
@@ -75,7 +79,8 @@ const ROLE_CONFIG = [
     iconColor: 'text-gray-500 dark:text-gray-400',
     selectedBg: 'bg-gray-50 dark:bg-gray-700/50 border-gray-400 dark:border-gray-500',
     defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
-    badgeCls: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
+    badgeCls:
+      'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
   },
 ] as const
 
@@ -85,7 +90,8 @@ function getRoleConfig(role: string) {
   return ROLE_CONFIG.find((r) => r.value === role) ?? ROLE_CONFIG[2]
 }
 
-const AVATAR_COLORS = [
+// ─── Avatar helpers ───────────────────────────────────────────────────────────
+const AVATAR_GRADIENTS = [
   'from-blue-500 to-blue-600',
   'from-purple-500 to-purple-600',
   'from-emerald-500 to-emerald-600',
@@ -98,7 +104,7 @@ const AVATAR_COLORS = [
 
 function getAvatarGradient(id: string) {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length]
 }
 
 function avatarInitials(name: string) {
@@ -110,7 +116,27 @@ function avatarInitials(name: string) {
     .slice(0, 2)
 }
 
-// ─── Role Card (reused in invite + change-role dialogs) ───────────────────────
+// ─── Avatar component ─────────────────────────────────────────────────────────
+function MemberAvatar({ member, size = 9 }: { member: User; size?: number }) {
+  const sizeClass = size === 10 ? 'h-10 w-10' : 'h-9 w-9'
+  return (
+    <div
+      className={cn(
+        sizeClass,
+        'rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
+        getAvatarGradient(member.id),
+      )}
+    >
+      {member.avatarUrl ? (
+        <img src={member.avatarUrl} alt="" className={cn(sizeClass, 'rounded-full object-cover')} />
+      ) : (
+        avatarInitials(member.displayName)
+      )}
+    </div>
+  )
+}
+
+// ─── Role Card ────────────────────────────────────────────────────────────────
 function RoleCard({
   config,
   selected,
@@ -144,9 +170,7 @@ function RoleCard({
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {config.label}
           </span>
-          {selected && (
-            <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-          )}
+          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />}
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
           {config.description}
@@ -174,10 +198,27 @@ function Pagination({
   const from = (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)
 
+  // Show at most 7 page numbers with ellipsis
+  const pages: (number | '…')[] = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (page > 3) pages.push('…')
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++)
+      pages.push(i)
+    if (page < totalPages - 2) pages.push('…')
+    pages.push(totalPages)
+  }
+
   return (
     <div className="flex items-center justify-between px-1 mt-4">
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        Showing <span className="font-medium text-gray-700 dark:text-gray-300">{from}–{to}</span> of{' '}
+        Showing{' '}
+        <span className="font-medium text-gray-700 dark:text-gray-300">
+          {from}–{to}
+        </span>{' '}
+        of{' '}
         <span className="font-medium text-gray-700 dark:text-gray-300">{total}</span> members
       </p>
       <div className="flex items-center gap-1">
@@ -189,20 +230,26 @@ function Pagination({
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            className={cn(
-              'h-8 w-8 rounded-md text-sm font-medium transition-colors',
-              p === page
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
-            )}
-          >
-            {p}
-          </button>
-        ))}
+        {pages.map((p, i) =>
+          p === '…' ? (
+            <span key={`ellipsis-${i}`} className="w-8 text-center text-sm text-gray-400">
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPage(p as number)}
+              className={cn(
+                'h-8 w-8 rounded-md text-sm font-medium transition-colors',
+                p === page
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+              )}
+            >
+              {p}
+            </button>
+          ),
+        )}
         <Button
           variant="ghost"
           size="icon-sm"
@@ -221,34 +268,42 @@ export function TeamPage() {
   const { data: me } = useMe()
   const { data: members = [], isLoading } = useOrgMembers()
   const inviteMember = useInviteMember()
+  const updateMember = useUpdateMember()
   const updateRole = useUpdateMemberRole()
   const deactivateMember = useDeactivateMember()
   const resendInvitation = useResendInvitation()
   const revokeInvitation = useRevokeInvitation()
 
-  // Invite dialog
+  // ── Invite dialog ─────────────────────────────────────────────────────────
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [inviteRole, setInviteRole] = useState<RoleValue>('member')
 
-  // Change role dialog
+  // ── Edit member dialog ────────────────────────────────────────────────────
+  const [editTarget, setEditTarget] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editAvatar, setEditAvatar] = useState('')
+
+  // ── Change role dialog ────────────────────────────────────────────────────
   const [showRoleDialog, setShowRoleDialog] = useState(false)
   const [roleTarget, setRoleTarget] = useState<User | null>(null)
   const [newRole, setNewRole] = useState<RoleValue>('member')
 
-  // Confirmations
+  // ── Confirmations ─────────────────────────────────────────────────────────
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<User | null>(null)
 
-  // Search & filter
+  // ── Search & filter ───────────────────────────────────────────────────────
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
 
-  // Pagination
+  // ── Pagination ────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState(1)
 
-  const isAdmin = me?.role === UserRole.ADMIN
+  // Fix: 'owner' is NOT in UserRole enum, so compare as string
+  const myRole = (me?.role as string) ?? ''
+  const isAdmin = myRole === 'owner' || myRole === 'admin' || me?.role === UserRole.ADMIN
 
   const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members])
   const pendingMembers = useMemo(() => members.filter((m) => !m.isActive), [members])
@@ -258,13 +313,11 @@ export function TeamPage() {
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(
-        (m) =>
-          m.displayName.toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q),
+        (m) => m.displayName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
       )
     }
     if (roleFilter !== 'all') {
-      list = list.filter((m) => m.role === roleFilter)
+      list = list.filter((m) => (m.role as string) === roleFilter)
     }
     return list
   }, [activeMembers, search, roleFilter])
@@ -275,18 +328,14 @@ export function TeamPage() {
     [filteredActive, activePage],
   )
 
-  // reset page when filter changes
-  const handleSearch = (v: string) => {
-    setSearch(v)
-    setActivePage(1)
-  }
-  const handleRoleFilter = (v: string) => {
-    setRoleFilter(v)
-    setActivePage(1)
-  }
+  const adminCount = activeMembers.filter(
+    (m) => (m.role as string) === 'admin' || (m.role as string) === 'owner',
+  ).length
 
-  const adminCount = activeMembers.filter((m) => m.role === UserRole.ADMIN).length
+  const handleSearch = (v: string) => { setSearch(v); setActivePage(1) }
+  const handleRoleFilter = (v: string) => { setRoleFilter(v); setActivePage(1) }
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleInvite = () => {
     if (!inviteEmail.trim()) return
     inviteMember.mutate(
@@ -302,18 +351,32 @@ export function TeamPage() {
     )
   }
 
+  const openEditDialog = (member: User) => {
+    setEditTarget(member)
+    setEditName(member.displayName)
+    setEditAvatar(member.avatarUrl ?? '')
+  }
+
+  const handleEditSave = () => {
+    if (!editTarget || !editName.trim()) return
+    updateMember.mutate(
+      { memberId: editTarget.id, displayName: editName.trim(), avatarUrl: editAvatar.trim() || undefined },
+      { onSuccess: () => setEditTarget(null) },
+    )
+  }
+
+  const openRoleDialog = (member: User) => {
+    setRoleTarget(member)
+    setNewRole((member.role as RoleValue) ?? 'member')
+    setShowRoleDialog(true)
+  }
+
   const handleRoleChange = () => {
     if (!roleTarget) return
     updateRole.mutate(
       { memberId: roleTarget.id, role: newRole },
       { onSuccess: () => setShowRoleDialog(false) },
     )
-  }
-
-  const openRoleDialog = (member: User) => {
-    setRoleTarget(member)
-    setNewRole(member.role as RoleValue)
-    setShowRoleDialog(true)
   }
 
   if (isLoading) return <LoadingPage />
@@ -338,7 +401,7 @@ export function TeamPage() {
 
       <div className="flex-1 overflow-auto p-6 space-y-6">
 
-        {/* ── Stats Row ──────────────────────────────────────────────────── */}
+        {/* ── Stats ──────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">
           {[
             {
@@ -389,6 +452,12 @@ export function TeamPage() {
                 {activeMembers.length} people with access to this organization
               </p>
             </div>
+            {isAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setShowInviteDialog(true)}>
+                <UserPlus className="h-3.5 w-3.5" />
+                Add Member
+              </Button>
+            )}
           </div>
 
           {/* Search + Filter */}
@@ -397,7 +466,7 @@ export function TeamPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search members…"
+                placeholder="Search by name or email…"
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="w-full pl-9 pr-3 h-9 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -422,7 +491,7 @@ export function TeamPage() {
           </div>
 
           {filteredActive.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 py-12">
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 py-16">
               <EmptyState
                 icon={<Users className="h-10 w-10" />}
                 title={search || roleFilter !== 'all' ? 'No results found' : 'No active members'}
@@ -436,15 +505,25 @@ export function TeamPage() {
           ) : (
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto] sm:grid-cols-[2fr_1fr_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Member</span>
-                <span className="hidden sm:block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Role</span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</span>
-                <span className="w-8" />
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Member
+                </span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Role
+                </span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Status
+                </span>
+                {isAdmin && (
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Actions
+                  </span>
+                )}
               </div>
 
               {pagedMembers.map((member, idx) => {
-                const roleConf = getRoleConfig(member.role)
+                const roleConf = getRoleConfig(member.role as string)
                 const RoleIcon = roleConf.icon
                 const isMe = member.id === me?.id
 
@@ -452,8 +531,7 @@ export function TeamPage() {
                   <div
                     key={member.id}
                     className={cn(
-                      'grid grid-cols-[1fr_auto_auto] sm:grid-cols-[2fr_1fr_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors',
-                      'hover:bg-gray-50/70 dark:hover:bg-gray-800/40',
+                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40 group',
                       idx < pagedMembers.length - 1
                         ? 'border-b border-gray-100 dark:border-gray-800'
                         : '',
@@ -461,24 +539,9 @@ export function TeamPage() {
                   >
                     {/* Member info */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={cn(
-                          'h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
-                          getAvatarGradient(member.id),
-                        )}
-                      >
-                        {member.avatarUrl ? (
-                          <img
-                            src={member.avatarUrl}
-                            alt=""
-                            className="h-9 w-9 rounded-full object-cover"
-                          />
-                        ) : (
-                          avatarInitials(member.displayName)
-                        )}
-                      </div>
+                      <MemberAvatar member={member} />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                             {member.displayName}
                           </span>
@@ -488,13 +551,15 @@ export function TeamPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{member.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {member.email}
+                        </p>
                       </div>
                     </div>
 
                     {/* Role */}
-                    <div className="hidden sm:flex items-center gap-1.5">
-                      <RoleIcon className={cn('h-3.5 w-3.5', roleConf.iconColor)} />
+                    <div className="flex items-center gap-1.5">
+                      <RoleIcon className={cn('h-3.5 w-3.5 flex-shrink-0', roleConf.iconColor)} />
                       <span className={cn('text-xs font-medium px-2 py-1 rounded-full', roleConf.badgeCls)}>
                         {roleConf.label}
                       </span>
@@ -503,37 +568,41 @@ export function TeamPage() {
                     {/* Status */}
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Active</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Active</span>
                     </div>
 
-                    {/* Actions */}
-                    <div className="w-8 flex justify-end">
-                      {isAdmin && !isMe ? (
-                        <DropdownMenu
-                          trigger={
-                            <Button variant="ghost" size="icon-sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          }
-                        >
-                          <DropdownItem
-                            onClick={() => openRoleDialog(member)}
-                            icon={<ShieldCheck className="h-4 w-4" />}
-                          >
-                            Change Role
-                          </DropdownItem>
-                          <DropdownItem
-                            destructive
-                            onClick={() => setDeactivateTarget(member)}
-                            icon={<UserX className="h-4 w-4" />}
-                          >
-                            Deactivate
-                          </DropdownItem>
-                        </DropdownMenu>
-                      ) : (
-                        <div className="w-8" />
-                      )}
-                    </div>
+                    {/* Actions — always visible, not hidden behind ... */}
+                    {isAdmin ? (
+                      <div className="flex items-center gap-1">
+                        {!isMe ? (
+                          <>
+                            <button
+                              onClick={() => openEditDialog(member)}
+                              title="Edit member info"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => openRoleDialog(member)}
+                              title="Change role"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeactivateTarget(member)}
+                              title="Remove member"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <UserX className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-600 px-2">—</span>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}
@@ -557,63 +626,89 @@ export function TeamPage() {
                 Pending Invitations
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {pendingMembers.length} invitation{pendingMembers.length !== 1 ? 's' : ''} awaiting acceptance
+                {pendingMembers.length} invitation{pendingMembers.length !== 1 ? 's' : ''} awaiting
+                acceptance
               </p>
             </div>
 
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-amber-50/60 dark:bg-amber-900/10">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Invited Email
+                </span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Role
+                </span>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  Status
+                </span>
+                {isAdmin && (
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Actions
+                  </span>
+                )}
+              </div>
+
               {pendingMembers.map((member, idx) => {
-                const roleConf = getRoleConfig(member.role)
+                const roleConf = getRoleConfig(member.role as string)
                 const RoleIcon = roleConf.icon
                 return (
                   <div
                     key={member.id}
                     className={cn(
-                      'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-amber-50/50 dark:hover:bg-amber-900/5',
+                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-900/5',
                       idx < pendingMembers.length - 1
                         ? 'border-b border-gray-100 dark:border-gray-800'
                         : '',
                     )}
                   >
-                    <div className="h-9 w-9 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-center justify-center flex-shrink-0">
-                      <Mail className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {member.email}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <RoleIcon className={cn('h-3 w-3', roleConf.iconColor)} />
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Invited as {roleConf.label}
-                        </span>
+                    {/* Email */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 flex items-center justify-center flex-shrink-0">
+                        <Mail className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {member.email}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {member.displayName !== member.email ? member.displayName : 'No display name set'}
+                        </p>
                       </div>
                     </div>
-                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex-shrink-0">
+
+                    {/* Role */}
+                    <div className="flex items-center gap-1.5">
+                      <RoleIcon className={cn('h-3.5 w-3.5 flex-shrink-0', roleConf.iconColor)} />
+                      <span className={cn('text-xs font-medium px-2 py-1 rounded-full', roleConf.badgeCls)}>
+                        {roleConf.label}
+                      </span>
+                    </div>
+
+                    {/* Pending badge */}
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 flex-shrink-0 whitespace-nowrap">
                       Pending
                     </span>
+
+                    {/* Actions — explicit buttons */}
                     {isAdmin && (
-                      <DropdownMenu
-                        trigger={
-                          <Button variant="ghost" size="icon-sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        }
-                      >
-                        <DropdownItem
+                      <div className="flex items-center gap-1">
+                        <button
                           onClick={() => resendInvitation.mutate(member.id)}
-                          icon={<RefreshCw className="h-4 w-4" />}
+                          title="Resend invitation"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                         >
-                          Resend Invitation
-                        </DropdownItem>
-                        <DropdownItem
-                          destructive
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() => setRevokeTarget(member)}
-                          icon={<Trash2 className="h-4 w-4" />}
+                          title="Revoke invitation"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
-                          Revoke Invitation
-                        </DropdownItem>
-                      </DropdownMenu>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 )
@@ -621,19 +716,40 @@ export function TeamPage() {
             </div>
           </section>
         )}
+
+        {/* ── Empty invite CTA ───────────────────────────────────────────── */}
+        {pendingMembers.length === 0 && activeMembers.length === 0 && isAdmin && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl border border-blue-100 dark:border-blue-800/40 p-8 text-center">
+            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
+              <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Build your team
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              Invite your colleagues to collaborate on projects
+            </p>
+            <Button size="sm" onClick={() => setShowInviteDialog(true)}>
+              <UserPlus className="h-4 w-4" />
+              Invite your first member
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* ── Invite Member Dialog ──────────────────────────────────────────── */}
+      {/* ────────────────────────── Dialogs ─────────────────────────────────── */}
+
+      {/* Invite Member */}
       <Dialog open={showInviteDialog} onClose={() => setShowInviteDialog(false)}>
         <DialogHeader onClose={() => setShowInviteDialog(false)}>
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <UserPlus className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
+              <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <DialogTitle>Invite Team Member</DialogTitle>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                They'll receive an email to join your organization
+                They'll receive an email with a link to join
               </p>
             </div>
           </div>
@@ -689,28 +805,91 @@ export function TeamPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* ── Change Role Dialog ────────────────────────────────────────────── */}
+      {/* Edit Member Info */}
+      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)}>
+        <DialogHeader onClose={() => setEditTarget(null)}>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
+              <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div>
+              <DialogTitle>Edit Member</DialogTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Update this member's display info
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <DialogContent className="space-y-4">
+          {editTarget && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <MemberAvatar member={editTarget} size={10} />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {editTarget.displayName}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{editTarget.email}</p>
+              </div>
+            </div>
+          )}
+          <Input
+            label="Display name"
+            placeholder="Jane Doe"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
+          <Input
+            label="Avatar URL (optional)"
+            placeholder="https://example.com/avatar.png"
+            value={editAvatar}
+            onChange={(e) => setEditAvatar(e.target.value)}
+          />
+          {editAvatar && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <img
+                src={editAvatar}
+                alt="Preview"
+                className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                onError={(e) => (e.currentTarget.style.display = 'none')}
+              />
+              Avatar preview
+            </div>
+          )}
+        </DialogContent>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEditTarget(null)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleEditSave}
+            disabled={!editName.trim()}
+            isLoading={updateMember.isPending}
+          >
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Change Role */}
       <Dialog open={showRoleDialog} onClose={() => setShowRoleDialog(false)}>
         <DialogHeader onClose={() => setShowRoleDialog(false)}>
-          <DialogTitle>Change Role</DialogTitle>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <DialogTitle>Change Role</DialogTitle>
+          </div>
         </DialogHeader>
         <DialogContent className="space-y-4">
           {roleTarget && (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <div
-                className={cn(
-                  'h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold text-white bg-gradient-to-br shadow-sm flex-shrink-0',
-                  getAvatarGradient(roleTarget.id),
-                )}
-              >
-                {roleTarget.avatarUrl ? (
-                  <img src={roleTarget.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-                ) : (
-                  avatarInitials(roleTarget.displayName)
-                )}
-              </div>
+              <MemberAvatar member={roleTarget} size={10} />
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{roleTarget.displayName}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {roleTarget.displayName}
+                </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{roleTarget.email}</p>
               </div>
             </div>
@@ -742,7 +921,7 @@ export function TeamPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* ── Deactivate Confirmation ───────────────────────────────────────── */}
+      {/* Deactivate / Remove */}
       <ConfirmDialog
         open={!!deactivateTarget}
         onClose={() => setDeactivateTarget(null)}
@@ -752,14 +931,14 @@ export function TeamPage() {
             onSuccess: () => setDeactivateTarget(null),
           })
         }}
-        title="Deactivate Member"
-        description={`Are you sure you want to deactivate ${deactivateTarget?.displayName}? They will lose access to the organization immediately.`}
-        confirmLabel="Deactivate"
+        title="Remove Member"
+        description={`Remove ${deactivateTarget?.displayName} from the organization? They will immediately lose access to all projects.`}
+        confirmLabel="Remove"
         destructive
         isLoading={deactivateMember.isPending}
       />
 
-      {/* ── Revoke Confirmation ───────────────────────────────────────────── */}
+      {/* Revoke invitation */}
       <ConfirmDialog
         open={!!revokeTarget}
         onClose={() => setRevokeTarget(null)}
@@ -770,7 +949,7 @@ export function TeamPage() {
           })
         }}
         title="Revoke Invitation"
-        description={`Revoke the pending invitation for ${revokeTarget?.email}? They won't be able to join using the invite link.`}
+        description={`Revoke the pending invitation for ${revokeTarget?.email}? The invite link will stop working immediately.`}
         confirmLabel="Revoke"
         destructive
         isLoading={revokeInvitation.isPending}

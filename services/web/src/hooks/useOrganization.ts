@@ -30,6 +30,34 @@ export function useInviteMember() {
   })
 }
 
+export function useUpdateMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      memberId,
+      displayName,
+      avatarUrl,
+    }: {
+      memberId: string
+      displayName?: string
+      avatarUrl?: string
+    }) => {
+      const { data } = await api.patch(`/organizations/me/members/${memberId}`, {
+        displayName,
+        avatarUrl,
+      })
+      return data.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      toast('Member updated')
+    },
+    onError: (err: any) => {
+      toast(err?.response?.data?.message || 'Failed to update member', 'error')
+    },
+  })
+}
+
 export function useUpdateMemberRole() {
   const qc = useQueryClient()
   return useMutation({

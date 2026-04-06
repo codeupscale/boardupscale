@@ -85,6 +85,34 @@ export class OrganizationsService {
     return saved;
   }
 
+  async updateMemberInfo(
+    organizationId: string,
+    memberId: string,
+    dto: { displayName?: string; avatarUrl?: string },
+    actorId: string,
+  ): Promise<User> {
+    const member = await this.userRepository.findOne({
+      where: { id: memberId, organizationId },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    if (dto.displayName !== undefined) member.displayName = dto.displayName;
+    if (dto.avatarUrl !== undefined) member.avatarUrl = dto.avatarUrl;
+    const saved = await this.userRepository.save(member);
+
+    this.auditService.log(
+      organizationId,
+      actorId,
+      'organization.member.updated',
+      'user',
+      memberId,
+      dto,
+      null,
+    );
+
+    return saved;
+  }
+
   async updateMemberRole(
     organizationId: string,
     memberId: string,
