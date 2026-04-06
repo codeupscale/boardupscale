@@ -1627,8 +1627,12 @@ async function runCommentsPhase(
           credentials,
           `/rest/api/3/issue/${item.jiraKey}/comment?startAt=${commentStart}&maxResults=${COMMENT_PAGE}`,
         ).catch(() => ({ comments: [], total: 0 }));
-        allComments.push(...(resp.comments ?? []));
+        const page = resp.comments ?? [];
+        allComments.push(...page);
         commentStart += COMMENT_PAGE;
+        // Stop if the page returned no items — avoids an infinite loop when Jira
+        // reports total > 0 but serves empty pages (GDPR-hidden or permission-restricted comments).
+        if (page.length === 0) break;
         hasMore = allComments.length < (resp.total ?? 0);
       }
 
