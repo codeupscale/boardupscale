@@ -25,7 +25,7 @@ interface PreviewStepProps {
   runId: string
   connectResult: ConnectJiraResult
   connectionId?: string
-  onNext: (selectedKeys: string[], preview: PreviewProject[], selectedMemberIds: string[]) => void
+  onNext: (selectedKeys: string[], preview: PreviewProject[], selectedMemberIds: string[] | undefined) => void
   onBack: () => void
 }
 
@@ -157,7 +157,9 @@ export function PreviewStep({
   }
 
   function handleContinue() {
-    const memberIds = allMembersSelected ? [] : Array.from(selectedMemberIds)
+    // undefined = import all (backend/worker treats undefined/null as "no filter")
+    // [] = import none, [...ids] = specific selection
+    const memberIds = allMembersSelected ? undefined : Array.from(selectedMemberIds)
     onNext(
       Array.from(selectedKeys),
       enrichedProjects.filter((p) => selectedKeys.has(p.key)),

@@ -54,7 +54,7 @@ export interface JiraMember {
 export interface StartMigrationPayload {
   runId: string
   projectKeys: string[]
-  /** Jira accountIds to import. Empty array = import all. */
+  /** Jira accountIds to import. Undefined/omitted = import all, [] = import none, [...ids] = specific selection. */
   selectedMemberIds?: string[]
   statusMapping?: Record<string, string>
   roleMapping?: Record<string, string>

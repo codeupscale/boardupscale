@@ -76,7 +76,7 @@ export function JiraMigrationPage() {
   const [connectResult, setConnectResult] = useState<ConnectJiraResult | null>(null)
   const [connectionId, setConnectionId] = useState<string | null>(null)
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[] | undefined>(undefined)
   const [selectedProjects, setSelectedProjects] = useState<PreviewProject[]>([])
   const [migrationPayload, setMigrationPayload] = useState<StartMigrationPayload | null>(null)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
@@ -145,7 +145,7 @@ export function JiraMigrationPage() {
     setStep(2)
   }
 
-  function handlePreview(keys: string[], projects: PreviewProject[], memberIds: string[]) {
+  function handlePreview(keys: string[], projects: PreviewProject[], memberIds: string[] | undefined) {
     setSelectedKeys(keys)
     setSelectedProjects(projects)
     setSelectedMemberIds(memberIds)
