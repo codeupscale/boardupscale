@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2, Loader2, XCircle, AlertTriangle,
   RefreshCw, ChevronDown, ChevronUp, Users, FolderOpen,
@@ -14,6 +15,7 @@ import { getSocket } from '@/lib/socket'
 interface ProgressStepProps {
   payload: StartMigrationPayload
   onComplete: (runId: string) => void
+  initialRunId?: string
 }
 
 interface PhaseConfig {
@@ -37,13 +39,14 @@ interface LogEntry { time: string; message: string }
 
 interface LiveCounts {
   processedIssues: number; totalIssues: number; failedIssues: number
+  processedProjects: number; totalProjects: number
   processedMembers: number; totalMembers: number
   processedSprints: number; totalSprints: number
   processedComments: number; totalComments: number
   completedPhases: number[]
 }
 
-export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
+export function ProgressStep({ payload, onComplete, initialRunId }: ProgressStepProps) {
   const [runId, setRunId] = useState<string | null>(null)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [activityLog, setActivityLog] = useState<LogEntry[]>([])
@@ -51,6 +54,7 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
   const [phaseDurations, setPhaseDurations] = useState<Record<number, { start: number; end?: number }>>({})
   const [liveCounts, setLiveCounts] = useState<LiveCounts>({
     processedIssues: 0, totalIssues: 0, failedIssues: 0,
+    processedProjects: 0, totalProjects: 0,
     processedMembers: 0, totalMembers: 0,
     processedSprints: 0, totalSprints: 0,
     processedComments: 0, totalComments: 0,
@@ -60,6 +64,7 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
   const startMutation = useStartMigration()
   const retryMutation = useRetryMigration()
   const completedRef = useRef(false)
+  const queryClient = useQueryClient()
 
   const { data: status } = useMigrationStatus(runId)
 
@@ -68,8 +73,13 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
     setActivityLog((prev) => [...prev.slice(-99), { time, message }])
   }, [])
 
-  // Start migration on mount
+  // Start migration on mount (or reconnect to existing run)
   useEffect(() => {
+    if (initialRunId) {
+      setRunId(initialRunId)
+      addLog('Reconnected to running migration')
+      return
+    }
     startMutation.mutateAsync(payload).then((res) => {
       setRunId(res.runId)
       addLog('Migration job queued')
@@ -80,6 +90,11 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
   useEffect(() => {
     if (!runId) return
     const socket = getSocket()
+
+    function handleConnect() {
+      queryClient.invalidateQueries({ queryKey: ['migration-status', runId] })
+    }
+    socket.on('connect', handleConnect)
 
     function handleProgress(data: {
       runId: string; phase: number; status: string
@@ -119,8 +134,11 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
     }
 
     socket.on('migration:progress', handleProgress)
-    return () => { socket.off('migration:progress', handleProgress) }
-  }, [runId, addLog, onComplete])
+    return () => {
+      socket.off('connect', handleConnect)
+      socket.off('migration:progress', handleProgress)
+    }
+  }, [runId, addLog, onComplete, queryClient])
 
   // Polling fallback for completion
   useEffect(() => {
@@ -139,12 +157,15 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
       processedIssues: status.processedIssues ?? prev.processedIssues,
       totalIssues: status.totalIssues ?? prev.totalIssues,
       failedIssues: status.failedIssues ?? prev.failedIssues,
+      processedProjects: status.processedProjects ?? prev.processedProjects,
+      totalProjects: status.totalProjects ?? prev.totalProjects,
       processedMembers: status.processedMembers ?? prev.processedMembers,
       totalMembers: status.totalMembers ?? prev.totalMembers,
       processedSprints: status.processedSprints ?? prev.processedSprints,
       totalSprints: status.totalSprints ?? prev.totalSprints,
       processedComments: status.processedComments ?? prev.processedComments,
       totalComments: status.totalComments ?? prev.totalComments,
+      completedPhases: status.completedPhases?.length ? status.completedPhases : prev.completedPhases,
     }))
   }, [status, runId, addLog, onComplete])
 
@@ -180,6 +201,7 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
   function getPhaseProgress(phaseId: number): { processed: number; total: number } {
     switch (phaseId) {
       case 1: return { processed: liveCounts.processedMembers, total: liveCounts.totalMembers }
+      case 2: return { processed: liveCounts.processedProjects, total: liveCounts.totalProjects }
       case 3: return { processed: liveCounts.processedSprints, total: liveCounts.totalSprints }
       case 4: return { processed: liveCounts.processedIssues, total: liveCounts.totalIssues }
       case 5: return { processed: liveCounts.processedComments, total: liveCounts.totalComments }
@@ -225,8 +247,9 @@ export function ProgressStep({ payload, onComplete }: ProgressStepProps) {
           />
         </div>
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {[
+            { label: 'Projects', val: liveCounts.processedProjects, total: liveCounts.totalProjects, icon: FolderOpen, color: 'text-blue-600 dark:text-blue-400' },
             { label: 'Issues', val: liveCounts.processedIssues, total: liveCounts.totalIssues, icon: FileText, color: 'text-indigo-600 dark:text-indigo-400' },
             { label: 'Members', val: liveCounts.processedMembers, total: liveCounts.totalMembers, icon: Users, color: 'text-violet-600 dark:text-violet-400' },
             { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400' },

@@ -80,6 +80,7 @@ export function JiraMigrationPage() {
   const [selectedProjects, setSelectedProjects] = useState<PreviewProject[]>([])
   const [migrationPayload, setMigrationPayload] = useState<StartMigrationPayload | null>(null)
   const [completedRunId, setCompletedRunId] = useState<string | null>(null)
+  const [isRestored, setIsRestored] = useState(false)
 
   // On mount: restore state from OAuth redirect params
   // Atlassian redirects back with ?oauth=1&runId=...&connectionId=...&orgName=...
@@ -117,6 +118,23 @@ export function JiraMigrationPage() {
       setConnectionId(connId)
       setStep(2)
     }
+
+    // Restore in-progress migration if user navigated away
+    if (!isOAuth && !oauthErr) {
+      const saved = sessionStorage.getItem('boardupscale_active_migration')
+      if (saved) {
+        try {
+          const savedPayload: StartMigrationPayload = JSON.parse(saved)
+          if (savedPayload?.runId) {
+            setMigrationPayload(savedPayload)
+            setIsRestored(true)
+            setStep(4)
+          }
+        } catch {
+          sessionStorage.removeItem('boardupscale_active_migration')
+        }
+      }
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleConnect(result: ConnectJiraResult) {
@@ -149,10 +167,12 @@ export function JiraMigrationPage() {
       options: config.options,
     }
     setMigrationPayload(payload)
+    sessionStorage.setItem('boardupscale_active_migration', JSON.stringify(payload))
     setStep(4)
   }
 
   function handleComplete(runId: string) {
+    sessionStorage.removeItem('boardupscale_active_migration')
     setCompletedRunId(runId)
     setStep(5)
   }
@@ -201,7 +221,11 @@ export function JiraMigrationPage() {
           )}
 
           {step === 4 && migrationPayload && (
-            <ProgressStep payload={migrationPayload} onComplete={handleComplete} />
+            <ProgressStep
+              payload={migrationPayload}
+              onComplete={handleComplete}
+              initialRunId={isRestored ? migrationPayload.runId : undefined}
+            />
           )}
 
           {step === 5 && completedRunId && <CompleteStep runId={completedRunId} />}

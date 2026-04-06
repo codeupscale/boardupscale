@@ -77,6 +77,7 @@ export interface MigrationStatus {
   processedSprints: number
   totalComments: number
   processedComments: number
+  completedPhases: number[]
   startedAt: string | null
   completedAt: string | null
   createdAt: string

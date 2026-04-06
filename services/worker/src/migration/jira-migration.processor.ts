@@ -186,7 +186,7 @@ function decryptToken(encoded: string, secret: string): string {
 
 // ─── DB helpers ──────────────────────────────────────────────────────────────
 
-async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
+async function loadRun(client: PoolClient, runId: string, organizationId: string): Promise<RunState> {
   const { rows } = await client.query<RunState>(
     `SELECT id, organization_id AS "organizationId", connection_id AS "connectionId",
             triggered_by_id AS "triggeredById",
@@ -208,10 +208,10 @@ async function loadRun(client: PoolClient, runId: string): Promise<RunState> {
             total_comments AS "totalComments",
             processed_comments AS "processedComments",
             COALESCE(error_log, '[]') AS "errorLog"
-     FROM jira_migration_runs WHERE id = $1`,
-    [runId],
+     FROM jira_migration_runs WHERE id = $1 AND organization_id = $2`,
+    [runId, organizationId],
   );
-  if (!rows[0]) throw new Error(`Migration run ${runId} not found`);
+  if (!rows[0]) throw new Error(`Migration run ${runId} not found for org ${organizationId}`);
 
   return {
     ...rows[0],
@@ -568,7 +568,7 @@ async function runMembersPhase(
     completedPhase: PHASE_MEMBERS,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
+  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds != null && filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
 }
 
 // ─── Phase 2: Projects ────────────────────────────────────────────────────────
@@ -1608,13 +1608,15 @@ async function runCommentsPhase(
 
   let totalComments = 0;
   let processedComments = 0;
-  let doneCount = 0;
-  const total = workList.length;
-  const CONCURRENCY = 20;
   const COMMENT_PAGE = 100;
   const FLUSH_EVERY = 10;
 
-  async function processOneIssue(item: { jiraKey: string; localIssueId: string; startAt: number }) {
+  // Process issues sequentially — a PoolClient is not safe for concurrent use.
+  // Mixing concurrent client.query() calls on the same connection corrupts its
+  // state and causes the phase to hang indefinitely. Sequential processing avoids
+  // this while still pipelining the Jira HTTP fetch (no DB I/O during that await).
+  for (let i = 0; i < workList.length; i++) {
+    const item = workList[i];
     try {
       const allComments: any[] = [];
       let commentStart = item.startAt;
@@ -1666,23 +1668,10 @@ async function runCommentsPhase(
       addError(state, `comments for ${item.jiraKey}: ${err.message}`);
     }
 
-    doneCount++;
-    if (doneCount % FLUSH_EVERY === 0) {
+    if ((i + 1) % FLUSH_EVERY === 0) {
       await updateRunProgress(client, state.id, { totalComments, processedComments }, io);
     }
   }
-
-  // Run a concurrency-limited worker pool — no artificial delay needed at concurrency 20
-  let idx = 0;
-  async function worker() {
-    while (idx < total) {
-      const item = workList[idx++];
-      await processOneIssue(item);
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(CONCURRENCY, total) }, () => worker());
-  await Promise.all(workers);
 
   await updateRunProgress(client, state.id, {
     totalComments,
@@ -1776,7 +1765,7 @@ async function processJob(
   const client = await db.connect();
   try {
     await client.query('BEGIN');
-    const state = await loadRun(client, runId);
+    const state = await loadRun(client, runId, organizationId);
 
     if (state.status === 'cancelled') {
       console.log(`[Migration:${runId}] Cancelled — skipping`);
