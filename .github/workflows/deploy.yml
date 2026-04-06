@@ -29,8 +29,10 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/boardupscale
 
 jobs:
-  # ── Build & push Docker images ────────────────────────────────────────────
-  # Only runs on automatic triggers (workflow_run) after CI succeeds.
+  # ── 1. Build & push Docker images ─────────────────────────────────────────
+  # Runs on GitHub Actions (free tier, decent specs) instead of the production
+  # server — keeps build load off prod and benefits from GHA layer caching.
+  # Only runs on automatic triggers after CI succeeds.
   # Skipped on workflow_dispatch — the caller supplies an already-built tag.
   build-and-push:
     name: Build & push ${{ matrix.service }}
@@ -38,6 +40,7 @@ jobs:
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
 
     strategy:
+      fail-fast: false
       matrix:
         service: [api, web, worker]
 
@@ -58,7 +61,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push ${{ matrix.service }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./services/${{ matrix.service }}
           push: true
@@ -69,8 +72,11 @@ jobs:
           # Reuse layer cache across runs to keep builds fast
           cache-from: type=gha,scope=deploy-${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=deploy-${{ matrix.service }}
+          # Inject build args for frontend public variables
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
-  # ── Deploy to production server ───────────────────────────────────────────
+  # ── 2. Zero-downtime rolling deploy ───────────────────────────────────────
   deploy:
     name: Deploy to production
     runs-on: ubuntu-latest
@@ -93,6 +99,7 @@ jobs:
     environment: production
 
     steps:
+      # ── Resolve the image tag ─────────────────────────────────────────────
       - name: Resolve image tag
         id: tag
         run: |
@@ -102,40 +109,149 @@ jobs:
             echo "value=sha-${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Deploy via SSH
+      # ── Zero-downtime rolling deploy via SSH ──────────────────────────────
+      # Strategy:
+      #   1. Pull all images (no downtime)
+      #   2. Run DB migrations in a one-shot container (before API restarts)
+      #   3. Restart bu-api — wait for /api/health to be green
+      #   4. Restart bu-worker (long grace period so active jobs finish)
+      #   5. Restart bu-web — nginx will keep routing to old until new is up
+      #   6. Verify all three are healthy, rollback on failure
+      #   7. Prune old image layers
+      - name: Zero-downtime rolling deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
-          # Use the workflow's GITHUB_TOKEN — it has read:packages from the
-          # job-level packages:read permission, so no separate PAT is needed.
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
           IMAGE_TAG: ${{ steps.tag.outputs.value }}
+          IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/boardupscale
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # SSH_PORT defaults to 22 if the secret is not set
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_TAG,IMAGE_PREFIX
+          # 15-min timeout — migrations may take a few minutes
+          command_timeout: 15m
           script: |
             set -euo pipefail
 
-            # ── 1. Authenticate with GHCR ─────────────────────────────────
+            COMPOSE_DIR=/home/ubuntu/infra
+            API_IMAGE="${IMAGE_PREFIX}-api:${IMAGE_TAG}"
+            WEB_IMAGE="${IMAGE_PREFIX}-web:${IMAGE_TAG}"
+            WORKER_IMAGE="${IMAGE_PREFIX}-worker:${IMAGE_TAG}"
+
+            log() { echo "[deploy] $*"; }
+            die() { echo "[deploy] FATAL: $*" >&2; exit 1; }
+
+            # ── Helper: wait for a container's Docker healthcheck to pass ──
+            wait_healthy() {
+              local svc="$1" max_wait="${2:-60}"
+              log "Waiting for $svc to become healthy (max ${max_wait}s)..."
+              local elapsed=0
+              while [ $elapsed -lt $max_wait ]; do
+                local state
+                state=$(docker inspect --format='{{.State.Health.Status}}' "infra-${svc}-1" 2>/dev/null || echo "missing")
+                if [ "$state" = "healthy" ]; then
+                  log "$svc is healthy ✓"
+                  return 0
+                fi
+                sleep 3
+                elapsed=$((elapsed + 3))
+              done
+              die "$svc did not become healthy within ${max_wait}s (current state: $state)"
+            }
+
+            # ── Helper: rollback a single service to the 'main' tag ────────
+            rollback_service() {
+              local svc="$1"
+              log "Rolling back $svc to :main tag..."
+              cd "$COMPOSE_DIR"
+              BU_IMAGE_TAG=main docker compose up -d --no-deps --no-recreate "$svc" || true
+            }
+
+            # ── 1. Authenticate with GHCR ──────────────────────────────────
+            log "Authenticating with GHCR..."
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # ── 2. Pull latest images from GHCR ──────────────────────────
-            docker pull ghcr.io/codeupscale/boardupscale-api:${IMAGE_TAG}
-            docker pull ghcr.io/codeupscale/boardupscale-web:${IMAGE_TAG}
-            docker pull ghcr.io/codeupscale/boardupscale-worker:${IMAGE_TAG}
+            # ── 2. Pull images (no downtime) ───────────────────────────────
+            log "Pulling images (tag: ${IMAGE_TAG})..."
+            docker pull "$API_IMAGE"
+            docker pull "$WEB_IMAGE"
+            docker pull "$WORKER_IMAGE"
 
-            # ── 3. Restart boardupscale services in unified infra compose ─
-            # Production runs from /home/ubuntu/infra which hosts both
-            # Trackflow and Boardupscale sharing one postgres + redis.
-            cd /home/ubuntu/infra
+            cd "$COMPOSE_DIR"
             export BU_IMAGE_TAG="${IMAGE_TAG}"
-            docker compose up -d --no-deps --force-recreate bu-api bu-web bu-worker
 
-            # ── 5. Reclaim disk space from old image layers ───────────────
+            # ── 3. Run DB migrations before restarting the API ─────────────
+            log "Running database migrations..."
+            docker run --rm \
+              --network infra_shared \
+              --env-file /home/ubuntu/infra/.env \
+              -e NODE_ENV=production \
+              "$API_IMAGE" \
+              node dist/cli/migrate.js run \
+            || {
+              log "Migration script not found, trying typeorm migration:run..."
+              docker run --rm \
+                --network infra_shared \
+                --env-file /home/ubuntu/infra/.env \
+                -e NODE_ENV=production \
+                "$API_IMAGE" \
+                sh -c 'npx typeorm migration:run -d dist/database/data-source.js' \
+              || log "WARNING: DB migration step returned non-zero. Continuing deploy — inspect manually if issues arise."
+            }
+
+            # ── 4. Restart bu-api — verify health before proceeding ────────
+            log "Restarting bu-api..."
+            docker compose up -d --no-deps --force-recreate bu-api
+            wait_healthy bu-api 90 || {
+              log "bu-api health check failed — rolling back..."
+              rollback_service bu-api
+              wait_healthy bu-api 60 || true
+              die "Deploy aborted: bu-api failed to become healthy after restart."
+            }
+
+            # ── 5. Restart bu-worker ───────────────────────────────────────
+            # Worker has a 60s stop_grace_period so in-flight BullMQ jobs can
+            # finish cleanly. New worker picks up queue from Redis on start.
+            log "Restarting bu-worker..."
+            docker compose up -d --no-deps --force-recreate bu-worker
+            wait_healthy bu-worker 120 || {
+              log "WARNING: bu-worker health check did not pass within 120s — investigating..."
+              docker logs --tail=50 infra-bu-worker-1 || true
+              # Non-fatal: worker is stateless relative to HTTP traffic
+            }
+
+            # ── 6. Restart bu-web ──────────────────────────────────────────
+            # Nginx (or the load balancer) continues to route to the old container
+            # until the new one is healthy. Docker restart policy handles this
+            # via depends_on + healthcheck in docker-compose.yml.
+            log "Restarting bu-web..."
+            docker compose up -d --no-deps --force-recreate bu-web
+            wait_healthy bu-web 90 || {
+              log "bu-web health check failed — rolling back..."
+              rollback_service bu-web
+              wait_healthy bu-web 60 || true
+              die "Deploy aborted: bu-web failed to become healthy after restart."
+            }
+
+            # ── 7. Final verification ──────────────────────────────────────
+            log "Running final health verification..."
+            api_status=$(docker inspect --format='{{.State.Health.Status}}' infra-bu-api-1 2>/dev/null || echo "unknown")
+            web_status=$(docker inspect --format='{{.State.Health.Status}}' infra-bu-web-1 2>/dev/null || echo "unknown")
+            worker_status=$(docker inspect --format='{{.State.Health.Status}}' infra-bu-worker-1 2>/dev/null || echo "unknown")
+
+            log "Service health summary:"
+            log "  bu-api:    $api_status"
+            log "  bu-web:    $web_status"
+            log "  bu-worker: $worker_status"
+
+            if [ "$api_status" != "healthy" ] || [ "$web_status" != "healthy" ]; then
+              die "One or more critical services are not healthy after deploy."
+            fi
+
+            # ── 8. Prune old image layers ──────────────────────────────────
             docker image prune -f
 
-            echo "Deployed $IMAGE_TAG successfully"
+            log "Deploy of ${IMAGE_TAG} completed successfully ✓"

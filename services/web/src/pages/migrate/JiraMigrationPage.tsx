@@ -177,6 +177,19 @@ export function JiraMigrationPage() {
     setStep(5)
   }
 
+  /** Called when the in-progress run no longer exists (404) — wipe stale state and go back to step 1 */
+  function handleReset() {
+    sessionStorage.removeItem('boardupscale_active_migration')
+    setMigrationPayload(null)
+    setConnectResult(null)
+    setConnectionId(null)
+    setSelectedKeys([])
+    setSelectedProjects([])
+    setSelectedMemberIds(undefined)
+    setIsRestored(false)
+    setStep(1)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4">
       <div className="max-w-2xl mx-auto">
@@ -225,6 +238,7 @@ export function JiraMigrationPage() {
               payload={migrationPayload}
               onComplete={handleComplete}
               initialRunId={isRestored ? migrationPayload.runId : undefined}
+              onReset={handleReset}
             />
           )}
 

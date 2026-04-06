@@ -166,11 +166,18 @@ export function useMigrationStatus(runId: string | null) {
       return data.data as MigrationStatus
     },
     enabled: !!runId,
+    // Do NOT retry on 404 — run no longer exists; surface the error immediately
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 404) return false
+      return failureCount < 3
+    },
     refetchInterval: (query) => {
       const status = query.state.data?.status
       if (status === 'completed' || status === 'failed' || status === 'cancelled') {
         return false
       }
+      // Stop polling when there is an error (e.g. 404 — run was deleted)
+      if (query.state.error) return false
       return 3000 // poll every 3s while active
     },
   })
