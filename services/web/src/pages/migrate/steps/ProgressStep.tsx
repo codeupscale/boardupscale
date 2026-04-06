@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
-  useStartMigration, useMigrationStatus, useRetryMigration, StartMigrationPayload,
+  useStartMigration, useMigrationStatus, useRetryMigration, useCancelMigration, StartMigrationPayload,
 } from '@/hooks/useMigration'
 import { getSocket } from '@/lib/socket'
 
@@ -63,6 +63,7 @@ export function ProgressStep({ payload, onComplete, initialRunId }: ProgressStep
   const logEndRef = useRef<HTMLDivElement>(null)
   const startMutation = useStartMigration()
   const retryMutation = useRetryMigration()
+  const cancelMutation = useCancelMigration()
   const completedRef = useRef(false)
   const queryClient = useQueryClient()
 
@@ -476,7 +477,18 @@ export function ProgressStep({ payload, onComplete, initialRunId }: ProgressStep
             </p>
             <div className="mt-5 flex gap-3 justify-end">
               <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
-              <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={() => setCancelDialogOpen(false)}>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={cancelMutation.isPending}
+                onClick={async () => {
+                  if (!runId) return
+                  await cancelMutation.mutateAsync(runId)
+                  setCancelDialogOpen(false)
+                  sessionStorage.removeItem('boardupscale_active_migration')
+                  window.location.href = '/settings/migrate/jira'
+                }}
+              >
+                {cancelMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2 inline" /> : null}
                 Cancel Migration
               </Button>
             </div>

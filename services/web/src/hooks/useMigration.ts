@@ -238,6 +238,22 @@ export function useMigrationMembers(connectionId: string | null) {
   })
 }
 
+export function useCancelMigration() {
+  return useMutation({
+    mutationFn: async (runId: string) => {
+      const { data } = await api.post(`/migration/jira/cancel/${runId}`)
+      return data.data as { runId: string }
+    },
+    onSuccess: () => {
+      toast('Migration cancelled', 'success')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Failed to cancel migration'
+      toast(msg, 'error')
+    },
+  })
+}
+
 export function useRetryMigrationFromHistory() {
   return useMutation({
     mutationFn: async (runId: string) => {

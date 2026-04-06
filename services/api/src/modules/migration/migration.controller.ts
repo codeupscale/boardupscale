@@ -127,6 +127,23 @@ export class MigrationController {
   }
 
   /**
+   * POST /api/migration/jira/cancel/:runId
+   * Cancel an active (pending or processing) migration run.
+   */
+  @Post('cancel/:runId')
+  @ApiOperation({ summary: 'Cancel an active migration run' })
+  @ApiParam({ name: 'runId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 201, description: 'Migration cancelled' })
+  @ApiResponse({ status: 400, description: 'Run is not cancellable' })
+  async cancel(
+    @Param('runId', ParseUUIDPipe) runId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const result = await this.migrationService.cancel(runId, organizationId);
+    return { status: true, message: 'Migration cancelled', data: result };
+  }
+
+  /**
    * GET /api/migration/jira/report/:runId
    * Return the full migration run record including result_summary and error_log.
    */

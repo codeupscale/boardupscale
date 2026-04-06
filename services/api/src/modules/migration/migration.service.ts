@@ -330,7 +330,34 @@ export class MigrationService {
     return { runId: run.id };
   }
 
-  // ── 6. Full report ────────────────────────────────────────────────────────
+  // ── 6. Cancel running run ─────────────────────────────────────────────────
+
+  async cancel(runId: string, organizationId: string): Promise<{ runId: string }> {
+    const run = await this.runRepository.findOne({
+      where: { id: runId, organizationId },
+    });
+
+    if (!run) throw new NotFoundException('Migration run not found');
+    if (run.status !== 'processing' && run.status !== 'pending') {
+      throw new BadRequestException('Only active migrations can be cancelled');
+    }
+
+    // Mark as cancelled in DB — the worker checks this flag and will stop after its current chunk.
+    await this.runRepository.update(run.id, { status: 'cancelled' });
+
+    // Best-effort: remove from BullMQ queue in case it hasn't started yet.
+    try {
+      const job = await this.migrationQueue.getJob(`migration-${run.id}`);
+      if (job) await job.remove();
+    } catch {
+      // Job may already be active / not removable — the DB status update is the real signal.
+    }
+
+    this.logger.log(`Migration run ${run.id} cancelled by user`);
+    return { runId: run.id };
+  }
+
+  // ── 7. Full report ────────────────────────────────────────────────────────
 
   async getReport(runId: string, organizationId: string): Promise<JiraMigrationRun> {
     const run = await this.runRepository.findOne({
