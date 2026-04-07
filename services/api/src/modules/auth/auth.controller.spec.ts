@@ -153,9 +153,21 @@ describe('AuthController', () => {
       const user = mockUser();
       usersService.findById.mockResolvedValue(user);
 
-      const result = await controller.me({ id: TEST_IDS.USER_ID });
+      // Simulate the JWT-derived user object (includes organizationId and role from token)
+      const jwtUser = {
+        id: TEST_IDS.USER_ID,
+        organizationId: TEST_IDS.ORG_ID,
+        role: 'member',
+      };
+      const result = await controller.me(jwtUser);
 
-      expect(result).toEqual({ data: user });
+      expect(result).toEqual({
+        data: {
+          ...user,
+          organizationId: TEST_IDS.ORG_ID,
+          role: 'member',
+        },
+      });
       expect(usersService.findById).toHaveBeenCalledWith(TEST_IDS.USER_ID);
     });
   });
