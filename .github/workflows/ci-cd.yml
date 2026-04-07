@@ -98,9 +98,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd ${{ secrets.DEPLOY_PATH || '/opt/boardupscale' }}
+            cd ${{ secrets.DEPLOY_PATH }}
             git pull origin main
-            docker compose pull
-            docker compose up -d --build --remove-orphans
-            docker compose exec -T api npx typeorm migration:run -d dist/src/data-source.js || true
+            docker compose restart api worker web
             echo "Deployed at $(date)"
