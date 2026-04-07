@@ -1,0 +1,13 @@
+---
+description: BullMQ worker patterns for Boardupscale services/worker
+globs: services/worker/**/*.ts
+alwaysApply: false
+---
+
+# Boardupscale Worker (`services/worker`)
+
+- **Queues**: BullMQ; jobs must be **idempotent** where retries are possible; set attempts/timeouts/failure handling per queue conventions.
+- **Side effects**: DB + optional Elasticsearch indexing; failures should not corrupt tenant data.
+- **Import jobs**: Large imports run here — keep status in Redis as existing import flow does; ensure project membership so UI lists projects.
+
+Reference: `.claude/agents/worker.md`, `search.md` (index jobs).

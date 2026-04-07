@@ -3,6 +3,7 @@
 ## Cursor
 
 - **Rules**: `.cursor/rules/*.mdc` — always-on **senior bar** + **agents/skills map**; path-scoped rules for `services/api`, `services/web`, `services/worker`.
+- **Master delivery (full lifecycle in Cursor)**: `.cursor/skills/boardupscale-master-delivery/SKILL.md` — use for audits, migration/import analysis, or “findings → fix → test → approve” flows; complements `.claude/agents/master.md` + `pipeline.md`.
 - **MCP**: `.cursor/mcp.json` (local tooling; do not commit secrets).
 
 ## Claude Code agents (role playbooks)

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# boardupscale pre-commit — runs from git root
+set -e
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+API="$(git rev-parse --show-toplevel)/services/api"
+
+# 1. TypeScript check (fast, no emit)
+echo "⏳ TypeScript check..."
+cd "$API" && node node_modules/.bin/tsc --noEmit
+echo "✅ TypeScript OK"
+
+# 2. Lint only staged .ts files
+echo "⏳ Linting staged files..."
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep "services/api/src/.*\.ts$" || true)
+if [ -n "$STAGED" ]; then
+  cd "$API" && echo "$STAGED" | sed "s|services/api/||" | xargs node node_modules/.bin/eslint --max-warnings 0
+fi
+echo "✅ Lint OK"
+
+# 3. Unit tests (bail on first failure for speed)
+echo "⏳ Running unit tests..."
+cd "$API" && node node_modules/.bin/jest --passWithNoTests --bail --silent
+echo "✅ Tests OK"
