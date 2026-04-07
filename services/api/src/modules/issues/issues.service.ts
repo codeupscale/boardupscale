@@ -353,6 +353,13 @@ export class IssuesService {
       labels: issue.labels,
     };
 
+    // Capture human-readable names for activity log display
+    const prevNames: Record<string, string | null> = {
+      statusId: issue.status?.name || null,
+      assigneeId: issue.assignee?.displayName || null,
+      sprintId: issue.sprint?.name || null,
+    };
+
     Object.assign(issue, dto);
 
     // When updating FK columns, clear the loaded relation so TypeORM uses the
@@ -421,16 +428,35 @@ export class IssuesService {
       this.aiService.enqueueEmbedding(id, organizationId);
     }
 
-    // Log activity for each changed field
+    // Resolve new names for relation fields from the re-fetched issue
+    const newNames: Record<string, string | null> = {
+      statusId: updatedIssue.status?.name || null,
+      assigneeId: updatedIssue.assignee?.displayName || null,
+      sprintId: updatedIssue.sprint?.name || null,
+    };
+
+    // Log activity for each changed field (using human-readable names for relation fields)
     const fieldsToTrack = [
       'title', 'description', 'type', 'priority', 'statusId', 'assigneeId',
       'sprintId', 'dueDate', 'storyPoints', 'timeEstimate',
     ];
+    const relationFields = new Set(['statusId', 'assigneeId', 'sprintId']);
     const changes: Record<string, { old: any; new: any }> = {};
     for (const field of fieldsToTrack) {
       if (dto[field] !== undefined && String(dto[field] ?? '') !== String(prevValues[field] ?? '')) {
-        const oldVal = prevValues[field] != null ? String(prevValues[field]) : null;
-        const newVal = dto[field] != null ? String(dto[field]) : null;
+        let oldVal: string | null;
+        let newVal: string | null;
+        if (relationFields.has(field)) {
+          oldVal = prevNames[field] || null;
+          newVal = newNames[field] || null;
+        } else if (field === 'description') {
+          // Store a short summary instead of raw HTML
+          oldVal = prevValues[field] ? 'updated' : null;
+          newVal = dto[field] ? 'updated' : null;
+        } else {
+          oldVal = prevValues[field] != null ? String(prevValues[field]) : null;
+          newVal = dto[field] != null ? String(dto[field]) : null;
+        }
         changes[field] = { old: oldVal, new: newVal };
         this.activityService.log(organizationId, id, userId, 'updated', field, oldVal, newVal);
       }

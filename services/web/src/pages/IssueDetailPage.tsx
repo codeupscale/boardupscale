@@ -533,35 +533,47 @@ export function IssueDetailPage() {
             <AttachmentPanel issueId={issue.id} />
           </div>
 
-          {/* Activity Panel — Tabbed: All | Comments | History */}
+          {/* Activity Panel — Tabbed: Comments | History | All */}
           <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
             {/* Tab bar */}
-            <div className="flex items-center border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
-              {(['all', 'comments', 'history'] as const).map((tab) => {
-                const isActive = activityTab === tab
-                const labels = {
-                  all: 'All',
-                  comments: `Comments${comments?.length ? ` (${comments.length})` : ''}`,
-                  history: 'History',
-                }
+            <div className="flex items-center gap-0 border-b border-gray-200 dark:border-gray-700">
+              {([
+                { key: 'comments' as const, label: 'Comments', count: comments?.length },
+                { key: 'history' as const, label: 'History' },
+                { key: 'all' as const, label: 'All' },
+              ]).map(({ key, label, count }) => {
+                const isActive = activityTab === key
                 return (
                   <button
-                    key={tab}
-                    onClick={() => setActivityTab(tab)}
+                    key={key}
+                    onClick={() => setActivityTab(key)}
                     className={cn(
-                      'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+                      'relative px-5 py-3.5 text-sm font-medium transition-colors',
                       isActive
-                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600',
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
-                    {labels[tab]}
+                    {label}
+                    {count != null && count > 0 && (
+                      <span className={cn(
+                        'ml-1.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5',
+                        isActive
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+                      )}>
+                        {count}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+                    )}
                   </button>
                 )
               })}
               <div className="flex-1" />
-              <div className="px-3 flex items-center gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="pr-3">
+                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700">
                   <Clock className="h-3.5 w-3.5" />
                   Log work
                 </Button>
@@ -569,9 +581,9 @@ export function IssueDetailPage() {
             </div>
 
             <div className="p-5">
-              {/* Add Comment — always visible at top */}
-              {(activityTab === 'all' || activityTab === 'comments') && (
-                <div className="flex gap-3 mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
+              {/* Add Comment input — shown on Comments and All tabs */}
+              {(activityTab === 'comments' || activityTab === 'all') && (
+                <div className="flex gap-3 mb-6 pb-5 border-b border-gray-100 dark:border-gray-800">
                   <Avatar user={currentUser || undefined} size="sm" />
                   <div className="flex-1 space-y-2">
                     <RichTextEditor
@@ -581,26 +593,28 @@ export function IssueDetailPage() {
                       users={orgUsers || []}
                       minHeight={80}
                     />
-                    <Button
-                      size="sm"
-                      disabled={!commentText || commentText === '<p></p>'}
-                      isLoading={createComment.isPending}
-                      onClick={() => {
-                        createComment.mutate(
-                          { issueId: issue.id, content: commentText },
-                          { onSuccess: () => setCommentText('') },
-                        )
-                      }}
-                    >
-                      <Send className="h-3.5 w-3.5 mr-1" />
-                      {t('issues.comment')}
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        disabled={!commentText || commentText === '<p></p>'}
+                        isLoading={createComment.isPending}
+                        onClick={() => {
+                          createComment.mutate(
+                            { issueId: issue.id, content: commentText },
+                            { onSuccess: () => setCommentText('') },
+                          )
+                        }}
+                      >
+                        <Send className="h-3.5 w-3.5 mr-1" />
+                        {t('issues.comment')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Comments tab */}
-              {(activityTab === 'all' || activityTab === 'comments') && (
+              {/* --- Comments tab content --- */}
+              {(activityTab === 'comments' || activityTab === 'all') && (
                 <div className="space-y-4">
                   {comments?.map((comment) => (
                     <CommentItem
@@ -611,28 +625,30 @@ export function IssueDetailPage() {
                     />
                   ))}
                   {activityTab === 'comments' && (!comments || comments.length === 0) && (
-                    <div className="text-center py-6">
-                      <MessageSquare className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-8 w-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
                       <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noComments')}</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Work Logs — shown in All tab */}
+              {/* --- Work Logs (only in All tab) --- */}
               {activityTab === 'all' && workLogs && workLogs.length > 0 && (
-                <div className={cn(comments && comments.length > 0 ? 'mt-5 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
+                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800">
                   <div className="flex items-center gap-2 mb-3">
-                    <Clock className="h-4 w-4 text-teal-500" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
+                      <Clock className="h-3 w-3 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                       Time Logged
                     </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 ml-8">
                     {workLogs.map((log) => (
-                      <div key={log.id} className="flex items-center gap-3 text-sm py-1.5">
+                      <div key={log.id} className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
                         <Avatar user={log.user} size="xs" />
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
                         {log.description && (
                           <span className="text-gray-500 dark:text-gray-400 truncate">{log.description}</span>
                         )}
@@ -645,17 +661,9 @@ export function IssueDetailPage() {
                 </div>
               )}
 
-              {/* History / Activity changelog */}
-              {(activityTab === 'all' || activityTab === 'history') && (
-                <div className={cn(activityTab === 'all' ? 'mt-5 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
-                  {activityTab === 'all' && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <History className="h-4 w-4 text-gray-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        Change History
-                      </span>
-                    </div>
-                  )}
+              {/* --- History / Activity changelog --- */}
+              {(activityTab === 'history' || activityTab === 'all') && (
+                <div className={cn(activityTab === 'all' ? 'mt-6 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
                   <ActivityList issueId={issue.id} />
                 </div>
               )}

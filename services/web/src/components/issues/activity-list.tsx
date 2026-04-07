@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   ArrowRight,
   User,
   Tag,
@@ -10,14 +9,12 @@ import {
   Layers,
   Calendar,
   Clock,
-  MessageSquare,
-  PlusCircle,
   Pencil,
-  Zap,
   GitBranch,
   BarChart3,
   Target,
-  History as HistoryIcon,
+  FileText,
+  Type,
 } from 'lucide-react'
 import { useActivities } from '@/hooks/useActivities'
 import { Avatar } from '@/components/ui/avatar'
@@ -26,119 +23,122 @@ import { formatRelativeTime } from '@/lib/utils'
 import { Activity } from '@/types'
 import { cn } from '@/lib/utils'
 
-const FIELD_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  statusId: { icon: Layers, label: 'Status', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' },
-  assigneeId: { icon: User, label: 'Assignee', color: 'text-green-500 bg-green-50 dark:bg-green-900/30' },
-  priority: { icon: Flag, label: 'Priority', color: 'text-orange-500 bg-orange-50 dark:bg-orange-900/30' },
-  type: { icon: Tag, label: 'Type', color: 'text-purple-500 bg-purple-50 dark:bg-purple-900/30' },
-  sprintId: { icon: Target, label: 'Sprint', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30' },
-  title: { icon: Pencil, label: 'Title', color: 'text-gray-500 bg-gray-50 dark:bg-gray-800' },
-  description: { icon: Pencil, label: 'Description', color: 'text-gray-500 bg-gray-50 dark:bg-gray-800' },
-  dueDate: { icon: Calendar, label: 'Due Date', color: 'text-red-500 bg-red-50 dark:bg-red-900/30' },
-  storyPoints: { icon: BarChart3, label: 'Story Points', color: 'text-purple-500 bg-purple-50 dark:bg-purple-900/30' },
-  timeEstimate: { icon: Clock, label: 'Time Estimate', color: 'text-teal-500 bg-teal-50 dark:bg-teal-900/30' },
-  labels: { icon: Tag, label: 'Labels', color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/30' },
-  parentId: { icon: GitBranch, label: 'Parent', color: 'text-gray-500 bg-gray-50 dark:bg-gray-800' },
+const FIELD_META: Record<string, { icon: React.ElementType; label: string; iconBg: string; iconColor: string }> = {
+  statusId:     { icon: Layers,    label: 'Status',        iconBg: 'bg-blue-100 dark:bg-blue-900/40',    iconColor: 'text-blue-600 dark:text-blue-400' },
+  assigneeId:   { icon: User,      label: 'Assignee',      iconBg: 'bg-green-100 dark:bg-green-900/40',  iconColor: 'text-green-600 dark:text-green-400' },
+  priority:     { icon: Flag,      label: 'Priority',      iconBg: 'bg-orange-100 dark:bg-orange-900/40', iconColor: 'text-orange-600 dark:text-orange-400' },
+  type:         { icon: Tag,       label: 'Type',          iconBg: 'bg-purple-100 dark:bg-purple-900/40', iconColor: 'text-purple-600 dark:text-purple-400' },
+  sprintId:     { icon: Target,    label: 'Sprint',        iconBg: 'bg-indigo-100 dark:bg-indigo-900/40', iconColor: 'text-indigo-600 dark:text-indigo-400' },
+  title:        { icon: Type,      label: 'Title',         iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
+  description:  { icon: FileText,  label: 'Description',   iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
+  dueDate:      { icon: Calendar,  label: 'Due Date',      iconBg: 'bg-red-100 dark:bg-red-900/40',       iconColor: 'text-red-600 dark:text-red-400' },
+  storyPoints:  { icon: BarChart3, label: 'Story Points',  iconBg: 'bg-violet-100 dark:bg-violet-900/40', iconColor: 'text-violet-600 dark:text-violet-400' },
+  timeEstimate: { icon: Clock,     label: 'Time Estimate', iconBg: 'bg-teal-100 dark:bg-teal-900/40',     iconColor: 'text-teal-600 dark:text-teal-400' },
+  labels:       { icon: Tag,       label: 'Labels',        iconBg: 'bg-yellow-100 dark:bg-yellow-900/40', iconColor: 'text-yellow-700 dark:text-yellow-400' },
+  parentId:     { icon: GitBranch, label: 'Parent',        iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
 }
 
-function getActionConfig(action: string) {
-  switch (action) {
-    case 'created':
-      return { icon: PlusCircle, color: 'text-green-500 bg-green-50 dark:bg-green-900/30' }
-    case 'commented':
-      return { icon: MessageSquare, color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/30' }
-    case 'work_logged':
-      return { icon: Clock, color: 'text-teal-500 bg-teal-50 dark:bg-teal-900/30' }
-    case 'updated':
-      return { icon: Pencil, color: 'text-gray-500 bg-gray-50 dark:bg-gray-800' }
-    default:
-      return { icon: Zap, color: 'text-gray-500 bg-gray-50 dark:bg-gray-800' }
-  }
-}
-
-function formatValue(value: string | null | undefined, field?: string): string {
-  if (!value) return 'None'
+function formatDisplayValue(value: string | null | undefined, field?: string): string {
+  if (!value || value === 'null') return 'None'
+  if (field === 'description') return 'Updated'
   if (field === 'dueDate') {
-    try { return new Date(value).toLocaleDateString() } catch { return value }
+    try { return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } catch { return value }
   }
   if (field === 'timeEstimate') {
     const mins = parseInt(value)
     if (!isNaN(mins)) return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`
   }
-  // Truncate UUIDs to show just the beginning
-  if (value.length === 36 && value.includes('-')) return value.slice(0, 8) + '...'
+  if (field === 'priority') {
+    return value.charAt(0).toUpperCase() + value.slice(1)
+  }
+  if (field === 'type') {
+    return value.charAt(0).toUpperCase() + value.slice(1)
+  }
   return value
 }
 
-function ActivityItem({ activity, isLast }: { activity: Activity; isLast: boolean }) {
-  const { t } = useTranslation()
+function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boolean }) {
   const field = activity.field || ''
-  const fieldCfg = FIELD_CONFIG[field]
-  const actionCfg = getActionConfig(activity.action)
+  const meta = FIELD_META[field]
+  const Icon = meta?.icon || Pencil
+  const iconBg = meta?.iconBg || 'bg-gray-100 dark:bg-gray-800'
+  const iconColor = meta?.iconColor || 'text-gray-500'
 
-  const Icon = activity.action === 'updated' && fieldCfg ? fieldCfg.icon : actionCfg.icon
-  const iconColor = activity.action === 'updated' && fieldCfg ? fieldCfg.color : actionCfg.color
+  // For "created" action
+  if (activity.action === 'created') {
+    return (
+      <div className="relative flex gap-3">
+        {!isLast && <div className="absolute left-4 top-10 bottom-0 w-px bg-gradient-to-b from-gray-200 to-transparent dark:from-gray-700" />}
+        <div className={cn('relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/40')}>
+          <Tag className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+        </div>
+        <div className="flex-1 min-w-0 pb-6">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="font-semibold text-gray-900 dark:text-white">{activity.user?.displayName || 'System'}</span>
+            {' '}created this issue
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const oldDisplay = formatDisplayValue(activity.oldValue, field)
+  const newDisplay = formatDisplayValue(activity.newValue, field)
+  const isDescriptionChange = field === 'description'
 
   return (
-    <div className="relative flex gap-3 group">
-      {/* Timeline connector */}
-      {!isLast && (
-        <div className="absolute left-[15px] top-9 bottom-0 w-px bg-gray-200 dark:bg-gray-700" />
-      )}
+    <div className="relative flex gap-3">
+      {/* Vertical connector */}
+      {!isLast && <div className="absolute left-4 top-10 bottom-0 w-px bg-gradient-to-b from-gray-200 to-transparent dark:from-gray-700" />}
 
       {/* Icon */}
-      <div className={cn('relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', iconColor)}>
-        <Icon className="h-3.5 w-3.5" />
+      <div className={cn('relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center', iconBg)}>
+        <Icon className={cn('h-3.5 w-3.5', iconColor)} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 pb-5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      <div className="flex-1 min-w-0 pb-6">
+        <div className="flex items-baseline gap-1 flex-wrap">
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">
             {activity.user?.displayName || 'System'}
           </span>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {activity.action === 'created' && t('activity.createdIssue')}
-            {activity.action === 'commented' && t('activity.addedComment')}
-            {activity.action === 'work_logged' && t('activity.loggedWork', { minutes: activity.newValue || '0' })}
-            {activity.action === 'updated' && (
-              <>
-                updated{' '}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {fieldCfg?.label || field}
-                </span>
-              </>
-            )}
+            changed {meta?.label || field}
           </span>
           <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0">
             {formatRelativeTime(activity.createdAt)}
           </span>
         </div>
 
-        {/* Value change detail */}
-        {activity.action === 'updated' && (activity.oldValue || activity.newValue) && (
-          <div className="mt-1.5 flex items-center gap-2 text-sm">
+        {/* Value change chips */}
+        {!isDescriptionChange && (activity.oldValue || activity.newValue) && (
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {activity.oldValue && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-xs font-medium line-through">
-                {formatValue(activity.oldValue, field)}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 line-through decoration-gray-400/60">
+                {oldDisplay}
               </span>
             )}
-            {activity.oldValue && activity.newValue && (
-              <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
-            )}
-            {activity.newValue && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium">
-                {formatValue(activity.newValue, field)}
+            <ArrowRight className="h-3 w-3 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+            {activity.newValue ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-200/60 dark:ring-blue-700/40">
+                {newDisplay}
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-50 dark:bg-gray-800 text-xs text-gray-400 dark:text-gray-500 italic">
+                None
               </span>
             )}
-            {!activity.newValue && activity.oldValue && (
-              <>
-                <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-medium italic">
-                  None
-                </span>
-              </>
-            )}
+          </div>
+        )}
+
+        {/* Description change — simple indicator */}
+        {isDescriptionChange && (
+          <div className="mt-1.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 text-xs font-medium text-amber-700 dark:text-amber-300 ring-1 ring-amber-200/60 dark:ring-amber-700/40">
+              <FileText className="h-3 w-3" />
+              Description updated
+            </span>
           </div>
         )}
       </div>
@@ -156,7 +156,7 @@ export function ActivityList({ issueId }: { issueId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex items-center justify-center py-10">
         <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-blue-500" />
       </div>
     )
@@ -164,49 +164,34 @@ export function ActivityList({ issueId }: { issueId: string }) {
 
   if (activities.length === 0) {
     return (
-      <div className="text-center py-8">
-        <HistoryIcon className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('activity.noActivity')}</p>
+      <div className="text-center py-10">
+        <Clock className="h-8 w-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+        <p className="text-sm text-gray-400 dark:text-gray-500">{t('activity.noActivity')}</p>
       </div>
     )
   }
 
   return (
     <div>
-      <div className="relative">
-        {activities.map((activity, idx) => (
-          <ActivityItem
-            key={activity.id}
-            activity={activity}
-            isLast={idx === activities.length - 1}
-          />
-        ))}
-      </div>
+      {activities.map((activity, idx) => (
+        <ActivityEntry
+          key={activity.id}
+          activity={activity}
+          isLast={idx === activities.length - 1}
+        />
+      ))}
 
       {meta && meta.totalPages > 1 && (
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center justify-center pt-2">
           <Button
             size="sm"
             variant="ghost"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="text-xs"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Newer
-          </Button>
-          <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-            {meta.page} / {meta.totalPages}
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={page >= meta.totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="text-xs"
+            disabled={page >= meta.totalPages}
+            className="text-xs text-gray-500 dark:text-gray-400"
           >
-            Older
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3.5 w-3.5 mr-1" />
+            Show older ({meta.total - page * meta.limit > 0 ? meta.total - page * meta.limit : 0} more)
           </Button>
         </div>
       )}
