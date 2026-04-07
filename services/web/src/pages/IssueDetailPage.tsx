@@ -61,7 +61,7 @@ import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
 import { AiSummaryPanel } from '@/components/issues/ai-summary-panel'
 import { WatchButton } from '@/components/issues/watch-button'
 import { ActivityList } from '@/components/issues/activity-list'
-import { formatRelativeTime, formatDuration } from '@/lib/utils'
+import { cn, formatRelativeTime, formatDuration } from '@/lib/utils'
 
 /* -------------------------------------------------------------------------- */
 /*  Allowed child types map (must match backend hierarchy)                    */
@@ -308,6 +308,7 @@ export function IssueDetailPage() {
   const [workLogTime, setWorkLogTime] = useState('')
   const [workLogDesc, setWorkLogDesc] = useState('')
   const [showDeleteIssue, setShowDeleteIssue] = useState(false)
+  const [activityTab, setActivityTab] = useState<'all' | 'comments' | 'history'>('all')
   const [showCreateChild, setShowCreateChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
@@ -532,90 +533,133 @@ export function IssueDetailPage() {
             <AttachmentPanel issueId={issue.id} />
           </div>
 
-          {/* Comments */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
-            <SectionHeader
-              icon={MessageSquare}
-              title={t('issues.commentsCount', { count: comments?.length || 0 })}
-            />
-            <div className="space-y-4 mb-5">
-              {comments?.map((comment) => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  currentUserId={currentUser?.id}
-                  users={orgUsers || []}
-                />
-              ))}
-              {(!comments || comments.length === 0) && (
-                <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noComments')}</p>
-              )}
-            </div>
-
-            {/* Add Comment */}
-            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <Avatar user={currentUser || undefined} size="sm" />
-              <div className="flex-1 space-y-2">
-                <RichTextEditor
-                  placeholder={t('issues.addCommentPlaceholder')}
-                  value={commentText}
-                  onChange={setCommentText}
-                  users={orgUsers || []}
-                  minHeight={80}
-                />
-                <Button
-                  size="sm"
-                  disabled={!commentText || commentText === '<p></p>'}
-                  isLoading={createComment.isPending}
-                  onClick={() => {
-                    createComment.mutate(
-                      { issueId: issue.id, content: commentText },
-                      { onSuccess: () => setCommentText('') },
-                    )
-                  }}
-                >
-                  <Send className="h-3.5 w-3.5 mr-1" />
-                  {t('issues.comment')}
+          {/* Activity Panel — Tabbed: All | Comments | History */}
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex items-center border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+              {(['all', 'comments', 'history'] as const).map((tab) => {
+                const isActive = activityTab === tab
+                const labels = {
+                  all: 'All',
+                  comments: `Comments${comments?.length ? ` (${comments.length})` : ''}`,
+                  history: 'History',
+                }
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActivityTab(tab)}
+                    className={cn(
+                      'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+                      isActive
+                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600',
+                    )}
+                  >
+                    {labels[tab]}
+                  </button>
+                )
+              })}
+              <div className="flex-1" />
+              <div className="px-3 flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-gray-500 dark:text-gray-400">
+                  <Clock className="h-3.5 w-3.5" />
+                  Log work
                 </Button>
               </div>
             </div>
-          </div>
 
-          {/* Work Logs */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
-            <SectionHeader
-              icon={Clock}
-              title={t('issues.timeTracking')}
-              action={
-                <Button size="sm" variant="outline" onClick={() => setShowWorkLogDialog(true)} className="rounded-lg">
-                  <Clock className="h-3.5 w-3.5 mr-1" />
-                  {t('issues.addWorkLog')}
-                </Button>
-              }
-            />
-            <div className="space-y-2">
-              {workLogs?.map((log) => (
-                <div key={log.id} className="flex items-center gap-3 text-sm py-1.5">
-                  <Avatar user={log.user} size="xs" />
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
-                  {log.description && (
-                    <span className="text-gray-500 dark:text-gray-400 truncate">{log.description}</span>
-                  )}
-                  <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto flex-shrink-0">
-                    {formatRelativeTime(log.createdAt)}
-                  </span>
+            <div className="p-5">
+              {/* Add Comment — always visible at top */}
+              {(activityTab === 'all' || activityTab === 'comments') && (
+                <div className="flex gap-3 mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
+                  <Avatar user={currentUser || undefined} size="sm" />
+                  <div className="flex-1 space-y-2">
+                    <RichTextEditor
+                      placeholder={t('issues.addCommentPlaceholder')}
+                      value={commentText}
+                      onChange={setCommentText}
+                      users={orgUsers || []}
+                      minHeight={80}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!commentText || commentText === '<p></p>'}
+                      isLoading={createComment.isPending}
+                      onClick={() => {
+                        createComment.mutate(
+                          { issueId: issue.id, content: commentText },
+                          { onSuccess: () => setCommentText('') },
+                        )
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1" />
+                      {t('issues.comment')}
+                    </Button>
+                  </div>
                 </div>
-              ))}
-              {(!workLogs || workLogs.length === 0) && (
-                <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noTimeLogged')}</p>
+              )}
+
+              {/* Comments tab */}
+              {(activityTab === 'all' || activityTab === 'comments') && (
+                <div className="space-y-4">
+                  {comments?.map((comment) => (
+                    <CommentItem
+                      key={comment.id}
+                      comment={comment}
+                      currentUserId={currentUser?.id}
+                      users={orgUsers || []}
+                    />
+                  ))}
+                  {activityTab === 'comments' && (!comments || comments.length === 0) && (
+                    <div className="text-center py-6">
+                      <MessageSquare className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noComments')}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Work Logs — shown in All tab */}
+              {activityTab === 'all' && workLogs && workLogs.length > 0 && (
+                <div className={cn(comments && comments.length > 0 ? 'mt-5 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-4 w-4 text-teal-500" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Time Logged
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {workLogs.map((log) => (
+                      <div key={log.id} className="flex items-center gap-3 text-sm py-1.5">
+                        <Avatar user={log.user} size="xs" />
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
+                        {log.description && (
+                          <span className="text-gray-500 dark:text-gray-400 truncate">{log.description}</span>
+                        )}
+                        <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto flex-shrink-0">
+                          {formatRelativeTime(log.createdAt)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* History / Activity changelog */}
+              {(activityTab === 'all' || activityTab === 'history') && (
+                <div className={cn(activityTab === 'all' ? 'mt-5 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
+                  {activityTab === 'all' && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <History className="h-4 w-4 text-gray-500" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        Change History
+                      </span>
+                    </div>
+                  )}
+                  <ActivityList issueId={issue.id} />
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Activity / Changelog */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
-            <SectionHeader icon={History} title={t('activity.title')} />
-            <ActivityList issueId={issue.id} />
           </div>
         </div>
 
@@ -703,10 +747,10 @@ export function IssueDetailPage() {
               >
                 <option value="">{t('common.noSprint')}</option>
                 {sprints
-                  ?.filter((s) => s.status !== 'completed')
+                  ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
                   .map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
                     </option>
                   ))}
               </select>
