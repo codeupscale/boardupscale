@@ -171,7 +171,7 @@ describe('BoardsService', () => {
       });
 
       expect(mainQb.andWhere).toHaveBeenCalledWith(
-        'issue.title ILIKE :search',
+        '(issue.title ILIKE :search OR issue.key ILIKE :search)',
         { search: '%login bug%' },
       );
     });
