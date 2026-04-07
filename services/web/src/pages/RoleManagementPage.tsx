@@ -199,7 +199,7 @@ export function RoleManagementPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-950">
         {roles.length === 0 ? (
           <EmptyState
             icon={<Shield className="h-12 w-12" />}
@@ -208,42 +208,65 @@ export function RoleManagementPage() {
             action={{ label: 'Create Role', onClick: openCreateDialog }}
           />
         ) : (
-          <div className="space-y-3 max-w-4xl">
+          <div className="space-y-3">
             {roles.map((role) => {
               const isExpanded = expandedRole === role.id
+              const isSystem = role.isSystem
+
               return (
                 <div
                   key={role.id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                  className={cn(
+                    'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow',
+                    isSystem
+                      ? 'border-l-4 border-l-purple-400 dark:border-l-purple-500'
+                      : 'border-l-4 border-l-blue-400 dark:border-l-blue-500',
+                  )}
                 >
                   {/* Role header row */}
                   <div className="flex items-center gap-3 px-5 py-4">
                     <button
                       className="flex-1 flex items-center gap-3 text-left"
-                      onClick={() =>
-                        setExpandedRole(isExpanded ? null : role.id)
-                      }
+                      onClick={() => setExpandedRole(isExpanded ? null : role.id)}
+                      aria-expanded={isExpanded}
                     >
-                      <Shield className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <div
+                        className={cn(
+                          'h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0',
+                          isSystem
+                            ? 'bg-purple-50 dark:bg-purple-900/20'
+                            : 'bg-blue-50 dark:bg-blue-900/20',
+                        )}
+                      >
+                        <Shield
+                          className={cn(
+                            'h-4.5 w-4.5',
+                            isSystem
+                              ? 'text-purple-500 dark:text-purple-400'
+                              : 'text-blue-500 dark:text-blue-400',
+                          )}
+                          style={{ width: '1.125rem', height: '1.125rem' }}
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
                             {role.name}
                           </span>
                           {role.isSystem && (
-                            <Badge variant="outline">
+                            <Badge variant="outline" className="border-purple-200 dark:border-purple-700 text-purple-600 dark:text-purple-400">
                               <Lock className="h-3 w-3 mr-1" />
                               System
                             </Badge>
                           )}
                         </div>
                         {role.description && (
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
                             {role.description}
                           </p>
                         )}
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
                         {role.permissions.length} permission{role.permissions.length !== 1 ? 's' : ''}
                       </span>
                     </button>
@@ -253,14 +276,16 @@ export function RoleManagementPage() {
                           variant="ghost"
                           size="icon-sm"
                           onClick={() => openEditDialog(role)}
+                          aria-label={`Edit ${role.name} role`}
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="text-gray-400 hover:text-red-600"
+                          className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                           onClick={() => setDeleteTarget(role)}
+                          aria-label={`Delete ${role.name} role`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -270,7 +295,7 @@ export function RoleManagementPage() {
 
                   {/* Expanded permissions grid */}
                   {isExpanded && (
-                    <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
+                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-gray-50 dark:bg-gray-800/50">
                       <PermissionsGrid
                         permissionGroups={permissionGroups}
                         allActions={allActions}
@@ -315,7 +340,7 @@ export function RoleManagementPage() {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-3">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
               Permissions
             </h3>
             <PermissionsGrid
@@ -384,20 +409,20 @@ function PermissionsGrid({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-2 pr-4 font-medium text-gray-500 text-xs uppercase tracking-wider">
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+            <th className="text-left py-2 pr-4 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
               Resource
             </th>
             {allActions.map((action) => (
               <th
                 key={action}
-                className="text-center py-2 px-2 font-medium text-gray-500 text-xs uppercase tracking-wider"
+                className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider"
               >
                 {capitalize(action)}
               </th>
             ))}
             {!readOnly && (
-              <th className="text-center py-2 px-2 font-medium text-gray-500 text-xs uppercase tracking-wider">
+              <th className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
                 All
               </th>
             )}
@@ -407,8 +432,8 @@ function PermissionsGrid({
           {permissionGroups.map(([resource, perms]) => {
             const allSelected = perms.every((p) => selectedIds.has(p.id))
             return (
-              <tr key={resource} className="border-b border-gray-100 last:border-0">
-                <td className="py-2.5 pr-4 font-medium text-gray-700">
+              <tr key={resource} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+                <td className="py-2.5 pr-4 font-medium text-gray-700 dark:text-gray-300">
                   {capitalize(resource)}
                 </td>
                 {allActions.map((action) => {
@@ -416,7 +441,7 @@ function PermissionsGrid({
                   if (!permId) {
                     return (
                       <td key={action} className="text-center py-2.5 px-2">
-                        <span className="text-gray-200">--</span>
+                        <span className="text-gray-200 dark:text-gray-700">--</span>
                       </td>
                     )
                   }

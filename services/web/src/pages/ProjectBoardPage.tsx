@@ -100,7 +100,6 @@ export function ProjectBoardPage() {
   )
 
   const { data: project } = useProject(projectKey!)
-  const { data: board, isLoading } = useBoard(projectKey!, filters)
   const { data: sprints } = useSprints(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
   const { data: usersResult } = useUsers()
@@ -110,6 +109,21 @@ export function ProjectBoardPage() {
   const updateStatus = useUpdateStatus()
   const createStatus = useCreateStatus()
   const deleteStatus = useDeleteStatus()
+
+  // Auto-apply active sprint filter on first load if no sprintId is in the URL
+  useEffect(() => {
+    if (!sprints || filters.sprintId) return
+    const active = sprints.find((s) => s.status === 'active')
+    if (active) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('sprintId', active.id)
+        return next
+      }, { replace: true })
+    }
+  }, [sprints, filters.sprintId, setSearchParams])
+
+  const { data: board, isLoading } = useBoard(projectKey!, filters)
 
   const handleLoadMore = useCallback(
     async (statusId: string) => {

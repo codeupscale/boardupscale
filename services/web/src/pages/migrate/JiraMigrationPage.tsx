@@ -19,6 +19,9 @@ const STEP_LABELS: Record<WizardStep, string> = {
   5: 'Complete',
 }
 
+// Steps that need the full wide layout (have side-by-side panels)
+const WIDE_STEPS: WizardStep[] = [2]
+
 function Stepper({ currentStep }: { currentStep: WizardStep }) {
   const steps = [1, 2, 3, 4, 5] as WizardStep[]
   return (
@@ -29,27 +32,27 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
           const isCompleted = step < currentStep
           return (
             <li key={step} className="flex items-center gap-1 sm:gap-2">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold transition-colors flex-shrink-0',
+                    'flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-all flex-shrink-0',
                     isCompleted
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
                       : isActive
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
+                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-blue-200'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500',
                   )}
                   aria-current={isActive ? 'step' : undefined}
                 >
-                  {isCompleted ? <CheckCircle className="h-3.5 w-3.5" /> : step}
+                  {isCompleted ? <CheckCircle className="h-4 w-4" /> : step}
                 </span>
                 <span
                   className={cn(
-                    'text-xs sm:text-sm font-medium hidden sm:inline',
+                    'text-xs sm:text-sm font-semibold hidden sm:inline',
                     isActive
                       ? 'text-blue-700 dark:text-blue-300'
                       : isCompleted
-                      ? 'text-gray-900 dark:text-gray-100'
+                      ? 'text-gray-700 dark:text-gray-200'
                       : 'text-gray-400 dark:text-gray-500',
                   )}
                 >
@@ -57,7 +60,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                 </span>
               </div>
               {idx < steps.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mx-1" />
               )}
             </li>
           )
@@ -83,7 +86,6 @@ export function JiraMigrationPage() {
   const [isRestored, setIsRestored] = useState(false)
 
   // On mount: restore state from OAuth redirect params
-  // Atlassian redirects back with ?oauth=1&runId=...&connectionId=...&orgName=...
   useEffect(() => {
     const isOAuth = searchParams.get('oauth') === '1'
     const oauthErr = searchParams.get('oauthError')
@@ -93,7 +95,6 @@ export function JiraMigrationPage() {
     const projectCount = parseInt(searchParams.get('projectCount') ?? '0', 10)
     const memberCount = parseInt(searchParams.get('memberCount') ?? '0', 10)
 
-    // Clean up URL params so browser back/refresh doesn't re-trigger
     if (isOAuth || oauthErr) {
       setSearchParams({}, { replace: true })
     }
@@ -104,7 +105,6 @@ export function JiraMigrationPage() {
     }
 
     if (isOAuth && runId && connId) {
-      // Build a minimal ConnectJiraResult from the URL params and jump to Preview
       const result: ConnectJiraResult = {
         runId,
         connectionId: connId,
@@ -112,14 +112,13 @@ export function JiraMigrationPage() {
         orgName,
         projectCount,
         memberCount,
-        projects: [], // Preview step fetches its own project list via connectionId
+        projects: [],
       }
       setConnectResult(result)
       setConnectionId(connId)
       setStep(2)
     }
 
-    // Restore in-progress migration if user navigated away
     if (!isOAuth && !oauthErr) {
       const saved = sessionStorage.getItem('boardupscale_active_migration')
       if (saved) {
@@ -177,7 +176,6 @@ export function JiraMigrationPage() {
     setStep(5)
   }
 
-  /** Called when the in-progress run no longer exists (404) — wipe stale state and go back to step 1 */
   function handleReset() {
     sessionStorage.removeItem('boardupscale_active_migration')
     setMigrationPayload(null)
@@ -190,30 +188,43 @@ export function JiraMigrationPage() {
     setStep(1)
   }
 
+  const isWideStep = WIDE_STEPS.includes(step)
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6">
+      <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-blue-600 mb-4 shadow-lg shadow-blue-200 dark:shadow-blue-900/40">
+            <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11.53 2c-.59 0-1.04.46-1.04 1.04v8.49H2.04C1.46 11.53 1 11.99 1 12.57c0 3.54 2.82 6.43 6.43 6.43h4.06v2.96c0 .59.46 1.04 1.04 1.04s1.04-.46 1.04-1.04v-2.96h4.06c3.61 0 6.37-2.89 6.37-6.43 0-.58-.46-1.04-1.04-1.04H13.62V3.04c0-.58-.5-1.04-1.04-1.04H11.53z" />
+            </svg>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Migrate from Jira
           </h1>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm sm:text-base">
             Import your projects, issues, sprints, and team members into Boardupscale.
           </p>
         </div>
 
         <Stepper currentStep={step} />
 
-        {/* Step content */}
+        {/* OAuth error banner */}
         {oauthError && (
-          <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/40 px-4 py-3.5 text-sm text-red-700 dark:text-red-400">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span><strong>Atlassian connection failed:</strong> {oauthError}. Please try again.</span>
+            <span>
+              <strong>Atlassian connection failed:</strong> {oauthError}. Please try again.
+            </span>
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 sm:p-8">
+        {/* Step content */}
+        <div className={cn(
+          'bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800',
+          isWideStep ? 'p-6 sm:p-8' : 'p-6 sm:p-8',
+        )}>
           {step === 1 && <ConnectStep onNext={handleConnect} />}
 
           {step === 2 && connectResult && (
