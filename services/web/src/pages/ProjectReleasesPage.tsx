@@ -84,11 +84,11 @@ function VersionCard({
   const isArchived = version.status === 'archived'
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-base font-semibold text-gray-900">{version.name}</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{version.name}</h3>
             <span
               className={cn(
                 'text-xs px-2 py-0.5 rounded-full font-medium',

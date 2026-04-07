@@ -96,7 +96,7 @@ export function BoardQuickFilters({
   }, [])
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-white border-b border-gray-200">
+    <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
@@ -107,7 +107,7 @@ export function BoardQuickFilters({
           onKeyDown={handleSearchKeyDown}
           onBlur={handleSearchBlur}
           placeholder={t('board.searchIssues', 'Search issues...')}
-          className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="pl-8 pr-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         {searchValue && (
           <button
@@ -122,7 +122,7 @@ export function BoardQuickFilters({
         )}
       </div>
 
-      <div className="h-5 w-px bg-gray-200" />
+      <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
 
       {/* Assignee Filter */}
       <div className="relative">
@@ -132,7 +132,7 @@ export function BoardQuickFilters({
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.assigneeId
               ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
           )}
         >
           <Users className="h-3.5 w-3.5" />
@@ -145,7 +145,7 @@ export function BoardQuickFilters({
             <button
               onClick={() => setFilter('assigneeId', undefined)}
               className={cn(
-                'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                 !filters.assigneeId && 'bg-blue-50 text-blue-700',
               )}
             >
@@ -156,7 +156,7 @@ export function BoardQuickFilters({
                 key={member.userId}
                 onClick={() => setFilter('assigneeId', member.userId)}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2',
                   filters.assigneeId === member.userId && 'bg-blue-50 text-blue-700',
                 )}
               >
@@ -178,7 +178,7 @@ export function BoardQuickFilters({
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.type
               ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
           )}
         >
           <Bug className="h-3.5 w-3.5" />
@@ -191,7 +191,7 @@ export function BoardQuickFilters({
             <button
               onClick={() => setFilter('type', undefined)}
               className={cn(
-                'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                 !filters.type && 'bg-blue-50 text-blue-700',
               )}
             >
@@ -202,7 +202,7 @@ export function BoardQuickFilters({
                 key={type.value}
                 onClick={() => setFilter('type', type.value)}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2',
                   filters.type === type.value && 'bg-blue-50 text-blue-700',
                 )}
               >
@@ -223,7 +223,7 @@ export function BoardQuickFilters({
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.priority
               ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
           )}
         >
           <AlertTriangle className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export function BoardQuickFilters({
             <button
               onClick={() => setFilter('priority', undefined)}
               className={cn(
-                'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                 !filters.priority && 'bg-blue-50 text-blue-700',
               )}
             >
@@ -247,7 +247,7 @@ export function BoardQuickFilters({
                 key={p.value}
                 onClick={() => setFilter('priority', p.value)}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2',
                   filters.priority === p.value && 'bg-blue-50 text-blue-700',
                 )}
               >
@@ -269,7 +269,7 @@ export function BoardQuickFilters({
               'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
               filters.sprintId
                 ? 'border-blue-300 bg-blue-50 text-blue-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
             )}
           >
             <Layers className="h-3.5 w-3.5" />
@@ -284,7 +284,7 @@ export function BoardQuickFilters({
               <button
                 onClick={() => setFilter('sprintId', undefined)}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                   !filters.sprintId && 'bg-blue-50 text-blue-700',
                 )}
               >
@@ -293,7 +293,7 @@ export function BoardQuickFilters({
               <button
                 onClick={() => setFilter('sprintId', 'backlog')}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                   filters.sprintId === 'backlog' && 'bg-blue-50 text-blue-700',
                 )}
               >
@@ -304,7 +304,7 @@ export function BoardQuickFilters({
                   key={sprint.id}
                   onClick={() => setFilter('sprintId', sprint.id)}
                   className={cn(
-                    'w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2',
+                    'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2',
                     filters.sprintId === sprint.id && 'bg-blue-50 text-blue-700',
                   )}
                 >
@@ -319,7 +319,7 @@ export function BoardQuickFilters({
         </div>
       )}
 
-      <div className="h-5 w-px bg-gray-200" />
+      <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
 
       {/* Group By */}
       <div className="relative">
@@ -329,7 +329,7 @@ export function BoardQuickFilters({
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             groupBy !== 'none'
               ? 'border-purple-300 bg-purple-50 text-purple-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50',
+              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800',
           )}
         >
           <Filter className="h-3.5 w-3.5" />
@@ -347,7 +347,7 @@ export function BoardQuickFilters({
                   setOpenDropdown(null)
                 }}
                 className={cn(
-                  'w-full text-left px-3 py-2 text-sm hover:bg-gray-100',
+                  'w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800',
                   groupBy === option.value && 'bg-purple-50 text-purple-700',
                 )}
               >
@@ -361,7 +361,7 @@ export function BoardQuickFilters({
       {/* Active filter count + clear */}
       {activeFilterCount > 0 && (
         <>
-          <div className="h-5 w-px bg-gray-200" />
+          <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
           <Badge variant="primary" className="text-xs">
             {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
           </Badge>
@@ -390,7 +390,7 @@ function DropdownPanel({
     <>
       {/* Invisible backdrop */}
       <div className="fixed inset-0 z-10" onClick={onClose} />
-      <div className="absolute top-full left-0 mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] max-h-64 overflow-y-auto">
+      <div className="absolute top-full left-0 mt-1 z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 py-1 min-w-[200px] max-h-64 overflow-y-auto">
         {children}
       </div>
     </>

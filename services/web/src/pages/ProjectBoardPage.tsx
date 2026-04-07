@@ -401,7 +401,7 @@ export function ProjectBoardPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 bg-white">
+      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         {[
           { label: t('nav.board'), href: `/projects/${projectKey}/board` },
           { label: t('nav.backlog'), href: `/projects/${projectKey}/backlog` },
@@ -421,7 +421,7 @@ export function ProjectBoardPage() {
                 'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
                 isActive
                   ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600',
               )}
             >
               {tab.label}
@@ -458,7 +458,7 @@ export function ProjectBoardPage() {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-auto">
             {/* Column Headers (sticky) */}
-            <div className="flex gap-4 px-6 pt-4 pb-2 bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div className="flex gap-4 px-6 pt-4 pb-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
               {board.statuses.map((column) => {
                 const wipLimit = column.wipLimit || 0
                 const totalIssues = column.issues.length

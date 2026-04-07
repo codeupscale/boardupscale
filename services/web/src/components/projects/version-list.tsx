@@ -95,12 +95,12 @@ export function VersionList({ projectId }: VersionListProps) {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {versions?.map((version) => (
           <div key={version.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900">{version.name}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{version.name}</p>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     statusStyles[version.status] || statusStyles.unreleased

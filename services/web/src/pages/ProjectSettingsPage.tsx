@@ -143,7 +143,7 @@ export function ProjectSettingsPage() {
           {/* General */}
           {activeTab === 'general' && project && (
             <div className="max-w-lg">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">{t('settings.generalSettings')}</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('settings.generalSettings')}</h2>
               <ProjectForm
                 project={project}
                 onSubmit={(values) =>
@@ -160,13 +160,13 @@ export function ProjectSettingsPage() {
           {activeTab === 'members' && (
             <div className="max-w-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">{t('projects.projectMembers')}</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('projects.projectMembers')}</h2>
                 <Button size="sm" onClick={() => setShowAddMember(true)}>
                   <Plus className="h-4 w-4" />
                   {t('projects.addMember')}
                 </Button>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 px-4">
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 px-4">
                 <MemberList projectId={projectKey!} members={members || []} />
               </div>
             </div>
@@ -176,7 +176,7 @@ export function ProjectSettingsPage() {
           {activeTab === 'workflow' && (
             <div className="max-w-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">{t('settings.issueStatuses')}</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.issueStatuses')}</h2>
                 <Button
                   size="sm"
                   onClick={() => {
@@ -191,14 +191,14 @@ export function ProjectSettingsPage() {
                   {t('settings.addStatus')}
                 </Button>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                 {board?.statuses?.map((status) => (
                   <div key={status.id} className="flex items-center gap-3 px-4 py-3">
                     <span
                       className="h-3 w-3 rounded-full flex-shrink-0"
                       style={{ backgroundColor: status.color || '#6b7280' }}
                     />
-                    <span className="flex-1 text-sm font-medium text-gray-900">{status.name}</span>
+                    <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{status.name}</span>
                     <span className="text-xs text-gray-500">{status.category}</span>
                     <Button
                       variant="ghost"
@@ -233,7 +233,7 @@ export function ProjectSettingsPage() {
             <div className="max-w-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">Roles & Permissions</h2>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Roles & Permissions</h2>
                   <p className="text-sm text-gray-500 mt-1">
                     Manage organization-wide roles or assign roles to project members.
                   </p>
@@ -247,7 +247,7 @@ export function ProjectSettingsPage() {
               </div>
 
               {/* Assign roles to members inline */}
-              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
                 <MemberRoleList projectId={projectKey!} />
               </div>
             </div>
@@ -259,7 +259,7 @@ export function ProjectSettingsPage() {
               <div className="flex items-start gap-3">
                 <Globe className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <h2 className="text-base font-semibold text-gray-900 mb-1">Webhooks</h2>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Webhooks</h2>
                   <p className="text-sm text-gray-500 mb-4">
                     Configure webhooks to receive real-time HTTP callbacks when events occur in this project.
                   </p>
@@ -475,7 +475,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
       {members.map((member) => (
         <div key={member.id} className="flex items-center gap-3 px-4 py-3">
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {member.user?.displayName || member.userId}
             </span>
             <span className="text-xs text-gray-500 ml-2">
@@ -485,7 +485,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-2">
             <Badge variant="outline">{member.role}</Badge>
             <select
-              className="text-xs border border-gray-200 rounded-md px-2 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="text-xs border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               value={(member as any).roleId || ''}
               onChange={(e) => {
                 if (e.target.value) {

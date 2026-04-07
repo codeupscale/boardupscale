@@ -52,7 +52,7 @@ function StatCard({
           <Icon className="h-6 w-6 text-white" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
           <p className="text-sm text-gray-500">{label}</p>
         </div>
       </CardContent>
@@ -87,7 +87,7 @@ function MiniBurndownWidget({
         <div className="flex items-center justify-between mb-2">
           <div>
             <p className="text-xs text-gray-500 truncate">{projectName}</p>
-            <p className="text-sm font-semibold text-gray-900">{data.sprintName}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{data.sprintName}</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold text-blue-600">{remaining}</p>
@@ -118,7 +118,9 @@ function MiniBurndownWidget({
                   borderRadius: 6,
                   fontSize: 11,
                   padding: '4px 8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--tooltip-border, #e5e7eb)',
+                  backgroundColor: 'var(--tooltip-bg, #fff)',
+                  color: 'var(--tooltip-fg, #111827)',
                 }}
               />
             </LineChart>
@@ -157,7 +159,7 @@ function VelocityWidget({
         <div className="flex items-center justify-between mb-2">
           <div>
             <p className="text-xs text-gray-500 truncate">{projectName}</p>
-            <p className="text-sm font-semibold text-gray-900">Velocity</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Velocity</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold text-green-600">{data.averageVelocity}</p>
@@ -173,7 +175,9 @@ function VelocityWidget({
                   borderRadius: 6,
                   fontSize: 11,
                   padding: '4px 8px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--tooltip-border, #e5e7eb)',
+                  backgroundColor: 'var(--tooltip-bg, #fff)',
+                  color: 'var(--tooltip-fg, #111827)',
                 }}
               />
             </BarChart>
@@ -210,20 +214,20 @@ function WorkloadSummaryWidget({
       <CardContent className="py-4">
         <div className="flex items-center gap-2 mb-3">
           <Target className="h-4 w-4 text-purple-500" />
-          <p className="text-sm font-semibold text-gray-900">My Workload</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Workload</p>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">In Progress</span>
-            <span className="font-medium text-gray-900">{inProgressCount} issues</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{inProgressCount} issues</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Total Points</span>
-            <span className="font-medium text-gray-900">{totalPoints} SP</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{totalPoints} SP</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Time Logged</span>
-            <span className="font-medium text-gray-900">{formatMinutes(totalTimeLogged)}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">{formatMinutes(totalTimeLogged)}</span>
           </div>
         </div>
       </CardContent>
@@ -286,7 +290,7 @@ export function DashboardPage() {
     <div className="p-6 space-y-6">
       {/* Greeting */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {greeting}, {user?.displayName?.split(' ')[0] || 'there'}
         </h1>
         <p className="text-gray-500 text-sm mt-1">
@@ -321,7 +325,7 @@ export function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="h-4 w-4 text-gray-500" />
-            <h2 className="text-base font-semibold text-gray-900">Insights</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Insights</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {activeSprint && (
@@ -349,7 +353,7 @@ export function DashboardPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">{t('dashboard.myIssues')}</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.myIssues')}</h2>
             <Link to="/issues" className="text-sm text-blue-600 hover:text-blue-700">
               {t('common.viewAll')}
             </Link>
@@ -364,7 +368,7 @@ export function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-gray-700">
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
@@ -387,7 +391,7 @@ export function DashboardPage() {
       {/* Recent Projects */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-gray-900">{t('dashboard.recentProjects')}</h2>
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.recentProjects')}</h2>
           <Link to="/projects" className="text-sm text-blue-600 hover:text-blue-700">
             {t('common.viewAll')}
           </Link>

@@ -71,15 +71,15 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center mb-8">
             <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
               <Zap className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Boardupscale</h1>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
             <p className="text-sm text-red-600 mb-4">
               Invalid or missing reset token. Please request a new password
               reset link.
@@ -98,25 +98,25 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Boardupscale</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Boardupscale</h1>
           <p className="text-sm text-gray-500 mt-1">Set your new password</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           {isSuccess ? (
             <div className="text-center">
               <div className="flex items-center justify-center h-12 w-12 bg-green-100 rounded-full mx-auto mb-4">
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Password reset successful
               </h2>
               <p className="text-sm text-gray-600 mb-6">

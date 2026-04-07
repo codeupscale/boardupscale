@@ -88,7 +88,7 @@ function BreakdownPie({
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
         <p className="text-sm text-gray-500">{total} total issues</p>
       </CardHeader>
       <CardContent>

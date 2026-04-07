@@ -387,7 +387,7 @@ function SecurityTab() {
             <p className="text-sm font-semibold text-gray-900 dark:text-white">
               Scan this QR code with your authenticator app
             </p>
-            <div className="flex justify-center p-4 bg-white rounded-lg border border-gray-100">
+            <div className="flex justify-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-600">
               <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-44 h-44" />
             </div>
             <div>

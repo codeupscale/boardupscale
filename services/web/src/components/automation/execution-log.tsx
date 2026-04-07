@@ -49,10 +49,10 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
         return (
           <div
             key={log.id}
-            className="border border-gray-200 rounded-lg bg-white overflow-hidden"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 overflow-hidden"
           >
             <button
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               onClick={() => setExpandedId(isExpanded ? null : log.id)}
             >
               {isExpanded ? (
@@ -63,7 +63,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
               <StatusIcon className={cn('h-4 w-4 flex-shrink-0', statusInfo.color)} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 truncate">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {log.triggerEvent}
                   </span>
                   {log.issue && (
@@ -79,7 +79,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
             </button>
 
             {isExpanded && (
-              <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
+              <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
                 {log.errorMessage && (
                   <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
                     {log.errorMessage}

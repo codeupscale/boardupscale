@@ -30,24 +30,24 @@ export function AuditLogPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-blue-600" />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{t('audit.title')}</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('audit.title')}</h1>
             <p className="text-sm text-gray-500">{t('audit.subtitle')}</p>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-3 items-end">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
             {t('audit.entityType')}
           </label>
           <select
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={entityType}
             onChange={(e) => { setEntityType(e.target.value); setPage(1) }}
           >
@@ -100,7 +100,7 @@ export function AuditLogPage() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0">
               <tr>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {t('audit.when')}
@@ -122,16 +122,16 @@ export function AuditLogPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
+                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
                     {formatRelativeTime(log.createdAt)}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <Avatar user={log.user} size="xs" />
-                      <span className="text-gray-900">
+                      <span className="text-gray-900 dark:text-gray-100">
                         {log.user?.displayName || 'System'}
                       </span>
                     </div>
@@ -141,7 +141,7 @@ export function AuditLogPage() {
                       {log.action}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-gray-600">
+                  <td className="px-6 py-3 text-gray-600 dark:text-gray-400">
                     {log.entityType || '-'}
                   </td>
                   <td className="px-6 py-3 text-gray-500 max-w-xs truncate">
@@ -159,7 +159,7 @@ export function AuditLogPage() {
 
       {/* Pagination */}
       {meta && meta.totalPages > 1 && (
-        <div className="px-6 py-3 border-t border-gray-200 bg-white flex items-center justify-between">
+        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between">
           <Button
             size="sm"
             variant="outline"

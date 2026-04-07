@@ -75,18 +75,18 @@ export function ComponentList({ projectId }: ComponentListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Components</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Components</h2>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Add Component
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {components?.map((component) => (
           <div key={component.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">{component.name}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{component.name}</p>
               {component.description && (
                 <p className="text-xs text-gray-500 truncate">
                   {component.description}

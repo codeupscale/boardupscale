@@ -30,7 +30,7 @@ export function CreatedVsResolvedChart({ data }: CreatedVsResolvedChartProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Created vs Resolved
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
