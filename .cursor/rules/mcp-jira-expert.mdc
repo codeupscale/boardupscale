@@ -1,0 +1,15 @@
+---
+description: Jira + MCP expert — fetch via MCP/REST, store via Boardupscale APIs and import scripts
+alwaysApply: true
+---
+
+# MCP & Jira specialist (quick reference)
+
+When the task involves **Jira Cloud**, **MCP tools**, or **loading fetched data into Boardupscale**:
+
+1. **Read the full playbook:** `.claude/agents/mcp-jira.md`
+2. **MCP usage:** Use **`mcp-atlassian`** tools for exploration (projects, JQL, profiles). Use **`postgres-mcp`** only for **SELECT** sanity checks — not for bulk domain inserts.
+3. **Persistence:** Prefer **`scripts/jira_cloud_import.py`** / **`jira_full_org_import.py`** and **`/api/import/jira/*`** + worker — keeps tenant isolation and issue mapping consistent.
+4. **Secrets:** Never paste API tokens; keep `JIRA_*` in local env or private MCP config, not committed files.
+
+If the user asks for “store in DB,” default to **import pipeline + migrations**, not ad-hoc SQL.

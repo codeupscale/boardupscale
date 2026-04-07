@@ -1,0 +1,55 @@
+---
+description: How to use Claude agents + skills in Cursor for Boardupscale
+alwaysApply: true
+---
+
+# Agents & skills in Cursor (Boardupscale)
+
+Cursor does not run slash-commands like `/pipeline` natively. Treat the repo’s **agent definitions** as **role contracts**: open the file and follow its checklist when the task matches.
+
+## Cursor skill: full delivery orchestrator (`.cursor/skills/`)
+
+For **end-to-end** work — analysis → plan → implementation → tests → review (e.g. “audit Jira migration sync and fix gaps”, “master flow”, “full pipeline”) — apply the project skill **`boardupscale-master-delivery`**: read `.cursor/skills/boardupscale-master-delivery/SKILL.md` and follow it. It sequences Master + Pipeline + gates in a Cursor-native way (no separate “assign agent” runtime; you execute the playbook and pull in the right `.claude/agents/*.md` files per phase).
+
+## Agent roster (`.claude/agents/`)
+
+| Agent file | Use when |
+|------------|----------|
+| `master.md` | Large goals, sequencing, cross-cutting decisions |
+| `pipeline.md` | Single deliverable through gates (design → impl → QA mental model) |
+| `architect.md` | Module boundaries, DDD, events, scalability |
+| `database.md` | Schema, Postgres, indexing, tenant columns |
+| `migration.md` | Migration safety (rollback, nullable, indexes) |
+| `backend.md` | NestJS, guards, DTOs, services |
+| `frontend.md` | React/Vite web app, TanStack Query, Zustand |
+| `worker.md` | BullMQ jobs, retries, idempotency |
+| `realtime.md` | Socket.io, rooms, JWT handshake |
+| `rbac.md` | Permissions, roles, org vs project scope |
+| `search.md` | Elasticsearch, indexing pipeline |
+| `github.md` | GitHub integration |
+| `payments.md` | Billing (if touched) |
+| `ai.md` | Embeddings / LLM features |
+| `security.md` | Threat model, tenant bypass, OWASP |
+| `qa.md` | Tests, coverage, E2E |
+| `reviewer.md` | Final review, BLOCK/WARN/APPROVE style |
+| `product.md` | PM tool parity, Jira/Linear behavior |
+| `devops.md` | Docker, CI, deploy |
+| `docs.md` | OpenAPI, ADRs |
+| `master-jira-import.md` | Jira → Boardupscale migration orchestration |
+| **`mcp-jira.md`** | **Jira + MCP expert:** use Atlassian MCP for discovery, REST/scripts for bulk, persist via import API + worker (not raw SQL) |
+
+**How to invoke in Cursor:** e.g. *“Follow `.claude/agents/backend.md` for this Nest change”* or *“Run a product audit per `product.md` on this feature.”*
+
+## Skills (`.claude/skills/`)
+
+| Skill | Path | Purpose |
+|-------|------|---------|
+| Master | `.claude/skills/master/SKILL.md` | Top-level orchestration hint |
+| Pipeline | `.claude/skills/pipeline/SKILL.md` | Single-task pipeline hint |
+| MCP + Jira | `.claude/skills/mcp-jira/SKILL.md` | Jira MCP discovery + Boardupscale persistence path |
+
+Use skills as **short delegation hints**; full behavior lives in the matching `agents/*.md` file.
+
+## Gates (from `CLAUDE.md`)
+
+For risky changes, mentally apply: **migration** (schema), **qa** (tests), **security** (auth/tenant), **reviewer** (ship/no-ship). Do not skip tenant tests for new org-scoped APIs.

@@ -1,0 +1,14 @@
+---
+description: React/Vite web app patterns for Boardupscale services/web
+globs: services/web/**/*
+alwaysApply: false
+---
+
+# Boardupscale Web (`services/web`)
+
+- **Stack**: React 18, Vite, TypeScript, Tailwind, shadcn/Radix patterns in `components/ui`.
+- **Data**: TanStack Query for server state; Zustand where the codebase already uses it; avoid raw `fetch` if a shared API client exists (`lib/api.ts`).
+- **Realtime**: Socket.io client — in dev connect to API origin (see `lib/socket.ts`), not through fragile Vite WS proxies.
+- **i18n**: `react-i18next` — add keys consistently when touching user-visible copy.
+
+Reference: `.claude/agents/frontend.md`, `ui.md`.

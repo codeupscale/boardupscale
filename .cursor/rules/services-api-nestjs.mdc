@@ -1,0 +1,15 @@
+---
+description: NestJS API patterns for Boardupscale services/api
+globs: services/api/**/*.ts
+alwaysApply: false
+---
+
+# Boardupscale API (`services/api`)
+
+- **Framework**: NestJS + TypeORM; follow existing module structure (`*.module.ts`, `*.service.ts`, `*.controller.ts`).
+- **Guards**: `JwtAuthGuard`, `RolesGuard`, org/project decorators (`@OrgId()`, `@CurrentUser()`). New routes must not leak cross-tenant data.
+- **Validation**: DTOs + `class-validator`; thin controllers.
+- **Queues**: Enqueue heavy work to BullMQ (`services/worker`), not inline in controllers.
+- **Import / scripts**: Prefer existing import pipelines over ad-hoc SQL writes.
+
+Reference: `.claude/agents/backend.md`, `security.md`, `migration.md` (for schema work).

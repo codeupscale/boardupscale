@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "JIRA_URL": "https://YOUR_SITE.atlassian.net",
+        "JIRA_USERNAME": "you@company.com",
+        "JIRA_API_TOKEN": "PASTE_FROM_ATLASSIAN_ACCOUNT_SECURITY"
+      }
+    },
+    "postgres-mcp": {
+      "command": "uvx",
+      "args": ["--python", "3.12", "postgres-mcp", "--access-mode=restricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://USER:PASSWORD@localhost:5433/boardupscale"
+      }
+    }
+  }
+}
