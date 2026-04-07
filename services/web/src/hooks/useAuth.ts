@@ -16,7 +16,7 @@ export function useAuthProviders() {
     queryKey: ['auth-providers'],
     queryFn: async () => {
       const { data } = await api.get('/auth/providers')
-      return data as AuthProviders
+      return (data.data ?? data) as AuthProviders
     },
     staleTime: 5 * 60 * 1000, // cache for 5 minutes
   })

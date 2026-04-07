@@ -20,7 +20,7 @@ export function useSwitchOrg() {
   return useMutation({
     mutationFn: async (organizationId: string) => {
       const { data } = await api.post('/auth/switch-org', { organizationId })
-      return data
+      return data.data ?? data
     },
     onSuccess: (data) => {
       setTokens(data.accessToken, data.refreshToken)
