@@ -1,7 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
-import { User } from '@/types'
+import { useAuthStore } from '@/store/auth.store'
+import { User, OrganizationMembership } from '@/types'
+
+export function useMyMemberships() {
+  return useQuery({
+    queryKey: ['my-memberships'],
+    queryFn: async () => {
+      const { data } = await api.get('/organizations/my-memberships')
+      return data.data as OrganizationMembership[]
+    },
+  })
+}
+
+export function useSwitchOrg() {
+  const setTokens = useAuthStore((s) => s.setTokens)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (organizationId: string) => {
+      const { data } = await api.post('/auth/switch-org', { organizationId })
+      return data
+    },
+    onSuccess: (data) => {
+      setTokens(data.accessToken, data.refreshToken)
+      // Clear all cached data since it's org-scoped
+      qc.clear()
+      // Reload to refresh all data with new org context
+      window.location.href = '/'
+    },
+    onError: (err: any) => {
+      toast(err?.response?.data?.message || 'Failed to switch organization', 'error')
+    },
+  })
+}
 
 export function useOrgMembers() {
   return useQuery({

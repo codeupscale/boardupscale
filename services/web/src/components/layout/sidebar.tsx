@@ -24,6 +24,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
+import { OrgSwitcher } from '@/components/layout/org-switcher'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
@@ -134,6 +135,9 @@ export function Sidebar() {
           variant={isSidebarOpen ? 'full' : 'icon'}
         />
       </div>
+
+      {/* Organization Switcher */}
+      <OrgSwitcher />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3">

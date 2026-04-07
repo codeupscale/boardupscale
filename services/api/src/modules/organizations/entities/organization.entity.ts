@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { OrganizationMember } from './organization-member.entity';
 
 @Entity('organizations')
 export class Organization {
@@ -19,6 +21,9 @@ export class Organization {
 
   @Column({ type: 'jsonb', nullable: true, default: () => `'{}'` })
   settings: Record<string, any>;
+
+  @OneToMany(() => OrganizationMember, (m) => m.organization)
+  members: OrganizationMember[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

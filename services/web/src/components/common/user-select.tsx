@@ -47,14 +47,14 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'w-full flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-left',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 transition-colors',
+          'w-full flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-left',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors',
         )}
       >
         {selectedUser ? (
           <>
             <Avatar user={selectedUser} size="xs" />
-            <span className="flex-1 text-gray-900">{selectedUser.displayName}</span>
+            <span className="flex-1 text-gray-900 dark:text-gray-100">{selectedUser.displayName}</span>
             <button
               type="button"
               onClick={(e) => {
@@ -72,15 +72,15 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-700">
             <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users..."
-              className="flex-1 text-sm outline-none"
+              className="flex-1 text-sm outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               autoFocus
             />
           </div>
@@ -92,7 +92,7 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
                 setOpen(false)
                 setSearch('')
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Unassigned
             </button>
@@ -100,7 +100,7 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
             {/* AI Suggested Assignees */}
             {aiStatus?.enabled && aiSuggestions.length > 0 && !search && (
               <>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
                   <Sparkles className="h-3 w-3 text-purple-500" />
                   <span className="text-[10px] uppercase tracking-wider text-purple-500 font-semibold">AI Suggested</span>
                 </div>
@@ -115,17 +115,17 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
                         setOpen(false)
                         setSearch('')
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-purple-50 text-left"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-left"
                     >
                       <Avatar user={user || { displayName: s.displayName, avatarUrl: s.avatarUrl }} size="xs" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-gray-900 font-medium truncate">{s.displayName}</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{s.displayName}</p>
                         <p className="text-purple-500 text-[10px] truncate">{s.reason}</p>
                       </div>
                     </button>
                   )
                 })}
-                <div className="border-b border-gray-100 my-0.5" />
+                <div className="border-b border-gray-100 dark:border-gray-700 my-0.5" />
               </>
             )}
 
@@ -138,11 +138,11 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
                   setOpen(false)
                   setSearch('')
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 text-left"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-left"
               >
                 <Avatar user={user} size="xs" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 font-medium truncate">{user.displayName}</p>
+                  <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{user.displayName}</p>
                   <p className="text-gray-500 text-xs truncate">{user.email}</p>
                 </div>
               </button>

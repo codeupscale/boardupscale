@@ -26,7 +26,7 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-base font-semibold text-gray-900">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
           Assignee Workload
         </h3>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -109,7 +109,7 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
               <tbody>
                 {data.assignees.map((a) => (
                   <tr key={a.assigneeId} className="border-b border-gray-50">
-                    <td className="py-2 px-3 font-medium text-gray-900">
+                    <td className="py-2 px-3 font-medium text-gray-900 dark:text-gray-100">
                       {a.displayName}
                     </td>
                     <td className="py-2 px-3 text-right text-gray-600">

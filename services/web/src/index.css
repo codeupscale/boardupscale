@@ -17,6 +17,19 @@ body {
   margin: 0;
 }
 
+/* CSS custom properties for recharts dark mode */
+:root {
+  --tooltip-bg: #fff;
+  --tooltip-fg: #111827;
+  --tooltip-border: #e5e7eb;
+}
+
+.dark {
+  --tooltip-bg: #1f2937;
+  --tooltip-fg: #e5e7eb;
+  --tooltip-border: #374151;
+}
+
 /* Dark mode body */
 .dark body {
   background-color: #0f1117;
@@ -301,6 +314,27 @@ html.theme-transition *::after {
 .dark .rich-text-content .mention {
   background-color: #1e3a5f;
   color: #93c5fd;
+}
+
+.dark .rich-text-editor-content .ProseMirror hr,
+.dark .rich-text-content hr {
+  border-top-color: #4b5563;
+}
+
+.dark .rich-text-editor-content .ProseMirror a,
+.dark .rich-text-content a,
+.dark .rich-text-editor-content .ProseMirror .rich-link,
+.dark .rich-text-content .rich-link {
+  color: #60a5fa;
+}
+
+.dark .rich-text-editor-content .ProseMirror a:hover,
+.dark .rich-text-content a:hover {
+  color: #93bbfd;
+}
+
+.dark .rich-text-editor-content .ProseMirror ::selection {
+  background-color: #1e40af;
 }
 
 /* ─── TipTap Table ─────────────────────────────────────────────────────────── */

@@ -129,13 +129,13 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {definitions?.map((def) => (
           <div key={def.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900">{def.name}</p>
-                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{def.name}</p>
+                <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full">
                   {def.fieldType.replace('_', ' ')}
                 </span>
                 {def.isRequired && (

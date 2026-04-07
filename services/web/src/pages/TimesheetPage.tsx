@@ -111,7 +111,7 @@ export function TimesheetPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Timesheet</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Timesheet</h1>
           <p className="text-sm text-gray-500 mt-1">
             Track time logged across issues
           </p>
@@ -238,7 +238,7 @@ function MyTimesheetView({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             My Time ({formatMinutes(data.totalMinutes)})
           </h3>
           <Button variant="outline" size="sm" onClick={handleExport}>
@@ -251,7 +251,7 @@ function MyTimesheetView({
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 min-w-48">
                   Issue
                 </th>
@@ -263,7 +263,7 @@ function MyTimesheetView({
                     {formatDayHeader(d)}
                   </th>
                 ))}
-                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 min-w-20 bg-gray-100">
+                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 min-w-20 bg-gray-100 dark:bg-gray-700">
                   Total
                 </th>
               </tr>
@@ -275,9 +275,9 @@ function MyTimesheetView({
                   0,
                 )
                 return (
-                  <tr key={row.key} className="border-b border-gray-50 hover:bg-gray-50">
+                  <tr key={row.key} className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-800">
                     <td className="px-4 py-2.5">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {row.key}
                       </div>
                       <div className="text-xs text-gray-500 truncate max-w-56">
@@ -288,13 +288,13 @@ function MyTimesheetView({
                       <td
                         key={i}
                         className={`px-3 py-2.5 text-center text-sm ${
-                          m > 0 ? 'text-gray-900 font-medium' : 'text-gray-300'
+                          m > 0 ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-300'
                         }`}
                       >
                         {formatMinutes(m)}
                       </td>
                     ))}
-                    <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 bg-gray-50">
+                    <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">
                       {formatMinutes(rowTotal)}
                     </td>
                   </tr>
@@ -302,7 +302,7 @@ function MyTimesheetView({
               })}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-50 border-t border-gray-200">
+              <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200">
                 <td className="px-4 py-2.5 text-sm font-semibold text-gray-700">
                   Daily Total
                 </td>
@@ -314,7 +314,7 @@ function MyTimesheetView({
                     {formatMinutes(m)}
                   </td>
                 ))}
-                <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 bg-gray-100">
+                <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700">
                   {formatMinutes(data.totalMinutes)}
                 </td>
               </tr>
@@ -366,7 +366,7 @@ function TeamTimesheetView({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             Team Time ({formatMinutes(data.totalMinutes)})
           </h3>
           <Button variant="outline" size="sm" onClick={handleExport}>
@@ -379,7 +379,7 @@ function TeamTimesheetView({
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
+              <tr className="border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 min-w-40">
                   Team Member
                 </th>
@@ -391,7 +391,7 @@ function TeamTimesheetView({
                     {formatDayHeader(d)}
                   </th>
                 ))}
-                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 min-w-20 bg-gray-100">
+                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-700 min-w-20 bg-gray-100 dark:bg-gray-700">
                   Total
                 </th>
               </tr>
@@ -400,7 +400,7 @@ function TeamTimesheetView({
               {members.map((member: any) => (
                 <tr
                   key={member.userId}
-                  className="border-b border-gray-50 hover:bg-gray-50"
+                  className="border-b border-gray-50 hover:bg-gray-50 dark:bg-gray-800"
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
@@ -415,7 +415,7 @@ function TeamTimesheetView({
                           {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                         </div>
                       )}
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {member.displayName}
                       </span>
                     </div>
@@ -424,20 +424,20 @@ function TeamTimesheetView({
                     <td
                       key={i}
                       className={`px-3 py-2.5 text-center text-sm ${
-                        m > 0 ? 'text-gray-900 font-medium' : 'text-gray-300'
+                        m > 0 ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-300'
                       }`}
                     >
                       {formatMinutes(m)}
                     </td>
                   ))}
-                  <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 bg-gray-50">
+                  <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800">
                     {formatMinutes(member.totalMinutes)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-50 border-t border-gray-200">
+              <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200">
                 <td className="px-4 py-2.5 text-sm font-semibold text-gray-700">
                   Daily Total
                 </td>
@@ -449,7 +449,7 @@ function TeamTimesheetView({
                     {formatMinutes(m)}
                   </td>
                 ))}
-                <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 bg-gray-100">
+                <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700">
                   {formatMinutes(data.totalMinutes)}
                 </td>
               </tr>

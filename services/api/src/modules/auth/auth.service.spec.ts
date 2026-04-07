@@ -20,6 +20,7 @@ import { UsersService } from '../users/users.service';
 import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { AuditService } from '../audit/audit.service';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../test/mock-factories';
@@ -40,6 +41,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     refreshTokenRepo = createMockRepository();
     organizationRepo = createMockRepository();
+    const orgMemberRepo = createMockRepository();
 
     usersService = {
       findByEmail: jest.fn(),
@@ -81,6 +83,7 @@ describe('AuthService', () => {
         PasswordPolicyService,
         { provide: getRepositoryToken(RefreshToken), useValue: refreshTokenRepo },
         { provide: getRepositoryToken(Organization), useValue: organizationRepo },
+        { provide: getRepositoryToken(OrganizationMember), useValue: orgMemberRepo },
         { provide: UsersService, useValue: usersService },
         { provide: EmailService, useValue: emailService },
         { provide: JwtService, useValue: jwtService },

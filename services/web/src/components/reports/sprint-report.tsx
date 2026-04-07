@@ -15,7 +15,7 @@ export function SprintReport({ data }: SprintReportProps) {
       {/* Sprint info */}
       <Card>
         <CardHeader>
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             {sprint.name}
           </h3>
           {sprint.goal && (
@@ -61,7 +61,7 @@ export function SprintReport({ data }: SprintReportProps) {
       {byType.length > 0 && (
         <Card>
           <CardHeader>
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Breakdown by Type
             </h3>
           </CardHeader>
@@ -95,7 +95,7 @@ export function SprintReport({ data }: SprintReportProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Completed Issues ({completedIssues.length})
             </h3>
           </div>
@@ -120,7 +120,7 @@ export function SprintReport({ data }: SprintReportProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Incomplete Issues ({incompleteIssues.length})
             </h3>
           </div>
@@ -163,7 +163,7 @@ function StatCard({
           {icon}
         </div>
         <div>
-          <p className="text-lg font-bold text-gray-900">{value}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
           <p className="text-xs text-gray-500">{label}</p>
         </div>
       </CardContent>
@@ -190,7 +190,7 @@ function IssueRow({
       className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
     >
       <span className="text-xs font-mono text-gray-500 w-20">{issue.key}</span>
-      <span className="text-sm text-gray-900 flex-1 truncate">
+      <span className="text-sm text-gray-900 dark:text-gray-100 flex-1 truncate">
         {issue.title}
       </span>
       <span className="text-xs text-gray-500 capitalize">{issue.type}</span>

@@ -53,8 +53,8 @@ function NotificationItem({ notification }: { notification: Notification }) {
       onClick={handleClick}
       className={cn(
         'w-full flex items-start gap-4 px-6 py-4 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
-        !notification.read && 'bg-blue-50 border-l-4 border-l-blue-500',
-        notification.read && 'hover:bg-gray-50',
+        !notification.read && 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500',
+        notification.read && 'hover:bg-gray-50 dark:hover:bg-gray-800',
         link && 'cursor-pointer',
       )}
     >
@@ -62,7 +62,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
         {getNotificationIcon(notification.type)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm', !notification.read ? 'font-semibold text-gray-900' : 'text-gray-700')}>
+        <p className={cn('text-sm', !notification.read ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}>
           {notification.title}
         </p>
         {notification.body && (
@@ -115,10 +115,10 @@ export function NotificationsPage() {
             description={t('notifications.noNotificationsDesc')}
           />
         ) : (
-          <div className="bg-white divide-y divide-gray-100 max-w-3xl">
+          <div className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700 max-w-3xl rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {/* Unread section */}
             {unreadCount > 0 && (
-              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+              <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {t('notifications.unread', { count: unreadCount })}
                 </p>
@@ -133,7 +133,7 @@ export function NotificationsPage() {
             {/* Read section */}
             {notifications.some((n) => n.read) && (
               <>
-                <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {t('notifications.earlier')}
                   </p>

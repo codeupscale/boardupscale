@@ -10,6 +10,7 @@ import { SamlService } from './saml.service';
 import { PasswordPolicyService } from './password-policy.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
@@ -31,7 +32,7 @@ function getOAuthProviders(): any[] {
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RefreshToken, Organization]),
+    TypeOrmModule.forFeature([RefreshToken, Organization, OrganizationMember]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

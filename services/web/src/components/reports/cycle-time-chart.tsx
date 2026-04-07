@@ -30,7 +30,7 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
       <Card>
         <CardHeader>
           <div>
-            <h3 className="text-base font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Cycle Time Distribution
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -82,7 +82,7 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
       {/* By type breakdown */}
       <Card>
         <CardHeader>
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             Cycle Time by Issue Type
           </h3>
         </CardHeader>

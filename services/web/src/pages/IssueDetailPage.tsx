@@ -40,6 +40,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { UserSelect } from '@/components/common/user-select'
@@ -72,7 +73,7 @@ function CommentItem({
       <Avatar user={comment.author} size="sm" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {comment.author?.displayName || 'Unknown'}
           </span>
           <span className="text-xs text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
@@ -196,6 +197,7 @@ export function IssueDetailPage() {
   const [showDeleteIssue, setShowDeleteIssue] = useState(false)
   const [showCreateChild, setShowCreateChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
+  const [childType, setChildType] = useState('')
   const [labelInput, setLabelInput] = useState('')
   const [labels, setLabels] = useState<string[]>(issue?.labels || [])
 
@@ -221,20 +223,20 @@ export function IssueDetailPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Breadcrumb */}
-      <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center gap-2 text-sm">
-        <Link to="/projects" className="text-gray-400 hover:text-gray-600">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2 text-sm">
+        <Link to="/projects" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
           {t('nav.projects')}
         </Link>
-        <span className="text-gray-300">/</span>
+        <span className="text-gray-300 dark:text-gray-600">/</span>
         {issue.projectId && (
           <>
             <Link
               to={`/projects/${issue.projectId}/board`}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               {t('nav.board')}
             </Link>
-            <span className="text-gray-300">/</span>
+            <span className="text-gray-300 dark:text-gray-600">/</span>
           </>
         )}
         <span className="font-mono text-blue-600 font-medium">{issue.key}</span>
@@ -255,7 +257,7 @@ export function IssueDetailPage() {
                   autoFocus
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
-                  className="flex-1 text-xl font-bold text-gray-900 border border-blue-300 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-xl font-bold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       updateIssue.mutate({ id: issue.id, title: titleValue })
@@ -280,7 +282,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <h1
-                className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-700 transition-colors"
+                className="text-xl font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
                 onClick={() => {
                   setTitleValue(issue.title)
                   setEditingTitle(true)
@@ -374,7 +376,7 @@ export function IssueDetailPage() {
                     >
                       <IssueTypeIcon type={child.type} />
                       <span className="text-xs font-mono text-blue-600 font-medium">{child.key}</span>
-                      <span className="text-sm text-gray-900 truncate flex-1">{child.title}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{child.title}</span>
                       <StatusBadge status={child.status} />
                     </Link>
                   ))}
@@ -395,7 +397,7 @@ export function IssueDetailPage() {
               >
                 <IssueTypeIcon type={issue.parent.type} />
                 <span className="text-xs font-mono text-blue-600 font-medium">{issue.parent.key}</span>
-                <span className="text-sm text-gray-900 truncate flex-1">{issue.parent.title}</span>
+                <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{issue.parent.title}</span>
               </Link>
             </div>
           )}
@@ -463,7 +465,7 @@ export function IssueDetailPage() {
               {workLogs?.map((log) => (
                 <div key={log.id} className="flex items-center gap-3 text-sm">
                   <Avatar user={log.user} size="xs" />
-                  <span className="font-medium text-gray-900">{formatDuration(log.timeSpent)}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
                   {log.description && (
                     <span className="text-gray-500">{log.description}</span>
                   )}
@@ -488,14 +490,14 @@ export function IssueDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="w-full lg:w-80 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 overflow-y-auto p-4 space-y-4 bg-gray-50">
+        <div className="w-full lg:w-80 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50">
           {/* Status */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
               {t('common.status')}
             </label>
             <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={issue.statusId || ''}
               onChange={(e) =>
                 updateIssue.mutate({ id: issue.id, statusId: e.target.value || undefined })
@@ -516,7 +518,7 @@ export function IssueDetailPage() {
               {t('common.priority')}
             </label>
             <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={issue.priority}
               onChange={(e) =>
                 updateIssue.mutate({ id: issue.id, priority: e.target.value as IssuePriority })
@@ -532,22 +534,13 @@ export function IssueDetailPage() {
 
           {/* Type */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.type')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <IssueTypeSelect
+              label={t('common.type')}
               value={issue.type}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, type: e.target.value as IssueType })
+              onChange={(val) =>
+                updateIssue.mutate({ id: issue.id, type: val as IssueType })
               }
-            >
-              {Object.values(IssueType).map((t) => (
-                <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Assignee */}
@@ -570,7 +563,7 @@ export function IssueDetailPage() {
             </label>
             <div className="flex items-center gap-2">
               <Avatar user={issue.reporter} size="xs" />
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
                 {issue.reporter?.displayName || 'Unknown'}
               </span>
             </div>
@@ -582,7 +575,7 @@ export function IssueDetailPage() {
               {t('issues.sprint')}
             </label>
             <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={issue.sprintId || ''}
               onChange={(e) =>
                 updateIssue.mutate({ id: issue.id, sprintId: e.target.value || null })
@@ -694,7 +687,7 @@ export function IssueDetailPage() {
                   }
                 }}
                 placeholder={t('issues.addLabel')}
-                className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel}>
                 <Plus className="h-3 w-3" />
@@ -733,7 +726,7 @@ export function IssueDetailPage() {
                 ))}
               </div>
               <select
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value=""
                 onChange={(e) => {
                   if (e.target.value) {
@@ -796,7 +789,7 @@ export function IssueDetailPage() {
                   ))}
               </div>
               <select
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value=""
                 onChange={(e) => {
                   if (e.target.value) {
@@ -867,7 +860,7 @@ export function IssueDetailPage() {
                   ))}
               </div>
               <select
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value=""
                 onChange={(e) => {
                   if (e.target.value) {
@@ -1019,6 +1012,8 @@ export function IssueDetailPage() {
             const config = childTypeMap[issue.type]
             if (!config) return <p className="text-sm text-gray-500">This issue type cannot have children.</p>
 
+            const selectedChildType = childType || config.default
+
             return (
               <>
                 <Input
@@ -1028,19 +1023,12 @@ export function IssueDetailPage() {
                   onChange={(e) => setChildTitle(e.target.value)}
                   autoFocus
                 />
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Type
-                  </label>
-                  <p className="text-sm text-gray-700">
-                    {config.default.charAt(0).toUpperCase() + config.default.slice(1)}
-                    {config.types.length > 1 && (
-                      <span className="text-gray-400 ml-1">
-                        (allowed: {config.types.join(', ')})
-                      </span>
-                    )}
-                  </p>
-                </div>
+                <IssueTypeSelect
+                  label="Type"
+                  value={selectedChildType}
+                  onChange={(val) => setChildType(val)}
+                  options={config.types}
+                />
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setShowCreateChild(false)}>
                     {t('common.cancel')}
@@ -1053,7 +1041,7 @@ export function IssueDetailPage() {
                         {
                           projectId: issue.projectId,
                           title: childTitle.trim(),
-                          type: config.default,
+                          type: selectedChildType,
                           priority: 'medium',
                           parentId: issue.id,
                         },
@@ -1061,6 +1049,7 @@ export function IssueDetailPage() {
                           onSuccess: () => {
                             setShowCreateChild(false)
                             setChildTitle('')
+                            setChildType('')
                           },
                         },
                       )

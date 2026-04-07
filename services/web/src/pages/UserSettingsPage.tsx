@@ -26,6 +26,7 @@ import { Select } from '@/components/ui/select'
 import { Avatar } from '@/components/ui/avatar'
 import { LoadingPage } from '@/components/ui/spinner'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
+import { PageHeader } from '@/components/common/page-header'
 import { toast } from '@/store/ui.store'
 import { cn } from '@/lib/utils'
 
@@ -386,7 +387,7 @@ function SecurityTab() {
             <p className="text-sm font-semibold text-gray-900 dark:text-white">
               Scan this QR code with your authenticator app
             </p>
-            <div className="flex justify-center p-4 bg-white rounded-lg border border-gray-100">
+            <div className="flex justify-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-600">
               <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-44 h-44" />
             </div>
             <div>
@@ -542,15 +543,26 @@ export function UserSettingsPage() {
   const RoleIcon = roleBadge.Icon
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* ── Profile Banner ────────────────────────────────────────────── */}
-      <div className="mb-8 rounded-2xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
-        {/* Gradient strip */}
-        <div className="h-24 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-500" />
-        {/* Profile card */}
-        <div className="bg-white dark:bg-gray-900 px-6 pb-5">
-          <div className="flex items-end gap-4 -mt-8">
-            <div className="ring-4 ring-white dark:ring-gray-900 rounded-full flex-shrink-0">
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Account Settings"
+        breadcrumbs={[{ label: 'Settings', href: '/settings' }, { label: 'Account' }]}
+      />
+
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+        {/* Full-width gradient hero banner */}
+        <div className="h-32 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/5" />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: 'radial-gradient(circle at 75% 50%, rgba(255,255,255,0.12) 0%, transparent 60%)' }}
+          />
+        </div>
+
+        {/* Profile identity card — overlaps banner */}
+        <div className="relative px-6 -mt-12 mb-5">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center gap-5">
+            <div className="ring-4 ring-white dark:ring-gray-900 rounded-2xl shadow-md flex-shrink-0">
               <Avatar
                 src={me?.avatarUrl}
                 name={me?.displayName || 'User'}
@@ -558,11 +570,11 @@ export function UserSettingsPage() {
                 className="h-16 w-16 text-lg"
               />
             </div>
-            <div className="flex-1 min-w-0 pb-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                   {me?.displayName || 'User'}
-                </h1>
+                </h2>
                 <span
                   className={cn(
                     'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium',
@@ -573,9 +585,9 @@ export function UserSettingsPage() {
                   {roleBadge.label}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{me?.email}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{me?.email}</p>
             </div>
-            <div className="hidden sm:flex items-center gap-5 pb-1 text-center">
+            <div className="hidden sm:flex items-center gap-6 text-center">
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   {me?.timezone?.split('/')[1]?.replace('_', ' ') || me?.timezone || 'UTC'}
@@ -592,59 +604,65 @@ export function UserSettingsPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Two-column layout ─────────────────────────────────────────── */}
-      <div className="flex gap-6">
-        {/* Left nav */}
-        <nav className="w-52 flex-shrink-0 space-y-1">
-          {navItems.map(({ id, label, description, icon: Icon }) => {
-            const active = activeTab === id
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all',
-                  active
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 shadow-sm'
-                    : 'border border-transparent hover:bg-gray-50 dark:hover:bg-gray-800',
-                )}
-              >
-                <div
+        {/* Two-column layout */}
+        <div className="px-6 pb-6 flex gap-5 items-start">
+          {/* Left sidebar nav */}
+          <nav className="w-56 flex-shrink-0 space-y-1" aria-label="Settings navigation">
+            {navItems.map(({ id, label, description, icon: Icon }) => {
+              const active = activeTab === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
                     active
-                      ? 'bg-blue-100 dark:bg-blue-900/40'
-                      : 'bg-gray-100 dark:bg-gray-800',
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200/60 dark:shadow-blue-900/40'
+                      : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/10',
                   )}
                 >
-                  <Icon
+                  <div
                     className={cn(
-                      'h-4 w-4',
-                      active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400',
-                    )}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p
-                    className={cn(
-                      'text-sm font-medium truncate',
-                      active ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300',
+                      'h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
+                      active
+                        ? 'bg-white/20'
+                        : 'bg-gray-100 dark:bg-gray-800',
                     )}
                   >
-                    {label}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{description}</p>
-                </div>
-              </button>
-            )
-          })}
-        </nav>
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        active ? 'text-white' : 'text-gray-500 dark:text-gray-400',
+                      )}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p
+                      className={cn(
+                        'text-sm font-medium truncate',
+                        active ? 'text-white' : 'text-gray-700 dark:text-gray-300',
+                      )}
+                    >
+                      {label}
+                    </p>
+                    <p
+                      className={cn(
+                        'text-xs truncate',
+                        active ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500',
+                      )}
+                    >
+                      {description}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </nav>
 
-        {/* Content card */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          {/* Right content card */}
+          <div className="flex-1 min-w-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
             {activeTab === 'profile' && <ProfileTab />}
             {activeTab === 'account' && <AccountTab />}
             {activeTab === 'security' && <SecurityTab />}

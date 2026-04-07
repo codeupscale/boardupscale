@@ -220,15 +220,15 @@ function PriorityPickerDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-xs mx-4">
-        <div className="px-4 py-3 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900">Set Priority</h3>
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Set Priority</h3>
         </div>
         <div className="p-2">
           {priorities.map((p) => (
             <button
               key={p.value}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
               onClick={() =>
                 bulkUpdate.mutate(
                   { issueIds, priority: p.value },
@@ -265,15 +265,15 @@ function SprintPickerDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-xs mx-4">
-        <div className="px-4 py-3 border-b border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900">Move to Sprint</h3>
+      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Move to Sprint</h3>
         </div>
         <div className="p-2 max-h-64 overflow-y-auto">
           {sprints.map((sprint) => (
             <button
               key={sprint.id}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
               onClick={() =>
                 bulkUpdate.mutate(
                   { issueIds, sprintId: sprint.id },

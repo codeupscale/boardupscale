@@ -80,6 +80,7 @@ import { BillingPlan } from './modules/billing/entities/billing-plan.entity';
 import { Subscription } from './modules/billing/entities/subscription.entity';
 import { Page } from './modules/pages/entities/page.entity';
 import { SavedView } from './modules/saved-views/entities/saved-view.entity';
+import { OrganizationMember } from './modules/organizations/entities/organization-member.entity';
 
 @Module({
   imports: [
@@ -139,6 +140,7 @@ import { SavedView } from './modules/saved-views/entities/saved-view.entity';
           JiraConnection,
           JiraImportJob,
           JiraMigrationRun,
+          OrganizationMember,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',

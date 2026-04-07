@@ -28,7 +28,7 @@ export function VelocityChart({ data }: VelocityChartProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">Velocity</h3>
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Velocity</h3>
             <p className="text-sm text-gray-500 mt-0.5">
               Average: {data.averageVelocity} story points per sprint
             </p>

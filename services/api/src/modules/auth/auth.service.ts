@@ -22,6 +22,7 @@ import { PasswordPolicyService } from './password-policy.service';
 import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { RegisterDto } from './dto/register.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -32,6 +33,8 @@ export class AuthService {
     private refreshTokenRepository: Repository<RefreshToken>,
     @InjectRepository(Organization)
     private organizationRepository: Repository<Organization>,
+    @InjectRepository(OrganizationMember)
+    private orgMemberRepository: Repository<OrganizationMember>,
     private usersService: UsersService,
     private emailService: EmailService,
     private jwtService: JwtService,
@@ -129,6 +132,16 @@ export class AuthService {
       role: 'owner',
     });
 
+    // Dual-write: create organization_members row for the founding user
+    await this.orgMemberRepository.save(
+      this.orgMemberRepository.create({
+        userId: user.id,
+        organizationId: savedOrg.id,
+        role: 'owner',
+        isDefault: true,
+      }),
+    );
+
     // Auto-send verification email on registration
     await this.sendVerificationEmail(user.id, user.email);
 
@@ -190,12 +203,32 @@ export class AuthService {
 
   // ── Token generation ──────────────────────────────────────────────────────
 
-  async generateTokens(user: any, ipAddress?: string, userAgent?: string) {
+  async generateTokens(
+    user: any,
+    ipAddress?: string,
+    userAgent?: string,
+    activeOrganizationId?: string,
+  ) {
+    let organizationId = user.organizationId;
+    let role = user.role;
+
+    // If an explicit org is requested, look up the membership to get the role
+    if (activeOrganizationId) {
+      const membership = await this.orgMemberRepository.findOne({
+        where: { userId: user.id, organizationId: activeOrganizationId },
+      });
+      if (membership) {
+        organizationId = activeOrganizationId;
+        role = membership.role;
+      }
+      // If no membership found, fall back to user's default org/role
+    }
+
     const payload = {
       sub: user.id,
       email: user.email,
-      organizationId: user.organizationId,
-      role: user.role,
+      organizationId,
+      role,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -223,12 +256,18 @@ export class AuthService {
       accessToken,
       refreshToken: refreshTokenValue,
       expiresIn: 900,
+      organizationId,
     };
   }
 
   // ── Refresh token ─────────────────────────────────────────────────────────
 
-  async refreshToken(token: string, ipAddress?: string, userAgent?: string) {
+  async refreshToken(
+    token: string,
+    ipAddress?: string,
+    userAgent?: string,
+    activeOrganizationId?: string,
+  ) {
     const tokenHash = this.hashToken(token);
     const stored = await this.refreshTokenRepository.findOne({
       where: { tokenHash },
@@ -247,7 +286,13 @@ export class AuthService {
       revokedAt: new Date(),
     });
 
-    const tokens = await this.generateTokens(stored.user, ipAddress, userAgent);
+    // Preserve the active org context through token refresh
+    const tokens = await this.generateTokens(
+      stored.user,
+      ipAddress,
+      userAgent,
+      activeOrganizationId,
+    );
     return tokens;
   }
 
@@ -445,6 +490,20 @@ export class AuthService {
         profile.oauthId,
       );
       await this.usersService.updateLastLogin(existingEmail.id);
+      // Ensure org membership exists (idempotent — ON CONFLICT DO NOTHING via save)
+      const existingMembership = await this.orgMemberRepository.findOne({
+        where: { userId: existingEmail.id, organizationId: existingEmail.organizationId },
+      });
+      if (!existingMembership) {
+        await this.orgMemberRepository.save(
+          this.orgMemberRepository.create({
+            userId: existingEmail.id,
+            organizationId: existingEmail.organizationId,
+            role: existingEmail.role || 'member',
+            isDefault: true,
+          }),
+        );
+      }
       return existingEmail;
     }
 
@@ -470,6 +529,16 @@ export class AuthService {
       oauthId: profile.oauthId,
       role: 'owner',
     });
+
+    // Dual-write: create organization_members row for the new OAuth user
+    await this.orgMemberRepository.save(
+      this.orgMemberRepository.create({
+        userId: user.id,
+        organizationId: savedOrg.id,
+        role: 'owner',
+        isDefault: true,
+      }),
+    );
 
     return user;
   }
@@ -695,6 +764,21 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 12);
     await this.usersService.activateInvitedUser(user.id, passwordHash, displayName);
 
+    // Ensure organization_members row exists for the invited user
+    const existingMembership = await this.orgMemberRepository.findOne({
+      where: { userId: user.id, organizationId: user.organizationId },
+    });
+    if (!existingMembership) {
+      await this.orgMemberRepository.save(
+        this.orgMemberRepository.create({
+          userId: user.id,
+          organizationId: user.organizationId,
+          role: user.role || 'member',
+          isDefault: true,
+        }),
+      );
+    }
+
     const activatedUser = await this.usersService.findById(user.id);
     const tokens = await this.generateTokens(activatedUser, ipAddress, userAgent);
 
@@ -721,14 +805,21 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(profile.email);
 
     if (existingUser) {
-      // If user exists in the same org, just update last login
-      if (existingUser.organizationId === orgId) {
-        await this.usersService.updateLastLogin(existingUser.id);
-        return existingUser;
-      }
-      // If user exists in a different org, we can't auto-link across orgs for security
-      // Just return the existing user — org-scoped access will be handled by guards
       await this.usersService.updateLastLogin(existingUser.id);
+      // Ensure membership in the SAML org exists (user may already exist in a different org)
+      const existingMembership = await this.orgMemberRepository.findOne({
+        where: { userId: existingUser.id, organizationId: orgId },
+      });
+      if (!existingMembership) {
+        await this.orgMemberRepository.save(
+          this.orgMemberRepository.create({
+            userId: existingUser.id,
+            organizationId: orgId,
+            role: 'member',
+            isDefault: existingUser.organizationId === orgId,
+          }),
+        );
+      }
       return existingUser;
     }
 
@@ -743,7 +834,61 @@ export class AuthService {
       role: 'member',
     });
 
+    // Dual-write: create organization_members row for the new SAML user
+    await this.orgMemberRepository.save(
+      this.orgMemberRepository.create({
+        userId: user.id,
+        organizationId: orgId,
+        role: 'member',
+        isDefault: true,
+      }),
+    );
+
     return user;
+  }
+
+  // ── Switch Organization ───────────────────────────────────────────────────
+
+  async switchOrganization(
+    userId: string,
+    targetOrgId: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    // Verify the user has membership in the target org
+    const membership = await this.orgMemberRepository.findOne({
+      where: { userId, organizationId: targetOrgId },
+    });
+    if (!membership) {
+      throw new UnauthorizedException('Not a member of this organization');
+    }
+
+    // Get the full user record
+    const user = await this.usersService.findById(userId);
+
+    // Get the organization details
+    const organization = await this.organizationRepository.findOne({
+      where: { id: targetOrgId },
+    });
+
+    const tokens = await this.generateTokens(user, ipAddress, userAgent, targetOrgId);
+
+    this.auditService.log(
+      targetOrgId,
+      userId,
+      'auth.switch_org',
+      'organization',
+      targetOrgId,
+      { fromOrgId: user.organizationId, toOrgId: targetOrgId },
+      ipAddress,
+    );
+
+    return {
+      ...tokens,
+      organization: organization
+        ? { id: organization.id, name: organization.name, slug: organization.slug }
+        : null,
+    };
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

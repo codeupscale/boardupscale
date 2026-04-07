@@ -37,7 +37,7 @@ export function BulkStatusDialog({ open, onClose, statuses, issueIds }: BulkStat
                 className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: status.color }}
               />
-              <span className="text-gray-900">{status.name}</span>
+              <span className="text-gray-900 dark:text-gray-100">{status.name}</span>
               <span className="text-xs text-gray-500 ml-auto capitalize">
                 {status.category.replace('_', ' ')}
               </span>

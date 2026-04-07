@@ -16,6 +16,8 @@ interface ProgressStepProps {
   payload: StartMigrationPayload
   onComplete: (runId: string) => void
   initialRunId?: string
+  /** Called when the migration run no longer exists (404) so the wizard can reset */
+  onReset?: () => void
 }
 
 interface PhaseConfig {
@@ -46,7 +48,7 @@ interface LiveCounts {
   completedPhases: number[]
 }
 
-export function ProgressStep({ payload, onComplete, initialRunId }: ProgressStepProps) {
+export function ProgressStep({ payload, onComplete, initialRunId, onReset }: ProgressStepProps) {
   const [runId, setRunId] = useState<string | null>(null)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [activityLog, setActivityLog] = useState<LogEntry[]>([])
@@ -67,7 +69,16 @@ export function ProgressStep({ payload, onComplete, initialRunId }: ProgressStep
   const completedRef = useRef(false)
   const queryClient = useQueryClient()
 
-  const { data: status } = useMigrationStatus(runId)
+  const { data: status, error: statusError } = useMigrationStatus(runId)
+
+  // ── 404 guard: run was deleted (e.g. admin cleared it) → reset wizard ────
+  useEffect(() => {
+    const err = statusError as any
+    if (err?.response?.status === 404 && onReset) {
+      sessionStorage.removeItem('boardupscale_active_migration')
+      onReset()
+    }
+  }, [statusError, onReset])
 
   const addLog = useCallback((message: string) => {
     const time = new Date().toLocaleTimeString()

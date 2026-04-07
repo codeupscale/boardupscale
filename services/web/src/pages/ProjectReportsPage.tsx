@@ -116,7 +116,7 @@ export function ProjectReportsPage() {
   return (
     <div className="p-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
         <p className="text-sm text-gray-500 mt-1">
           Analytics and insights for your project
         </p>
@@ -128,7 +128,7 @@ export function ProjectReportsPage() {
         {/* Sprint selector for burndown, burnup, and sprint report */}
         {(activeTab === 'burndown' || activeTab === 'burnup' || activeTab === 'sprint-report') && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Sprint
             </label>
             {sprintsLoading ? (
@@ -137,7 +137,7 @@ export function ProjectReportsPage() {
               <select
                 value={activeSprint}
                 onChange={(e) => setSelectedSprintId(e.target.value)}
-                className="block w-64 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-64 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {sprints.map((sprint) => (
                   <option key={sprint.id} value={sprint.id}>
@@ -155,25 +155,25 @@ export function ProjectReportsPage() {
         {activeTab === 'cumulative-flow' && (
           <div className="mb-4 flex gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={cfdStartDate}
                 onChange={(e) => setCfdStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={cfdEndDate}
                 onChange={(e) => setCfdEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -183,25 +183,25 @@ export function ProjectReportsPage() {
         {activeTab === 'cycle-time' && (
           <div className="mb-4 flex gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={ctStartDate}
                 onChange={(e) => setCtStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={ctEndDate}
                 onChange={(e) => setCtEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -211,35 +211,35 @@ export function ProjectReportsPage() {
         {activeTab === 'created-vs-resolved' && (
           <div className="mb-4 flex gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Start Date
               </label>
               <input
                 type="date"
                 value={cvrStartDate}
                 onChange={(e) => setCvrStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
               </label>
               <input
                 type="date"
                 value={cvrEndDate}
                 onChange={(e) => setCvrEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Interval
               </label>
               <select
                 value={cvrInterval}
                 onChange={(e) => setCvrInterval(e.target.value as 'day' | 'week')}
-                className="block w-32 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-32 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="day">Daily</option>
                 <option value="week">Weekly</option>

@@ -551,8 +551,8 @@ async function runMembersPhase(
     const chunkAccountIds: string[] = [];
 
     chunk.forEach((u, j) => {
-      const b = j * 4;
-      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, NOW(), NOW())`);
+      const b = j * 5;
+      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, $${b+5}::text, NOW(), NOW())`);
       // Use real email when available; fall back to a synthetic address keyed by accountId.
       const email = u.emailAddress
         ? u.emailAddress.toLowerCase()
@@ -561,17 +561,16 @@ async function runMembersPhase(
       const roleMappingRecord = state.roleMapping ?? {};
       const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
       const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
-      params.push(email, displayName, state.organizationId, safeRole);
+      params.push(email, displayName, state.organizationId, safeRole, u.accountId);
       chunkAccountIds.push(u.accountId);
     });
 
     const { rows } = await client.query<{ id: string; email: string }>(
-      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, created_at, updated_at)
+      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, created_at, updated_at)
        VALUES ${placeholders.join(', ')}
        ON CONFLICT (email) DO UPDATE SET
-         display_name = EXCLUDED.display_name,
-         organization_id = COALESCE(users.organization_id, EXCLUDED.organization_id),
-         role = EXCLUDED.role,
+         display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
+         jira_account_id = COALESCE(EXCLUDED.jira_account_id, users.jira_account_id),
          updated_at = NOW()
        RETURNING id, email`,
       params,
@@ -579,13 +578,25 @@ async function runMembersPhase(
 
     // Build both lookup maps from the RETURNING rows.
     // The rows come back in INSERT order which matches chunkAccountIds order.
+    const returnedUserIds: string[] = [];
     for (let ri = 0; ri < rows.length; ri++) {
       const row = rows[ri];
       state.jiraUserEmailToLocalId[row.email] = row.id;
+      returnedUserIds.push(row.id);
       // Also index by accountId (more reliable for Jira Cloud where emails are hidden).
       const accountId = chunkAccountIds[ri];
       if (accountId) state.jiraAccountIdToLocalId[accountId] = row.id;
       processed++;
+    }
+
+    // Dual-write: ensure organization_members rows exist for all upserted users
+    if (returnedUserIds.length > 0) {
+      await client.query(
+        `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+         SELECT gen_random_uuid(), unnest($1::uuid[]), $2::uuid, 'member', false, NOW(), NOW()
+         ON CONFLICT (user_id, organization_id) DO NOTHING`,
+        [returnedUserIds, state.organizationId],
+      ).catch((err: any) => { addError(state, `members org_members upsert: ${err.message}`); });
     }
   }
 
@@ -1448,10 +1459,13 @@ async function runIssuesPhase(
         }
       }
 
-      // Advance cursor — absent nextPageToken means this was the last page
+      // Advance cursor — absent nextPageToken OR empty page means this was the last page.
+      // Guard: if the token is present but Jira returns zero issues (e.g. GDPR-filtered
+      // or permission-restricted pages) we must stop to avoid an infinite loop.
       nextPageToken = page.nextPageToken;
-      hasMore = !!nextPageToken;
-      totalIssues += page.issues?.length ?? 0;
+      const pageSize = page.issues?.length ?? 0;
+      hasMore = !!nextPageToken && pageSize > 0;
+      totalIssues += pageSize;
 
       await updateRunProgress(client, state.id, {
         processedIssues,
@@ -1834,17 +1848,14 @@ async function processJob(
         );
         for (const r of rows) state.jiraUserEmailToLocalId[r.email.toLowerCase()] = r.id;
 
-        // Rebuild accountId → localId map from synthetic-email users only.
-        // Real email users cannot be reverse-mapped to accountId without the original
-        // Jira list (which is only in memory during Phase 1 execution), so we rely on
-        // the email map for those. Synthetic-email users encode accountId in the address.
-        const { rows: syntheticRows } = await progressClient.query<{ email: string; id: string }>(
-          `SELECT email, id FROM users WHERE organization_id = $1 AND email LIKE 'jira-%@migrated.jira.local'`,
+        // Rebuild accountId → localId map from the jira_account_id column.
+        // This is authoritative regardless of whether the user's email was later changed.
+        const { rows: accountIdRows } = await progressClient.query<{ jira_account_id: string; id: string }>(
+          `SELECT jira_account_id, id FROM users WHERE organization_id = $1 AND jira_account_id IS NOT NULL`,
           [organizationId],
         );
-        for (const r of syntheticRows) {
-          const accountId = r.email.replace('jira-', '').replace('@migrated.jira.local', '');
-          if (accountId) state.jiraAccountIdToLocalId[accountId] = r.id;
+        for (const r of accountIdRows) {
+          state.jiraAccountIdToLocalId[r.jira_account_id] = r.id;
         }
       }
 
@@ -1927,6 +1938,7 @@ async function processJob(
         await runPhaseWithRetry('comments', state, () =>
           runCommentsPhase(progressClient, state, credentials, io),
         );
+        state.completedPhases = [...(state.completedPhases ?? []), PHASE_COMMENTS];
       }
 
       // Cancel check after Phase 5
@@ -1937,6 +1949,7 @@ async function processJob(
         await runPhaseWithRetry('attachments', state, () =>
           runAttachmentsPhase(progressClient, state, io),
         );
+        state.completedPhases = [...(state.completedPhases ?? []), PHASE_ATTACHMENTS];
       }
 
       // ── Write final result summary (read fresh counts from DB) ──────────────

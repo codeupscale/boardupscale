@@ -68,16 +68,14 @@ export function ProjectsPage() {
     limit: LIMIT,
   })
 
-  // Fetch all projects for stats (no filters, page 1, large limit)
-  const { data: allResult } = useProjects({ limit: 1000 })
-
   const projects = result?.data ?? []
   const meta = result?.meta
-  const allProjects = allResult?.data ?? []
 
-  const totalProjects = allProjects.length
-  const activeProjects = allProjects.filter((p) => p.status === 'active').length
-  const myProjects = allProjects.filter((p) => p.ownerId === currentUser?.id).length
+  // Use meta.total from the paginated API response for the true count
+  // (the API already filters by organizationId and membership)
+  const totalProjects = meta?.total ?? 0
+  const activeProjects = projects.filter((p) => p.status === 'active').length
+  const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
   const createProject = useCreateProject()
 

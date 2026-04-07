@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
+import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -148,16 +149,10 @@ export function IssueForm({
           name="type"
           control={control}
           render={({ field }) => (
-            <Select
+            <IssueTypeSelect
               label={t('common.type')}
-              options={[
-                { value: IssueType.EPIC, label: t('issues.epic') },
-                { value: IssueType.STORY, label: t('issues.story') },
-                { value: IssueType.TASK, label: t('issues.task') },
-                { value: IssueType.BUG, label: t('issues.bug') },
-                { value: IssueType.SUBTASK, label: t('issues.subtask') },
-              ]}
-              {...field}
+              value={field.value}
+              onChange={(val) => field.onChange(val)}
             />
           )}
         />
