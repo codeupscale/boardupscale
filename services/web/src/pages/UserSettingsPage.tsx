@@ -560,7 +560,7 @@ export function UserSettingsPage() {
         </div>
 
         {/* Profile identity card — overlaps banner */}
-        <div className="px-6 -mt-12 mb-5">
+        <div className="relative px-6 -mt-12 mb-5">
           <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center gap-5">
             <div className="ring-4 ring-white dark:ring-gray-900 rounded-2xl shadow-md flex-shrink-0">
               <Avatar
