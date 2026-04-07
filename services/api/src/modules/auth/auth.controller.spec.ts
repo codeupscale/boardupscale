@@ -122,7 +122,7 @@ describe('AuthController', () => {
       const result = await controller.refresh({ refreshToken: 'old-refresh-token' }, req);
 
       expect(result).toEqual(expectedResult);
-      expect(authService.refreshToken).toHaveBeenCalledWith('old-refresh-token', '127.0.0.1', 'test-agent');
+      expect(authService.refreshToken).toHaveBeenCalledWith('old-refresh-token', '127.0.0.1', 'test-agent', undefined);
     });
   });
 
