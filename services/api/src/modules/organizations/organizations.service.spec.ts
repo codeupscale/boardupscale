@@ -4,6 +4,7 @@ import { NotFoundException, ConflictException, BadRequestException } from '@nest
 import { ConfigService } from '@nestjs/config';
 import { OrganizationsService } from './organizations.service';
 import { Organization } from './entities/organization.entity';
+import { OrganizationMember } from './entities/organization-member.entity';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
@@ -14,6 +15,7 @@ describe('OrganizationsService', () => {
   let service: OrganizationsService;
   let orgRepo: ReturnType<typeof createMockRepository>;
   let userRepo: ReturnType<typeof createMockRepository>;
+  let orgMemberRepo: ReturnType<typeof createMockRepository>;
   const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
   const mockAuditService = { log: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
@@ -21,12 +23,14 @@ describe('OrganizationsService', () => {
   beforeEach(async () => {
     orgRepo = createMockRepository();
     userRepo = createMockRepository();
+    orgMemberRepo = createMockRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrganizationsService,
         { provide: getRepositoryToken(Organization), useValue: orgRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(OrganizationMember), useValue: orgMemberRepo },
         { provide: EmailService, useValue: mockEmailService },
         { provide: AuditService, useValue: mockAuditService },
         { provide: ConfigService, useValue: mockConfigService },

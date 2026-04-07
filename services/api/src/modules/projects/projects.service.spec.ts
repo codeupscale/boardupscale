@@ -1,11 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 import { AuditService } from '../audit/audit.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 
@@ -14,11 +18,17 @@ describe('ProjectsService', () => {
   let projectRepo: ReturnType<typeof createMockRepository>;
   let memberRepo: ReturnType<typeof createMockRepository>;
   let statusRepo: ReturnType<typeof createMockRepository>;
+  let organizationRepo: ReturnType<typeof createMockRepository>;
+
+  const mockEmailService = { sendProjectMemberAddedEmail: jest.fn().mockResolvedValue(undefined) };
+  const mockUsersService = { findById: jest.fn() };
+  const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
 
   beforeEach(async () => {
     projectRepo = createMockRepository();
     memberRepo = createMockRepository();
     statusRepo = createMockRepository();
+    organizationRepo = createMockRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -26,7 +36,11 @@ describe('ProjectsService', () => {
         { provide: getRepositoryToken(Project), useValue: projectRepo },
         { provide: getRepositoryToken(ProjectMember), useValue: memberRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
+        { provide: getRepositoryToken(Organization), useValue: organizationRepo },
         { provide: AuditService, useValue: { log: jest.fn() } },
+        { provide: EmailService, useValue: mockEmailService },
+        { provide: UsersService, useValue: mockUsersService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
