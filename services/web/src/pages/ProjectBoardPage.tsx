@@ -388,11 +388,11 @@ export function ProjectBoardPage() {
       />
 
       {activeSprints.length > 0 && (
-        <div className="px-6 py-2 bg-blue-50 border-b border-blue-100">
-          <p className="text-sm text-blue-700">
+        <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-b border-blue-100 dark:border-blue-800/40">
+          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
             {t('board.activeSprint', { name: activeSprints[0].name })}
             {activeSprints[0].endDate && (
-              <span className="text-blue-500 ml-2">
+              <span className="text-blue-500 dark:text-blue-400 ml-2">
                 {t('board.endsOn', { date: new Date(activeSprints[0].endDate).toLocaleDateString() })}
               </span>
             )}

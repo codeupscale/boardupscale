@@ -2,14 +2,50 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIssues } from '@/hooks/useIssues'
 import { useAuthStore } from '@/store/auth.store'
-import { useBoard } from '@/hooks/useBoard'
 import { IssuePriority, IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
-import { CircleDot } from 'lucide-react'
+import { CircleDot, AlertCircle, Clock, CheckCircle, ListFilter } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+function StatPill({
+  label,
+  count,
+  icon: Icon,
+  color,
+  active,
+  onClick,
+}: {
+  label: string
+  count: number
+  icon: any
+  color: string
+  active?: boolean
+  onClick?: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all duration-200',
+        active
+          ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+          : 'border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm',
+      )}
+    >
+      <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', color)}>
+        <Icon className="h-4 w-4 text-white" />
+      </div>
+      <div className="text-left">
+        <p className="text-lg font-bold text-gray-900 dark:text-white">{count}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">{label}</p>
+      </div>
+    </button>
+  )
+}
 
 export function MyIssuesPage() {
   const { t } = useTranslation()
@@ -34,13 +70,60 @@ export function MyIssuesPage() {
     ? issues.filter((i) => i.status?.category === filterCategory)
     : issues
 
+  const todoCount = issues.filter((i) => i.status?.category === IssueStatusCategory.TODO).length
+  const inProgressCount = issues.filter((i) => i.status?.category === IssueStatusCategory.IN_PROGRESS).length
+  const doneCount = issues.filter((i) => i.status?.category === IssueStatusCategory.DONE).length
+
+  const handleCategoryClick = (category: string) => {
+    setFilterCategory((prev) => (prev === category ? '' : category))
+  }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader title={t('nav.myIssues')} />
 
-      <div className="p-6 space-y-4">
+      <div className="p-6 lg:p-8 space-y-5 max-w-[1400px] mx-auto w-full">
+        {/* Stats Row */}
+        <div className="flex flex-wrap gap-3">
+          <StatPill
+            label="Total"
+            count={total}
+            icon={CircleDot}
+            color="bg-gray-500"
+            active={!filterCategory}
+            onClick={() => setFilterCategory('')}
+          />
+          <StatPill
+            label={t('settings.toDo')}
+            count={todoCount}
+            icon={AlertCircle}
+            color="bg-amber-500"
+            active={filterCategory === IssueStatusCategory.TODO}
+            onClick={() => handleCategoryClick(IssueStatusCategory.TODO)}
+          />
+          <StatPill
+            label={t('settings.inProgress')}
+            count={inProgressCount}
+            icon={Clock}
+            color="bg-blue-500"
+            active={filterCategory === IssueStatusCategory.IN_PROGRESS}
+            onClick={() => handleCategoryClick(IssueStatusCategory.IN_PROGRESS)}
+          />
+          <StatPill
+            label={t('settings.done')}
+            count={doneCount}
+            icon={CheckCircle}
+            color="bg-emerald-500"
+            active={filterCategory === IssueStatusCategory.DONE}
+            onClick={() => handleCategoryClick(IssueStatusCategory.DONE)}
+          />
+        </div>
+
         {/* Filters */}
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+            <ListFilter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          </div>
           <Select
             options={[
               { value: '', label: t('issues.allPriorities') },
@@ -53,68 +136,26 @@ export function MyIssuesPage() {
             onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
             className="w-40"
           />
-
-          <Select
-            options={[
-              { value: '', label: t('issues.allStatuses') },
-              { value: IssueStatusCategory.TODO, label: t('settings.toDo') },
-              { value: IssueStatusCategory.IN_PROGRESS, label: t('settings.inProgress') },
-              { value: IssueStatusCategory.DONE, label: t('settings.done') },
-            ]}
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-40"
-          />
-        </div>
-
-        {/* Issue stats */}
-        <div className="flex gap-4">
-          {[
-            { label: t('common.title').replace(t('common.title'), 'Total'), count: total, color: 'text-gray-700' },
-            {
-              label: t('settings.toDo'),
-              count: issues.filter((i) => i.status?.category === IssueStatusCategory.TODO).length,
-              color: 'text-gray-600',
-            },
-            {
-              label: t('settings.inProgress'),
-              count: issues.filter((i) => i.status?.category === IssueStatusCategory.IN_PROGRESS).length,
-              color: 'text-blue-600',
-            },
-            {
-              label: t('settings.done'),
-              count: issues.filter((i) => i.status?.category === IssueStatusCategory.DONE).length,
-              color: 'text-green-600',
-            },
-          ].map(({ label, count, color }) => (
-            <div
-              key={label}
-              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center gap-2"
-            >
-              <span className={`text-lg font-bold ${color}`}>{count}</span>
-              <span className="text-sm text-gray-500">{label}</span>
-            </div>
-          ))}
         </div>
 
         {/* Table */}
         {isLoading ? (
           <LoadingPage />
         ) : filtered.length > 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">{t('common.title')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('common.priority')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">{t('common.status')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">{t('common.assignee')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">SP</th>
+                <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">SP</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
                 {filtered.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} />
                 ))}
@@ -123,20 +164,20 @@ export function MyIssuesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                <span className="text-sm text-gray-500">
+              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/30">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {t('common.pageOf', { page, totalPages, total })}
                 </span>
                 <div className="flex gap-2">
                   <button
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300 transition-colors"
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     {t('common.previous')}
                   </button>
                   <button
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300 transition-colors"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

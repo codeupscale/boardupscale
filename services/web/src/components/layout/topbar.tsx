@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils'
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
+  { code: 'es', label: 'Espanol' },
+  { code: 'fr', label: 'Francais' },
   { code: 'de', label: 'Deutsch' },
-  { code: 'ja', label: '日本語' },
+  { code: 'ja', label: 'Japanese' },
 ]
 
 export function Topbar() {
@@ -31,29 +31,29 @@ export function Topbar() {
   const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <header className="h-14 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-4 gap-4 flex-shrink-0">
+    <header className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
           onClick={toggleSidebar}
           aria-label="Toggle menu"
-          className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {/* Search */}
         <button
           onClick={() => setSearchOpen(true)}
           aria-label="Search (Cmd+K)"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">{t('common.search')}</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded font-mono">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md font-mono text-gray-400 dark:text-gray-500">
             ⌘K
           </kbd>
         </button>
@@ -63,7 +63,7 @@ export function Topbar() {
           trigger={
             <button
               aria-label="Switch theme"
-              className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             >
               {(() => {
                 const Icon = themeIcon
@@ -102,7 +102,7 @@ export function Topbar() {
         {/* Language Switcher */}
         <DropdownMenu
           trigger={
-            <button className="flex items-center gap-1 p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+            <button className="flex items-center gap-1 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               <Globe className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">{i18n.language.slice(0, 2)}</span>
             </button>
@@ -127,11 +127,11 @@ export function Topbar() {
         <Link
           to="/notifications"
           aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
-          className="relative p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs rounded-full font-medium">
+            <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-white dark:ring-gray-900">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -140,15 +140,15 @@ export function Topbar() {
         {/* User dropdown */}
         <DropdownMenu
           trigger={
-            <button aria-label="User menu" className="flex items-center gap-2 rounded-lg p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1">
               <Avatar user={user || undefined} size="sm" />
             </button>
           }
         >
           {user && (
-            <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.displayName}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
+            <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.displayName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
             </div>
           )}
           <DropdownItem

@@ -133,7 +133,15 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async me(@CurrentUser() user: any) {
     const fullUser = await this.usersService.findById(user.id);
-    return { data: fullUser };
+    // Override organizationId and role with the JWT-derived values so that
+    // after an org switch the frontend sees the active org, not the default.
+    return {
+      data: {
+        ...fullUser,
+        organizationId: user.organizationId,
+        role: user.role,
+      },
+    };
   }
 
   // ── Email Verification ──────────────────────────────────────────────────

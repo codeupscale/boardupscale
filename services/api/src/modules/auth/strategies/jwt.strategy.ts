@@ -29,11 +29,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User not found or inactive');
     }
+    // Use organizationId and role from the JWT payload (not the DB user) so that
+    // org-switch tokens are respected — the DB user row stores the *default* org,
+    // while the JWT carries the *active* org after a switch.
     return {
       id: user.id,
       email: user.email,
-      organizationId: user.organizationId,
-      role: user.role,
+      organizationId: payload.organizationId || user.organizationId,
+      role: payload.role || user.role,
       displayName: user.displayName,
     };
   }

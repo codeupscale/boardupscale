@@ -113,7 +113,7 @@ export function Sidebar() {
       {/* Mobile backdrop overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
           onClick={toggleSidebar}
         />
       )}
@@ -121,7 +121,7 @@ export function Sidebar() {
         role="navigation"
         aria-label="Main navigation"
         className={cn(
-          'fixed left-0 top-0 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-200 z-40',
+          'fixed left-0 top-0 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 z-40',
           'md:relative',
           isSidebarOpen ? 'w-60' : 'w-16',
           // On mobile, hide completely when collapsed
@@ -129,7 +129,7 @@ export function Sidebar() {
         )}
       >
       {/* Logo */}
-      <div className="flex items-center px-3 h-14 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="flex items-center px-3 h-14 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
         <Logo
           size="sm"
           variant={isSidebarOpen ? 'full' : 'icon'}
@@ -149,15 +149,15 @@ export function Sidebar() {
                 key={href}
                 to={href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150',
                   active
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
+                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
                   !isSidebarOpen && 'justify-center px-2',
                 )}
               >
                 <Icon
-                  className={cn('h-5 w-5 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400')}
+                  className={cn('h-5 w-5 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')}
                 />
                 {isSidebarOpen ? label : <span className="sr-only">{label}</span>}
               </Link>
@@ -176,8 +176,8 @@ export function Sidebar() {
 
         {/* Current Project Navigation */}
         {isSidebarOpen && currentProject && (
-          <div className="mt-4 px-4">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <div className="mt-5 px-4">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
               {currentProject.key} - {currentProject.name}
             </p>
             <div className="space-y-0.5">
@@ -189,10 +189,10 @@ export function Sidebar() {
                     key={path}
                     to={href}
                     className={cn(
-                      'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')} />
@@ -206,8 +206,8 @@ export function Sidebar() {
 
         {/* Settings Sub-Navigation */}
         {isSidebarOpen && isOnSettingsPath && (
-          <div className="mt-4 px-4">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <div className="mt-5 px-4">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
               Account & Settings
             </p>
             <div className="space-y-0.5">
@@ -221,10 +221,10 @@ export function Sidebar() {
                     key={href}
                     to={href}
                     className={cn(
-                      'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <Icon
@@ -243,35 +243,43 @@ export function Sidebar() {
 
         {/* Recent Projects */}
         {isSidebarOpen && projects && projects.length > 0 && (
-          <div className="mt-4 px-4">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+          <div className="mt-5 px-4">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
               {t('nav.recentProjects')}
             </p>
             <div className="space-y-0.5">
-              {projects.slice(0, 5).map((project) => (
-                <Link
-                  key={project.id}
-                  to={`/projects/${project.key}/board`}
-                  className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                    location.pathname.includes(project.key)
-                      ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200',
-                  )}
-                >
-                  <span className="h-5 w-5 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400 flex-shrink-0">
-                    {project.key.slice(0, 2)}
-                  </span>
-                  <span className="truncate">{project.name}</span>
-                </Link>
-              ))}
+              {projects.slice(0, 5).map((project) => {
+                const isProjectActive = location.pathname.includes(project.key)
+                return (
+                  <Link
+                    key={project.id}
+                    to={`/projects/${project.key}/board`}
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
+                      isProjectActive
+                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
+                    )}
+                  >
+                    <span className={cn(
+                      'h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                      isProjectActive
+                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+                    )}>
+                      {project.key.slice(0, 2)}
+                    </span>
+                    <span className="truncate">{project.name}</span>
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )}
       </nav>
 
       {/* User + Collapse */}
-      <div className="border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
         {/* User info */}
         {user && (
           <div
@@ -283,7 +291,7 @@ export function Sidebar() {
             <Avatar user={user} size="sm" />
             {isSidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user.displayName}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{user.displayName}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
               </div>
             )}
@@ -296,7 +304,7 @@ export function Sidebar() {
           aria-expanded={isSidebarOpen}
           aria-label="Toggle sidebar"
           className={cn(
-            'w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors border-t border-gray-100 dark:border-gray-800',
+            'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-t border-gray-50 dark:border-gray-800',
             !isSidebarOpen && 'justify-center px-2',
           )}
         >

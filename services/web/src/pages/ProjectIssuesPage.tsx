@@ -189,12 +189,12 @@ export function ProjectIssuesPage() {
         }
       />
 
-      <div className="p-6 space-y-4">
+      <div className="p-6 lg:p-8 space-y-4 max-w-[1400px] mx-auto w-full">
         {/* Filters card */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 space-y-3">
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-4 space-y-3 shadow-sm">
           {/* Stats strip */}
           {total > 0 && (
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
               {total} issue{total !== 1 ? 's' : ''}
             </p>
           )}
@@ -357,10 +357,10 @@ export function ProjectIssuesPage() {
         {isLoading ? (
           <LoadingPage />
         ) : issues.length > 0 ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-800 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">
+                <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">
                   <th className="px-4 py-2.5 w-10">
                     <input
                       type="checkbox"
@@ -382,7 +382,7 @@ export function ProjectIssuesPage() {
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-16">SP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
                 {issues.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
