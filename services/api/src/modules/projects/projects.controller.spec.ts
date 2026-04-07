@@ -115,7 +115,7 @@ describe('ProjectsController', () => {
       const member = mockProjectMember({ userId: 'new-user' });
       projectsService.addMember.mockResolvedValue(member);
 
-      const result = await controller.addMember(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+      const result = await controller.addMember(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { id: TEST_IDS.USER_ID } as any, {
         userId: 'new-user',
         role: 'developer',
       });

@@ -198,15 +198,15 @@ export class IssuesService {
 
   /**
    * Validates parent-child type hierarchy:
-   *   Epic -> Story
-   *   Story -> Task, Bug
+   *   Epic -> Story, Task, Bug
+   *   Story -> Task, Bug, Subtask
    *   Task, Bug -> Subtask
    *   Subtask -> (none)
    */
   private validateChildTypeHierarchy(parentType: string, childType: string): void {
     const allowedChildren: Record<string, string[]> = {
-      epic: ['story'],
-      story: ['task', 'bug'],
+      epic: ['story', 'task', 'bug'],
+      story: ['task', 'bug', 'subtask'],
       task: ['subtask'],
       bug: ['subtask'],
     };

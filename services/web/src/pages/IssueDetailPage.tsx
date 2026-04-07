@@ -1,6 +1,16 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { Send, Edit2, Trash2, Clock, Plus, X } from 'lucide-react'
+import {
+  Send,
+  Trash2,
+  Clock,
+  Plus,
+  X,
+  ChevronRight,
+  MessageSquare,
+  History,
+  ListTree,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   useIssue,
@@ -30,10 +40,10 @@ import {
   IssueType,
   IssuePriority,
   Comment,
+  Issue,
 } from '@/types'
 import { LoadingPage } from '@/components/ui/spinner'
 import { Avatar } from '@/components/ui/avatar'
-import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -50,8 +60,66 @@ import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
 import { AiSummaryPanel } from '@/components/issues/ai-summary-panel'
 import { WatchButton } from '@/components/issues/watch-button'
 import { ActivityList } from '@/components/issues/activity-list'
-import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils'
+import { formatRelativeTime, formatDuration } from '@/lib/utils'
 
+/* -------------------------------------------------------------------------- */
+/*  Allowed child types map (must match backend hierarchy)                    */
+/* -------------------------------------------------------------------------- */
+const CHILD_TYPE_MAP: Record<string, { types: string[]; default: string }> = {
+  epic: { types: ['story', 'task', 'bug'], default: 'story' },
+  story: { types: ['task', 'bug', 'subtask'], default: 'task' },
+  task: { types: ['subtask'], default: 'subtask' },
+  bug: { types: ['subtask'], default: 'subtask' },
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Breadcrumb helpers                                                        */
+/* -------------------------------------------------------------------------- */
+function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
+  // Build chain: grandparent > parent > current
+  const chain: Array<{ id: string; key: string; title: string; type: IssueType }> = []
+
+  if (issue.parent?.parent) {
+    chain.push({
+      id: issue.parent.parent.id,
+      key: issue.parent.parent.key,
+      title: issue.parent.parent.title,
+      type: issue.parent.parent.type,
+    })
+  }
+  if (issue.parent) {
+    chain.push({
+      id: issue.parent.id,
+      key: issue.parent.key,
+      title: issue.parent.title,
+      type: issue.parent.type,
+    })
+  }
+
+  if (chain.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {chain.map((ancestor, idx) => (
+        <span key={ancestor.id} className="flex items-center gap-1.5">
+          <Link
+            to={`/issues/${ancestor.id}`}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <IssueTypeIcon type={ancestor.type} className="h-3.5 w-3.5" />
+            <span className="font-mono text-xs font-medium">{ancestor.key}</span>
+            <span className="truncate max-w-[180px]">{ancestor.title}</span>
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-600 flex-shrink-0" />
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Comment Item                                                              */
+/* -------------------------------------------------------------------------- */
 function CommentItem({
   comment,
   currentUserId,
@@ -69,16 +137,16 @@ function CommentItem({
   const deleteComment = useDeleteComment()
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 group">
       <Avatar user={comment.author} size="sm" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+      <div className="flex-1 min-w-0 rounded-xl bg-white dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {comment.author?.displayName || 'Unknown'}
           </span>
-          <span className="text-xs text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
           {comment.editedAt && (
-            <span className="text-xs text-gray-500">{t('issues.edited')}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 italic">{t('issues.edited')}</span>
           )}
         </div>
         {editing ? (
@@ -109,12 +177,12 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <RichTextDisplay content={comment.content} className="text-sm" />
+          <RichTextDisplay content={comment.content} className="text-sm text-gray-700 dark:text-gray-300" />
         )}
         {currentUserId === comment.authorId && !editing && (
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
               onClick={() => {
                 setEditContent(comment.content)
                 setEditing(true)
@@ -123,7 +191,7 @@ function CommentItem({
               {t('common.edit')}
             </button>
             <button
-              className="text-xs text-gray-400 hover:text-red-600"
+              className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 font-medium transition-colors"
               onClick={() => setShowDelete(true)}
             >
               {t('common.delete')}
@@ -150,6 +218,55 @@ function CommentItem({
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Sidebar Field Wrapper                                                     */
+/* -------------------------------------------------------------------------- */
+function SidebarField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Section Header                                                            */
+/* -------------------------------------------------------------------------- */
+function SectionHeader({
+  icon: Icon,
+  title,
+  count,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  count?: number
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          {title}
+          {count !== undefined && (
+            <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">
+              ({count})
+            </span>
+          )}
+        </h3>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Main Page Component                                                       */
+/* -------------------------------------------------------------------------- */
 export function IssueDetailPage() {
   const { t } = useTranslation()
   const { id: issueId } = useParams<{ id: string }>()
@@ -170,6 +287,10 @@ export function IssueDetailPage() {
   const { data: issueVersions } = useIssueVersions(issueId!)
   const setIssueVersions = useSetIssueVersions()
 
+  // Fetch parent's parent for deep breadcrumb (epic > story > subtask)
+  const parentId = issue?.parentId
+  const { data: parentIssue } = useIssue(parentId || '')
+
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
   const updateIssue = useUpdateIssue()
@@ -178,12 +299,13 @@ export function IssueDetailPage() {
   const createComment = useCreateComment()
   const addWorkLog = useAddWorkLog()
 
-  // Child issues
+  // Child issues — use the dedicated children endpoint via filter
   const { data: childIssuesData } = useIssues(
     issue ? { projectId: issue.projectId } : undefined,
   )
-  const childIssues = (childIssuesData?.data || []).filter(
-    (i) => i.parentId === issueId,
+  const childIssues = useMemo(
+    () => (childIssuesData?.data || []).filter((i) => i.parentId === issueId),
+    [childIssuesData, issueId],
   )
 
   const [editingTitle, setEditingTitle] = useState(false)
@@ -199,57 +321,88 @@ export function IssueDetailPage() {
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
   const [labelInput, setLabelInput] = useState('')
-  const [labels, setLabels] = useState<string[]>(issue?.labels || [])
+
+  // Derive labels directly from issue data (no disconnected local state)
+  const issueLabels = issue?.labels || []
+
+  // Build enriched issue with parent chain for breadcrumb
+  const enrichedIssue = useMemo(() => {
+    if (!issue) return null
+    if (parentIssue && issue.parentId) {
+      return {
+        ...issue,
+        parent: {
+          ...parentIssue,
+          parent: parentIssue.parent || undefined,
+        },
+      }
+    }
+    return issue
+  }, [issue, parentIssue])
 
   if (isLoading) return <LoadingPage />
-  if (!issue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
+  if (!issue || !enrichedIssue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
 
   const handleAddLabel = () => {
     const trimmed = labelInput.trim()
-    if (trimmed && !labels.includes(trimmed)) {
-      const newLabels = [...labels, trimmed]
-      setLabels(newLabels)
-      updateIssue.mutate({ id: issue.id, labels: newLabels })
+    if (trimmed && !issueLabels.includes(trimmed)) {
+      updateIssue.mutate({ id: issue.id, labels: [...issueLabels, trimmed] })
       setLabelInput('')
     }
   }
 
   const handleRemoveLabel = (l: string) => {
-    const newLabels = labels.filter((x) => x !== l)
-    setLabels(newLabels)
-    updateIssue.mutate({ id: issue.id, labels: newLabels })
+    updateIssue.mutate({ id: issue.id, labels: issueLabels.filter((x) => x !== l) })
   }
 
+  // Can this issue have children?
+  const childConfig = CHILD_TYPE_MAP[issue.type]
+
+  // Select style shared across sidebar
+  const selectClasses =
+    'w-full rounded-lg border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors'
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Breadcrumb */}
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2 text-sm">
-        <Link to="/projects" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
+      {/* Top Bar — Breadcrumb */}
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-2 text-sm flex-wrap">
+        <Link to="/projects" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
           {t('nav.projects')}
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
+        <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
         {issue.projectId && (
           <>
             <Link
               to={`/projects/${issue.projectId}/board`}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               {t('nav.board')}
             </Link>
-            <span className="text-gray-300 dark:text-gray-600">/</span>
+            <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
           </>
         )}
-        <span className="font-mono text-blue-600 font-medium">{issue.key}</span>
+
+        {/* Parent breadcrumb chain */}
+        <IssueBreadcrumbChain issue={enrichedIssue} />
+
+        <span className="inline-flex items-center gap-1.5">
+          <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5" />
+          <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold">{issue.key}</span>
+        </span>
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Title */}
+        {/* ================================================================ */}
+        {/*  Main Content Area                                               */}
+        {/* ================================================================ */}
+        <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-8">
+          {/* Title Section */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <IssueTypeIcon type={issue.type} />
-              <span className="text-xs font-mono text-blue-600 font-medium">{issue.key}</span>
+            <div className="flex items-center gap-2.5 mb-3">
+              <IssueTypeIcon type={issue.type} className="h-5 w-5" />
+              <span className="text-sm font-mono text-blue-600 dark:text-blue-400 font-semibold">{issue.key}</span>
+              {issue.status && <StatusBadge status={issue.status} />}
+              <PriorityBadge priority={issue.priority as IssuePriority} />
             </div>
             {editingTitle ? (
               <div className="flex gap-2">
@@ -257,7 +410,7 @@ export function IssueDetailPage() {
                   autoFocus
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
-                  className="flex-1 text-xl font-bold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-2xl font-bold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       updateIssue.mutate({ id: issue.id, title: titleValue })
@@ -282,7 +435,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <h1
-                className="text-xl font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors leading-tight"
                 onClick={() => {
                   setTitleValue(issue.title)
                   setEditingTitle(true)
@@ -294,10 +447,12 @@ export function IssueDetailPage() {
           </div>
 
           {/* Description */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('common.description')}</h3>
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              {t('common.description')}
+            </h3>
             {editingDesc ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <RichTextEditor
                   value={descValue}
                   onChange={setDescValue}
@@ -323,7 +478,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <div
-                className="cursor-pointer hover:bg-gray-50 rounded-lg p-2 -mx-2 transition-colors min-h-[48px]"
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl p-3 -mx-1 transition-colors min-h-[48px]"
                 onClick={() => {
                   setDescValue(issue.description || '')
                   setEditingDesc(true)
@@ -332,7 +487,7 @@ export function IssueDetailPage() {
                 {issue.description ? (
                   <RichTextDisplay content={issue.description} />
                 ) : (
-                  <p className="text-sm text-gray-500 italic">{t('issues.clickToAddDescription')}</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">{t('issues.clickToAddDescription')}</p>
                 )}
               </div>
             )}
@@ -342,12 +497,14 @@ export function IssueDetailPage() {
           <AiSummaryPanel issueId={issue.id} />
 
           {/* Linked Issues */}
-          <IssueLinksList issueId={issue.id} />
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <IssueLinksList issueId={issue.id} />
+          </div>
 
           {/* GitHub Activity */}
           <GitHubEventsList issueId={issue.id} projectId={issue.projectId} />
 
-          {/* Similar Issues (Duplicate Detection) */}
+          {/* Similar Issues */}
           <SimilarIssuesPanel
             title={issue.title}
             projectId={issue.projectId}
@@ -355,59 +512,52 @@ export function IssueDetailPage() {
           />
 
           {/* Child Issues */}
-          {issue.type !== 'subtask' && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  Child Issues ({childIssues.length})
-                </h3>
-                <Button size="sm" variant="outline" onClick={() => setShowCreateChild(true)}>
-                  <Plus className="h-3.5 w-3.5" />
-                  Create child issue
-                </Button>
-              </div>
+          {childConfig && (
+            <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+              <SectionHeader
+                icon={ListTree}
+                title="Child Issues"
+                count={childIssues.length}
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowCreateChild(true)}
+                    className="rounded-lg"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add
+                  </Button>
+                }
+              />
               {childIssues.length > 0 ? (
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-700/60 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
                   {childIssues.map((child) => (
                     <Link
                       key={child.id}
                       to={`/issues/${child.id}`}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                     >
                       <IssueTypeIcon type={child.type} />
-                      <span className="text-xs font-mono text-blue-600 font-medium">{child.key}</span>
+                      <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium">{child.key}</span>
                       <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{child.title}</span>
                       <StatusBadge status={child.status} />
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No child issues yet.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No child issues yet.</p>
               )}
             </div>
           )}
 
-          {/* Parent Issue */}
-          {issue.parentId && issue.parent && (
-            <div className="mb-2">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Parent Issue</h3>
-              <Link
-                to={`/issues/${issue.parentId}`}
-                className="flex items-center gap-3 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <IssueTypeIcon type={issue.parent.type} />
-                <span className="text-xs font-mono text-blue-600 font-medium">{issue.parent.key}</span>
-                <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{issue.parent.title}</span>
-              </Link>
-            </div>
-          )}
-
           {/* Comments */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              {t('issues.commentsCount', { count: comments?.length || 0 })}
-            </h3>
-            <div className="space-y-4 mb-4">
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <SectionHeader
+              icon={MessageSquare}
+              title={t('issues.commentsCount', { count: comments?.length || 0 })}
+            />
+            <div className="space-y-4 mb-5">
               {comments?.map((comment) => (
                 <CommentItem
                   key={comment.id}
@@ -417,12 +567,12 @@ export function IssueDetailPage() {
                 />
               ))}
               {(!comments || comments.length === 0) && (
-                <p className="text-sm text-gray-500">{t('issues.noComments')}</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noComments')}</p>
               )}
             </div>
 
             {/* Add Comment */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
               <Avatar user={currentUser || undefined} size="sm" />
               <div className="flex-1 space-y-2">
                 <RichTextEditor
@@ -443,7 +593,7 @@ export function IssueDetailPage() {
                     )
                   }}
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  <Send className="h-3.5 w-3.5 mr-1" />
                   {t('issues.comment')}
                 </Button>
               </div>
@@ -451,186 +601,169 @@ export function IssueDetailPage() {
           </div>
 
           {/* Work Logs */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">
-                {t('issues.timeTracking')}
-              </h3>
-              <Button size="sm" variant="outline" onClick={() => setShowWorkLogDialog(true)}>
-                <Clock className="h-3.5 w-3.5" />
-                {t('issues.addWorkLog')}
-              </Button>
-            </div>
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <SectionHeader
+              icon={Clock}
+              title={t('issues.timeTracking')}
+              action={
+                <Button size="sm" variant="outline" onClick={() => setShowWorkLogDialog(true)} className="rounded-lg">
+                  <Clock className="h-3.5 w-3.5 mr-1" />
+                  {t('issues.addWorkLog')}
+                </Button>
+              }
+            />
             <div className="space-y-2">
               {workLogs?.map((log) => (
-                <div key={log.id} className="flex items-center gap-3 text-sm">
+                <div key={log.id} className="flex items-center gap-3 text-sm py-1.5">
                   <Avatar user={log.user} size="xs" />
                   <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
                   {log.description && (
-                    <span className="text-gray-500">{log.description}</span>
+                    <span className="text-gray-500 dark:text-gray-400 truncate">{log.description}</span>
                   )}
-                  <span className="text-gray-500 text-xs ml-auto">
+                  <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto flex-shrink-0">
                     {formatRelativeTime(log.createdAt)}
                   </span>
                 </div>
               ))}
               {(!workLogs || workLogs.length === 0) && (
-                <p className="text-sm text-gray-500">{t('issues.noTimeLogged')}</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noTimeLogged')}</p>
               )}
             </div>
           </div>
 
           {/* Activity / Changelog */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              {t('activity.title')}
-            </h3>
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <SectionHeader icon={History} title={t('activity.title')} />
             <ActivityList issueId={issue.id} />
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="w-full lg:w-80 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/50">
-          {/* Status */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.status')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={issue.statusId || ''}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, statusId: e.target.value || undefined })
-              }
-            >
-              <option value="">{t('common.noStatus')}</option>
-              {board?.statuses?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.priority')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={issue.priority}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, priority: e.target.value as IssuePriority })
-              }
-            >
-              {Object.values(IssuePriority).map((p) => (
-                <option key={p} value={p}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Type */}
-          <div>
-            <IssueTypeSelect
-              label={t('common.type')}
-              value={issue.type}
-              onChange={(val) =>
-                updateIssue.mutate({ id: issue.id, type: val as IssueType })
-              }
-            />
-          </div>
-
-          {/* Assignee */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.assignee')}
-            </label>
-            <UserSelect
-              value={issue.assigneeId || null}
-              onChange={(id) =>
-                updateIssue.mutate({ id: issue.id, assigneeId: id })
-              }
-            />
-          </div>
-
-          {/* Reporter */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.reporter')}
-            </label>
-            <div className="flex items-center gap-2">
-              <Avatar user={issue.reporter} size="xs" />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                {issue.reporter?.displayName || 'Unknown'}
-              </span>
-            </div>
-          </div>
-
-          {/* Sprint */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.sprint')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={issue.sprintId || ''}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, sprintId: e.target.value || null })
-              }
-            >
-              <option value="">{t('common.noSprint')}</option>
-              {sprints
-                ?.filter((s) => s.status !== 'completed')
-                .map((s) => (
+        {/* ================================================================ */}
+        {/*  Sidebar                                                          */}
+        {/* ================================================================ */}
+        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 overflow-y-auto bg-white dark:bg-gray-900/50">
+          <div className="p-5 space-y-5">
+            {/* Status */}
+            <SidebarField label={t('common.status')}>
+              <select
+                className={selectClasses}
+                value={issue.statusId || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val) {
+                    updateIssue.mutate({ id: issue.id, statusId: val })
+                  }
+                }}
+              >
+                <option value="">{t('common.noStatus')}</option>
+                {board?.statuses?.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
-            </select>
-          </div>
+              </select>
+            </SidebarField>
 
-          {/* Due Date */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.dueDate')}
-            </label>
-            <Input
-              type="date"
-              value={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, dueDate: e.target.value || null })
-              }
-            />
-          </div>
+            {/* Priority */}
+            <SidebarField label={t('common.priority')}>
+              <select
+                className={selectClasses}
+                value={issue.priority}
+                onChange={(e) =>
+                  updateIssue.mutate({ id: issue.id, priority: e.target.value as IssuePriority })
+                }
+              >
+                {Object.values(IssuePriority).map((p) => (
+                  <option key={p} value={p}>
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </SidebarField>
 
-          {/* Story Points */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.storyPoints')}
-            </label>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              value={issue.storyPoints ?? ''}
-              onChange={(e) =>
-                updateIssue.mutate({
-                  id: issue.id,
-                  storyPoints: e.target.value ? parseInt(e.target.value) : null,
-                })
-              }
-            />
-          </div>
+            {/* Type */}
+            <SidebarField label={t('common.type')}>
+              <IssueTypeSelect
+                value={issue.type}
+                onChange={(val) =>
+                  updateIssue.mutate({ id: issue.id, type: val as IssueType })
+                }
+              />
+            </SidebarField>
 
-          {/* Time Estimate */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.timeEstimate')}
-            </label>
-            <div className="flex items-center gap-2">
+            {/* Assignee */}
+            <SidebarField label={t('common.assignee')}>
+              <UserSelect
+                value={issue.assigneeId || null}
+                onChange={(id) =>
+                  updateIssue.mutate({ id: issue.id, assigneeId: id })
+                }
+              />
+            </SidebarField>
+
+            {/* Reporter */}
+            <SidebarField label={t('common.reporter')}>
+              <div className="flex items-center gap-2.5 py-1">
+                <Avatar user={issue.reporter} size="xs" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {issue.reporter?.displayName || 'Unknown'}
+                </span>
+              </div>
+            </SidebarField>
+
+            {/* Sprint */}
+            <SidebarField label={t('issues.sprint')}>
+              <select
+                className={selectClasses}
+                value={issue.sprintId || ''}
+                onChange={(e) =>
+                  updateIssue.mutate({ id: issue.id, sprintId: e.target.value || null })
+                }
+              >
+                <option value="">{t('common.noSprint')}</option>
+                {sprints
+                  ?.filter((s) => s.status !== 'completed')
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+            </SidebarField>
+
+            <div className="border-t border-gray-100 dark:border-gray-800" />
+
+            {/* Due Date */}
+            <SidebarField label={t('issues.dueDate')}>
+              <Input
+                type="date"
+                value={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
+                onChange={(e) =>
+                  updateIssue.mutate({ id: issue.id, dueDate: e.target.value || null })
+                }
+                className="dark:bg-gray-800 dark:border-gray-700/60"
+              />
+            </SidebarField>
+
+            {/* Story Points */}
+            <SidebarField label={t('issues.storyPoints')}>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={issue.storyPoints ?? ''}
+                onChange={(e) =>
+                  updateIssue.mutate({
+                    id: issue.id,
+                    storyPoints: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
+                className="dark:bg-gray-800 dark:border-gray-700/60"
+              />
+            </SidebarField>
+
+            {/* Time Estimate */}
+            <SidebarField label={t('issues.timeEstimate')}>
               <Input
                 type="number"
                 min="0"
@@ -642,299 +775,294 @@ export function IssueDetailPage() {
                     timeEstimate: e.target.value ? parseInt(e.target.value) : null,
                   })
                 }
+                className="dark:bg-gray-800 dark:border-gray-700/60"
               />
-            </div>
-            {issue.timeSpent > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                {issue.timeEstimate
-                  ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
-                  : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
-              </p>
-            )}
-          </div>
+              {issue.timeSpent > 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+                  {issue.timeEstimate
+                    ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
+                    : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
+                </p>
+              )}
+            </SidebarField>
 
-          {/* Labels */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.labels')}
-            </label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {(issue.labels || []).map((l) => (
-                <span
-                  key={l}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
-                >
-                  {l}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveLabel(l)}
-                    className="hover:text-blue-900"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-1">
-              <input
-                type="text"
-                value={labelInput}
-                onChange={(e) => setLabelInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleAddLabel()
-                  }
-                }}
-                placeholder={t('issues.addLabel')}
-                className="flex-1 rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel}>
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
+            <div className="border-t border-gray-100 dark:border-gray-800" />
 
-          {/* Components */}
-          {projectComponents && projectComponents.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Components
-              </label>
+            {/* Labels */}
+            <SidebarField label={t('issues.labels')}>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {(issueComponents || []).map((c) => (
+                {issueLabels.map((l) => (
                   <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs"
+                    key={l}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
                   >
-                    {c.name}
+                    {l}
                     <button
                       type="button"
-                      onClick={() =>
-                        setIssueComponents.mutate({
-                          issueId: issue.id,
-                          componentIds: (issueComponents || [])
-                            .filter((ic) => ic.id !== c.id)
-                            .map((ic) => ic.id),
-                        })
-                      }
-                      className="hover:text-purple-900"
+                      onClick={() => handleRemoveLabel(l)}
+                      className="hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </span>
                 ))}
               </div>
-              <select
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const current = (issueComponents || []).map((c) => c.id)
-                    if (!current.includes(e.target.value)) {
-                      setIssueComponents.mutate({
-                        issueId: issue.id,
-                        componentIds: [...current, e.target.value],
-                      })
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={labelInput}
+                  onChange={(e) => setLabelInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddLabel()
                     }
-                  }
-                }}
-              >
-                <option value="">Add component...</option>
-                {projectComponents
-                  ?.filter(
-                    (c) => !(issueComponents || []).find((ic) => ic.id === c.id),
-                  )
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
+                  }}
+                  placeholder={t('issues.addLabel')}
+                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors"
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel} className="rounded-lg">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </SidebarField>
+
+            {/* Components */}
+            {projectComponents && projectComponents.length > 0 && (
+              <SidebarField label="Components">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(issueComponents || []).map((c) => (
+                    <span
+                      key={c.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
+                    >
                       {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
-
-          {/* Fix Version */}
-          {projectVersions && projectVersions.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Fix Version
-              </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {(issueVersions || [])
-                  .filter((iv) => iv.relationType === 'fix')
-                  .map((iv) => (
-                    <span
-                      key={iv.versionId}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs"
-                    >
-                      {iv.version?.name || iv.versionId}
                       <button
                         type="button"
-                        onClick={() => {
-                          const current = (issueVersions || [])
-                            .filter((v) => v.relationType === 'fix' && v.versionId !== iv.versionId)
-                            .map((v) => v.versionId)
-                          setIssueVersions.mutate({
+                        onClick={() =>
+                          setIssueComponents.mutate({
                             issueId: issue.id,
-                            versionIds: current,
-                            relationType: 'fix',
+                            componentIds: (issueComponents || [])
+                              .filter((ic) => ic.id !== c.id)
+                              .map((ic) => ic.id),
                           })
-                        }}
-                        className="hover:text-green-900"
+                        }
+                        className="hover:text-purple-900 dark:hover:text-purple-100 transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </span>
                   ))}
-              </div>
-              <select
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const current = (issueVersions || [])
-                      .filter((v) => v.relationType === 'fix')
-                      .map((v) => v.versionId)
-                    if (!current.includes(e.target.value)) {
-                      setIssueVersions.mutate({
-                        issueId: issue.id,
-                        versionIds: [...current, e.target.value],
-                        relationType: 'fix',
-                      })
+                </div>
+                <select
+                  className={selectClasses}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const current = (issueComponents || []).map((c) => c.id)
+                      if (!current.includes(e.target.value)) {
+                        setIssueComponents.mutate({
+                          issueId: issue.id,
+                          componentIds: [...current, e.target.value],
+                        })
+                      }
                     }
-                  }
-                }}
-              >
-                <option value="">Add fix version...</option>
-                {projectVersions
-                  ?.filter(
-                    (v) =>
-                      !(issueVersions || []).find(
-                        (iv) => iv.versionId === v.id && iv.relationType === 'fix',
-                      ),
-                  )
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
+                  }}
+                >
+                  <option value="">Add component...</option>
+                  {projectComponents
+                    ?.filter((c) => !(issueComponents || []).find((ic) => ic.id === c.id))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </SidebarField>
+            )}
 
-          {/* Affects Version */}
-          {projectVersions && projectVersions.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                Affects Version
-              </label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {(issueVersions || [])
-                  .filter((iv) => iv.relationType === 'affects')
-                  .map((iv) => (
-                    <span
-                      key={iv.versionId}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs"
-                    >
-                      {iv.version?.name || iv.versionId}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const current = (issueVersions || [])
-                            .filter(
-                              (v) => v.relationType === 'affects' && v.versionId !== iv.versionId,
-                            )
-                            .map((v) => v.versionId)
-                          setIssueVersions.mutate({
-                            issueId: issue.id,
-                            versionIds: current,
-                            relationType: 'affects',
-                          })
-                        }}
-                        className="hover:text-orange-900"
+            {/* Fix Version */}
+            {projectVersions && projectVersions.length > 0 && (
+              <SidebarField label="Fix Version">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(issueVersions || [])
+                    .filter((iv) => iv.relationType === 'fix')
+                    .map((iv) => (
+                      <span
+                        key={iv.versionId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-              </div>
-              <select
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const current = (issueVersions || [])
-                      .filter((v) => v.relationType === 'affects')
-                      .map((v) => v.versionId)
-                    if (!current.includes(e.target.value)) {
-                      setIssueVersions.mutate({
-                        issueId: issue.id,
-                        versionIds: [...current, e.target.value],
-                        relationType: 'affects',
-                      })
+                        {iv.version?.name || iv.versionId}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = (issueVersions || [])
+                              .filter((v) => v.relationType === 'fix' && v.versionId !== iv.versionId)
+                              .map((v) => v.versionId)
+                            setIssueVersions.mutate({
+                              issueId: issue.id,
+                              versionIds: current,
+                              relationType: 'fix',
+                            })
+                          }}
+                          className="hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                <select
+                  className={selectClasses}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const current = (issueVersions || [])
+                        .filter((v) => v.relationType === 'fix')
+                        .map((v) => v.versionId)
+                      if (!current.includes(e.target.value)) {
+                        setIssueVersions.mutate({
+                          issueId: issue.id,
+                          versionIds: [...current, e.target.value],
+                          relationType: 'fix',
+                        })
+                      }
                     }
-                  }
-                }}
-              >
-                <option value="">Add affects version...</option>
-                {projectVersions
-                  ?.filter(
-                    (v) =>
-                      !(issueVersions || []).find(
-                        (iv) => iv.versionId === v.id && iv.relationType === 'affects',
-                      ),
-                  )
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-              </select>
+                  }}
+                >
+                  <option value="">Add fix version...</option>
+                  {projectVersions
+                    ?.filter(
+                      (v) =>
+                        !(issueVersions || []).find(
+                          (iv) => iv.versionId === v.id && iv.relationType === 'fix',
+                        ),
+                    )
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                </select>
+              </SidebarField>
+            )}
+
+            {/* Affects Version */}
+            {projectVersions && projectVersions.length > 0 && (
+              <SidebarField label="Affects Version">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(issueVersions || [])
+                    .filter((iv) => iv.relationType === 'affects')
+                    .map((iv) => (
+                      <span
+                        key={iv.versionId}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs font-medium"
+                      >
+                        {iv.version?.name || iv.versionId}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = (issueVersions || [])
+                              .filter(
+                                (v) => v.relationType === 'affects' && v.versionId !== iv.versionId,
+                              )
+                              .map((v) => v.versionId)
+                            setIssueVersions.mutate({
+                              issueId: issue.id,
+                              versionIds: current,
+                              relationType: 'affects',
+                            })
+                          }}
+                          className="hover:text-orange-900 dark:hover:text-orange-100 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+                <select
+                  className={selectClasses}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const current = (issueVersions || [])
+                        .filter((v) => v.relationType === 'affects')
+                        .map((v) => v.versionId)
+                      if (!current.includes(e.target.value)) {
+                        setIssueVersions.mutate({
+                          issueId: issue.id,
+                          versionIds: [...current, e.target.value],
+                          relationType: 'affects',
+                        })
+                      }
+                    }
+                  }}
+                >
+                  <option value="">Add affects version...</option>
+                  {projectVersions
+                    ?.filter(
+                      (v) =>
+                        !(issueVersions || []).find(
+                          (iv) => iv.versionId === v.id && iv.relationType === 'affects',
+                        ),
+                    )
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                </select>
+              </SidebarField>
+            )}
+
+            {/* Custom Fields */}
+            {customFieldDefs && customFieldDefs.length > 0 && (
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                <CustomFieldsForm
+                  definitions={customFieldDefs}
+                  values={customFieldValues || []}
+                  onChange={(fieldId, value) => {
+                    setCustomFields.mutate({
+                      issueId: issue.id,
+                      values: [{ fieldId, value }],
+                    })
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="border-t border-gray-100 dark:border-gray-800" />
+
+            {/* Watchers */}
+            <WatchButton issueId={issue.id} />
+
+            {/* Metadata */}
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-1.5">
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
+              </p>
             </div>
-          )}
 
-          {/* Custom Fields */}
-          {customFieldDefs && customFieldDefs.length > 0 && (
-            <div className="pt-2 border-t border-gray-200">
-              <CustomFieldsForm
-                definitions={customFieldDefs}
-                values={customFieldValues || []}
-                onChange={(fieldId, value) => {
-                  setCustomFields.mutate({
-                    issueId: issue.id,
-                    values: [{ fieldId, value }],
-                  })
-                }}
-              />
-            </div>
-          )}
-
-          {/* Watchers */}
-          <WatchButton issueId={issue.id} />
-
-          {/* Dates */}
-          <div className="pt-2 border-t border-gray-200 space-y-1">
-            <p className="text-xs text-gray-500">
-              {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
-            </p>
-            <p className="text-xs text-gray-500">
-              {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
-            </p>
+            {/* Delete */}
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full rounded-lg"
+              onClick={() => setShowDeleteIssue(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              {t('issues.deleteIssue')}
+            </Button>
           </div>
-
-          {/* Delete */}
-          <Button
-            variant="destructive"
-            size="sm"
-            className="w-full"
-            onClick={() => setShowDeleteIssue(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            {t('issues.deleteIssue')}
-          </Button>
         </div>
       </div>
+
+      {/* ================================================================ */}
+      {/*  Dialogs                                                          */}
+      {/* ================================================================ */}
 
       {/* Work Log Dialog */}
       <Dialog
@@ -1003,14 +1131,8 @@ export function IssueDetailPage() {
         </DialogHeader>
         <DialogContent className="space-y-4">
           {(() => {
-            const childTypeMap: Record<string, { types: string[]; default: string }> = {
-              epic: { types: ['story'], default: 'story' },
-              story: { types: ['task', 'bug'], default: 'task' },
-              task: { types: ['subtask'], default: 'subtask' },
-              bug: { types: ['subtask'], default: 'subtask' },
-            }
-            const config = childTypeMap[issue.type]
-            if (!config) return <p className="text-sm text-gray-500">This issue type cannot have children.</p>
+            const config = CHILD_TYPE_MAP[issue.type]
+            if (!config) return <p className="text-sm text-gray-500 dark:text-gray-400">This issue type cannot have children.</p>
 
             const selectedChildType = childType || config.default
 

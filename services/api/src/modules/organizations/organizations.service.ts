@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { Organization } from './entities/organization.entity';
+import { OrganizationMember } from './entities/organization-member.entity';
 import { User } from '../users/entities/user.entity';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -24,6 +25,8 @@ export class OrganizationsService {
     private organizationRepository: Repository<Organization>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(OrganizationMember)
+    private organizationMemberRepository: Repository<OrganizationMember>,
     private emailService: EmailService,
     private auditService: AuditService,
     private configService: ConfigService,
@@ -44,10 +47,26 @@ export class OrganizationsService {
   }
 
   async getMembers(organizationId: string): Promise<User[]> {
-    return this.userRepository.find({
+    // Query via organization_members join to support multi-org membership
+    const memberships = await this.organizationMemberRepository.find({
+      where: { organizationId },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+    // Also include legacy users that have organizationId set directly
+    const memberUserIds = new Set(memberships.map((m) => m.userId));
+    const legacyUsers = await this.userRepository.find({
       where: { organizationId },
       order: { createdAt: 'ASC' },
     });
+    // Merge: prefer membership users, add any legacy users not in the set
+    const users = memberships.map((m) => m.user).filter(Boolean);
+    for (const u of legacyUsers) {
+      if (!memberUserIds.has(u.id)) {
+        users.push(u);
+      }
+    }
+    return users;
   }
 
   async inviteMember(
@@ -60,10 +79,43 @@ export class OrganizationsService {
     });
 
     if (existingUser) {
-      if (existingUser.organizationId === organizationId) {
+      // Check if user is already a member of THIS organization (via organization_members)
+      const existingMembership = await this.organizationMemberRepository.findOne({
+        where: { userId: existingUser.id, organizationId },
+      });
+
+      if (existingMembership) {
         throw new ConflictException('User is already a member of this organization');
       }
-      throw new ConflictException('Email is already registered in another organization');
+
+      // User exists in another org -- add them to this org via organization_members
+      await this.organizationMemberRepository
+        .createQueryBuilder()
+        .insert()
+        .into(OrganizationMember)
+        .values({
+          userId: existingUser.id,
+          organizationId,
+          role: dto.role || 'member',
+          isDefault: false,
+        })
+        .orIgnore()
+        .execute();
+
+      // Send invitation email
+      await this.generateAndSendInvitation(existingUser, inviterId, organizationId);
+
+      this.auditService.log(
+        organizationId,
+        inviterId,
+        'organization.member.invited',
+        'user',
+        existingUser.id,
+        { email: existingUser.email, role: dto.role || 'member', existingUser: true },
+        null,
+      );
+
+      return existingUser;
     }
 
     // Create user without password (invitation pending)
@@ -78,6 +130,20 @@ export class OrganizationsService {
     });
 
     const saved = await this.userRepository.save(user);
+
+    // Also create an organization_members entry
+    await this.organizationMemberRepository
+      .createQueryBuilder()
+      .insert()
+      .into(OrganizationMember)
+      .values({
+        userId: saved.id,
+        organizationId,
+        role: dto.role || 'member',
+        isDefault: true,
+      })
+      .orIgnore()
+      .execute();
 
     // Generate invitation token and store hash
     await this.generateAndSendInvitation(saved, inviterId, organizationId);
@@ -161,10 +227,14 @@ export class OrganizationsService {
       throw new BadRequestException('Cannot deactivate your own account');
     }
 
-    const member = await this.userRepository.findOne({
-      where: { id: memberId, organizationId },
+    // Check via organization_members first, fall back to legacy organizationId
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
     });
-    if (!member) {
+    const member = await this.userRepository.findOne({
+      where: { id: memberId },
+    });
+    if (!member || (!membership && member.organizationId !== organizationId)) {
       throw new NotFoundException('Member not found');
     }
 

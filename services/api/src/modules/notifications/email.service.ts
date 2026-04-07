@@ -103,4 +103,25 @@ export class EmailService {
     });
     this.logger.log(`Enqueued member-invitation email to ${to}`);
   }
+
+  async sendProjectMemberAddedEmail(
+    to: string,
+    displayName: string,
+    addedByName: string,
+    projectName: string,
+    projectKey: string,
+    organizationName: string,
+    projectUrl: string,
+  ): Promise<void> {
+    await this.emailQueue.add('project-member-added', {
+      to,
+      displayName,
+      addedByName,
+      projectName,
+      projectKey,
+      organizationName,
+      projectUrl,
+    });
+    this.logger.log(`Enqueued project-member-added email to ${to} for project ${projectKey}`);
+  }
 }

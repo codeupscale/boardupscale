@@ -55,6 +55,16 @@ interface MemberInvitationJobData {
   inviteUrl: string;
 }
 
+interface ProjectMemberAddedJobData {
+  to: string;
+  displayName: string;
+  addedByName: string;
+  projectName: string;
+  projectKey: string;
+  organizationName: string;
+  projectUrl: string;
+}
+
 // ─── HTML template helpers ───────────────────────────────────────────────────
 
 function emailWrapper(title: string, bodyHtml: string): string {
@@ -89,7 +99,7 @@ function emailWrapper(title: string, bodyHtml: string): string {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <h1>Project<span>Flow</span></h1>
+        <h1>Board<span>upscale</span></h1>
       </div>
       <div class="body">
         ${bodyHtml}
@@ -261,6 +271,23 @@ function memberInvitationTemplate(data: MemberInvitationJobData): { subject: str
   };
 }
 
+function projectMemberAddedTemplate(data: ProjectMemberAddedJobData): { subject: string; html: string } {
+  return {
+    subject: `You've been added to project ${data.projectKey} on Boardupscale`,
+    html: emailWrapper(
+      'Added to Project',
+      `<h2>Hi ${escapeHtml(data.displayName)},</h2>
+      <p><strong>${escapeHtml(data.addedByName)}</strong> has added you to the project <strong>${escapeHtml(data.projectName)}</strong> (${escapeHtml(data.projectKey)}) in <strong>${escapeHtml(data.organizationName)}</strong>.</p>
+      <p>You can now view and work on issues in this project.</p>
+      <p>
+        <a href="${escapeHtml(data.projectUrl)}" class="btn">Go to Project</a>
+      </p>
+      <hr class="divider" />
+      <p style="font-size:13px;color:#6b778c;">If you weren't expecting this, please contact your team administrator.</p>`
+    ),
+  };
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -384,6 +411,18 @@ export function createEmailWorker(): Worker {
         case 'member-invitation': {
           const data = job.data as MemberInvitationJobData;
           message = memberInvitationTemplate(data);
+          await transporter.sendMail({
+            from: config.smtp.from,
+            to: data.to,
+            subject: message.subject,
+            html: message.html,
+          });
+          break;
+        }
+
+        case 'project-member-added': {
+          const data = job.data as ProjectMemberAddedJobData;
+          message = projectMemberAddedTemplate(data);
           await transporter.sendMail({
             from: config.smtp.from,
             to: data.to,

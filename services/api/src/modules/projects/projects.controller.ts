@@ -136,9 +136,10 @@ export class ProjectsController {
   async addMember(
     @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
     @Body() dto: AddMemberDto,
   ) {
-    return this.projectsService.addMember(id, organizationId, dto);
+    return this.projectsService.addMember(id, organizationId, dto, user.id);
   }
 
   @Delete(':id/members/:userId')

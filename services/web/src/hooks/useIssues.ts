@@ -95,14 +95,29 @@ export function useUpdateIssue() {
       const { data } = await api.patch(`/issues/${id}`, payload)
       return data.data as Issue
     },
+    onMutate: async ({ id, ...payload }) => {
+      // Cancel in-flight queries so they don't overwrite optimistic update
+      await qc.cancelQueries({ queryKey: ['issue', id] })
+      const previous = qc.getQueryData<Issue>(['issue', id])
+      if (previous) {
+        qc.setQueryData<Issue>(['issue', id], { ...previous, ...payload } as Issue)
+      }
+      return { previous, id }
+    },
     onSuccess: (issue) => {
+      // Replace cache with server response (authoritative)
+      qc.setQueryData(['issue', issue.id], issue)
       qc.invalidateQueries({ queryKey: ['issues'] })
-      qc.invalidateQueries({ queryKey: ['issue', issue.id] })
       qc.invalidateQueries({ queryKey: ['board'] })
       toast('Issue updated')
     },
-    onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update issue', 'error'),
+    onError: (err: any, _variables, context) => {
+      // Roll back optimistic update
+      if (context?.previous) {
+        qc.setQueryData(['issue', context.id], context.previous)
+      }
+      toast(err?.response?.data?.error?.message || 'Failed to update issue', 'error')
+    },
   })
 }
 

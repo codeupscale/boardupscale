@@ -3,20 +3,27 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 import { CreateProjectDto, ProjectTemplate } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { AuditService } from '../audit/audit.service';
+import { EmailService } from '../notifications/email.service';
+import { UsersService } from '../users/users.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+
   constructor(
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
@@ -24,7 +31,12 @@ export class ProjectsService {
     private projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(IssueStatus)
     private issueStatusRepository: Repository<IssueStatus>,
+    @InjectRepository(Organization)
+    private organizationRepository: Repository<Organization>,
     private auditService: AuditService,
+    private emailService: EmailService,
+    private usersService: UsersService,
+    private configService: ConfigService,
   ) {}
 
   /**
@@ -194,8 +206,8 @@ export class ProjectsService {
     });
   }
 
-  async addMember(projectId: string, organizationId: string, dto: AddMemberDto) {
-    await this.findById(projectId, organizationId);
+  async addMember(projectId: string, organizationId: string, dto: AddMemberDto, actorId?: string) {
+    const project = await this.findById(projectId, organizationId);
     const existing = await this.projectMemberRepository.findOne({
       where: { projectId, userId: dto.userId },
     });
@@ -207,7 +219,48 @@ export class ProjectsService {
       userId: dto.userId,
       role: dto.role || 'developer',
     });
-    return this.projectMemberRepository.save(member);
+    const saved = await this.projectMemberRepository.save(member);
+
+    // Send project-member-added email (non-blocking)
+    this.sendProjectMemberEmail(dto.userId, project, organizationId, actorId).catch((err) => {
+      this.logger.warn(`Failed to send project-member-added email: ${err.message}`);
+    });
+
+    return saved;
+  }
+
+  /**
+   * Send email notification when a user is added to a project.
+   */
+  private async sendProjectMemberEmail(
+    userId: string,
+    project: Project,
+    organizationId: string,
+    actorId?: string,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    const org = await this.organizationRepository.findOne({ where: { id: organizationId } });
+    let addedByName = 'A team member';
+    if (actorId) {
+      try {
+        const actor = await this.usersService.findById(actorId);
+        addedByName = actor.displayName || actor.email;
+      } catch {
+        // actor not found — use default
+      }
+    }
+    const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
+    const projectUrl = `${frontendUrl}/projects/${project.id}/board`;
+
+    await this.emailService.sendProjectMemberAddedEmail(
+      user.email,
+      user.displayName || user.email,
+      addedByName,
+      project.name,
+      project.key,
+      org?.name || 'your organization',
+      projectUrl,
+    );
   }
 
   async removeMember(projectId: string, organizationId: string, userId: string): Promise<void> {
