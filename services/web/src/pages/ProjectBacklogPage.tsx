@@ -414,31 +414,33 @@ function SprintSection({
               )}
             >
               {issues.length > 0 ? (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800">
-                      <th className="w-8" />
-                      <th className="px-2 py-2 w-8">
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = someSelected && !allSelected
-                          }}
-                          onChange={() => selectAll(issueIds)}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                      </th>
-                      <th colSpan={6} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {issues.map((issue, index) => (
-                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
-                    ))}
-                    {provided.placeholder}
-                  </tbody>
-                </table>
+                <>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-800">
+                        <th className="w-8" />
+                        <th className="px-2 py-2 w-8">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someSelected && !allSelected
+                            }}
+                            onChange={() => selectAll(issueIds)}
+                            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        </th>
+                        <th colSpan={6} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {issues.map((issue, index) => (
+                        <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
+                      ))}
+                    </tbody>
+                  </table>
+                  {provided.placeholder}
+                </>
               ) : (
                 <div className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
                   {provided.placeholder}
@@ -509,7 +511,11 @@ function SprintSection({
               )
             }
             title={t('sprints.completeSprint')}
-            description={`Complete ${sprint.name}? ${issues.filter((i) => i.status?.category !== 'done').length} incomplete issues will be moved to backlog.`}
+            description={
+              issues.filter((i) => i.status?.category !== 'done').length > 0
+                ? `${issues.filter((i) => i.status?.category !== 'done').length} issue(s) in ${sprint.name} are not in Done status. All issues and their subtasks must be Done before completing the sprint.`
+                : `Complete ${sprint.name}? All ${issues.length} issues are in Done status.`
+            }
             confirmLabel={t('sprints.completeSprint')}
             isLoading={completeSprint.isPending}
           />
@@ -597,39 +603,43 @@ function BacklogSection({
             )}
           >
             {issues.length > 0 ? (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800">
-                    <th className="w-8" />
-                    <th className="px-2 py-2 w-8">
-                      <input
-                        type="checkbox"
-                        checked={allBacklogSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
-                        }}
-                        onChange={() => selectAll(backlogIds)}
-                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                    </th>
-                    <th colSpan={6} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {issues.map((issue, index) => (
-                    <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
-                  ))}
-                  {provided.placeholder}
-                </tbody>
-              </table>
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="w-8" />
+                      <th className="px-2 py-2 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allBacklogSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
+                          }}
+                          onChange={() => selectAll(backlogIds)}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </th>
+                      <th colSpan={6} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {issues.map((issue, index) => (
+                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                    ))}
+                  </tbody>
+                </table>
+                {provided.placeholder}
+              </>
             ) : (
-              <EmptyState
-                title={t('sprints.backlogEmpty')}
-                description={t('sprints.backlogEmptyDesc')}
-                action={{ label: t('issues.createIssue'), onClick: onCreateIssue }}
-              />
+              <>
+                <EmptyState
+                  title={t('sprints.backlogEmpty')}
+                  description={t('sprints.backlogEmptyDesc')}
+                  action={{ label: t('issues.createIssue'), onClick: onCreateIssue }}
+                />
+                {provided.placeholder}
+              </>
             )}
-            {issues.length > 0 && <span className="hidden">{provided.placeholder}</span>}
           </div>
         </div>
       )}

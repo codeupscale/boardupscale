@@ -199,7 +199,7 @@ describe('SprintsService', () => {
   });
 
   describe('complete', () => {
-    it('should complete an active sprint', async () => {
+    it('should complete an active sprint when all issues are done', async () => {
       const sprint = mockSprint({ status: 'active' });
       sprintRepo.findOne.mockResolvedValue(sprint);
       projectsService.findById.mockResolvedValue(mockProject());
@@ -207,9 +207,15 @@ describe('SprintsService', () => {
       const doneStatus = mockIssueStatus({ id: 'done-status', category: 'done' });
       statusRepo.find.mockResolvedValue([doneStatus]);
 
-      const qb = createMockQueryBuilder([]);
-      qb.getMany.mockResolvedValue([]); // no incomplete issues
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+      // QB 1: no incomplete sprint issues
+      const incompleteQb = createMockQueryBuilder([]);
+      incompleteQb.getMany.mockResolvedValue([]);
+      // QB 2: sprint issue IDs for child check
+      const sprintIdsQb = createMockQueryBuilder([]);
+      sprintIdsQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(incompleteQb)
+        .mockReturnValueOnce(sprintIdsQb);
 
       const completedSprint = mockSprint({ status: 'completed' });
       sprintRepo.save.mockResolvedValue(completedSprint);
@@ -230,7 +236,7 @@ describe('SprintsService', () => {
       );
     });
 
-    it('should move incomplete issues to backlog when completing', async () => {
+    it('should throw BadRequestException when sprint has incomplete issues', async () => {
       const sprint = mockSprint({ status: 'active' });
       sprintRepo.findOne.mockResolvedValue(sprint);
       projectsService.findById.mockResolvedValue(mockProject());
@@ -241,17 +247,38 @@ describe('SprintsService', () => {
       const incompleteIssues = [mockIssue({ id: 'incomplete-1' })];
       const findQb = createMockQueryBuilder(incompleteIssues);
       findQb.getMany.mockResolvedValue(incompleteIssues);
-      const updateQb = createMockQueryBuilder();
+      issueRepo.createQueryBuilder.mockReturnValueOnce(findQb);
+
+      await expect(service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(
+        /not in Done status/,
+      );
+    });
+
+    it('should throw BadRequestException when child subtasks are not done', async () => {
+      const sprint = mockSprint({ status: 'active' });
+      sprintRepo.findOne.mockResolvedValue(sprint);
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const doneStatus = mockIssueStatus({ id: 'done-status', category: 'done' });
+      statusRepo.find.mockResolvedValue([doneStatus]);
+
+      // QB 1: no incomplete sprint issues
+      const incompleteQb = createMockQueryBuilder([]);
+      incompleteQb.getMany.mockResolvedValue([]);
+      // QB 2: sprint has issues
+      const sprintIdsQb = createMockQueryBuilder([{ id: 'issue-1' }]);
+      sprintIdsQb.getMany.mockResolvedValue([{ id: 'issue-1' }]);
+      // QB 3: child subtask check returns count > 0
+      const childQb = createMockQueryBuilder([]);
+      childQb.getCount.mockResolvedValue(2);
       issueRepo.createQueryBuilder
-        .mockReturnValueOnce(findQb)
-        .mockReturnValueOnce(updateQb);
+        .mockReturnValueOnce(incompleteQb)
+        .mockReturnValueOnce(sprintIdsQb)
+        .mockReturnValueOnce(childQb);
 
-      sprintRepo.save.mockImplementation((s) => Promise.resolve(s));
-
-      await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
-
-      // The update query builder was used to set sprintId to null
-      expect(updateQb.set).toHaveBeenCalledWith({ sprintId: null });
+      await expect(service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(
+        /child subtask/,
+      );
     });
   });
 

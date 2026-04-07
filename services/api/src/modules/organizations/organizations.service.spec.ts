@@ -85,17 +85,21 @@ describe('OrganizationsService', () => {
 
   describe('getMembers', () => {
     it('should return all members for the organization', async () => {
-      const users = [
-        mockUser(),
-        mockUser({ id: 'other-user', email: 'other@example.com', displayName: 'Other' }),
+      const user1 = mockUser();
+      const user2 = mockUser({ id: 'other-user', email: 'other@example.com', displayName: 'Other' });
+      const memberships = [
+        { userId: user1.id, user: user1 },
+        { userId: user2.id, user: user2 },
       ];
-      userRepo.find.mockResolvedValue(users);
+      orgMemberRepo.find.mockResolvedValue(memberships);
+      userRepo.find.mockResolvedValue([]); // no legacy users
 
       const result = await service.getMembers(TEST_IDS.ORG_ID);
 
-      expect(result).toEqual(users);
-      expect(userRepo.find).toHaveBeenCalledWith({
+      expect(result).toEqual([user1, user2]);
+      expect(orgMemberRepo.find).toHaveBeenCalledWith({
         where: { organizationId: TEST_IDS.ORG_ID },
+        relations: ['user'],
         order: { createdAt: 'ASC' },
       });
     });
@@ -104,15 +108,28 @@ describe('OrganizationsService', () => {
   describe('inviteMember', () => {
     const inviterId = TEST_IDS.USER_ID;
 
+    const mockOrgMemberQb = () => {
+      const qb = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({}),
+      };
+      orgMemberRepo.createQueryBuilder.mockReturnValue(qb as any);
+      return qb;
+    };
+
     it('should create a new user for the organization', async () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
-        .mockResolvedValueOnce(mockUser({ id: inviterId })) // inviter lookup
+        .mockResolvedValueOnce(mockUser({ id: inviterId })) // inviter lookup (generateAndSendInvitation)
       orgRepo.findOne.mockResolvedValue(mockOrganization());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ email: 'invited@example.com', role: 'member', isActive: false });
       userRepo.create.mockReturnValue(newUser);
       userRepo.save.mockResolvedValue(newUser);
+      mockOrgMemberQb();
 
       const result = await service.inviteMember(TEST_IDS.ORG_ID, {
         email: 'invited@example.com',
@@ -136,6 +153,8 @@ describe('OrganizationsService', () => {
     it('should throw ConflictException when user is already a member of the same org', async () => {
       const existingUser = mockUser({ organizationId: TEST_IDS.ORG_ID });
       userRepo.findOne.mockResolvedValue(existingUser);
+      // User exists AND has an existing membership in this org
+      orgMemberRepo.findOne.mockResolvedValue({ userId: existingUser.id, organizationId: TEST_IDS.ORG_ID });
 
       await expect(
         service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
@@ -145,16 +164,21 @@ describe('OrganizationsService', () => {
       ).rejects.toThrow('User is already a member of this organization');
     });
 
-    it('should throw ConflictException when email is registered in another org', async () => {
+    it('should add existing user from another org to this org', async () => {
       const existingUser = mockUser({ organizationId: 'other-org-id' });
-      userRepo.findOne.mockResolvedValue(existingUser);
+      userRepo.findOne
+        .mockResolvedValueOnce(existingUser) // email check
+        .mockResolvedValueOnce(mockUser({ id: inviterId })); // inviter lookup
+      orgMemberRepo.findOne.mockResolvedValue(null); // no existing membership
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      mockOrgMemberQb();
 
-      await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
-      ).rejects.toThrow(ConflictException);
-      await expect(
-        service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId),
-      ).rejects.toThrow('Email is already registered in another organization');
+      const result = await service.inviteMember(TEST_IDS.ORG_ID, { email: 'test@example.com' }, inviterId);
+
+      expect(result).toEqual(existingUser);
+      expect(orgMemberRepo.createQueryBuilder).toHaveBeenCalled();
+      expect(mockEmailService.sendInvitationEmail).toHaveBeenCalled();
     });
 
     it('should default role to member when not specified', async () => {
@@ -166,6 +190,7 @@ describe('OrganizationsService', () => {
       const newUser = mockUser({ role: 'member' });
       userRepo.create.mockReturnValue(newUser);
       userRepo.save.mockResolvedValue(newUser);
+      mockOrgMemberQb();
 
       await service.inviteMember(TEST_IDS.ORG_ID, { email: 'new@example.com' }, inviterId);
 
@@ -184,6 +209,7 @@ describe('OrganizationsService', () => {
 
     it('should deactivate a member', async () => {
       const member = mockUser({ id: 'other-user', role: 'member' });
+      orgMemberRepo.findOne.mockResolvedValue({ userId: 'other-user', organizationId: TEST_IDS.ORG_ID });
       userRepo.findOne.mockResolvedValue(member);
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 

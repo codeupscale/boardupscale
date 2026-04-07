@@ -76,31 +76,25 @@ const CHILD_TYPE_MAP: Record<string, { types: string[]; default: string }> = {
 /*  Breadcrumb helpers                                                        */
 /* -------------------------------------------------------------------------- */
 function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
-  // Build chain: grandparent > parent > current
+  // Walk up the parent chain to build full hierarchy: Epic > Story > Task > current
   const chain: Array<{ id: string; key: string; title: string; type: IssueType }> = []
 
-  if (issue.parent?.parent) {
-    chain.push({
-      id: issue.parent.parent.id,
-      key: issue.parent.parent.key,
-      title: issue.parent.parent.title,
-      type: issue.parent.parent.type,
+  let cursor: any = issue.parent
+  while (cursor) {
+    chain.unshift({
+      id: cursor.id,
+      key: cursor.key,
+      title: cursor.title,
+      type: cursor.type,
     })
-  }
-  if (issue.parent) {
-    chain.push({
-      id: issue.parent.id,
-      key: issue.parent.key,
-      title: issue.parent.title,
-      type: issue.parent.type,
-    })
+    cursor = cursor.parent
   }
 
   if (chain.length === 0) return null
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
-      {chain.map((ancestor, idx) => (
+      {chain.map((ancestor) => (
         <span key={ancestor.id} className="flex items-center gap-1.5">
           <Link
             to={`/issues/${ancestor.id}`}
@@ -287,10 +281,6 @@ export function IssueDetailPage() {
   const { data: issueVersions } = useIssueVersions(issueId!)
   const setIssueVersions = useSetIssueVersions()
 
-  // Fetch parent's parent for deep breadcrumb (epic > story > subtask)
-  const parentId = issue?.parentId
-  const { data: parentIssue } = useIssue(parentId || '')
-
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
   const updateIssue = useUpdateIssue()
@@ -325,23 +315,8 @@ export function IssueDetailPage() {
   // Derive labels directly from issue data (no disconnected local state)
   const issueLabels = issue?.labels || []
 
-  // Build enriched issue with parent chain for breadcrumb
-  const enrichedIssue = useMemo(() => {
-    if (!issue) return null
-    if (parentIssue && issue.parentId) {
-      return {
-        ...issue,
-        parent: {
-          ...parentIssue,
-          parent: parentIssue.parent || undefined,
-        },
-      }
-    }
-    return issue
-  }, [issue, parentIssue])
-
   if (isLoading) return <LoadingPage />
-  if (!issue || !enrichedIssue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
+  if (!issue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
 
   const handleAddLabel = () => {
     const trimmed = labelInput.trim()
@@ -383,7 +358,7 @@ export function IssueDetailPage() {
         )}
 
         {/* Parent breadcrumb chain */}
-        <IssueBreadcrumbChain issue={enrichedIssue} />
+        <IssueBreadcrumbChain issue={issue} />
 
         <span className="inline-flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5" />

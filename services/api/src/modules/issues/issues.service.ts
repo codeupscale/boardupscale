@@ -188,7 +188,7 @@ export class IssuesService {
   async findById(id: string, organizationId: string): Promise<Issue> {
     const issue = await this.issueRepository.findOne({
       where: { id, organizationId, deletedAt: IsNull() },
-      relations: ['status', 'assignee', 'reporter', 'sprint', 'parent', 'project'],
+      relations: ['status', 'assignee', 'reporter', 'sprint', 'parent', 'parent.parent', 'parent.parent.parent', 'project'],
     });
     if (!issue) {
       throw new NotFoundException('Issue not found');

@@ -216,7 +216,7 @@ describe('IssuesService', () => {
       expect(result).toEqual(issue);
       expect(issueRepo.findOne).toHaveBeenCalledWith({
         where: { id: TEST_IDS.ISSUE_ID, organizationId: TEST_IDS.ORG_ID, deletedAt: expect.anything() },
-        relations: ['status', 'assignee', 'reporter', 'sprint', 'parent', 'project'],
+        relations: ['status', 'assignee', 'reporter', 'sprint', 'parent', 'parent.parent', 'parent.parent.parent', 'project'],
       });
     });
 
