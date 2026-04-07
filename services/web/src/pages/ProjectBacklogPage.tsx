@@ -262,6 +262,8 @@ function SprintSection({
     <Droppable droppableId={sprint.id} type="ISSUE">
       {(provided, snapshot) => (
         <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
           className={cn(
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
@@ -406,56 +408,44 @@ function SprintSection({
           {/* Issues */}
           {!collapsed && (
             <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
               className={cn(
                 'min-h-[48px] transition-colors',
                 snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
               )}
             >
               {issues.length > 0 ? (
-                <>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-800">
-                        <th className="w-8" />
-                        <th className="px-2 py-2 w-8">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            ref={(el) => {
-                              if (el) el.indeterminate = someSelected && !allSelected
-                            }}
-                            onChange={() => selectAll(issueIds)}
-                            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                          />
-                        </th>
-                        <th colSpan={6} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {issues.map((issue, index) => (
-                        <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
-                      ))}
-                    </tbody>
-                  </table>
-                  {provided.placeholder}
-                </>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <th className="w-8" />
+                      <th className="px-2 py-2 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someSelected && !allSelected
+                          }}
+                          onChange={() => selectAll(issueIds)}
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </th>
+                      <th colSpan={6} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {issues.map((issue, index) => (
+                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
+                    ))}
+                  </tbody>
+                </table>
               ) : (
                 <div className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-                  {provided.placeholder}
                   Drag issues here or create new ones
                 </div>
               )}
             </div>
           )}
-
-          {/* Collapsed placeholder */}
-          {collapsed && (
-            <div ref={provided.innerRef} {...provided.droppableProps} className="hidden">
-              {provided.placeholder}
-            </div>
-          )}
+          {provided.placeholder}
 
           {/* Start Sprint Confirm */}
           <Dialog
@@ -570,6 +560,8 @@ function BacklogSection({
     <Droppable droppableId="backlog" type="ISSUE">
       {(provided, snapshot) => (
         <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
           className={cn(
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
@@ -595,52 +587,45 @@ function BacklogSection({
           </div>
 
           <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
             className={cn(
               'min-h-[48px] transition-colors',
               snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
             )}
           >
             {issues.length > 0 ? (
-              <>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800">
-                      <th className="w-8" />
-                      <th className="px-2 py-2 w-8">
-                        <input
-                          type="checkbox"
-                          checked={allBacklogSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
-                          }}
-                          onChange={() => selectAll(backlogIds)}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                      </th>
-                      <th colSpan={6} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {issues.map((issue, index) => (
-                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
-                    ))}
-                  </tbody>
-                </table>
-                {provided.placeholder}
-              </>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <th className="w-8" />
+                    <th className="px-2 py-2 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allBacklogSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
+                        }}
+                        onChange={() => selectAll(backlogIds)}
+                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
+                    <th colSpan={6} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {issues.map((issue, index) => (
+                    <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                  ))}
+                </tbody>
+              </table>
             ) : (
-              <>
-                <EmptyState
-                  title={t('sprints.backlogEmpty')}
-                  description={t('sprints.backlogEmptyDesc')}
-                  action={{ label: t('issues.createIssue'), onClick: onCreateIssue }}
-                />
-                {provided.placeholder}
-              </>
+              <EmptyState
+                title={t('sprints.backlogEmpty')}
+                description={t('sprints.backlogEmptyDesc')}
+                action={{ label: t('issues.createIssue'), onClick: onCreateIssue }}
+              />
             )}
           </div>
+          {provided.placeholder}
         </div>
       )}
     </Droppable>

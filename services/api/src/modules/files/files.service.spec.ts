@@ -16,6 +16,8 @@ jest.mock('@aws-sdk/client-s3', () => {
     PutObjectCommand: jest.fn(),
     DeleteObjectCommand: jest.fn(),
     GetObjectCommand: jest.fn(),
+    HeadBucketCommand: jest.fn(),
+    CreateBucketCommand: jest.fn(),
   };
 });
 

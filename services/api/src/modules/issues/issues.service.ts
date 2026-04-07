@@ -354,6 +354,14 @@ export class IssuesService {
     };
 
     Object.assign(issue, dto);
+
+    // When updating FK columns, clear the loaded relation so TypeORM uses the
+    // raw FK value instead of deriving it from the (stale) relation object.
+    if ('assigneeId' in dto) issue.assignee = null;
+    if ('sprintId' in dto) issue.sprint = null;
+    if ('statusId' in dto) issue.status = null;
+    if ('parentId' in dto) issue.parent = null;
+
     await this.issueRepository.save(issue);
 
     // Auto-add new assignee as watcher

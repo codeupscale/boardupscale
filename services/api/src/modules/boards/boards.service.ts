@@ -51,8 +51,8 @@ export class BoardsService {
       }
     }
 
-    // Hide child issues from the board — they should only appear in the backlog
-    qb.andWhere('issue.parentId IS NULL');
+    // Hide subtasks from the board — they appear nested under their parent in detail view
+    qb.andWhere("issue.type != 'subtask'");
   }
 
   async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {
@@ -75,6 +75,7 @@ export class BoardsService {
       .leftJoinAndSelect('issue.assignee', 'assignee')
       .leftJoinAndSelect('issue.status', 'status')
       .leftJoinAndSelect('issue.reporter', 'reporter')
+      .leftJoinAndSelect('issue.parent', 'parent')
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.deletedAt IS NULL');
 
@@ -137,6 +138,7 @@ export class BoardsService {
       .leftJoinAndSelect('issue.assignee', 'assignee')
       .leftJoinAndSelect('issue.status', 'status')
       .leftJoinAndSelect('issue.reporter', 'reporter')
+      .leftJoinAndSelect('issue.parent', 'parent')
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.statusId = :statusId', { statusId })
       .andWhere('issue.deletedAt IS NULL');

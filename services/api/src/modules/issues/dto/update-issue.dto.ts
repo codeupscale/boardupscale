@@ -9,6 +9,7 @@ import {
   IsDateString,
   MaxLength,
   IsNumber,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpdateIssueDto {
@@ -38,37 +39,43 @@ export class UpdateIssueDto {
   @IsUUID()
   statusId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-of-assignee' })
+  @ApiPropertyOptional({ example: 'uuid-of-assignee', nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsUUID()
-  assigneeId?: string;
+  assigneeId?: string | null;
 
-  @ApiPropertyOptional({ example: 'uuid-of-sprint' })
+  @ApiPropertyOptional({ example: 'uuid-of-sprint', nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsUUID()
-  sprintId?: string;
+  sprintId?: string | null;
 
-  @ApiPropertyOptional({ example: 'uuid-of-parent' })
+  @ApiPropertyOptional({ example: 'uuid-of-parent', nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsUUID()
-  parentId?: string;
+  parentId?: string | null;
 
-  @ApiPropertyOptional({ example: '2024-12-31' })
+  @ApiPropertyOptional({ example: '2024-12-31', nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsDateString()
-  dueDate?: string;
+  dueDate?: string | null;
 
-  @ApiPropertyOptional({ example: 5 })
+  @ApiPropertyOptional({ example: 5, nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsInt()
   @Min(0)
-  storyPoints?: number;
+  storyPoints?: number | null;
 
-  @ApiPropertyOptional({ example: 3600 })
+  @ApiPropertyOptional({ example: 3600, nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsInt()
   @Min(0)
-  timeEstimate?: number;
+  timeEstimate?: number | null;
 
   @ApiPropertyOptional({ example: ['backend'] })
   @IsOptional()

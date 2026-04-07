@@ -42,21 +42,34 @@ export function BoardCard({ issue, index }: BoardCardProps) {
         >
           <div className="p-3">
             {/* Top row: key + type icon */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono font-medium text-gray-400 dark:text-gray-500 tracking-wide">
-                {issue.key}
-              </span>
-              <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="text-[10px] font-mono font-medium text-blue-600 dark:text-blue-400 tracking-wide">
+                  {issue.key}
+                </span>
+              </div>
+              <PriorityBadge priority={issue.priority} showLabel={false} />
             </div>
 
+            {/* Parent / Epic */}
+            {issue.parent && (
+              <div className="flex items-center gap-1 mb-1.5">
+                <IssueTypeIcon type={issue.parent.type} className="h-3 w-3 flex-shrink-0" />
+                <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 truncate">
+                  {issue.parent.key}
+                </span>
+              </div>
+            )}
+
             {/* Title */}
-            <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-3 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
               {issue.title}
             </p>
 
             {/* Labels */}
             {labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2.5">
+              <div className="flex flex-wrap gap-1 mb-2">
                 {labels.slice(0, 2).map((label) => (
                   <span
                     key={label}
@@ -73,21 +86,27 @@ export function BoardCard({ issue, index }: BoardCardProps) {
               </div>
             )}
 
-            {/* Bottom row: priority + story points + assignee */}
+            {/* Bottom row: story points + assignee */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
-                <PriorityBadge priority={issue.priority} showLabel={false} />
                 {issue.storyPoints != null && (
                   <span className="text-[10px] font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full">
-                    {issue.storyPoints}
+                    {issue.storyPoints} SP
                   </span>
                 )}
               </div>
-              {issue.assignee ? (
-                <Avatar user={issue.assignee} size="xs" />
-              ) : (
-                <div className="w-5 h-5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 flex-shrink-0" />
-              )}
+              <div className="flex items-center gap-1.5">
+                {issue.assignee ? (
+                  <>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] hidden group-hover:inline">
+                      {issue.assignee.displayName}
+                    </span>
+                    <Avatar user={issue.assignee} size="xs" />
+                  </>
+                ) : (
+                  <div className="w-5 h-5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 flex-shrink-0" />
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, Link, useSearchParams, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, CheckCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useBoard, useReorderIssues, useUpdateStatus, useCreateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
-import { useSprints } from '@/hooks/useSprints'
+import { useSprints, useCompleteSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
@@ -60,6 +60,7 @@ export function ProjectBoardPage() {
   const [editColumnColor, setEditColumnColor] = useState('#6b7280')
 
   const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null)
+  const [showCompleteSprint, setShowCompleteSprint] = useState(false)
 
   // Load-more state: extra issues appended per column beyond the first page
   const [extraIssues, setExtraIssues] = useState<Record<string, Issue[]>>({})
@@ -109,6 +110,7 @@ export function ProjectBoardPage() {
   const updateStatus = useUpdateStatus()
   const createStatus = useCreateStatus()
   const deleteStatus = useDeleteStatus()
+  const completeSprint = useCompleteSprint()
 
   // Auto-apply active sprint filter on first load if no sprintId is in the URL
   useEffect(() => {
@@ -291,15 +293,29 @@ export function ProjectBoardPage() {
 
     destCol.issues.splice(destination.index, 0, updatedIssue)
 
+    // Clear extra issues to prevent duplication (they've been merged above)
+    setExtraIssues({})
+
     // Optimistic update
     qc.setQueryData<BoardData>(['board', projectKey, filters], { statuses: newStatuses })
 
-    // Build updates for all affected issues in destination column
+    // Build updates for all affected columns
     const updates = destCol.issues.map((issue, index) => ({
       issueId: issue.id,
       statusId: destCol.id,
       position: index,
     }))
+
+    // Also update source column positions if cross-column move
+    if (sourceColumnId !== destColumnId) {
+      sourceCol.issues.forEach((issue, index) => {
+        updates.push({
+          issueId: issue.id,
+          statusId: sourceCol.id,
+          position: index,
+        })
+      })
+    }
 
     reorderIssues.mutate({ projectId: projectKey!, items: updates }, {
       onError: () => {
@@ -388,7 +404,7 @@ export function ProjectBoardPage() {
       />
 
       {activeSprints.length > 0 && (
-        <div className="px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-b border-blue-100 dark:border-blue-800/40">
+        <div className="flex items-center justify-between px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-b border-blue-100 dark:border-blue-800/40">
           <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
             {t('board.activeSprint', { name: activeSprints[0].name })}
             {activeSprints[0].endDate && (
@@ -397,6 +413,14 @@ export function ProjectBoardPage() {
               </span>
             )}
           </p>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowCompleteSprint(true)}
+          >
+            <CheckCircle className="h-3.5 w-3.5" />
+            {t('sprints.complete')}
+          </Button>
         </div>
       )}
 
@@ -726,6 +750,35 @@ export function ProjectBoardPage() {
         destructive
         isLoading={deleteStatus.isPending}
       />
+
+      {/* Complete Sprint Confirmation */}
+      {activeSprints.length > 0 && (
+        <ConfirmDialog
+          open={showCompleteSprint}
+          onClose={() => setShowCompleteSprint(false)}
+          onConfirm={() =>
+            completeSprint.mutate(
+              { projectId: project?.id || projectKey!, sprintId: activeSprints[0].id },
+              { onSuccess: () => setShowCompleteSprint(false) },
+            )
+          }
+          title={t('sprints.completeSprint')}
+          description={
+            (() => {
+              const doneCount = board?.statuses
+                .filter((s) => s.category === 'done')
+                .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+              const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+              const incompleteCount = totalCount - doneCount
+              return incompleteCount > 0
+                ? `${incompleteCount} issue(s) are not in Done status. All issues and their subtasks must be Done before completing ${activeSprints[0].name}.`
+                : `Complete ${activeSprints[0].name}? All ${totalCount} issues are in Done status.`
+            })()
+          }
+          confirmLabel={t('sprints.completeSprint')}
+          isLoading={completeSprint.isPending}
+        />
+      )}
     </div>
   )
 }

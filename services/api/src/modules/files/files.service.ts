@@ -11,6 +11,8 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,6 +23,7 @@ import { UploadFileDto } from './dto/upload-file.dto';
 export class FilesService {
   private s3Client: S3Client;
   private bucket: string;
+  private bucketReady = false;
 
   constructor(
     @InjectRepository(Attachment)
@@ -44,11 +47,22 @@ export class FilesService {
     this.bucket = this.configService.get<string>('minio.bucket');
   }
 
+  private async ensureBucket(): Promise<void> {
+    if (this.bucketReady) return;
+    try {
+      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+    } catch {
+      await this.s3Client.send(new CreateBucketCommand({ Bucket: this.bucket }));
+    }
+    this.bucketReady = true;
+  }
+
   async upload(
     file: Express.Multer.File,
     dto: UploadFileDto,
     userId: string,
   ): Promise<Attachment> {
+    await this.ensureBucket();
     const key = `${uuidv4()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
     await this.s3Client.send(

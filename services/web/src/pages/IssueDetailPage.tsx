@@ -53,6 +53,7 @@ import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
+import { AttachmentPanel } from '@/components/issues/attachment-panel'
 import { UserSelect } from '@/components/common/user-select'
 import { IssueLinksList } from '@/components/issues/issue-links-list'
 import { GitHubEventsList } from '@/components/issues/github-events-list'
@@ -525,6 +526,11 @@ export function IssueDetailPage() {
               )}
             </div>
           )}
+
+          {/* Attachments */}
+          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <AttachmentPanel issueId={issue.id} />
+          </div>
 
           {/* Comments */}
           <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">

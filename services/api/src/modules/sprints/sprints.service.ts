@@ -136,7 +136,7 @@ export class SprintsService {
     });
     const doneStatusIds = doneStatuses.map((s) => s.id);
 
-    // Check for incomplete sprint issues
+    // Move incomplete sprint issues to backlog (remove from sprint)
     const incompleteIssues = await this.issueRepository
       .createQueryBuilder('issue')
       .where('issue.sprint_id = :sprintId', { sprintId: id })
@@ -145,33 +145,12 @@ export class SprintsService {
       .getMany();
 
     if (incompleteIssues.length > 0) {
-      throw new BadRequestException(
-        `Cannot complete sprint: ${incompleteIssues.length} issue(s) are not in Done status. Move all issues to Done before completing the sprint.`,
-      );
-    }
-
-    // Check for incomplete child subtasks of sprint issues
-    const sprintIssueIds = await this.issueRepository
-      .createQueryBuilder('issue')
-      .select('issue.id')
-      .where('issue.sprint_id = :sprintId', { sprintId: id })
-      .andWhere('issue.deleted_at IS NULL')
-      .getMany();
-
-    if (sprintIssueIds.length > 0) {
-      const parentIds = sprintIssueIds.map((i) => i.id);
-      const incompleteChildren = await this.issueRepository
-        .createQueryBuilder('child')
-        .where('child.parent_id IN (:...parentIds)', { parentIds })
-        .andWhere('child.deleted_at IS NULL')
-        .andWhere(doneStatusIds.length > 0 ? 'child.status_id NOT IN (:...doneStatusIds)' : '1=1', { doneStatusIds })
-        .getCount();
-
-      if (incompleteChildren > 0) {
-        throw new BadRequestException(
-          `Cannot complete sprint: ${incompleteChildren} child subtask(s) are not in Done status. All subtasks must be completed before finishing the sprint.`,
-        );
-      }
+      await this.issueRepository
+        .createQueryBuilder()
+        .update()
+        .set({ sprintId: null })
+        .where('id IN (:...ids)', { ids: incompleteIssues.map((i) => i.id) })
+        .execute();
     }
 
     sprint.status = 'completed';

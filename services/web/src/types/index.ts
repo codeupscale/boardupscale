@@ -183,12 +183,13 @@ export interface Attachment {
   id: string
   issueId?: string
   commentId?: string
-  uploaderId: string
-  filename: string
-  originalName: string
+  uploadedBy: string
+  fileName: string
+  fileSize: number
   mimeType: string
-  size: number
   storageKey: string
+  storageBucket: string
+  uploader?: User
   createdAt: string
 }
 
