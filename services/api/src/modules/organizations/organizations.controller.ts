@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
+import { OrganizationMembersService } from './organization-members.service';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
@@ -25,7 +26,17 @@ import { OrgId } from '../../common/decorators/org-id.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('organizations')
 export class OrganizationsController {
-  constructor(private organizationsService: OrganizationsService) {}
+  constructor(
+    private organizationsService: OrganizationsService,
+    private organizationMembersService: OrganizationMembersService,
+  ) {}
+
+  @Get('my-memberships')
+  @ApiOperation({ summary: 'Get all organization memberships for the current user (org switcher)' })
+  async getMyMemberships(@CurrentUser('id') userId: string) {
+    const memberships = await this.organizationMembersService.getUserMemberships(userId);
+    return { data: memberships };
+  }
 
   @Get('me')
   @ApiOperation({ summary: 'Get current organization' })

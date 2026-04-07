@@ -63,6 +63,15 @@ export interface Organization {
   updatedAt: string
 }
 
+export interface OrganizationMembership {
+  id: string
+  organizationId: string
+  organization: Organization
+  role: string
+  isDefault: boolean
+  createdAt: string
+}
+
 export interface User {
   id: string
   organizationId: string

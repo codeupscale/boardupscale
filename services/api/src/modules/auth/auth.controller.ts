@@ -19,6 +19,7 @@ import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { SwitchOrgDto } from './dto/switch-org.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Verify2FADto } from './dto/verify-2fa.dto';
@@ -76,10 +77,40 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Token refreshed successfully' })
   @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
-  async refresh(@Body() body: { refreshToken: string }, @Request() req: any) {
+  async refresh(
+    @Body() body: { refreshToken: string; organizationId?: string },
+    @Request() req: any,
+  ) {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
-    return this.authService.refreshToken(body.refreshToken, ipAddress, userAgent);
+    return this.authService.refreshToken(
+      body.refreshToken,
+      ipAddress,
+      userAgent,
+      body.organizationId,
+    );
+  }
+
+  @Post('switch-org')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Switch active organization and get new tokens' })
+  @ApiResponse({ status: 200, description: 'Organization switched successfully' })
+  @ApiResponse({ status: 401, description: 'Not a member of target organization' })
+  async switchOrg(
+    @CurrentUser() user: any,
+    @Body() dto: SwitchOrgDto,
+    @Request() req: any,
+  ) {
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.switchOrganization(
+      user.id,
+      dto.organizationId,
+      ipAddress,
+      userAgent,
+    );
   }
 
   @Post('logout')

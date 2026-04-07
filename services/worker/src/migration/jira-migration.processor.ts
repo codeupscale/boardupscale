@@ -569,10 +569,8 @@ async function runMembersPhase(
       `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, created_at, updated_at)
        VALUES ${placeholders.join(', ')}
        ON CONFLICT (email) DO UPDATE SET
-         display_name = EXCLUDED.display_name,
-         organization_id = EXCLUDED.organization_id,
-         role = EXCLUDED.role,
-         jira_account_id = EXCLUDED.jira_account_id,
+         display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
+         jira_account_id = COALESCE(EXCLUDED.jira_account_id, users.jira_account_id),
          updated_at = NOW()
        RETURNING id, email`,
       params,
@@ -580,13 +578,25 @@ async function runMembersPhase(
 
     // Build both lookup maps from the RETURNING rows.
     // The rows come back in INSERT order which matches chunkAccountIds order.
+    const returnedUserIds: string[] = [];
     for (let ri = 0; ri < rows.length; ri++) {
       const row = rows[ri];
       state.jiraUserEmailToLocalId[row.email] = row.id;
+      returnedUserIds.push(row.id);
       // Also index by accountId (more reliable for Jira Cloud where emails are hidden).
       const accountId = chunkAccountIds[ri];
       if (accountId) state.jiraAccountIdToLocalId[accountId] = row.id;
       processed++;
+    }
+
+    // Dual-write: ensure organization_members rows exist for all upserted users
+    if (returnedUserIds.length > 0) {
+      await client.query(
+        `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+         SELECT gen_random_uuid(), unnest($1::uuid[]), $2::uuid, 'member', false, NOW(), NOW()
+         ON CONFLICT (user_id, organization_id) DO NOTHING`,
+        [returnedUserIds, state.organizationId],
+      ).catch((err: any) => { addError(state, `members org_members upsert: ${err.message}`); });
     }
   }
 

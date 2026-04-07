@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Organization } from '../../organizations/entities/organization.entity';
+import { OrganizationMember } from '../../organizations/entities/organization-member.entity';
 
 @Entity('users')
 export class User {
@@ -99,6 +101,9 @@ export class User {
 
   @Column({ name: 'jira_account_id', type: 'varchar', length: 255, nullable: true })
   jiraAccountId: string | null;
+
+  @OneToMany(() => OrganizationMember, (m) => m.user)
+  memberships: OrganizationMember[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
