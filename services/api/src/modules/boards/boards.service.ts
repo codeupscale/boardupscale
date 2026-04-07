@@ -41,7 +41,7 @@ export class BoardsService {
       qb.andWhere(':label = ANY(issue.labels)', { label: query.label });
     }
     if (query?.search) {
-      qb.andWhere('issue.title ILIKE :search', { search: `%${query.search}%` });
+      qb.andWhere('(issue.title ILIKE :search OR issue.key ILIKE :search)', { search: `%${query.search}%` });
     }
     if (query?.sprintId) {
       if (query.sprintId === 'backlog') {
@@ -50,6 +50,9 @@ export class BoardsService {
         qb.andWhere('issue.sprintId = :sprintId', { sprintId: query.sprintId });
       }
     }
+
+    // Hide child issues from the board — they should only appear in the backlog
+    qb.andWhere('issue.parentId IS NULL');
   }
 
   async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {

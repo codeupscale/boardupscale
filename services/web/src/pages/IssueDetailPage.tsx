@@ -40,6 +40,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { UserSelect } from '@/components/common/user-select'
@@ -196,6 +197,7 @@ export function IssueDetailPage() {
   const [showDeleteIssue, setShowDeleteIssue] = useState(false)
   const [showCreateChild, setShowCreateChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
+  const [childType, setChildType] = useState('')
   const [labelInput, setLabelInput] = useState('')
   const [labels, setLabels] = useState<string[]>(issue?.labels || [])
 
@@ -532,22 +534,13 @@ export function IssueDetailPage() {
 
           {/* Type */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('common.type')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <IssueTypeSelect
+              label={t('common.type')}
               value={issue.type}
-              onChange={(e) =>
-                updateIssue.mutate({ id: issue.id, type: e.target.value as IssueType })
+              onChange={(val) =>
+                updateIssue.mutate({ id: issue.id, type: val as IssueType })
               }
-            >
-              {Object.values(IssueType).map((t) => (
-                <option key={t} value={t}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Assignee */}
@@ -1019,6 +1012,8 @@ export function IssueDetailPage() {
             const config = childTypeMap[issue.type]
             if (!config) return <p className="text-sm text-gray-500">This issue type cannot have children.</p>
 
+            const selectedChildType = childType || config.default
+
             return (
               <>
                 <Input
@@ -1028,19 +1023,12 @@ export function IssueDetailPage() {
                   onChange={(e) => setChildTitle(e.target.value)}
                   autoFocus
                 />
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Type
-                  </label>
-                  <p className="text-sm text-gray-700">
-                    {config.default.charAt(0).toUpperCase() + config.default.slice(1)}
-                    {config.types.length > 1 && (
-                      <span className="text-gray-400 ml-1">
-                        (allowed: {config.types.join(', ')})
-                      </span>
-                    )}
-                  </p>
-                </div>
+                <IssueTypeSelect
+                  label="Type"
+                  value={selectedChildType}
+                  onChange={(val) => setChildType(val)}
+                  options={config.types}
+                />
                 <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setShowCreateChild(false)}>
                     {t('common.cancel')}
@@ -1053,7 +1041,7 @@ export function IssueDetailPage() {
                         {
                           projectId: issue.projectId,
                           title: childTitle.trim(),
-                          type: config.default,
+                          type: selectedChildType,
                           priority: 'medium',
                           parentId: issue.id,
                         },
@@ -1061,6 +1049,7 @@ export function IssueDetailPage() {
                           onSuccess: () => {
                             setShowCreateChild(false)
                             setChildTitle('')
+                            setChildType('')
                           },
                         },
                       )

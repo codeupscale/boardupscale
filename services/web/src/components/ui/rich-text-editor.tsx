@@ -45,8 +45,8 @@ function ToolbarButton({
         onClick()
       }}
       className={cn(
-        'p-1.5 rounded text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors',
-        active && 'bg-gray-200 text-gray-900',
+        'p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors',
+        active && 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100',
       )}
     >
       {children}
@@ -263,12 +263,12 @@ export function RichTextEditor({
     <div
       ref={editorContainerRef}
       className={cn(
-        'relative rounded-md border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent',
+        'relative rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent',
         className,
       )}
     >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 bg-gray-50 rounded-t-md">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-t-md">
         <ToolbarButton
           title="Bold (Ctrl+B)"
           active={editor.isActive('bold')}
@@ -301,7 +301,7 @@ export function RichTextEditor({
           <Strikethrough size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
         <ToolbarButton
           title="Heading"
@@ -319,7 +319,7 @@ export function RichTextEditor({
           <Code size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
         <ToolbarButton
           title="Bullet List"
@@ -353,7 +353,7 @@ export function RichTextEditor({
           <Minus size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
         <ToolbarButton
           title="Link"

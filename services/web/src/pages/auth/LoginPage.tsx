@@ -176,7 +176,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
       <SEO title="Sign In" description="Sign in to your Boardupscale account." canonical="/login" noIndex />
       <div className="w-full max-w-sm">
         {/* Logo */}

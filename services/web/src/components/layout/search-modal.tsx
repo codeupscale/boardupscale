@@ -38,7 +38,7 @@ function HighlightedText({ html }: { html: string }) {
     }
     if (inside) {
       elements.push(
-        <mark key={i} className="bg-yellow-200 text-yellow-900 rounded-sm px-0.5">
+        <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/40 text-yellow-900 dark:text-yellow-200 rounded-sm px-0.5">
           {part}
         </mark>
       )
@@ -60,10 +60,10 @@ function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] 
     <div className="mt-1 space-y-0.5">
       {shown.map((hl) => (
         <div key={hl.field} className="flex items-start gap-1.5 text-xs">
-          <span className="text-gray-400 flex-shrink-0 font-medium">
+          <span className="text-gray-400 dark:text-gray-500 flex-shrink-0 font-medium">
             {FIELD_LABELS[hl.field] || hl.field}:
           </span>
-          <span className="text-gray-600 line-clamp-1">
+          <span className="text-gray-600 dark:text-gray-400 line-clamp-1">
             <HighlightedText html={hl.snippets[0]} />
           </span>
         </div>
@@ -139,7 +139,7 @@ export function SearchModal() {
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/40 dark:bg-black/60"
         onClick={() => setSearchOpen(false)}
       />
 
@@ -200,7 +200,7 @@ export function SearchModal() {
                   {t('search.issues')}
                 </span>
                 {searchSource === 'elasticsearch' && (
-                  <span className="text-[10px] text-gray-300 font-mono">ES</span>
+                  <span className="text-[10px] text-gray-300 dark:text-gray-600 font-mono">ES</span>
                 )}
               </div>
               <div id="search-results-listbox" role="listbox" aria-label="Search results">
@@ -218,7 +218,7 @@ export function SearchModal() {
                   >
                     <div className="flex items-center gap-3">
                       <IssueTypeIcon type={item.type as IssueType} className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-xs font-mono text-blue-600 flex-shrink-0">{item.key}</span>
+                      <span className="text-xs font-mono text-blue-600 dark:text-blue-400 flex-shrink-0">{item.key}</span>
                       <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{item.title}</span>
                       {item.projectName && (
                         <span className="ml-auto text-[10px] text-gray-500 flex-shrink-0">

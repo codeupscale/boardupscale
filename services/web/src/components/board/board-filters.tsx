@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Search, X, Filter, Users, Bug, AlertTriangle, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { BoardFilters, ProjectMember, Sprint, SwimlaneGroupBy } from '@/types'
@@ -75,6 +75,24 @@ export function BoardQuickFilters({
       onFiltersChange({ ...filters, search: searchValue || undefined })
     }
   }, [filters, onFiltersChange, searchValue])
+
+  // Debounce: auto-trigger search 400ms after the user stops typing
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const trimmed = searchValue || undefined
+      if (trimmed !== (filters.search || undefined)) {
+        onFiltersChange({ ...filters, search: trimmed })
+      }
+    }, 400)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+    // Only re-run when searchValue changes — we read filters/onFiltersChange via refs would
+    // add complexity; the 400ms debounce naturally coalesces rapid changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue])
 
   const clearAllFilters = useCallback(() => {
     setSearchValue('')
