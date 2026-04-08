@@ -62,6 +62,23 @@ export function useInviteMember() {
   })
 }
 
+export function useUpdateMemberEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ memberId, email }: { memberId: string; email: string }) => {
+      const { data } = await api.patch(`/organizations/me/members/${memberId}/email`, { email })
+      return data.data as User
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      toast('Email updated')
+    },
+    onError: (err: any) => {
+      toast(err?.response?.data?.message || 'Failed to update email', 'error')
+    },
+  })
+}
+
 export function useUpdateMember() {
   const qc = useQueryClient()
   return useMutation({

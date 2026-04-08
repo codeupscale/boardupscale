@@ -15,6 +15,7 @@ import { OrganizationMembersService } from './organization-members.service';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { UpdateMemberEmailDto } from './dto/update-member-email.dto';
 import { SamlConfigDto } from '../auth/dto/saml-config.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
@@ -79,6 +80,24 @@ export class OrganizationsController {
     @Body() dto: { displayName?: string; avatarUrl?: string },
   ) {
     return this.organizationsService.updateMemberInfo(organizationId, memberId, dto, userId);
+  }
+
+  @Patch('me/members/:memberId/email')
+  @ApiOperation({ summary: 'Set real email for a Jira-migrated member (synthetic email only)' })
+  @Roles('admin', 'owner')
+  async updateMemberEmail(
+    @OrgId() organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: UpdateMemberEmailDto,
+  ) {
+    const updated = await this.organizationsService.updateMigratedMemberEmail(
+      organizationId,
+      memberId,
+      dto.email,
+      userId,
+    );
+    return { data: updated };
   }
 
   @Patch('me/members/:memberId/role')

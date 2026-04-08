@@ -17,12 +17,14 @@ import {
   Clock,
   CheckCircle2,
   Pencil,
+  AtSign,
 } from 'lucide-react'
 import { useMe } from '@/hooks/useAuth'
 import {
   useOrgMembers,
   useInviteMember,
   useUpdateMember,
+  useUpdateMemberEmail,
   useUpdateMemberRole,
   useDeactivateMember,
   useResendInvitation,
@@ -105,6 +107,10 @@ const AVATAR_GRADIENTS = [
 function getAvatarGradient(id: string) {
   const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
   return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length]
+}
+
+function isMigratedEmail(email: string) {
+  return email.endsWith('@migrated.jira.local')
 }
 
 function avatarInitials(name: string) {
@@ -269,6 +275,7 @@ export function TeamPage() {
   const { data: members = [], isLoading } = useOrgMembers()
   const inviteMember = useInviteMember()
   const updateMember = useUpdateMember()
+  const updateMemberEmail = useUpdateMemberEmail()
   const updateRole = useUpdateMemberRole()
   const deactivateMember = useDeactivateMember()
   const resendInvitation = useResendInvitation()
@@ -289,6 +296,10 @@ export function TeamPage() {
   const [showRoleDialog, setShowRoleDialog] = useState(false)
   const [roleTarget, setRoleTarget] = useState<User | null>(null)
   const [newRole, setNewRole] = useState<RoleValue>('member')
+
+  // ── Update email dialog ───────────────────────────────────────────────────
+  const [emailTarget, setEmailTarget] = useState<User | null>(null)
+  const [newEmail, setNewEmail] = useState('')
 
   // ── Confirmations ─────────────────────────────────────────────────────────
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
@@ -376,6 +387,19 @@ export function TeamPage() {
     updateRole.mutate(
       { memberId: roleTarget.id, role: newRole },
       { onSuccess: () => setShowRoleDialog(false) },
+    )
+  }
+
+  const openEmailDialog = (member: User) => {
+    setEmailTarget(member)
+    setNewEmail('')
+  }
+
+  const handleEmailSave = () => {
+    if (!emailTarget || !newEmail.trim()) return
+    updateMemberEmail.mutate(
+      { memberId: emailTarget.id, email: newEmail.trim() },
+      { onSuccess: () => { setEmailTarget(null); setNewEmail('') } },
     )
   }
 
@@ -551,9 +575,16 @@ export function TeamPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {member.email}
-                        </p>
+                        {isMigratedEmail(member.email) ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                            <AtSign className="h-3 w-3" />
+                            Migrated (no email)
+                          </span>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {member.email}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -576,6 +607,15 @@ export function TeamPage() {
                       <div className="flex items-center gap-1">
                         {!isMe ? (
                           <>
+                            {isMigratedEmail(member.email) && (
+                              <button
+                                onClick={() => openEmailDialog(member)}
+                                title="Add real email"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                              >
+                                <AtSign className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={() => openEditDialog(member)}
                               title="Edit member info"
@@ -917,6 +957,62 @@ export function TeamPage() {
           <Button onClick={handleRoleChange} isLoading={updateRole.isPending}>
             <ShieldCheck className="h-4 w-4" />
             Update Role
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* Add Email for Migrated Member */}
+      <Dialog open={!!emailTarget} onClose={() => setEmailTarget(null)}>
+        <DialogHeader onClose={() => setEmailTarget(null)}>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+              <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <DialogTitle>Add Email Address</DialogTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Set the real email for this Jira-migrated member
+              </p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <DialogContent className="space-y-4">
+          {emailTarget && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <MemberAvatar member={emailTarget} size={10} />
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {emailTarget.displayName}
+                </p>
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                  <AtSign className="h-3 w-3" />
+                  Migrated (no email)
+                </span>
+              </div>
+            </div>
+          )}
+          <Input
+            label="Real email address"
+            type="email"
+            placeholder="colleague@company.com"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
+          />
+        </DialogContent>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setEmailTarget(null)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleEmailSave}
+            disabled={!newEmail.trim()}
+            isLoading={updateMemberEmail.isPending}
+          >
+            <AtSign className="h-4 w-4" />
+            Save Email
           </Button>
         </DialogFooter>
       </Dialog>

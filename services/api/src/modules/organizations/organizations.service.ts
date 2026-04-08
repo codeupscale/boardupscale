@@ -308,6 +308,55 @@ export class OrganizationsService {
     );
   }
 
+  async updateMigratedMemberEmail(
+    organizationId: string,
+    memberId: string,
+    newEmail: string,
+    actorId: string,
+  ): Promise<User> {
+    // Verify membership — check via organization_members first, fall back to legacy organizationId
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
+    });
+    const member = await this.userRepository.findOne({ where: { id: memberId } });
+    if (!member || (!membership && member.organizationId !== organizationId)) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Only allow update if email is synthetic OR user was migrated from Jira
+    const isSyntheticEmail = member.email.endsWith('@migrated.jira.local');
+    const isMigratedUser = !!member.jiraAccountId;
+    if (!isSyntheticEmail && !isMigratedUser) {
+      throw new BadRequestException(
+        'Email can only be updated for Jira-migrated members',
+      );
+    }
+
+    // Ensure the new email is not already taken by another user
+    const existing = await this.userRepository.findOne({
+      where: { email: newEmail },
+    });
+    if (existing && existing.id !== memberId) {
+      throw new ConflictException('Email is already in use by another account');
+    }
+
+    member.email = newEmail;
+    member.emailVerified = false;
+    const saved = await this.userRepository.save(member);
+
+    this.auditService.log(
+      organizationId,
+      actorId,
+      'organization.member.email_updated',
+      'user',
+      memberId,
+      { newEmail },
+      null,
+    );
+
+    return saved;
+  }
+
   // ── SAML SSO Configuration ─────────────────────────────────────────────
 
   async getSamlConfig(organizationId: string): Promise<{

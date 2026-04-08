@@ -84,6 +84,7 @@ export interface User {
   isActive: boolean
   emailVerified: boolean
   twoFaEnabled: boolean
+  jiraAccountId?: string | null
   lastLoginAt?: string
   createdAt: string
   updatedAt: string
