@@ -35,10 +35,12 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
+  const isSyntheticEmail = (email: string) => email.endsWith('@migrated.jira.local')
+
   const filtered = users.filter(
     (u) =>
       u.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()),
+      (!isSyntheticEmail(u.email) && u.email.toLowerCase().includes(search.toLowerCase())),
   )
 
   return (
@@ -143,7 +145,11 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
                 <Avatar user={user} size="xs" />
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{user.displayName}</p>
-                  <p className="text-gray-500 text-xs truncate">{user.email}</p>
+                  {isSyntheticEmail(user.email) ? (
+                    <p className="text-amber-500 text-xs truncate">Migrated (no email)</p>
+                  ) : (
+                    <p className="text-gray-500 text-xs truncate">{user.email}</p>
+                  )}
                 </div>
               </button>
             ))}
