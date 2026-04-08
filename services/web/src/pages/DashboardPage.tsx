@@ -1,15 +1,13 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  CheckCircle,
+  CheckCircle2,
   Clock,
   AlertCircle,
   BarChart3,
   Target,
   ArrowUpRight,
-  Sparkles,
   FolderOpen,
-  TrendingUp,
 } from 'lucide-react'
 import {
   LineChart,
@@ -32,51 +30,34 @@ import { LoadingPage } from '@/components/ui/spinner'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { ProjectCard } from '@/components/projects/project-card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/common/page-header'
 import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intelligence-widget'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-/* ── Stat Card with gradient background ───────────────────────────── */
+/* ── Stat Card — matches ProjectsPage pattern ────────────────────── */
 
 function StatCard({
+  icon,
   label,
   value,
-  icon: Icon,
-  gradient,
-  iconBg,
-  trend,
+  color,
 }: {
+  icon: React.ReactNode
   label: string
   value: number
-  icon: any
-  gradient: string
-  iconBg: string
-  trend?: string
+  color: string
 }) {
   return (
-    <div className={cn(
-      'relative overflow-hidden rounded-2xl p-5 text-white shadow-lg',
-      'transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5',
-      gradient,
-    )}>
-      {/* Decorative circle */}
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" />
-      <div className="absolute -right-2 -top-2 h-16 w-16 rounded-full bg-white/5" />
-
-      <div className="relative flex items-center justify-between">
-        <div>
-          <p className="text-3xl font-extrabold tracking-tight">{value}</p>
-          <p className="mt-1 text-sm font-medium text-white/80">{label}</p>
-          {trend && (
-            <div className="mt-2 flex items-center gap-1 text-xs font-medium text-white/70">
-              <TrendingUp className="h-3 w-3" />
-              {trend}
-            </div>
-          )}
-        </div>
-        <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', iconBg)}>
-          <Icon className="h-6 w-6 text-white" />
-        </div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-center gap-4">
+      <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          {value}
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
       </div>
     </div>
   )
@@ -106,14 +87,14 @@ function MiniBurndownWidget({
   const remaining = data.actual.length > 0 ? data.actual[data.actual.length - 1] : data.totalPoints
 
   return (
-    <div className="group rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-5 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{projectName}</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">{data.sprintName}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">{data.sprintName}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{remaining}</p>
+          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{remaining}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">pts left</p>
         </div>
       </div>
@@ -152,7 +133,7 @@ function MiniBurndownWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -180,14 +161,14 @@ function VelocityWidget({
   }))
 
   return (
-    <div className="group rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-5 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{projectName}</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mt-0.5">Velocity</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">Velocity</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-2xl font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{data.averageVelocity}</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.averageVelocity}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400">avg pts/sprint</p>
         </div>
       </div>
@@ -217,7 +198,7 @@ function VelocityWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -244,29 +225,29 @@ function WorkloadSummaryWidget({
   ).length
 
   return (
-    <div className="group rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-5 shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20">
           <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </div>
-        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">My Workload</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Workload</p>
       </div>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 dark:text-gray-400">In Progress</span>
-          <span className="text-sm font-bold text-gray-900 dark:text-gray-100 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-0.5 rounded-full">
             {inProgressCount} issues
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 dark:text-gray-400">Total Points</span>
-          <span className="text-sm font-bold text-gray-900 dark:text-gray-100 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-0.5 rounded-full">
             {totalPoints} SP
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500 dark:text-gray-400">Time Logged</span>
-          <span className="text-sm font-bold text-gray-900 dark:text-gray-100 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-0.5 rounded-full">
             {formatMinutes(totalTimeLogged)}
           </span>
         </div>
@@ -329,160 +310,148 @@ export function DashboardPage() {
   if (issuesLoading && projectsLoading) return <LoadingPage />
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 max-w-[1400px] mx-auto">
-      {/* Greeting Section */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-            {greeting}, {user?.displayName?.split(' ')[0] || 'there'}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1.5">
-            {t('dashboard.hereIsWhatsHappening', { date: formatDate(new Date()) })}
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Your personal overview</span>
-        </div>
-      </div>
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title={`${greeting}, ${user?.displayName?.split(' ')[0] || 'there'}`}
+        subtitle={t('dashboard.hereIsWhatsHappening', { date: formatDate(new Date()) })}
+      />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <StatCard
-          label={t('dashboard.openIssues')}
-          value={stats.open}
-          icon={AlertCircle}
-          gradient="bg-gradient-to-br from-amber-500 to-orange-600"
-          iconBg="bg-white/20"
-        />
-        <StatCard
-          label={t('dashboard.inProgress')}
-          value={stats.inProgress}
-          icon={Clock}
-          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
-          iconBg="bg-white/20"
-        />
-        <StatCard
-          label={t('dashboard.completedAllTime')}
-          value={stats.done}
-          icon={CheckCircle}
-          gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
-          iconBg="bg-white/20"
-        />
-      </div>
+      <div className="p-6 space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard
+            icon={<AlertCircle className="h-5 w-5 text-amber-600" />}
+            label={t('dashboard.openIssues')}
+            value={stats.open}
+            color="bg-amber-50 dark:bg-amber-900/20"
+          />
+          <StatCard
+            icon={<Clock className="h-5 w-5 text-blue-600" />}
+            label={t('dashboard.inProgress')}
+            value={stats.inProgress}
+            color="bg-blue-50 dark:bg-blue-900/20"
+          />
+          <StatCard
+            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+            label={t('dashboard.completedAllTime')}
+            value={stats.done}
+            color="bg-emerald-50 dark:bg-emerald-900/20"
+          />
+        </div>
 
-      {/* Report Widgets */}
-      {firstProject && (
-        <div>
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-              <BarChart3 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+        {/* Report Widgets */}
+        {firstProject && (
+          <>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+                <BarChart3 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Insights</h2>
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Insights</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {activeSprint && (
-              <MiniBurndownWidget
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {activeSprint && (
+                <MiniBurndownWidget
+                  projectId={firstProject.id}
+                  projectName={firstProject.name}
+                  sprintId={activeSprint.id}
+                />
+              )}
+              <VelocityWidget
                 projectId={firstProject.id}
                 projectName={firstProject.name}
-                sprintId={activeSprint.id}
               />
-            )}
-            <VelocityWidget
-              projectId={firstProject.id}
-              projectName={firstProject.name}
-            />
-            <WorkloadSummaryWidget myIssues={myIssues} />
-          </div>
+              <WorkloadSummaryWidget myIssues={myIssues} />
+            </div>
 
-          {/* Sprint Intelligence (AI) */}
-          {activeSprint && (
-            <SprintIntelligenceWidget sprintId={activeSprint.id} className="mt-5" />
+            {/* Sprint Intelligence (AI) */}
+            {activeSprint && (
+              <SprintIntelligenceWidget sprintId={activeSprint.id} className="mt-0" />
+            )}
+          </>
+        )}
+
+        {/* My Issues */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.myIssues')}</h2>
+              {myIssues.length > 0 && (
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                  {myIssues.length}
+                </span>
+              )}
+            </div>
+            <Link
+              to="/issues"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              {t('common.viewAll')}
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          {myIssues.length === 0 ? (
+            <div className="py-12">
+              <EmptyState
+                title={t('dashboard.noIssuesAssigned')}
+                description={t('dashboard.issuesAssignedAppear')}
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">{t('common.assignee')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">SP</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {myIssues.map((issue) => (
+                    <IssueTableRow key={issue.id} issue={issue} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-      )}
 
-      {/* My Issues */}
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700/60">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-              <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        {/* Recent Projects */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
+                <FolderOpen className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">{t('dashboard.recentProjects')}</h2>
             </div>
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">{t('dashboard.myIssues')}</h2>
-            {myIssues.length > 0 && (
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                {myIssues.length}
-              </span>
-            )}
+            <Link
+              to="/projects"
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              {t('common.viewAll')}
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <Link
-            to="/issues"
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          >
-            {t('common.viewAll')}
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-        {myIssues.length === 0 ? (
-          <div className="py-12">
-            <EmptyState
-              title={t('dashboard.noIssuesAssigned')}
-              description={t('dashboard.issuesAssignedAppear')}
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">{t('common.assignee')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">SP</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
-                {myIssues.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Projects */}
-      <div>
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-              <FolderOpen className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          {projectsLoading ? (
+            <LoadingPage />
+          ) : projects && projects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.slice(0, 6).map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.recentProjects')}</h2>
-          </div>
-          <Link
-            to="/projects"
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          >
-            {t('common.viewAll')}
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
+          ) : (
+            <EmptyState title={t('dashboard.noProjectsYet')} description={t('dashboard.createFirstProject')} />
+          )}
         </div>
-        {projectsLoading ? (
-          <LoadingPage />
-        ) : projects && projects.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {projects.slice(0, 4).map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState title={t('dashboard.noProjectsYet')} description={t('dashboard.createFirstProject')} />
-        )}
       </div>
     </div>
   )
