@@ -175,3 +175,15 @@ All agents are modeled as **10+ year senior engineers** — SOLID lovers, multi-
 | `/security` | `.claude/agents/security.md` | OWASP Top 10, JWT attacks, multi-tenant isolation, cloud hardening **(GATE)** |
 | `/reviewer` | `.claude/agents/reviewer.md` | SOLID, clean code, API design, TypeScript, BLOCK/WARN/APPROVE verdicts **(GATE)** |
 | `/docs` | `.claude/agents/docs.md` | OpenAPI/Swagger, ADRs, wiki pages, changelog |
+
+---
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+
+## Git Rules
+
+- **NEVER add Co-Authored-By or any Claude/AI attribution to commit messages.**
+- Keep commit messages clean — just the change description, no AI signatures.
