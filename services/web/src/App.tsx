@@ -14,6 +14,7 @@ import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
 import { AcceptInvitePage } from '@/pages/auth/AcceptInvitePage'
 import { GithubCallbackPage } from '@/pages/auth/GithubCallbackPage'
+import { PrivacyPage } from '@/pages/PrivacyPage'
 
 // Lazy-loaded pages (code-split)
 const DashboardPage = React.lazy(() =>
@@ -123,6 +124,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
         <Route path="/github/callback" element={<GithubCallbackPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         {/* Protected routes */}
         <Route element={<AppLayout />}>

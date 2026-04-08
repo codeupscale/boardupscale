@@ -251,7 +251,16 @@ jobs:
               die "One or more critical services are not healthy after deploy."
             fi
 
-            # ── 8. Prune old image layers ──────────────────────────────────
+            # ── 8. Verify privacy page is reachable ────────────────────────
+            log "Verifying /privacy route..."
+            PRIVACY_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "https://app.boardupscale.com/privacy" || echo "000")
+            if [ "$PRIVACY_STATUS" = "200" ]; then
+              log "/privacy is reachable (HTTP 200) ✓"
+            else
+              log "WARNING: /privacy returned HTTP ${PRIVACY_STATUS} — check nginx SPA fallback config."
+            fi
+
+            # ── 9. Prune old image layers ──────────────────────────────────
             docker image prune -f
 
             log "Deploy of ${IMAGE_TAG} completed successfully ✓"
