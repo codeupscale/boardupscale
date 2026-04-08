@@ -3,7 +3,7 @@ import { Logo } from '@/components/Logo'
 import { SEO } from '@/components/seo/SEO'
 
 const LAST_UPDATED = 'April 8, 2026'
-const SUPPORT_EMAIL = 'support@autycloud.com'
+const SUPPORT_EMAIL = 'support@boardupscale.com'
 const APP_URL = 'https://app.boardupscale.com'
 
 const sections = [
