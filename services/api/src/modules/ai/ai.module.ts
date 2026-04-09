@@ -8,6 +8,7 @@ import { ChatService } from './chat.service';
 import { AiUsageLog } from './entities/ai-usage-log.entity';
 import { ChatConversation } from './entities/chat-conversation.entity';
 import { ChatMessage } from './entities/chat-message.entity';
+import { ChatFeedback } from './entities/chat-feedback.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
@@ -24,6 +25,7 @@ import { SearchModule } from '../search/search.module';
       AiUsageLog,
       ChatConversation,
       ChatMessage,
+      ChatFeedback,
       Issue,
       Comment,
       Sprint,

@@ -30,6 +30,7 @@ import { CustomFieldSettings } from '@/components/projects/custom-field-settings
 import { ComponentList } from '@/components/projects/component-list'
 import { VersionList } from '@/components/projects/version-list'
 import { GitHubConnection } from '@/components/projects/github-connection'
+import { AiUsageDashboard } from '@/components/ai/AiUsageDashboard'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS = [
@@ -133,6 +134,7 @@ export function ProjectSettingsPage() {
             { id: 'components', label: 'Components' },
             { id: 'versions', label: 'Versions' },
             { id: 'github', label: 'GitHub' },
+            { id: 'ai', label: 'AI Usage' },
             { id: 'danger', label: t('settings.dangerZone') },
           ]}
           activeTab={activeTab}
@@ -299,6 +301,13 @@ export function ProjectSettingsPage() {
           {activeTab === 'github' && (
             <div className="max-w-lg">
               <GitHubConnection projectId={projectKey!} />
+            </div>
+          )}
+
+          {/* AI Usage */}
+          {activeTab === 'ai' && (
+            <div className="max-w-3xl">
+              <AiUsageDashboard />
             </div>
           )}
 

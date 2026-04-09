@@ -40,7 +40,6 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
 async function processGenerateEmbedding(job: Job, db: Pool): Promise<void> {
   const { issueId, organizationId } = job.data;
 
-  // Fetch issue title + description
   const result = await db.query(
     'SELECT title, description FROM issues WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL',
     [issueId, organizationId],
@@ -60,7 +59,6 @@ async function processGenerateEmbedding(job: Job, db: Pool): Promise<void> {
     return;
   }
 
-  // Store embedding as a PostgreSQL vector
   const vectorStr = `[${embedding.join(',')}]`;
   await db.query(
     'UPDATE issues SET embedding = $1::vector WHERE id = $2',
@@ -99,6 +97,31 @@ async function processBatchEmbedProject(job: Job, db: Pool): Promise<void> {
   console.log(`[AIWorker] Batch embedding complete: ${processed}/${result.rows.length} issues for project ${projectId}`);
 }
 
+async function processCleanupConversations(job: Job, db: Pool): Promise<void> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+  // Soft-delete conversations with no messages in 30 days
+  const softDeleted = await db.query(
+    `UPDATE chat_conversations SET deleted_at = NOW()
+     WHERE deleted_at IS NULL AND (last_message_at < $1 OR (last_message_at IS NULL AND created_at < $1))
+     RETURNING id`,
+    [thirtyDaysAgo],
+  );
+  if (softDeleted.rowCount > 0) {
+    console.log(`[AIWorker] Soft-deleted ${softDeleted.rowCount} stale conversations`);
+  }
+
+  // Hard-delete conversations soft-deleted 90+ days ago
+  const hardDeleted = await db.query(
+    `DELETE FROM chat_conversations WHERE deleted_at < $1 RETURNING id`,
+    [ninetyDaysAgo],
+  );
+  if (hardDeleted.rowCount > 0) {
+    console.log(`[AIWorker] Hard-deleted ${hardDeleted.rowCount} expired conversations`);
+  }
+}
+
 export async function createAiWorker(db: Pool): Promise<Worker> {
   const ready = await initOpenAI();
   if (!ready) {
@@ -114,6 +137,9 @@ export async function createAiWorker(db: Pool): Promise<Worker> {
           break;
         case 'batch-embed-project':
           await processBatchEmbedProject(job, db);
+          break;
+        case 'cleanup-conversations':
+          await processCleanupConversations(job, db);
           break;
         default:
           console.warn(`[AIWorker] Unknown job name: ${job.name}`);
@@ -132,6 +158,20 @@ export async function createAiWorker(db: Pool): Promise<Worker> {
   worker.on('failed', (job: Job | undefined, err: Error) => {
     console.error(`[AIWorker] Job ${job?.name} (${job?.id}) failed:`, err.message);
   });
+
+  // Schedule daily cleanup at startup (repeatable job)
+  try {
+    const { Queue } = await import('bullmq');
+    const aiQueue = new Queue('ai', { connection: redisConnection as any });
+    await aiQueue.add('cleanup-conversations', {}, {
+      repeat: { pattern: '0 3 * * *' }, // 3 AM daily
+      removeOnComplete: true,
+      removeOnFail: 5,
+    });
+    await aiQueue.close();
+  } catch (err: any) {
+    console.warn(`[AIWorker] Failed to schedule cleanup job: ${err.message}`);
+  }
 
   console.log('[AIWorker] AI worker started');
   return worker;

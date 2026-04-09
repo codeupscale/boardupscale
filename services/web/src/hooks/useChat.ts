@@ -18,11 +18,13 @@ export function useChatConversations(projectId: string | undefined) {
   })
 }
 
-export function useChatMessages(conversationId: string | null) {
-  return useQuery<ChatConversation & { messages: ChatMessage[] }>({
-    queryKey: ['chat-messages', conversationId],
+export function useChatMessages(conversationId: string | null, before?: string) {
+  return useQuery<ChatConversation & { messages: ChatMessage[]; hasMore?: boolean }>({
+    queryKey: ['chat-messages', conversationId, before],
     queryFn: async () => {
-      const { data } = await api.get(`/ai/chat/conversations/${conversationId}`)
+      const params: Record<string, string> = {}
+      if (before) params.before = before
+      const { data } = await api.get(`/ai/chat/conversations/${conversationId}`, { params })
       return data.data ?? data
     },
     enabled: !!conversationId,
@@ -56,69 +58,116 @@ export function useDeleteConversation() {
   })
 }
 
+export function useChatSearch(projectId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (query: string) => {
+      const { data } = await api.get('/ai/chat/search', {
+        params: { q: query, projectId },
+      })
+      return data.data ?? data
+    },
+  })
+}
+
+export function useSubmitFeedback() {
+  return useMutation({
+    mutationFn: async ({ messageId, rating, comment }: { messageId: string; rating: number; comment?: string }) => {
+      const { data } = await api.post(`/ai/chat/messages/${messageId}/feedback`, { rating, comment })
+      return data.data ?? data
+    },
+  })
+}
+
 export function useSendMessage() {
   const qc = useQueryClient()
-  const { appendStreamChunk, setStreaming, resetStream } = useChatStore.getState()
 
   const send = useCallback(
     async (conversationId: string, content: string) => {
+      const { resetStream, setStreaming } = useChatStore.getState()
       resetStream()
       setStreaming(true)
 
       const baseURL = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('accessToken')
 
-      try {
-        const response = await fetch(
-          `${baseURL}/ai/chat/conversations/${conversationId}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
+      const maxRetries = 2
+      let retries = 0
+
+      const attempt = async (): Promise<void> => {
+        try {
+          const response = await fetch(
+            `${baseURL}/ai/chat/conversations/${conversationId}/messages`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ content }),
             },
-            body: JSON.stringify({ content }),
-          },
-        )
+          )
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
+          if (!response.ok) {
+            const errorBody = await response.text().catch(() => '')
+            if (response.status === 429) {
+              throw new Error(errorBody || 'Rate limit exceeded. Please try again later.')
+            }
+            if (response.status === 409) {
+              throw new Error('Another AI request is in progress. Please wait.')
+            }
+            throw new Error(`HTTP ${response.status}`)
+          }
 
-        const reader = response.body?.getReader()
-        if (!reader) throw new Error('No reader available')
+          const reader = response.body?.getReader()
+          if (!reader) throw new Error('No reader available')
 
-        const decoder = new TextDecoder()
-        let buffer = ''
+          const decoder = new TextDecoder()
+          let buffer = ''
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.slice(6)
-              try {
-                const parsed = JSON.parse(jsonStr)
-                if (parsed.content) {
-                  useChatStore.getState().appendStreamChunk(parsed.content)
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6)
+                try {
+                  const parsed = JSON.parse(jsonStr)
+                  if (parsed.content) {
+                    useChatStore.getState().appendStreamChunk(parsed.content)
+                  }
+                  if (parsed.message) {
+                    // Error event from server
+                    console.warn('AI stream error:', parsed.message)
+                  }
+                } catch {
+                  // skip malformed JSON
                 }
-              } catch {
-                // skip malformed JSON
               }
             }
           }
-        }
 
-        // Invalidate messages to refetch persisted data
-        qc.invalidateQueries({ queryKey: ['chat-messages', conversationId] })
-        qc.invalidateQueries({ queryKey: ['chat-conversations'] })
-      } catch (err) {
-        console.error('Chat stream error:', err)
+          qc.invalidateQueries({ queryKey: ['chat-messages', conversationId] })
+          qc.invalidateQueries({ queryKey: ['chat-conversations'] })
+        } catch (err: any) {
+          // Retry on network errors (not rate limits or conflicts)
+          if (retries < maxRetries && !err.message.includes('Rate limit') && !err.message.includes('Another AI')) {
+            retries++
+            await new Promise((r) => setTimeout(r, 1000 * retries))
+            return attempt()
+          }
+          console.error('Chat stream error:', err)
+          useChatStore.getState().setStreamError(err.message || 'Failed to send message')
+        }
+      }
+
+      try {
+        await attempt()
       } finally {
         useChatStore.getState().setStreaming(false)
       }

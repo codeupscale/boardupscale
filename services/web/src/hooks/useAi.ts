@@ -6,12 +6,15 @@ import api from '@/lib/api'
 
 export interface AiStatus {
   enabled: boolean
+  available?: boolean
   model?: string
   embeddingModel?: string
   usage?: {
     tokensUsedToday: number
     dailyLimit: number
     percentUsed: number
+    tier?: 'normal' | 'warning' | 'exhausted'
+    resetsAt?: string
   }
 }
 
@@ -57,11 +60,16 @@ export interface SprintInsights {
   generatedAt: string
 }
 
+export interface AiUsageStats {
+  byFeature: { feature: string; tokens: number; requests: number }[]
+  byUser: { userId: string; displayName: string; tokens: number; requests: number }[]
+  byDay: { date: string; tokens: number; requests: number }[]
+  total: { tokens: number; requests: number }
+  dailyLimit: number
+}
+
 // ── Hooks ──
 
-/**
- * Check AI status for the current org (cached 60s).
- */
 export function useAiStatus() {
   return useQuery<AiStatus>({
     queryKey: ['ai-status'],
@@ -74,10 +82,6 @@ export function useAiStatus() {
   })
 }
 
-/**
- * AI field suggestions with 800ms debounce.
- * Only fires when title is at least 10 chars.
- */
 export function useAiSuggestions(title: string, description?: string, projectId?: string) {
   const [debouncedTitle, setDebouncedTitle] = useState(title)
 
@@ -98,14 +102,11 @@ export function useAiSuggestions(title: string, description?: string, projectId?
       return data.data
     },
     enabled: debouncedTitle.length >= 10,
-    staleTime: 5 * 60_000, // 5 min cache
+    staleTime: 5 * 60_000,
     retry: false,
   })
 }
 
-/**
- * AI issue summarization (lazy, triggered manually).
- */
 export function useAiSummary(issueId: string) {
   return useMutation<IssueSummary | null>({
     mutationFn: async () => {
@@ -116,9 +117,6 @@ export function useAiSummary(issueId: string) {
   })
 }
 
-/**
- * AI sprint insights.
- */
 export function useSprintInsights(sprintId: string | undefined) {
   return useQuery<SprintInsights | null>({
     queryKey: ['ai-sprint-insights', sprintId],
@@ -129,14 +127,11 @@ export function useSprintInsights(sprintId: string | undefined) {
       return data.data
     },
     enabled: !!sprintId,
-    staleTime: 15 * 60_000, // 15 min cache
+    staleTime: 15 * 60_000,
     retry: false,
   })
 }
 
-/**
- * AI assignee suggestions for a project.
- */
 export function useAiAssignees(projectId: string | undefined, type?: string) {
   return useQuery<AssigneeSuggestion[]>({
     queryKey: ['ai-suggest-assignee', projectId, type],
@@ -148,6 +143,20 @@ export function useAiAssignees(projectId: string | undefined, type?: string) {
     },
     enabled: !!projectId,
     staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
+export function useAiUsageStats(from?: string, to?: string) {
+  return useQuery<AiUsageStats>({
+    queryKey: ['ai-usage-stats', from, to],
+    queryFn: async () => {
+      const { data } = await api.get('/ai/admin/usage', {
+        params: { from, to },
+      })
+      return data.data
+    },
+    staleTime: 60_000,
     retry: false,
   })
 }

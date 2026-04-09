@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 interface ChatInputProps {
   onSend: (content: string) => void
   showSuggestions?: boolean
+  disabled?: boolean
 }
 
 const SUGGESTED_PROMPTS = [
@@ -16,14 +17,16 @@ const SUGGESTED_PROMPTS = [
   'Who has the most work assigned?',
 ]
 
-export function ChatInput({ onSend, showSuggestions }: ChatInputProps) {
+export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { isStreaming } = useChatStore()
 
+  const isDisabled = isStreaming || disabled
+
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || isStreaming) return
+    if (!trimmed || isDisabled) return
     onSend(trimmed)
     setValue('')
     if (textareaRef.current) {
@@ -47,14 +50,14 @@ export function ChatInput({ onSend, showSuggestions }: ChatInputProps) {
   }
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+    <div className="border-t border-gray-200 dark:border-gray-700 p-3 shrink-0">
       {showSuggestions && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {SUGGESTED_PROMPTS.map((prompt) => (
             <button
               key={prompt}
               onClick={() => onSend(prompt)}
-              disabled={isStreaming}
+              disabled={isDisabled}
               className="text-xs px-2.5 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {prompt}
@@ -69,8 +72,8 @@ export function ChatInput({ onSend, showSuggestions }: ChatInputProps) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder="Ask about issues, sprints, docs..."
-          disabled={isStreaming}
+          placeholder={disabled ? 'AI budget exhausted for today' : 'Ask about issues, sprints, docs...'}
+          disabled={isDisabled}
           rows={1}
           className={cn(
             'flex-1 resize-none rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm',
@@ -82,7 +85,7 @@ export function ChatInput({ onSend, showSuggestions }: ChatInputProps) {
         <Button
           size="icon-sm"
           onClick={handleSend}
-          disabled={!value.trim() || isStreaming}
+          disabled={!value.trim() || isDisabled}
           aria-label="Send message"
         >
           <Send className="h-4 w-4" />

@@ -51,5 +51,7 @@ export interface AiStatusResponse {
     tokensUsedToday: number;
     dailyLimit: number;
     percentUsed: number;
+    tier?: 'normal' | 'warning' | 'exhausted';
+    resetsAt?: string;
   };
 }
