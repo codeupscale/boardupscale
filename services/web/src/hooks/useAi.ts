@@ -7,6 +7,7 @@ import api from '@/lib/api'
 export interface AiStatus {
   enabled: boolean
   available?: boolean
+  provider?: string
   model?: string
   embeddingModel?: string
   usage?: {
