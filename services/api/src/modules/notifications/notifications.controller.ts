@@ -23,12 +23,21 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 export class NotificationsController {
   constructor(private notificationsService: NotificationsService) {}
 
+  /**
+   * Transform a Notification entity into the API response shape.
+   * Converts `readAt` timestamp → `read` boolean for frontend consumption.
+   */
+  private toResponse(notification: any) {
+    const { readAt, ...rest } = notification;
+    return { ...rest, read: !!readAt };
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get notifications (paginated, unread first)' })
   async findAll(@CurrentUser() user: any, @Query() pagination: PaginationDto) {
     const result = await this.notificationsService.findAll(user.id, pagination.page, pagination.limit);
     return {
-      data: result.items,
+      data: result.items.map((n) => this.toResponse(n)),
       meta: {
         total: result.total,
         page: result.page,
@@ -49,14 +58,15 @@ export class NotificationsController {
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a notification as read' })
   async markRead(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
-    return this.notificationsService.markRead(id, user.id);
+    const notification = await this.notificationsService.markRead(id, user.id);
+    return this.toResponse(notification);
   }
 
   @Post('read-all')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark all notifications as read' })
   async markAllRead(@CurrentUser() user: any) {
-    await this.notificationsService.markAllRead(user.id);
-    return { message: 'All notifications marked as read' };
+    const { affected } = await this.notificationsService.markAllRead(user.id);
+    return { message: 'All notifications marked as read', affected };
   }
 }

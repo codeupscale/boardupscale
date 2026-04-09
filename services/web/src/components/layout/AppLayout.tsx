@@ -1,17 +1,16 @@
 import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-// React Query client is used by notification hooks directly
 import { useAuthStore } from '@/store/auth.store'
 import { useMe } from '@/hooks/useAuth'
-import { getSocket, disconnectSocket } from '@/lib/socket'
+import { disconnectSocket } from '@/lib/socket'
 import { useUiStore } from '@/store/ui.store'
+import { useNotificationSocket } from '@/hooks/useNotifications'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { ToastContainer } from '@/components/ui/toast'
 import { CommandPalette } from './command-palette'
 import { ProjectChat } from '@/components/chat/ProjectChat'
-import { cn } from '@/lib/utils'
 
 export function AppLayout() {
   const { initialize, isAuthenticated, setUser } = useAuthStore()
@@ -33,15 +32,15 @@ export function AppLayout() {
     if (user) setUser(user)
   }, [user, setUser])
 
-  // Initialize socket connection — notification handling is in useUnreadCount()
+  // Central WebSocket subscription for all notification events.
+  // Handles: new notifications, count updates, read sync, all-read sync.
+  // Reconnect automatically refetches to catch missed events.
+  useNotificationSocket()
+
+  // Cleanup socket on logout
   useEffect(() => {
     if (!isAuthenticated) return
-    // Just ensure socket is connected; event handlers are in useNotifications hooks
-    getSocket()
-
-    return () => {
-      disconnectSocket()
-    }
+    return () => { disconnectSocket() }
   }, [isAuthenticated])
 
   if (!isAuthenticated) return null

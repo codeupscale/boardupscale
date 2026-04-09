@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, MessageCircle, GitMerge, AlertCircle, Info, Inbox, BellRing } from 'lucide-react'
+import { Bell, CheckCheck, MessageCircle, GitMerge, AlertCircle, Info, Inbox, BellRing, Clock, Zap, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   useNotifications,
@@ -14,26 +14,48 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
+/**
+ * Map backend notification types to icons.
+ * Backend sends: issue:assigned, comment:created, mention, issue:status_changed,
+ * sprint:started, sprint:completed, issue:due_soon, automation:notification
+ */
 function getNotificationIcon(type: string) {
   const map: Record<string, React.ReactNode> = {
-    comment: <MessageCircle className="h-4 w-4 text-blue-600" />,
-    mention: <BellRing className="h-4 w-4 text-purple-600" />,
-    assigned: <GitMerge className="h-4 w-4 text-emerald-600" />,
-    status_changed: <AlertCircle className="h-4 w-4 text-amber-600" />,
-    sprint_started: <Info className="h-4 w-4 text-blue-600" />,
-    sprint_completed: <CheckCheck className="h-4 w-4 text-emerald-600" />,
+    // Backend types (namespaced with colon)
+    'comment:created':          <MessageCircle className="h-4 w-4 text-blue-600" />,
+    'mention':                  <BellRing className="h-4 w-4 text-purple-600" />,
+    'issue:assigned':           <UserPlus className="h-4 w-4 text-emerald-600" />,
+    'issue:status_changed':     <AlertCircle className="h-4 w-4 text-amber-600" />,
+    'sprint:started':           <Info className="h-4 w-4 text-blue-600" />,
+    'sprint:completed':         <CheckCheck className="h-4 w-4 text-emerald-600" />,
+    'issue:due_soon':           <Clock className="h-4 w-4 text-red-600" />,
+    'automation:notification':  <Zap className="h-4 w-4 text-indigo-600" />,
+    // Legacy short types (backwards-compatible)
+    'comment':                  <MessageCircle className="h-4 w-4 text-blue-600" />,
+    'assigned':                 <UserPlus className="h-4 w-4 text-emerald-600" />,
+    'status_changed':           <AlertCircle className="h-4 w-4 text-amber-600" />,
+    'sprint_started':           <Info className="h-4 w-4 text-blue-600" />,
+    'sprint_completed':         <CheckCheck className="h-4 w-4 text-emerald-600" />,
   }
   return map[type] || <Bell className="h-4 w-4 text-gray-400" />
 }
 
 function getNotificationIconBg(type: string) {
   const map: Record<string, string> = {
-    comment: 'bg-blue-50 dark:bg-blue-900/20',
-    mention: 'bg-purple-50 dark:bg-purple-900/20',
-    assigned: 'bg-emerald-50 dark:bg-emerald-900/20',
-    status_changed: 'bg-amber-50 dark:bg-amber-900/20',
-    sprint_started: 'bg-blue-50 dark:bg-blue-900/20',
-    sprint_completed: 'bg-emerald-50 dark:bg-emerald-900/20',
+    'comment:created':          'bg-blue-50 dark:bg-blue-900/20',
+    'mention':                  'bg-purple-50 dark:bg-purple-900/20',
+    'issue:assigned':           'bg-emerald-50 dark:bg-emerald-900/20',
+    'issue:status_changed':     'bg-amber-50 dark:bg-amber-900/20',
+    'sprint:started':           'bg-blue-50 dark:bg-blue-900/20',
+    'sprint:completed':         'bg-emerald-50 dark:bg-emerald-900/20',
+    'issue:due_soon':           'bg-red-50 dark:bg-red-900/20',
+    'automation:notification':  'bg-indigo-50 dark:bg-indigo-900/20',
+    // Legacy short types
+    'comment':                  'bg-blue-50 dark:bg-blue-900/20',
+    'assigned':                 'bg-emerald-50 dark:bg-emerald-900/20',
+    'status_changed':           'bg-amber-50 dark:bg-amber-900/20',
+    'sprint_started':           'bg-blue-50 dark:bg-blue-900/20',
+    'sprint_completed':         'bg-emerald-50 dark:bg-emerald-900/20',
   }
   return map[type] || 'bg-gray-100 dark:bg-gray-800'
 }
