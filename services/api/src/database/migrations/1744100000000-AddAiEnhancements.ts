@@ -35,17 +35,27 @@ export class AddAiEnhancements1744100000000 implements MigrationInterface {
       ON chat_feedback (message_id, user_id)
     `);
 
-    // 4. Vector similarity index (if pgvector extension is available)
-    try {
-      await queryRunner.query(`
-        CREATE INDEX IF NOT EXISTS idx_issues_embedding_ivfflat
-        ON issues USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)
-      `);
-    } catch (err) {
-      // pgvector may not be installed or embedding column may be float8[]
-      // Silently skip — vector search will fall back gracefully
-      console.log('[Migration] Skipping IVFFlat index — pgvector extension or vector column not available');
-    }
+    // 4. Vector similarity index — only if column is vector type (not float8[])
+    // We use a DO block with exception handling to keep the transaction intact
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        -- Only attempt if the column is actually a vector type
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'issues' AND column_name = 'embedding'
+            AND udt_name = 'vector'
+        ) THEN
+          CREATE INDEX IF NOT EXISTS idx_issues_embedding_ivfflat
+            ON issues USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+          RAISE NOTICE 'IVFFlat index created on issues.embedding';
+        ELSE
+          RAISE NOTICE 'Skipping IVFFlat index — embedding column is not vector type';
+        END IF;
+      EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE 'Skipping IVFFlat index: %', SQLERRM;
+      END $$
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
