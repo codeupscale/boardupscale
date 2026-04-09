@@ -402,6 +402,19 @@ export class IssuesService {
         WebhookEventType.ISSUE_STATUS_CHANGED,
         { issue: updatedIssue, statusId: dto.statusId, previousStatusId: prevStatusId },
       );
+
+      // Notify assignee about status change (if someone else changed it)
+      if (updatedIssue.assigneeId && updatedIssue.assigneeId !== userId) {
+        const oldStatusName = prevNames.statusId || 'Unknown';
+        const newStatusName = updatedIssue.status?.name || 'Unknown';
+        await this.notificationsService.create({
+          userId: updatedIssue.assigneeId,
+          type: 'issue:status_changed',
+          title: `${issue.key} moved to ${newStatusName}`,
+          body: `"${issue.title}" changed from ${oldStatusName} → ${newStatusName}`,
+          data: { issueId: id, projectId: issue.projectId, oldStatus: oldStatusName, newStatus: newStatusName },
+        });
+      }
     }
 
     if (dto.assigneeId && dto.assigneeId !== prevAssigneeId && dto.assigneeId !== userId) {

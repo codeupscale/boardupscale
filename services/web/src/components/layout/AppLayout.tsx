@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+// React Query client is used by notification hooks directly
 import { useAuthStore } from '@/store/auth.store'
 import { useMe } from '@/hooks/useAuth'
 import { getSocket, disconnectSocket } from '@/lib/socket'
-import { useUiStore, toast } from '@/store/ui.store'
+import { useUiStore } from '@/store/ui.store'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
@@ -33,25 +33,16 @@ export function AppLayout() {
     if (user) setUser(user)
   }, [user, setUser])
 
-  const qc = useQueryClient()
-
+  // Initialize socket connection — notification handling is in useUnreadCount()
   useEffect(() => {
     if (!isAuthenticated) return
-    const socket = getSocket()
-
-    socket.on('notification:new', (notification: any) => {
-      qc.invalidateQueries({ queryKey: ['unread-count'] })
-      qc.invalidateQueries({ queryKey: ['notifications'] })
-      if (notification?.title) {
-        toast(notification.title, 'info')
-      }
-    })
+    // Just ensure socket is connected; event handlers are in useNotifications hooks
+    getSocket()
 
     return () => {
-      socket.off('notification:new')
       disconnectSocket()
     }
-  }, [isAuthenticated, qc])
+  }, [isAuthenticated])
 
   if (!isAuthenticated) return null
 
