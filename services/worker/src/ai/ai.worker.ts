@@ -23,7 +23,7 @@ async function initEmbeddingProvider(): Promise<boolean> {
       case 'gemini': {
         const { GoogleGenerativeAI } = await import('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = process.env.AI_EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-004';
+        const model = process.env.AI_EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || 'gemini-embedding-exp-03-07';
         const embeddingModel = genAI.getGenerativeModel({ model });
         generateEmbedding = async (text: string) => {
           const result = await embeddingModel.embedContent(text.slice(0, 8000));
