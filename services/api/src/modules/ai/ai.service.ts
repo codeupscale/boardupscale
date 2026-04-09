@@ -95,10 +95,22 @@ export class AiService implements OnModuleInit {
 
   sanitizeForPrompt(text: string): string {
     if (!text) return '';
-    // Strip control characters except newlines and tabs
     const cleaned = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-    // Wrap in delimiters to prevent injection
     return `<user_input>${cleaned}</user_input>`;
+  }
+
+  /**
+   * Extract JSON from LLM response that may be wrapped in markdown code fences.
+   * Handles: ```json {...} ```, ``` {...} ```, or raw JSON.
+   */
+  private extractJson(text: string): any {
+    // Strip markdown code fences
+    let cleaned = text.trim();
+    const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      cleaned = fenceMatch[1].trim();
+    }
+    return JSON.parse(cleaned);
   }
 
   // ── Status ──
@@ -369,7 +381,7 @@ Respond in JSON only: {"type":"...","priority":"...","title":"..."}`;
     if (!result) return null;
 
     try {
-      const parsed = JSON.parse(result.content);
+      const parsed = this.extractJson(result.content);
       const suggestions: FieldSuggestions = {};
       if (parsed.type) suggestions.type = parsed.type;
       if (parsed.priority) suggestions.priority = parsed.priority;
@@ -514,7 +526,7 @@ ${commentsText || 'No comments yet.'}`;
     if (!result) return null;
 
     try {
-      const parsed = JSON.parse(result.content);
+      const parsed = this.extractJson(result.content);
       const summary: IssueSummary = {
         summary: parsed.summary || '',
         keyDecisions: parsed.keyDecisions || [],
@@ -644,7 +656,7 @@ ${workloadBalance.map((w) => `- ${w.displayName}: ${w.assignedPoints} SP assigne
 
       if (result) {
         try {
-          suggestions = JSON.parse(result.content);
+          suggestions = this.extractJson(result.content);
         } catch {
           suggestions = [result.content];
         }
