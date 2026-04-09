@@ -15,7 +15,7 @@ interface ProviderConfig {
 
 const DEFAULT_MODELS: Record<AiProviderType, { model: string; embeddingModel: string }> = {
   openai: { model: 'gpt-4o-mini', embeddingModel: 'text-embedding-3-small' },
-  gemini: { model: 'gemini-2.0-flash-lite', embeddingModel: 'gemini-embedding-exp-03-07' },
+  gemini: { model: 'gemini-2.5-flash', embeddingModel: 'gemini-embedding-001' },
   anthropic: { model: 'claude-sonnet-4-20250514', embeddingModel: '' },
 };
 
