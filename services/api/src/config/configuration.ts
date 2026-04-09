@@ -64,9 +64,10 @@ export default () => ({
   },
   ai: {
     enabled: process.env.AI_ENABLED === 'true',
-    openaiApiKey: process.env.OPENAI_API_KEY || '',
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-    embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    provider: process.env.AI_PROVIDER || 'openai',
+    apiKey: process.env.AI_API_KEY || process.env.OPENAI_API_KEY || '',
+    model: process.env.AI_MODEL || process.env.OPENAI_MODEL || '',
+    embeddingModel: process.env.AI_EMBEDDING_MODEL || process.env.OPENAI_EMBEDDING_MODEL || '',
     maxTokensPerOrgPerDay: parseInt(process.env.AI_MAX_TOKENS_PER_ORG_PER_DAY, 10) || 100000,
   },
   saml: {

@@ -50,9 +50,10 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8091}
       - PORT=4000
       - AI_ENABLED=${AI_ENABLED:-false}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AI_API_KEY=${AI_API_KEY:-${OPENAI_API_KEY:-}}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_EMBEDDING_MODEL=${AI_EMBEDDING_MODEL:-}
       - AI_MAX_TOKENS_PER_ORG_PER_DAY=${AI_MAX_TOKENS_PER_ORG_PER_DAY:-100000}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
@@ -99,9 +100,10 @@ services:
       - SMTP_FROM=noreply@boardupscale.local
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8091}
       - AI_ENABLED=${AI_ENABLED:-false}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - AI_API_KEY=${AI_API_KEY:-${OPENAI_API_KEY:-}}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_EMBEDDING_MODEL=${AI_EMBEDDING_MODEL:-}
       - APP_SECRET=${APP_SECRET:-boardupscale-dev-secret-change-before-production}
       - ATLASSIAN_CLIENT_ID=${ATLASSIAN_CLIENT_ID:-}
       - ATLASSIAN_CLIENT_SECRET=${ATLASSIAN_CLIENT_SECRET:-}

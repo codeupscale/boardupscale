@@ -19,12 +19,13 @@ import {
   SprintInsights,
   WorkloadItem,
 } from './ai.types';
+import { LlmProvider } from './providers/llm-provider.interface';
+import { createProvider, AiProviderType } from './providers/provider-factory';
 
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
-  private openai: any = null;
-  private available = false;
+  private provider: LlmProvider | null = null;
   private redis: Redis;
 
   constructor(
@@ -42,7 +43,6 @@ export class AiService implements OnModuleInit {
     private aiQueue: Queue,
     private configService: ConfigService,
   ) {
-    // Connect to Redis for caching (reuses same config as BullMQ)
     const redisUrl = this.configService.get<string>('redis.url') || 'redis://localhost:6379';
     this.redis = new Redis(redisUrl, { maxRetriesPerRequest: 3, lazyConnect: true });
     this.redis.connect().catch((err) => {
@@ -51,38 +51,40 @@ export class AiService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.initOpenAI();
+    this.initProvider();
   }
 
-  private async initOpenAI(): Promise<void> {
+  private initProvider(): void {
     const enabled = this.configService.get<boolean>('ai.enabled');
-    const apiKey = this.configService.get<string>('ai.openaiApiKey');
-
     if (!enabled) {
       this.logger.log('AI features are disabled (AI_ENABLED=false)');
       return;
     }
 
+    const providerName = this.configService.get<string>('ai.provider') || 'openai';
+    const apiKey = this.configService.get<string>('ai.apiKey');
+
     if (!apiKey) {
-      this.logger.warn('AI is enabled but OPENAI_API_KEY is not set — AI features will be unavailable');
+      this.logger.warn(`AI is enabled but AI_API_KEY is not set — AI features will be unavailable`);
       return;
     }
 
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const OpenAI = require('openai').default || require('openai');
-      this.openai = new OpenAI({ apiKey });
-      this.available = true;
-      this.logger.log(`AI features initialized. Model: ${this.configService.get<string>('ai.model')}`);
-    } catch (err: any) {
-      this.available = false;
-      this.openai = null;
-      this.logger.warn(`AI initialization failed: ${err.message} — AI features unavailable`);
+    this.provider = createProvider({
+      provider: providerName as AiProviderType,
+      apiKey,
+      model: this.configService.get<string>('ai.model') || '',
+      embeddingModel: this.configService.get<string>('ai.embeddingModel') || '',
+    });
+
+    if (this.provider.isAvailable()) {
+      this.logger.log(`AI features initialized. Provider: ${providerName}, Model: ${this.configService.get<string>('ai.model') || 'default'}`);
+    } else {
+      this.logger.warn(`AI provider "${providerName}" failed to initialize — AI features unavailable`);
     }
   }
 
   isAvailable(): boolean {
-    return this.available && this.openai != null;
+    return this.provider?.isAvailable() === true;
   }
 
   isEnabled(): boolean {
@@ -106,11 +108,13 @@ export class AiService implements OnModuleInit {
       return { enabled: false };
     }
 
+    const providerName = this.configService.get<string>('ai.provider') || 'openai';
     const result: AiStatusResponse = {
       enabled: this.isEnabled(),
       available: this.isAvailable(),
-      model: this.configService.get<string>('ai.model'),
-      embeddingModel: this.configService.get<string>('ai.embeddingModel'),
+      provider: providerName,
+      model: this.configService.get<string>('ai.model') || 'default',
+      embeddingModel: this.configService.get<string>('ai.embeddingModel') || 'default',
     };
 
     if (organizationId) {
@@ -187,16 +191,11 @@ export class AiService implements OnModuleInit {
 
     try {
       const startMs = Date.now();
-      const model = this.configService.get<string>('ai.embeddingModel');
-      const response = await this.openai.embeddings.create({
-        model,
-        input: text.slice(0, 8000),
-      });
+      const result = await this.provider!.generateEmbedding(text);
+      if (!result) return null;
       const latencyMs = Date.now() - startMs;
-      const embedding = response.data[0].embedding;
-
-      this.logger.debug(`Embedding generated in ${latencyMs}ms (${embedding.length} dims)`);
-      return embedding;
+      this.logger.debug(`Embedding generated in ${latencyMs}ms (${result.dimensions} dims, provider: ${this.provider!.name})`);
+      return result.embedding;
     } catch (err: any) {
       this.logger.warn(`Embedding generation failed: ${err.message}`);
       return null;
@@ -232,35 +231,30 @@ export class AiService implements OnModuleInit {
 
     try {
       const startMs = Date.now();
-      const model = this.configService.get<string>('ai.model');
-      const response = await this.openai.chat.completions.create({
-        model,
+      const result = await this.provider!.chatCompletion({
         messages: params.messages,
-        max_tokens: params.maxTokens || 1000,
-        temperature: params.temperature ?? 0.3,
+        maxTokens: params.maxTokens,
+        temperature: params.temperature,
       });
       const latencyMs = Date.now() - startMs;
-
-      const choice = response.choices[0];
-      const usage = response.usage;
 
       await this.logUsage({
         organizationId: params.organizationId,
         userId: params.userId,
         feature: params.feature,
-        model,
-        promptTokens: usage?.prompt_tokens || 0,
-        completionTokens: usage?.completion_tokens || 0,
-        totalTokens: usage?.total_tokens || 0,
+        model: `${this.provider!.name}/${this.configService.get<string>('ai.model') || 'default'}`,
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        totalTokens: result.usage.totalTokens,
         latencyMs,
       });
 
       return {
-        content: choice.message.content || '',
-        tokensUsed: usage?.total_tokens || 0,
+        content: result.content,
+        tokensUsed: result.usage.totalTokens,
       };
     } catch (err: any) {
-      this.logger.warn(`Chat completion failed: ${err.message}`);
+      this.logger.warn(`Chat completion failed (${this.provider!.name}): ${err.message}`);
       return null;
     }
   }
@@ -284,46 +278,39 @@ export class AiService implements OnModuleInit {
 
     try {
       const startMs = Date.now();
-      const model = this.configService.get<string>('ai.model');
-      const stream = await this.openai.chat.completions.create({
-        model,
-        messages: params.messages,
-        max_tokens: params.maxTokens || 1500,
-        temperature: params.temperature ?? 0.3,
-        stream: true,
-        ...(params.signal ? { signal: params.signal } : {}),
-      });
-
-      let fullContent = '';
+      let totalTokens = 0;
       let promptTokens = 0;
       let completionTokens = 0;
 
-      for await (const chunk of stream) {
-        // Check abort signal
+      for await (const chunk of this.provider!.chatCompletionStream({
+        messages: params.messages,
+        maxTokens: params.maxTokens,
+        temperature: params.temperature,
+        signal: params.signal,
+      })) {
         if (params.signal?.aborted) {
           this.logger.debug('Stream aborted by client disconnect');
           break;
         }
 
-        const delta = chunk.choices?.[0]?.delta?.content;
-        if (delta) {
-          fullContent += delta;
-          yield { type: 'chunk', content: delta };
+        if (chunk.type === 'chunk' && chunk.content) {
+          yield { type: 'chunk', content: chunk.content };
         }
-        if (chunk.usage) {
-          promptTokens = chunk.usage.prompt_tokens || 0;
-          completionTokens = chunk.usage.completion_tokens || 0;
+
+        if (chunk.type === 'done' && chunk.usage) {
+          promptTokens = chunk.usage.promptTokens;
+          completionTokens = chunk.usage.completionTokens;
+          totalTokens = chunk.usage.totalTokens;
         }
       }
 
       const latencyMs = Date.now() - startMs;
-      const totalTokens = promptTokens + completionTokens;
 
       await this.logUsage({
         organizationId: params.organizationId,
         userId: params.userId,
         feature: params.feature,
-        model,
+        model: `${this.provider!.name}/${this.configService.get<string>('ai.model') || 'default'}`,
         promptTokens,
         completionTokens,
         totalTokens,
@@ -336,7 +323,7 @@ export class AiService implements OnModuleInit {
         this.logger.debug('Stream aborted');
         return;
       }
-      this.logger.warn(`Chat completion stream failed: ${err.message}`);
+      this.logger.warn(`Chat completion stream failed (${this.provider?.name}): ${err.message}`);
     }
   }
 

@@ -45,6 +45,7 @@ export interface WorkloadItem {
 export interface AiStatusResponse {
   enabled: boolean;
   available?: boolean;
+  provider?: string;
   model?: string;
   embeddingModel?: string;
   usage?: {
