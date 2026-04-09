@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import { NotificationsService } from './notifications.service';
 import { Notification } from './entities/notification.entity';
 import { EventsGateway } from '../../websocket/events.gateway';
@@ -34,6 +35,7 @@ describe('NotificationsService', () => {
       const notification = mockNotification();
       notificationRepo.create.mockReturnValue(notification);
       notificationRepo.save.mockResolvedValue(notification);
+      notificationRepo.count.mockResolvedValue(1);
 
       const result = await service.create({
         userId: TEST_IDS.USER_ID,
@@ -55,13 +57,14 @@ describe('NotificationsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return paginated notifications for user', async () => {
+    it('should return paginated notifications with unread count for user', async () => {
       const notifications = [mockNotification()];
       notificationRepo.findAndCount.mockResolvedValue([notifications, 1]);
+      notificationRepo.count.mockResolvedValue(1);
 
       const result = await service.findAll(TEST_IDS.USER_ID, 1, 20);
 
-      expect(result).toEqual({ items: notifications, total: 1, page: 1, limit: 20 });
+      expect(result).toEqual({ items: notifications, total: 1, page: 1, limit: 20, unreadCount: 1 });
       expect(notificationRepo.findAndCount).toHaveBeenCalledWith({
         where: { userId: TEST_IDS.USER_ID },
         order: { createdAt: 'DESC' },
@@ -72,6 +75,7 @@ describe('NotificationsService', () => {
 
     it('should use default pagination when not specified', async () => {
       notificationRepo.findAndCount.mockResolvedValue([[], 0]);
+      notificationRepo.count.mockResolvedValue(0);
 
       const result = await service.findAll(TEST_IDS.USER_ID);
 
@@ -81,6 +85,7 @@ describe('NotificationsService', () => {
 
     it('should calculate correct skip value for page 3', async () => {
       notificationRepo.findAndCount.mockResolvedValue([[], 0]);
+      notificationRepo.count.mockResolvedValue(0);
 
       await service.findAll(TEST_IDS.USER_ID, 3, 10);
 
@@ -98,17 +103,18 @@ describe('NotificationsService', () => {
 
       expect(result).toBe(5);
       expect(notificationRepo.count).toHaveBeenCalledWith({
-        where: { userId: TEST_IDS.USER_ID, readAt: null },
+        where: { userId: TEST_IDS.USER_ID, readAt: IsNull() },
       });
     });
   });
 
   describe('markRead', () => {
     it('should mark a notification as read', async () => {
-      const notification = mockNotification();
+      const notification = { ...mockNotification(), readAt: null };
       notificationRepo.findOne.mockResolvedValue(notification);
       const readNotification = { ...notification, readAt: new Date() };
       notificationRepo.save.mockResolvedValue(readNotification);
+      notificationRepo.count.mockResolvedValue(0);
 
       const result = await service.markRead(TEST_IDS.NOTIFICATION_ID, TEST_IDS.USER_ID);
 
@@ -116,6 +122,16 @@ describe('NotificationsService', () => {
       expect(notificationRepo.findOne).toHaveBeenCalledWith({
         where: { id: TEST_IDS.NOTIFICATION_ID, userId: TEST_IDS.USER_ID },
       });
+    });
+
+    it('should return existing notification if already read (idempotent)', async () => {
+      const notification = { ...mockNotification(), readAt: new Date() };
+      notificationRepo.findOne.mockResolvedValue(notification);
+
+      const result = await service.markRead(TEST_IDS.NOTIFICATION_ID, TEST_IDS.USER_ID);
+
+      expect(result).toBe(notification);
+      expect(notificationRepo.save).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when notification not found', async () => {
@@ -139,12 +155,14 @@ describe('NotificationsService', () => {
   });
 
   describe('markAllRead', () => {
-    it('should mark all unread notifications as read', async () => {
+    it('should mark all unread notifications as read and return affected count', async () => {
       const qb = createMockQueryBuilder();
+      qb.execute.mockResolvedValue({ affected: 3 });
       notificationRepo.createQueryBuilder.mockReturnValue(qb);
 
-      await service.markAllRead(TEST_IDS.USER_ID);
+      const result = await service.markAllRead(TEST_IDS.USER_ID);
 
+      expect(result).toEqual({ affected: 3 });
       expect(qb.set).toHaveBeenCalledWith({ readAt: expect.any(Date) });
       expect(qb.where).toHaveBeenCalledWith('user_id = :userId AND read_at IS NULL', {
         userId: TEST_IDS.USER_ID,
