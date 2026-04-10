@@ -23,6 +23,7 @@ import { memoryStorage } from 'multer';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
@@ -71,20 +72,26 @@ export class FilesController {
     return this.filesService.upload(file, dto, user.id);
   }
 
+  /**
+   * Public file view endpoint — streams content directly from S3.
+   * No auth required. File IDs are UUIDs (unguessable).
+   * Used by <img src>, <video src>, and direct links in rich text content.
+   * This is how Jira, GitHub, Slack, and Notion serve embedded files.
+   */
   @Get(':id/view')
-  @ApiOperation({ summary: 'Stream file content (permanent URL for embedding)' })
+  @Public()
+  @ApiOperation({ summary: 'View file content (public, permanent URL)' })
   async viewFile(
     @Param('id', ParseUUIDPipe) id: string,
-    @OrgId() organizationId: string,
     @Res() res: Response,
   ) {
-    const { stream, mimeType, fileName, fileSize } = await this.filesService.streamFile(id, organizationId);
+    const { stream, mimeType, fileName, fileSize } = await this.filesService.streamFile(id);
 
     res.set({
       'Content-Type': mimeType,
       'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
       'Content-Length': String(fileSize),
-      'Cache-Control': 'private, max-age=86400, immutable',
+      'Cache-Control': 'public, max-age=31536000, immutable',
       'X-Content-Type-Options': 'nosniff',
     });
 
