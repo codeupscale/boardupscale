@@ -42,9 +42,9 @@ async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: 
   })
   const attachment = uploadData.data ?? uploadData
 
-  // Get presigned URL for display
-  const { data: urlData } = await api.get(`/files/${attachment.id}/url`)
-  const url = urlData.data?.url ?? urlData.url
+  // Use permanent proxy URL — never expires (unlike presigned S3 URLs)
+  const baseURL = api.defaults.baseURL || '/api'
+  const url = `${baseURL}/files/${attachment.id}/view`
 
   return { id: attachment.id, url, fileName: attachment.fileName, mimeType: attachment.mimeType }
 }

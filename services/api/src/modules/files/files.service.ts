@@ -14,6 +14,7 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
 } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import { Attachment } from './entities/attachment.entity';
@@ -107,6 +108,38 @@ export class FilesService {
     });
 
     return getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+  }
+
+  async streamFile(id: string, organizationId?: string): Promise<{
+    stream: Readable;
+    mimeType: string;
+    fileName: string;
+    fileSize: number;
+  }> {
+    const attachment = await this.attachmentRepository.findOne({
+      where: { id },
+      relations: ['issue', 'issue.project'],
+    });
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+    if (organizationId && attachment.issue?.project?.organizationId !== organizationId) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: attachment.storageBucket,
+      Key: attachment.storageKey,
+    });
+
+    const response = await this.s3Client.send(command);
+
+    return {
+      stream: response.Body as Readable,
+      mimeType: attachment.mimeType,
+      fileName: attachment.fileName,
+      fileSize: Number(attachment.fileSize),
+    };
   }
 
   async findByIssue(issueId: string): Promise<Attachment[]> {

@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -13,7 +14,9 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Header,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -68,12 +71,24 @@ export class FilesController {
     return this.filesService.upload(file, dto, user.id);
   }
 
-  @Get(':id')
-  @Redirect()
-  @ApiOperation({ summary: 'Get presigned URL for a file (redirect)' })
-  async getFile(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
-    const url = await this.filesService.getPresignedUrl(id, organizationId);
-    return { url };
+  @Get(':id/view')
+  @ApiOperation({ summary: 'Stream file content (permanent URL for embedding)' })
+  async viewFile(
+    @Param('id', ParseUUIDPipe) id: string,
+    @OrgId() organizationId: string,
+    @Res() res: Response,
+  ) {
+    const { stream, mimeType, fileName, fileSize } = await this.filesService.streamFile(id, organizationId);
+
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
+      'Content-Length': String(fileSize),
+      'Cache-Control': 'private, max-age=86400, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    stream.pipe(res);
   }
 
   @Get(':id/url')
@@ -81,6 +96,14 @@ export class FilesController {
   async getFileUrl(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
     const url = await this.filesService.getPresignedUrl(id, organizationId);
     return { data: { url } };
+  }
+
+  @Get(':id')
+  @Redirect()
+  @ApiOperation({ summary: 'Get presigned URL for a file (redirect)' })
+  async getFile(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    const url = await this.filesService.getPresignedUrl(id, organizationId);
+    return { url };
   }
 
   @Get()
