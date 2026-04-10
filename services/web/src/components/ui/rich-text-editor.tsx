@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
 import ImageExt from '@tiptap/extension-image'
+import { mergeAttributes } from '@tiptap/core'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
 import { cn } from '@/lib/utils'
@@ -32,11 +33,10 @@ import {
 // ──────────────────────────────────────────────
 // File upload helper
 // ──────────────────────────────────────────────
-/** Build an authenticated file view URL that works in <img src>, <video src> etc. */
+/** Build a permanent file view URL for <img src>, <video src>, etc. */
 export function getFileViewUrl(fileId: string): string {
   const baseURL = api.defaults.baseURL || '/api'
-  const token = localStorage.getItem('accessToken') || ''
-  return `${baseURL}/files/${fileId}/view?token=${encodeURIComponent(token)}`
+  return `${baseURL}/files/${fileId}/view`
 }
 
 async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
@@ -352,7 +352,19 @@ export function RichTextEditor({
       StarterKit,
       Underline,
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'rich-link' } }),
-      ImageExt.configure({
+      ImageExt.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            width: { default: null, parseHTML: (el) => el.getAttribute('width'), renderHTML: (attrs) => attrs.width ? { width: attrs.width } : {} },
+            height: { default: null, parseHTML: (el) => el.getAttribute('height'), renderHTML: (attrs) => attrs.height ? { height: attrs.height } : {} },
+            'data-id': { default: null, parseHTML: (el) => el.getAttribute('data-id'), renderHTML: (attrs) => attrs['data-id'] ? { 'data-id': attrs['data-id'] } : {} },
+          }
+        },
+        renderHTML({ HTMLAttributes }) {
+          return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)]
+        },
+      }).configure({
         inline: false,
         HTMLAttributes: {
           class: 'editor-image',
@@ -598,6 +610,36 @@ export function RichTextEditor({
         >
           <LinkIcon size={iconSize} />
         </ToolbarButton>
+
+        {/* Image size controls — visible when image is selected */}
+        {editor.isActive('image') && (
+          <>
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+            {[
+              { label: 'S', width: '200', title: 'Small (200px)' },
+              { label: 'M', width: '400', title: 'Medium (400px)' },
+              { label: 'L', width: '600', title: 'Large (600px)' },
+              { label: 'Full', width: null, title: 'Full width' },
+            ].map(({ label, width, title }) => (
+              <button
+                key={label}
+                type="button"
+                title={title}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (width) {
+                    editor.chain().focus().updateAttributes('image', { width }).run()
+                  } else {
+                    editor.chain().focus().updateAttributes('image', { width: null, height: null }).run()
+                  }
+                }}
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-500 dark:text-gray-400 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </>
+        )}
 
         {/* Upload indicator */}
         {uploading > 0 && (

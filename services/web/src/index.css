@@ -466,7 +466,7 @@ html.theme-transition *::after {
   color: #6b7280;
 }
 
-/* ── Inline images in editor ── */
+/* ── Inline images in editor and display ── */
 .rich-text-editor-content .ProseMirror img.editor-image,
 .rich-text-content img,
 .page-editor-content .ProseMirror img {
@@ -474,14 +474,24 @@ html.theme-transition *::after {
   height: auto;
   border-radius: 0.5rem;
   margin: 0.5rem 0;
-  cursor: pointer;
   transition: box-shadow 0.15s;
+  display: block;
+}
+
+/* Images in editor are resizable via CSS resize handle */
+.rich-text-editor-content .ProseMirror img.editor-image {
+  cursor: pointer;
+  resize: both;
+  overflow: hidden;
 }
 
 .rich-text-editor-content .ProseMirror img.editor-image:hover,
-.rich-text-content img:hover,
 .page-editor-content .ProseMirror img:hover {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
+.rich-text-content img:hover {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .rich-text-editor-content .ProseMirror img.ProseMirror-selectednode,
@@ -489,4 +499,13 @@ html.theme-transition *::after {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
   border-radius: 0.5rem;
+  resize: both;
+  overflow: hidden;
+}
+
+/* Images with explicit width set via resize */
+.rich-text-editor-content .ProseMirror img[width],
+.rich-text-content img[width],
+.page-editor-content .ProseMirror img[width] {
+  height: auto;
 }
