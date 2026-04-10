@@ -5,9 +5,9 @@ import {
   Maximize2,
 } from 'lucide-react'
 import { useAttachments, useUploadAttachment, useDeleteAttachment } from '@/hooks/useAttachments'
+import { getFileViewUrl } from '@/components/ui/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import api from '@/lib/api'
 import { Attachment } from '@/types'
 
 interface AttachmentPanelProps {
@@ -20,11 +20,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function getFileViewUrl(id: string): string {
-  const baseURL = api.defaults.baseURL || '/api'
-  return `${baseURL}/files/${id}/view`
 }
 
 function isImage(mime: string) { return mime.startsWith('image/') }

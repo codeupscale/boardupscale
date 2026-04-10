@@ -32,6 +32,13 @@ import {
 // ──────────────────────────────────────────────
 // File upload helper
 // ──────────────────────────────────────────────
+/** Build an authenticated file view URL that works in <img src>, <video src> etc. */
+export function getFileViewUrl(fileId: string): string {
+  const baseURL = api.defaults.baseURL || '/api'
+  const token = localStorage.getItem('accessToken') || ''
+  return `${baseURL}/files/${fileId}/view?token=${encodeURIComponent(token)}`
+}
+
 async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
   const formData = new FormData()
   formData.append('file', file)
@@ -42,11 +49,7 @@ async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: 
   })
   const attachment = uploadData.data ?? uploadData
 
-  // Use permanent proxy URL — never expires (unlike presigned S3 URLs)
-  const baseURL = api.defaults.baseURL || '/api'
-  const url = `${baseURL}/files/${attachment.id}/view`
-
-  return { id: attachment.id, url, fileName: attachment.fileName, mimeType: attachment.mimeType }
+  return { id: attachment.id, url: getFileViewUrl(attachment.id), fileName: attachment.fileName, mimeType: attachment.mimeType ?? file.type }
 }
 
 // ──────────────────────────────────────────────
@@ -160,49 +163,31 @@ export function RichTextEditor({
 
     setUploading((c) => c + 1)
 
-    // Insert a placeholder while uploading
-    const isImage = file.type.startsWith('image/')
-    let placeholderText = ''
-    if (isImage) {
-      placeholderText = `[Uploading ${file.name}...]`
-      editorInstance.chain().focus().insertContent(placeholderText).run()
-    }
-
     try {
+      // Upload first — server determines the real MIME type
       const result = await uploadFileAndGetUrl(file, issueIdRef.current)
+      const mime = result.mimeType || file.type
 
-      if (isImage) {
-        // Remove the placeholder text and insert the image
-        const currentHtml = editorInstance.getHTML()
-        const cleaned = currentHtml.replace(placeholderText, '')
-        editorInstance.commands.setContent(cleaned, { emitUpdate: false })
-
-        // Insert image at end (safest after content replacement)
+      if (mime.startsWith('image/')) {
         editorInstance.chain().focus().setImage({
           src: result.url,
           alt: result.fileName,
           title: result.fileName,
         }).run()
-      } else if (file.type.startsWith('video/')) {
-        const videoHtml = `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">🎬 ${result.fileName}</a></p>`
-        editorInstance.chain().focus().insertContent(videoHtml).run()
+      } else if (mime.startsWith('video/')) {
+        editorInstance.chain().focus().insertContent(
+          `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">🎬 ${result.fileName}</a></p>`,
+        ).run()
       } else {
-        const fileHtml = `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">📎 ${result.fileName}</a></p>`
-        editorInstance.chain().focus().insertContent(fileHtml).run()
+        editorInstance.chain().focus().insertContent(
+          `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">📎 ${result.fileName}</a></p>`,
+        ).run()
       }
 
       onFileUploadedRef.current?.({ id: result.id, fileName: result.fileName })
-      toast(`${isImage ? 'Image' : 'File'} uploaded successfully`)
     } catch (err: any) {
       console.error('File upload failed:', err)
       toast(err?.response?.data?.message || 'Failed to upload file', 'error')
-
-      // Remove placeholder on failure
-      if (isImage && placeholderText) {
-        const currentHtml = editorInstance.getHTML()
-        const cleaned = currentHtml.replace(placeholderText, '')
-        editorInstance.commands.setContent(cleaned, { emitUpdate: false })
-      }
     } finally {
       setUploading((c) => c - 1)
     }
