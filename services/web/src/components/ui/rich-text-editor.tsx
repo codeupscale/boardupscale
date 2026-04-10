@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
+import { Plugin as PmPlugin } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
+import ImageExt from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/avatar'
+import api from '@/lib/api'
 import { User } from '@/types'
 import {
   Bold,
@@ -20,7 +23,30 @@ import {
   Quote,
   Minus,
   Link as LinkIcon,
+  ImagePlus,
+  Paperclip,
+  Loader2,
 } from 'lucide-react'
+
+// ──────────────────────────────────────────────
+// File upload helper
+// ──────────────────────────────────────────────
+async function uploadFileToS3(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (issueId) formData.append('issueId', issueId)
+
+  const { data: uploadData } = await api.post('/files/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  const attachment = uploadData.data ?? uploadData
+
+  // Get presigned URL for display
+  const { data: urlData } = await api.get(`/files/${attachment.id}/url`)
+  const url = urlData.data?.url ?? urlData.url
+
+  return { id: attachment.id, url, fileName: attachment.fileName, mimeType: attachment.mimeType }
+}
 
 // ──────────────────────────────────────────────
 // Toolbar button
@@ -29,24 +55,28 @@ function ToolbarButton({
   onClick,
   active,
   title,
+  disabled,
   children,
 }: {
   onClick: () => void
   active?: boolean
   title: string
+  disabled?: boolean
   children: React.ReactNode
 }) {
   return (
     <button
       type="button"
       title={title}
+      disabled={disabled}
       onMouseDown={(e) => {
         e.preventDefault()
-        onClick()
+        if (!disabled) onClick()
       }}
       className={cn(
         'p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors',
         active && 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+        disabled && 'opacity-40 pointer-events-none',
       )}
     >
       {children}
@@ -75,6 +105,8 @@ interface RichTextEditorProps {
   minHeight?: number
   autoFocus?: boolean
   className?: string
+  issueId?: string
+  onFileUploaded?: (attachment: { id: string; fileName: string }) => void
 }
 
 export function RichTextEditor({
@@ -85,7 +117,15 @@ export function RichTextEditor({
   minHeight = 120,
   autoFocus = false,
   className,
+  issueId,
+  onFileUploaded,
 }: RichTextEditorProps) {
+  // ── Upload state ─────────────────────────────
+  const [uploading, setUploading] = useState(0) // count of in-progress uploads
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const attachInputRef = useRef<HTMLInputElement>(null)
+
   // ── Mention popup state ───────────────────────
   const [mentionPopup, setMentionPopup] = useState<MentionPopupState>({
     visible: false,
@@ -94,17 +134,10 @@ export function RichTextEditor({
     position: { top: 0, left: 0 },
   })
 
-  // Refs so TipTap's synchronous suggestion callbacks can read/write state
   const mentionPopupRef = useRef(mentionPopup)
   mentionPopupRef.current = mentionPopup
-
-  // Callback ref injected by the Mention extension
   const selectMentionRef = useRef<((user: User) => void) | null>(null)
-
   const editorContainerRef = useRef<HTMLDivElement>(null)
-
-  // Keep users in a ref so the mention extension always reads fresh data
-  // even after async load (useEditor only runs once at mount)
   const usersRef = useRef(users)
   usersRef.current = users
 
@@ -214,25 +247,109 @@ export function RichTextEditor({
     },
   })
 
+  // ── Handle file upload and insert ────────────
+  const handleUploadAndInsert = useCallback(async (file: File, editorInstance: any) => {
+    setUploading((c) => c + 1)
+    try {
+      const result = await uploadFileToS3(file, issueId)
+
+      if (file.type.startsWith('image/') && editorInstance) {
+        editorInstance.chain().focus().setImage({
+          src: result.url,
+          alt: result.fileName,
+          title: result.fileName,
+        }).run()
+      } else if (file.type.startsWith('video/') && editorInstance) {
+        // Insert video as a linked thumbnail/text
+        const videoHtml = `<p><a href="${result.url}" target="_blank" rel="noopener">🎬 ${result.fileName}</a></p>`
+        editorInstance.chain().focus().insertContent(videoHtml).run()
+      } else if (editorInstance) {
+        // Insert non-image file as a link
+        const fileHtml = `<p><a href="${result.url}" target="_blank" rel="noopener">📎 ${result.fileName}</a></p>`
+        editorInstance.chain().focus().insertContent(fileHtml).run()
+      }
+
+      onFileUploaded?.({ id: result.id, fileName: result.fileName })
+    } catch (err: any) {
+      console.error('File upload failed:', err)
+    } finally {
+      setUploading((c) => c - 1)
+    }
+  }, [issueId, onFileUploaded])
+
+  // ── Clipboard paste handler extension ────────
+  const PasteHandler = Extension.create({
+    name: 'pasteHandler',
+    addProseMirrorPlugins() {
+      const editorRef = this.editor
+      return [
+        new PmPlugin({
+          props: {
+            handlePaste(_view: any, event: ClipboardEvent) {
+              const items = event.clipboardData?.items
+              if (!items) return false
+
+              for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                  event.preventDefault()
+                  const file = item.getAsFile()
+                  if (file) {
+                    handleUploadAndInsert(file, editorRef)
+                  }
+                  return true
+                }
+              }
+              return false
+            },
+            handleDrop(_view: any, event: DragEvent) {
+              const files = event.dataTransfer?.files
+              if (!files || files.length === 0) return false
+
+              const hasMedia = Array.from(files).some(
+                (f) => f.type.startsWith('image/') || f.type.startsWith('video/'),
+              )
+              if (!hasMedia) return false
+
+              event.preventDefault()
+              for (const file of Array.from(files)) {
+                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                  handleUploadAndInsert(file, editorRef)
+                }
+              }
+              return true
+            },
+          },
+        }),
+      ]
+    },
+  })
+
   // ── Editor instance ───────────────────────────
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'rich-link' } }),
+      ImageExt.configure({
+        HTMLAttributes: {
+          class: 'editor-image',
+          loading: 'lazy',
+        },
+        allowBase64: false,
+      }),
       Placeholder.configure({ placeholder }),
       mentionExtension,
+      PasteHandler,
     ],
     content: value || '',
     autofocus: autoFocus,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
-      // Treat empty editor as empty string
       onChange(html === '<p></p>' ? '' : html)
     },
   })
 
-  // Sync external value changes (e.g. form reset)
+  // Sync external value changes
   useEffect(() => {
     if (!editor) return
     const current = editor.getHTML()
@@ -255,6 +372,65 @@ export function RichTextEditor({
     editor.chain().focus().setLink({ href: url }).run()
   }, [editor])
 
+  // ── Image button handler ──────────────────────
+  const handleImageClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleImageSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files?.length || !editor) return
+      Array.from(e.target.files).forEach((file) => {
+        handleUploadAndInsert(file, editor)
+      })
+      e.target.value = ''
+    },
+    [editor, handleUploadAndInsert],
+  )
+
+  // ── Attachment button handler ─────────────────
+  const handleAttachClick = useCallback(() => {
+    attachInputRef.current?.click()
+  }, [])
+
+  const handleAttachSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files?.length || !editor) return
+      Array.from(e.target.files).forEach((file) => {
+        handleUploadAndInsert(file, editor)
+      })
+      e.target.value = ''
+    },
+    [editor, handleUploadAndInsert],
+  )
+
+  // ── Drag-over visual state on editor container ─
+  const handleContainerDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }, [])
+
+  const handleContainerDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }, [])
+
+  const handleContainerDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+
+      if (!editor || !e.dataTransfer.files.length) return
+      Array.from(e.dataTransfer.files).forEach((file) => {
+        handleUploadAndInsert(file, editor)
+      })
+    },
+    [editor, handleUploadAndInsert],
+  )
+
   if (!editor) return null
 
   const iconSize = 14
@@ -263,10 +439,33 @@ export function RichTextEditor({
     <div
       ref={editorContainerRef}
       className={cn(
-        'relative rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent',
+        'relative rounded-md border bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-colors',
+        isDragOver
+          ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20'
+          : 'border-gray-300 dark:border-gray-600',
         className,
       )}
+      onDragOver={handleContainerDragOver}
+      onDragLeave={handleContainerDragLeave}
+      onDrop={handleContainerDrop}
     >
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleImageSelect}
+      />
+      <input
+        ref={attachInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleAttachSelect}
+      />
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-t-md">
         <ToolbarButton
@@ -356,12 +555,38 @@ export function RichTextEditor({
         <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
 
         <ToolbarButton
+          title="Insert Image"
+          active={false}
+          disabled={uploading > 0}
+          onClick={handleImageClick}
+        >
+          <ImagePlus size={iconSize} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Attach File"
+          active={false}
+          disabled={uploading > 0}
+          onClick={handleAttachClick}
+        >
+          <Paperclip size={iconSize} />
+        </ToolbarButton>
+
+        <ToolbarButton
           title="Link"
           active={editor.isActive('link')}
           onClick={handleSetLink}
         >
           <LinkIcon size={iconSize} />
         </ToolbarButton>
+
+        {/* Upload indicator */}
+        {uploading > 0 && (
+          <div className="flex items-center gap-1.5 ml-2 text-xs text-blue-600 dark:text-blue-400">
+            <Loader2 size={12} className="animate-spin" />
+            <span>Uploading{uploading > 1 ? ` (${uploading})` : ''}...</span>
+          </div>
+        )}
       </div>
 
       {/* Editor content area */}
@@ -370,6 +595,17 @@ export function RichTextEditor({
         className="rich-text-editor-content px-3 py-2 focus:outline-none"
         style={{ minHeight }}
       />
+
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-blue-50/90 dark:bg-blue-950/80 border-2 border-dashed border-blue-400 dark:border-blue-500 pointer-events-none">
+          <div className="flex flex-col items-center gap-2 text-blue-600 dark:text-blue-400">
+            <ImagePlus size={28} />
+            <span className="text-sm font-medium">Drop files to upload</span>
+            <span className="text-xs text-blue-500/70">Images, videos, documents — max 50 MB</span>
+          </div>
+        </div>
+      )}
 
       {/* Mention popup */}
       {mentionPopup.visible && mentionPopup.users.length > 0 && (

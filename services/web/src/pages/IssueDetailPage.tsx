@@ -152,6 +152,7 @@ function CommentItem({
               users={users || []}
               minHeight={80}
               autoFocus
+              issueId={comment.issueId}
             />
             <div className="flex gap-2">
               <Button
@@ -436,6 +437,7 @@ export function IssueDetailPage() {
                   users={orgUsers || []}
                   minHeight={150}
                   autoFocus
+                  issueId={issue.id}
                 />
                 <div className="flex gap-2">
                   <Button
@@ -592,6 +594,7 @@ export function IssueDetailPage() {
                       onChange={setCommentText}
                       users={orgUsers || []}
                       minHeight={80}
+                      issueId={issue.id}
                     />
                     <div className="flex justify-end">
                       <Button

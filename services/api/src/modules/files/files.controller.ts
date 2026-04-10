@@ -70,10 +70,17 @@ export class FilesController {
 
   @Get(':id')
   @Redirect()
-  @ApiOperation({ summary: 'Get presigned URL for a file' })
+  @ApiOperation({ summary: 'Get presigned URL for a file (redirect)' })
   async getFile(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
     const url = await this.filesService.getPresignedUrl(id, organizationId);
     return { url };
+  }
+
+  @Get(':id/url')
+  @ApiOperation({ summary: 'Get presigned URL for a file (JSON response)' })
+  async getFileUrl(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    const url = await this.filesService.getPresignedUrl(id, organizationId);
+    return { data: { url } };
   }
 
   @Get()

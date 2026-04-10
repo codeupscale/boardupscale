@@ -20,7 +20,8 @@ function timeAgo(dateStr: string | null): string {
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours}h`
   const days = Math.floor(hours / 24)
-  return `${days}d`
+  if (days < 30) return `${days}d`
+  return `${Math.floor(days / 30)}mo`
 }
 
 export function ChatConversationList({
@@ -39,9 +40,9 @@ export function ChatConversationList({
     : conversations
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800 max-h-52 overflow-y-auto shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
-      <div className="flex items-center justify-between px-3 pt-2 pb-1">
-        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+    <div className="border-b border-gray-100 dark:border-gray-800 max-h-56 overflow-y-auto shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
+      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
+        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
           History
         </span>
         <button
@@ -61,7 +62,7 @@ export function ChatConversationList({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search..."
+            placeholder="Search conversations..."
             className="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
           />
         </div>
@@ -77,10 +78,10 @@ export function ChatConversationList({
           <div
             key={conv.id}
             className={cn(
-              'flex items-center gap-2 px-2.5 py-2 cursor-pointer rounded-lg group transition-colors duration-100',
+              'flex items-center gap-2 px-2.5 py-2 cursor-pointer rounded-lg group transition-all duration-100',
               activeConversationId === conv.id
                 ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/50 dark:border-indigo-800/50'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800/50',
+                : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 border border-transparent',
             )}
             onClick={() => onSelect(conv.id)}
           >
@@ -91,7 +92,7 @@ export function ChatConversationList({
             <div className="flex-1 min-w-0">
               <p className="text-xs truncate text-gray-700 dark:text-gray-300 font-medium">{conv.title}</p>
             </div>
-            <span className="text-[10px] text-gray-400 shrink-0">
+            <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
               {timeAgo(conv.lastMessageAt || conv.createdAt)}
             </span>
             <button

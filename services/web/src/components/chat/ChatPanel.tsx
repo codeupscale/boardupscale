@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, History, AlertTriangle, RotateCcw } from 'lucide-react'
+import { X, History, AlertTriangle, Plus, Sparkles } from 'lucide-react'
 import { useChatStore } from '@/store/chat.store'
 import { useAiStatus } from '@/hooks/useAi'
 import { useMe } from '@/hooks/useAuth'
@@ -82,8 +82,8 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
       if (!resizeRef.current) return
       const dw = resizeRef.current.startX - e.clientX
       const dh = resizeRef.current.startY - e.clientY
-      const newW = Math.max(360, Math.min(800, resizeRef.current.startW + dw))
-      const newH = Math.max(450, Math.min(850, resizeRef.current.startH + dh))
+      const newW = Math.max(380, Math.min(800, resizeRef.current.startW + dw))
+      const newH = Math.max(480, Math.min(850, resizeRef.current.startH + dh))
       setPanelSize(newW, newH)
     }
 
@@ -109,8 +109,9 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
       aria-label="Upsy AI Assistant"
       className={cn(
         'fixed bottom-20 right-5 z-50 flex flex-col',
-        'bg-white dark:bg-gray-900 rounded-2xl shadow-2xl',
-        'border border-gray-200/80 dark:border-gray-700/80',
+        'bg-white dark:bg-gray-900 rounded-2xl',
+        'shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.6)]',
+        'border border-gray-200/60 dark:border-gray-700/60',
         'animate-in slide-in-from-bottom-4 fade-in duration-300',
         isResizing && 'select-none',
       )}
@@ -130,29 +131,32 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 rounded-t-2xl">
+      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-50/60 to-violet-50/40 dark:from-indigo-950/30 dark:to-violet-950/20 rounded-t-2xl">
         <div className="flex items-center gap-2.5">
           <div className="relative">
             <UpsyAvatarSmall />
-            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-400 border-2 border-white dark:border-gray-900" />
+            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-400 border-[2px] border-white dark:border-gray-900" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-none">
-              Upsy
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-none">
+                Upsy
+              </h3>
+              <Sparkles className="h-3 w-3 text-indigo-400" />
+            </div>
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-              {status?.provider ? `${status.provider} · ` : ''}Project Assistant
+              {status?.provider ? `${status.provider} · ` : ''}AI Assistant
             </p>
           </div>
         </div>
         <div className="flex items-center gap-0.5">
           <button
             onClick={handleNewConversation}
-            className="p-1.5 rounded-lg hover:bg-white/80 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/80 dark:hover:bg-gray-800 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             aria-label="New conversation"
             title="New conversation"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
@@ -179,13 +183,13 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
 
       {/* Usage warning banners */}
       {usageTier === 'warning' && (
-        <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-400 text-[11px] px-4 py-1.5 border-b border-amber-100 dark:border-amber-900/30 shrink-0">
+        <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-[11px] px-4 py-1.5 border-b border-amber-100/60 dark:border-amber-900/20 shrink-0">
           <AlertTriangle className="h-3 w-3 shrink-0" />
           <span>{status?.usage?.percentUsed}% of daily AI budget used</span>
         </div>
       )}
       {isExhausted && (
-        <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 text-[11px] px-4 py-1.5 border-b border-red-100 dark:border-red-900/30 shrink-0">
+        <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-[11px] px-4 py-1.5 border-b border-red-100/60 dark:border-red-900/20 shrink-0">
           <AlertTriangle className="h-3 w-3 shrink-0" />
           <span>Daily AI budget exhausted. Resets at midnight.</span>
         </div>
@@ -193,8 +197,15 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
 
       {/* Stream error */}
       {streamError && (
-        <div className="bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-[11px] px-4 py-1.5 border-b border-red-100 dark:border-red-900/30 shrink-0">
-          {streamError}
+        <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-[11px] px-4 py-2 border-b border-red-100/60 dark:border-red-900/20 shrink-0">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          <span className="flex-1">{streamError}</span>
+          <button
+            onClick={() => useChatStore.getState().setStreamError(null)}
+            className="text-red-400 hover:text-red-600 dark:hover:text-red-300 ml-1"
+          >
+            <X className="h-3 w-3" />
+          </button>
         </div>
       )}
 

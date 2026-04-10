@@ -8,6 +8,7 @@ interface ChatState {
   streamError: string | null
   panelWidth: number
   panelHeight: number
+  abortController: AbortController | null
   toggleChat: () => void
   setOpen: (open: boolean) => void
   setActiveConversation: (id: string | null) => void
@@ -16,6 +17,8 @@ interface ChatState {
   resetStream: () => void
   setStreamError: (error: string | null) => void
   setPanelSize: (width: number, height: number) => void
+  setAbortController: (controller: AbortController | null) => void
+  cancelStream: () => void
 }
 
 const getSavedSize = (key: string, fallback: number) => {
@@ -27,20 +30,21 @@ const getSavedSize = (key: string, fallback: number) => {
   }
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   isOpen: false,
   activeConversationId: null,
   isStreaming: false,
   streamingContent: '',
   streamError: null,
-  panelWidth: getSavedSize('chat-panel-width', 400),
-  panelHeight: getSavedSize('chat-panel-height', 500),
+  panelWidth: getSavedSize('chat-panel-width', 420),
+  panelHeight: getSavedSize('chat-panel-height', 580),
+  abortController: null,
   toggleChat: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (open) => set({ isOpen: open }),
   setActiveConversation: (id) => set({ activeConversationId: id }),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   appendStreamChunk: (chunk) => set((s) => ({ streamingContent: s.streamingContent + chunk })),
-  resetStream: () => set({ streamingContent: '', isStreaming: false, streamError: null }),
+  resetStream: () => set({ streamingContent: '', isStreaming: false, streamError: null, abortController: null }),
   setStreamError: (error) => set({ streamError: error }),
   setPanelSize: (width, height) => {
     try {
@@ -50,5 +54,13 @@ export const useChatStore = create<ChatState>((set) => ({
       // localStorage may be unavailable
     }
     set({ panelWidth: width, panelHeight: height })
+  },
+  setAbortController: (controller) => set({ abortController: controller }),
+  cancelStream: () => {
+    const { abortController } = get()
+    if (abortController) {
+      abortController.abort()
+    }
+    set({ isStreaming: false, abortController: null })
   },
 }))

@@ -95,7 +95,11 @@ export class AiService implements OnModuleInit {
 
   sanitizeForPrompt(text: string): string {
     if (!text) return '';
-    const cleaned = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    const cleaned = text
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     return `<user_input>${cleaned}</user_input>`;
   }
 

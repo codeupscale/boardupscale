@@ -465,3 +465,28 @@ html.theme-transition *::after {
 .dark .rich-text-content ul[data-type="taskList"] li[data-checked="true"] > div {
   color: #6b7280;
 }
+
+/* ── Inline images in editor ── */
+.rich-text-editor-content .ProseMirror img.editor-image,
+.rich-text-content img,
+.page-editor-content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.rich-text-editor-content .ProseMirror img.editor-image:hover,
+.rich-text-content img:hover,
+.page-editor-content .ProseMirror img:hover {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
+.rich-text-editor-content .ProseMirror img.ProseMirror-selectednode,
+.page-editor-content .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}

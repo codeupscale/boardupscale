@@ -59,7 +59,6 @@ export function useDeleteConversation() {
 }
 
 export function useChatSearch(projectId?: string) {
-  const qc = useQueryClient()
   return useMutation({
     mutationFn: async (query: string) => {
       const { data } = await api.get('/ai/chat/search', {
@@ -84,9 +83,12 @@ export function useSendMessage() {
 
   const send = useCallback(
     async (conversationId: string, content: string) => {
-      const { resetStream, setStreaming } = useChatStore.getState()
-      resetStream()
-      setStreaming(true)
+      const store = useChatStore.getState()
+      store.resetStream()
+      store.setStreaming(true)
+
+      const abortController = new AbortController()
+      store.setAbortController(abortController)
 
       const baseURL = import.meta.env.VITE_API_URL || '/api'
       const token = localStorage.getItem('accessToken')
@@ -105,6 +107,7 @@ export function useSendMessage() {
                 Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify({ content }),
+              signal: abortController.signal,
             },
           )
 
@@ -124,6 +127,7 @@ export function useSendMessage() {
 
           const decoder = new TextDecoder()
           let buffer = ''
+          let currentEvent = ''
 
           while (true) {
             const { done, value } = await reader.read()
@@ -134,20 +138,25 @@ export function useSendMessage() {
             buffer = lines.pop() || ''
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
+              if (line.startsWith('event: ')) {
+                currentEvent = line.slice(7).trim()
+              } else if (line.startsWith('data: ')) {
                 const jsonStr = line.slice(6)
                 try {
                   const parsed = JSON.parse(jsonStr)
-                  if (parsed.content) {
+
+                  if (currentEvent === 'chunk' && parsed.content) {
                     useChatStore.getState().appendStreamChunk(parsed.content)
+                  } else if (currentEvent === 'error' && parsed.message) {
+                    useChatStore.getState().setStreamError(parsed.message)
+                  } else if (currentEvent === 'cancelled') {
+                    // Stream was cancelled, partial content already saved
                   }
-                  if (parsed.message) {
-                    // Error event from server
-                    console.warn('AI stream error:', parsed.message)
-                  }
+                  // 'done' event — stream complete
                 } catch {
                   // skip malformed JSON
                 }
+                currentEvent = ''
               }
             }
           }
@@ -155,6 +164,12 @@ export function useSendMessage() {
           qc.invalidateQueries({ queryKey: ['chat-messages', conversationId] })
           qc.invalidateQueries({ queryKey: ['chat-conversations'] })
         } catch (err: any) {
+          if (err.name === 'AbortError') {
+            // User cancelled — invalidate to pick up partial saved message
+            qc.invalidateQueries({ queryKey: ['chat-messages', conversationId] })
+            qc.invalidateQueries({ queryKey: ['chat-conversations'] })
+            return
+          }
           // Retry on network errors (not rate limits or conflicts)
           if (retries < maxRetries && !err.message.includes('Rate limit') && !err.message.includes('Another AI')) {
             retries++
@@ -170,6 +185,7 @@ export function useSendMessage() {
         await attempt()
       } finally {
         useChatStore.getState().setStreaming(false)
+        useChatStore.getState().setAbortController(null)
       }
     },
     [qc],
