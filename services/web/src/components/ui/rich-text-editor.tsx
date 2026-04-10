@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
-import { Plugin as PmPlugin } from '@tiptap/pm/state'
+import { Plugin as PmPlugin, PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import Link from '@tiptap/extension-link'
@@ -10,6 +10,7 @@ import Mention from '@tiptap/extension-mention'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/lib/api'
+import { toast } from '@/store/ui.store'
 import { User } from '@/types'
 import {
   Bold,
@@ -31,7 +32,7 @@ import {
 // ──────────────────────────────────────────────
 // File upload helper
 // ──────────────────────────────────────────────
-async function uploadFileToS3(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
+async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
   const formData = new FormData()
   formData.append('file', file)
   if (issueId) formData.append('issueId', issueId)
@@ -85,7 +86,7 @@ function ToolbarButton({
 }
 
 // ──────────────────────────────────────────────
-// Mention popup
+// Mention popup state
 // ──────────────────────────────────────────────
 interface MentionPopupState {
   visible: boolean
@@ -121,10 +122,16 @@ export function RichTextEditor({
   onFileUploaded,
 }: RichTextEditorProps) {
   // ── Upload state ─────────────────────────────
-  const [uploading, setUploading] = useState(0) // count of in-progress uploads
+  const [uploading, setUploading] = useState(0)
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const attachInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Stable refs for values that change but need to be read from plugins ──
+  const issueIdRef = useRef(issueId)
+  issueIdRef.current = issueId
+  const onFileUploadedRef = useRef(onFileUploaded)
+  onFileUploadedRef.current = onFileUploaded
 
   // ── Mention popup state ───────────────────────
   const [mentionPopup, setMentionPopup] = useState<MentionPopupState>({
@@ -140,6 +147,70 @@ export function RichTextEditor({
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const usersRef = useRef(users)
   usersRef.current = users
+
+  // ── Upload + insert — reads from refs so it's always current ──
+  const uploadAndInsert = useCallback(async (file: File, editorInstance: any) => {
+    if (!editorInstance) return
+
+    // Validate file size (50 MB)
+    if (file.size > 50 * 1024 * 1024) {
+      toast('File too large. Maximum size is 50 MB.', 'error')
+      return
+    }
+
+    setUploading((c) => c + 1)
+
+    // Insert a placeholder while uploading
+    const isImage = file.type.startsWith('image/')
+    let placeholderText = ''
+    if (isImage) {
+      placeholderText = `[Uploading ${file.name}...]`
+      editorInstance.chain().focus().insertContent(placeholderText).run()
+    }
+
+    try {
+      const result = await uploadFileAndGetUrl(file, issueIdRef.current)
+
+      if (isImage) {
+        // Remove the placeholder text and insert the image
+        const currentHtml = editorInstance.getHTML()
+        const cleaned = currentHtml.replace(placeholderText, '')
+        editorInstance.commands.setContent(cleaned, { emitUpdate: false })
+
+        // Insert image at end (safest after content replacement)
+        editorInstance.chain().focus().setImage({
+          src: result.url,
+          alt: result.fileName,
+          title: result.fileName,
+        }).run()
+      } else if (file.type.startsWith('video/')) {
+        const videoHtml = `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">🎬 ${result.fileName}</a></p>`
+        editorInstance.chain().focus().insertContent(videoHtml).run()
+      } else {
+        const fileHtml = `<p><a href="${result.url}" target="_blank" rel="noopener noreferrer">📎 ${result.fileName}</a></p>`
+        editorInstance.chain().focus().insertContent(fileHtml).run()
+      }
+
+      onFileUploadedRef.current?.({ id: result.id, fileName: result.fileName })
+      toast(`${isImage ? 'Image' : 'File'} uploaded successfully`)
+    } catch (err: any) {
+      console.error('File upload failed:', err)
+      toast(err?.response?.data?.message || 'Failed to upload file', 'error')
+
+      // Remove placeholder on failure
+      if (isImage && placeholderText) {
+        const currentHtml = editorInstance.getHTML()
+        const cleaned = currentHtml.replace(placeholderText, '')
+        editorInstance.commands.setContent(cleaned, { emitUpdate: false })
+      }
+    } finally {
+      setUploading((c) => c - 1)
+    }
+  }, []) // No deps — reads everything from refs
+
+  // Store uploadAndInsert in a ref so ProseMirror plugins always call the latest
+  const uploadAndInsertRef = useRef(uploadAndInsert)
+  uploadAndInsertRef.current = uploadAndInsert
 
   // ── Build Mention extension ───────────────────
   const mentionExtension = Mention.configure({
@@ -247,74 +318,40 @@ export function RichTextEditor({
     },
   })
 
-  // ── Handle file upload and insert ────────────
-  const handleUploadAndInsert = useCallback(async (file: File, editorInstance: any) => {
-    setUploading((c) => c + 1)
-    try {
-      const result = await uploadFileToS3(file, issueId)
-
-      if (file.type.startsWith('image/') && editorInstance) {
-        editorInstance.chain().focus().setImage({
-          src: result.url,
-          alt: result.fileName,
-          title: result.fileName,
-        }).run()
-      } else if (file.type.startsWith('video/') && editorInstance) {
-        // Insert video as a linked thumbnail/text
-        const videoHtml = `<p><a href="${result.url}" target="_blank" rel="noopener">🎬 ${result.fileName}</a></p>`
-        editorInstance.chain().focus().insertContent(videoHtml).run()
-      } else if (editorInstance) {
-        // Insert non-image file as a link
-        const fileHtml = `<p><a href="${result.url}" target="_blank" rel="noopener">📎 ${result.fileName}</a></p>`
-        editorInstance.chain().focus().insertContent(fileHtml).run()
-      }
-
-      onFileUploaded?.({ id: result.id, fileName: result.fileName })
-    } catch (err: any) {
-      console.error('File upload failed:', err)
-    } finally {
-      setUploading((c) => c - 1)
-    }
-  }, [issueId, onFileUploaded])
-
-  // ── Clipboard paste handler extension ────────
-  const PasteHandler = Extension.create({
-    name: 'pasteHandler',
+  // ── ProseMirror plugin for paste/drop — uses ref so it never goes stale ──
+  const FileHandlerPlugin = Extension.create({
+    name: 'fileHandler',
     addProseMirrorPlugins() {
-      const editorRef = this.editor
+      const editor = this.editor
       return [
         new PmPlugin({
+          key: new PluginKey('fileHandler'),
           props: {
-            handlePaste(_view: any, event: ClipboardEvent) {
+            handlePaste(_view, event) {
               const items = event.clipboardData?.items
               if (!items) return false
 
-              for (const item of Array.from(items)) {
-                if (item.type.startsWith('image/')) {
-                  event.preventDefault()
-                  const file = item.getAsFile()
-                  if (file) {
-                    handleUploadAndInsert(file, editorRef)
-                  }
-                  return true
+              const imageItems = Array.from(items).filter((item) => item.type.startsWith('image/'))
+              if (imageItems.length === 0) return false
+
+              // Prevent default paste of the image (which would insert base64)
+              event.preventDefault()
+
+              for (const item of imageItems) {
+                const file = item.getAsFile()
+                if (file) {
+                  uploadAndInsertRef.current(file, editor)
                 }
               }
-              return false
+              return true
             },
-            handleDrop(_view: any, event: DragEvent) {
+            handleDrop(_view, event) {
               const files = event.dataTransfer?.files
               if (!files || files.length === 0) return false
 
-              const hasMedia = Array.from(files).some(
-                (f) => f.type.startsWith('image/') || f.type.startsWith('video/'),
-              )
-              if (!hasMedia) return false
-
               event.preventDefault()
               for (const file of Array.from(files)) {
-                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-                  handleUploadAndInsert(file, editorRef)
-                }
+                uploadAndInsertRef.current(file, editor)
               }
               return true
             },
@@ -331,25 +368,25 @@ export function RichTextEditor({
       Underline,
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'rich-link' } }),
       ImageExt.configure({
+        inline: false,
         HTMLAttributes: {
           class: 'editor-image',
           loading: 'lazy',
         },
-        allowBase64: false,
       }),
       Placeholder.configure({ placeholder }),
       mentionExtension,
-      PasteHandler,
+      FileHandlerPlugin,
     ],
     content: value || '',
     autofocus: autoFocus,
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML()
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML()
       onChange(html === '<p></p>' ? '' : html)
     },
   })
 
-  // Sync external value changes
+  // Sync external value changes (e.g. form reset)
   useEffect(() => {
     if (!editor) return
     const current = editor.getHTML()
@@ -373,38 +410,30 @@ export function RichTextEditor({
   }, [editor])
 
   // ── Image button handler ──────────────────────
-  const handleImageClick = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
-
   const handleImageSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files?.length || !editor) return
       Array.from(e.target.files).forEach((file) => {
-        handleUploadAndInsert(file, editor)
+        uploadAndInsert(file, editor)
       })
       e.target.value = ''
     },
-    [editor, handleUploadAndInsert],
+    [editor, uploadAndInsert],
   )
 
   // ── Attachment button handler ─────────────────
-  const handleAttachClick = useCallback(() => {
-    attachInputRef.current?.click()
-  }, [])
-
   const handleAttachSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files?.length || !editor) return
       Array.from(e.target.files).forEach((file) => {
-        handleUploadAndInsert(file, editor)
+        uploadAndInsert(file, editor)
       })
       e.target.value = ''
     },
-    [editor, handleUploadAndInsert],
+    [editor, uploadAndInsert],
   )
 
-  // ── Drag-over visual state on editor container ─
+  // ── Drag-over visual on editor container ──────
   const handleContainerDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -412,9 +441,14 @@ export function RichTextEditor({
   }, [])
 
   const handleContainerDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOver(false)
+    // Only leave if we actually left the container (not entering a child)
+    const rect = editorContainerRef.current?.getBoundingClientRect()
+    if (rect) {
+      const { clientX, clientY } = e
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+        setIsDragOver(false)
+      }
+    }
   }, [])
 
   const handleContainerDrop = useCallback(
@@ -425,10 +459,10 @@ export function RichTextEditor({
 
       if (!editor || !e.dataTransfer.files.length) return
       Array.from(e.dataTransfer.files).forEach((file) => {
-        handleUploadAndInsert(file, editor)
+        uploadAndInsert(file, editor)
       })
     },
-    [editor, handleUploadAndInsert],
+    [editor, uploadAndInsert],
   )
 
   if (!editor) return null
@@ -558,7 +592,7 @@ export function RichTextEditor({
           title="Insert Image"
           active={false}
           disabled={uploading > 0}
-          onClick={handleImageClick}
+          onClick={() => fileInputRef.current?.click()}
         >
           <ImagePlus size={iconSize} />
         </ToolbarButton>
@@ -567,7 +601,7 @@ export function RichTextEditor({
           title="Attach File"
           active={false}
           disabled={uploading > 0}
-          onClick={handleAttachClick}
+          onClick={() => attachInputRef.current?.click()}
         >
           <Paperclip size={iconSize} />
         </ToolbarButton>
