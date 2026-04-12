@@ -7,6 +7,7 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class BulkUpdateIssuesDto {
@@ -25,10 +26,11 @@ export class BulkUpdateIssuesDto {
   @IsUUID()
   statusId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-of-sprint' })
+  @ApiPropertyOptional({ example: 'uuid-of-sprint', nullable: true })
   @IsOptional()
+  @ValidateIf((_o, v) => v !== null)
   @IsUUID()
-  sprintId?: string;
+  sprintId?: string | null;
 
   @ApiPropertyOptional({ example: 'task', enum: ['task', 'story', 'bug', 'epic'] })
   @IsOptional()

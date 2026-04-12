@@ -55,7 +55,7 @@ function LinkItem({
   )
 }
 
-export function IssueLinksList({ issueId }: { issueId: string }) {
+export function IssueLinksList({ issueId, projectId }: { issueId: string; projectId?: string }) {
   const { t } = useTranslation()
   const { data: linksData } = useIssueLinks(issueId)
   const createLink = useCreateIssueLink()
@@ -68,6 +68,7 @@ export function IssueLinksList({ issueId }: { issueId: string }) {
 
   const { data: searchResults } = useIssues({
     search: searchTerm,
+    projectId: projectId,
     limit: 10,
   })
 

@@ -20,13 +20,15 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('boards')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('projects/:projectId')
 export class BoardsController {
   constructor(private boardsService: BoardsService) {}
@@ -64,6 +66,7 @@ export class BoardsController {
   }
 
   @Post('statuses')
+  @RequirePermission('board', 'manage')
   @ApiOperation({ summary: 'Create a new status column' })
   async createStatus(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -74,6 +77,7 @@ export class BoardsController {
   }
 
   @Patch('statuses/:statusId')
+  @RequirePermission('board', 'manage')
   @ApiOperation({ summary: 'Update a status column' })
   async updateStatus(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -85,6 +89,7 @@ export class BoardsController {
   }
 
   @Delete('statuses/:statusId')
+  @RequirePermission('board', 'manage')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a status column (issues moved to first column)' })
   async deleteStatus(
@@ -96,6 +101,7 @@ export class BoardsController {
   }
 
   @Patch('issues/reorder')
+  @RequirePermission('issue', 'update')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Reorder issues on the board (drag & drop)' })
   async reorderIssues(

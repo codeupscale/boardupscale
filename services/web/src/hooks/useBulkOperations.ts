@@ -7,7 +7,7 @@ interface BulkUpdatePayload {
   issueIds: string[]
   assigneeId?: string
   statusId?: string
-  sprintId?: string
+  sprintId?: string | null
   type?: string
   priority?: string
   labels?: string[]

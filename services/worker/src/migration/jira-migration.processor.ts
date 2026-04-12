@@ -1022,7 +1022,7 @@ async function runIssuesPhase(
   // processed issues as we go.
   const FIELDS = [
     'summary', 'description', 'issuetype', 'priority', 'status',
-    'assignee', 'reporter', 'created', 'updated', 'labels',
+    'assignee', 'reporter', 'created', 'updated', 'duedate', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
     'subtasks', 'parent', 'issuelinks', 'comment',
   ].join(',');
@@ -1159,6 +1159,7 @@ async function runIssuesPhase(
         labels: string[]; storyPoints: number | null;
         timeEstimate: number | null; timeSpent: number;
         createdAt: string | null; updatedAt: string | null;
+        dueDate: string | null;
       }
 
       const issueRowsToInsert: IssueRow[] = [];
@@ -1210,6 +1211,21 @@ async function runIssuesPhase(
             issueLinkAccum.push({ sourceKey: issue.key, links: fields.issuelinks });
           }
 
+          // Map due date: use Jira's duedate if present, otherwise fall back to
+          // createdAt + storyPoints days (1 SP = 1 day) or createdAt + 7 days.
+          // This ensures every migrated issue has a dueDate and appears on the Timeline.
+          let dueDate: string | null = null;
+          if (fields.duedate) {
+            // Jira duedate is already a date string e.g. "2024-03-15"
+            dueDate = fields.duedate.substring(0, 10);
+          } else {
+            const storyPts = fields.customfield_10016 ?? null;
+            const fallbackDays = storyPts && storyPts > 0 ? Math.ceil(storyPts) : 7;
+            const baseDate = fields.created ? new Date(fields.created) : new Date();
+            const dueMs = baseDate.getTime() + fallbackDays * 24 * 60 * 60 * 1000;
+            dueDate = new Date(dueMs).toISOString().substring(0, 10);
+          }
+
           issueRowsToInsert.push({
             title: fields.summary ?? issue.key,
             description: extractDescription(fields.description),
@@ -1222,6 +1238,7 @@ async function runIssuesPhase(
             timeSpent: fields.timetracking?.timeSpentSeconds ?? 0,
             createdAt: fields.created ?? null,
             updatedAt: fields.updated ?? null,
+            dueDate,
           });
         } catch (err: any) {
           addError(state, `issue ${issue.key}: ${err.message}`);
@@ -1240,16 +1257,17 @@ async function runIssuesPhase(
             `(gen_random_uuid(), $${pIdx}::text, $${pIdx+1}::text, $${pIdx+2}::text, $${pIdx+3}::text, ` +
             `$${pIdx+4}::uuid, $${pIdx+5}::uuid, $${pIdx+6}::uuid, $${pIdx+7}::uuid, $${pIdx+8}::text, ` +
             `$${pIdx+9}::text[], $${pIdx+10}::numeric, $${pIdx+11}::int, $${pIdx+12}::int, ` +
-            `COALESCE($${pIdx+13}::timestamptz, NOW()), COALESCE($${pIdx+14}::timestamptz, NOW()))`,
+            `COALESCE($${pIdx+13}::timestamptz, NOW()), COALESCE($${pIdx+14}::timestamptz, NOW()), ` +
+            `$${pIdx+15}::date)`,
           );
           valParams.push(
             r.title, r.description, r.type, r.priority,
             r.statusId, r.assigneeId, r.reporterId, r.sprintId,
             r.jiraKey,
             r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
-            r.createdAt, r.updatedAt,
+            r.createdAt, r.updatedAt, r.dueDate,
           );
-          pIdx += 15;
+          pIdx += 16;
         }
 
         // CTE assigns safe issue numbers: use Jira number if free, otherwise max+rn.
@@ -1265,7 +1283,7 @@ async function runIssuesPhase(
                id, title, description, type, priority,
                status_id, assignee_id, reporter_id, sprint_id,
                jira_key, labels, story_points, time_estimate, time_spent,
-               created_at, updated_at
+               created_at, updated_at, due_date
              )
            )
            INSERT INTO issues (
@@ -1273,7 +1291,7 @@ async function runIssuesPhase(
              status_id, project_id, organization_id,
              assignee_id, reporter_id, sprint_id,
              key, number, jira_key, labels, story_points,
-             time_estimate, time_spent, created_at, updated_at
+             time_estimate, time_spent, created_at, updated_at, due_date
            )
            SELECT
              i.id, i.title, i.description, i.type, i.priority,
@@ -1286,7 +1304,7 @@ async function runIssuesPhase(
              ELSE (SELECT n FROM max_num) + i.rn
              END,
              i.jira_key, i.labels, i.story_points,
-             i.time_estimate, i.time_spent, i.created_at, i.updated_at
+             i.time_estimate, i.time_spent, i.created_at, i.updated_at, i.due_date
            FROM (
              SELECT *,
                (regexp_match(jira_key, '\\d+$'))[1]::int AS jira_key_num
@@ -1305,6 +1323,7 @@ async function runIssuesPhase(
              story_points  = EXCLUDED.story_points,
              time_estimate = EXCLUDED.time_estimate,
              time_spent    = EXCLUDED.time_spent,
+             due_date      = EXCLUDED.due_date,
              updated_at    = EXCLUDED.updated_at
            RETURNING id, jira_key`;
 
@@ -1334,7 +1353,7 @@ async function runIssuesPhase(
                    status_id, project_id, organization_id,
                    assignee_id, reporter_id, sprint_id,
                    key, number, jira_key, labels, story_points,
-                   time_estimate, time_spent, created_at, updated_at
+                   time_estimate, time_spent, created_at, updated_at, due_date
                  )
                  SELECT
                    gen_random_uuid(), $3::text, $4::text, $5::text, $6::text,
@@ -1347,7 +1366,7 @@ async function runIssuesPhase(
                    ELSE (SELECT n FROM max_num) + 1
                    END,
                    $11::text, $12::text[], $13::numeric, $14::int, $15::int,
-                   COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW())
+                   COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW()), $18::date
                  ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
                    title         = EXCLUDED.title,
                    description   = EXCLUDED.description,
@@ -1361,6 +1380,7 @@ async function runIssuesPhase(
                    story_points  = EXCLUDED.story_points,
                    time_estimate = EXCLUDED.time_estimate,
                    time_spent    = EXCLUDED.time_spent,
+                   due_date      = EXCLUDED.due_date,
                    updated_at    = EXCLUDED.updated_at
                  RETURNING id, jira_key`,
                 [
@@ -1369,7 +1389,7 @@ async function runIssuesPhase(
                   r.statusId, r.assigneeId, r.reporterId, r.sprintId,
                   r.jiraKey,
                   r.labels, r.storyPoints, r.timeEstimate, r.timeSpent,
-                  r.createdAt, r.updatedAt,
+                  r.createdAt, r.updatedAt, r.dueDate,
                 ],
               );
               if (singleRows[0]) {

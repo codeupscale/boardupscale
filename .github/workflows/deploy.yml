@@ -167,7 +167,7 @@ jobs:
               local svc="$1"
               log "Rolling back $svc to :main tag..."
               cd "$COMPOSE_DIR"
-              BU_IMAGE_TAG=main docker compose up -d --no-deps --no-recreate "$svc" || true
+              BU_IMAGE_TAG=main docker compose up -d --no-deps --force-recreate "$svc" || true
             }
 
             # ── 1. Authenticate with GHCR ──────────────────────────────────

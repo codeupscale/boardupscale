@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   DragDropContext,
@@ -45,7 +45,7 @@ import {
   DialogTitle,
   DialogContent,
 } from '@/components/ui/dialog'
-import { IssueForm } from '@/components/issues/issue-form'
+import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { Input } from '@/components/ui/input'
@@ -641,6 +641,7 @@ export function ProjectBacklogPage() {
   const { key: projectKey } = useParams<{ key: string }>()
   const qc = useQueryClient()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
+  const issueFormRef = useRef<IssueFormHandle>(null)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
   const [sprintName, setSprintName] = useState('')
   const [sprintGoal, setSprintGoal] = useState('')
@@ -868,17 +869,24 @@ export function ProjectBacklogPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateIssue}
-        onClose={() => setShowCreateIssue(false)}
+        onClose={() => issueFormRef.current?.requestClose()}
         className="max-w-2xl"
       >
-        <DialogHeader onClose={() => setShowCreateIssue(false)}>
+        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
           <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm
+            ref={issueFormRef}
             projectId={project?.id || projectKey!}
             statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
             sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+            parentIssues={allIssues.map((i) => ({
+              id: i.id,
+              key: i.key,
+              title: i.title,
+              type: i.type,
+            }))}
             users={users || []}
             onSubmit={(values) =>
               createIssue.mutate(

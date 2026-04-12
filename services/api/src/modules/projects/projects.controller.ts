@@ -68,6 +68,7 @@ export class ProjectsController {
   }
 
   @Post()
+  @RequirePermission('project', 'create')
   @ApiOperation({ summary: 'Create a new project (optionally from a template)' })
   @ApiResponse({ status: 201, description: 'Project created successfully' })
   @ApiResponse({ status: 400, description: 'Validation failed' })

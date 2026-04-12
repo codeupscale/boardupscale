@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Download, Bookmark, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +17,7 @@ import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
-import { IssueForm } from '@/components/issues/issue-form'
+import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { useExportIssues } from '@/hooks/useReports'
@@ -29,6 +29,7 @@ export function ProjectIssuesPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
   const [showCreate, setShowCreate] = useState(false)
+  const issueFormRef = useRef<IssueFormHandle>(null)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
@@ -416,15 +417,22 @@ export function ProjectIssuesPage() {
         projectId={projectKey}
       />
 
-      <Dialog open={showCreate} onClose={() => setShowCreate(false)} className="max-w-2xl">
-        <DialogHeader onClose={() => setShowCreate(false)}>
+      <Dialog open={showCreate} onClose={() => issueFormRef.current?.requestClose()} className="max-w-2xl">
+        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
           <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm
+            ref={issueFormRef}
             projectId={project?.id || projectKey!}
             statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
             sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+            parentIssues={(issuesData?.data || []).map((i) => ({
+              id: i.id,
+              key: i.key,
+              title: i.title,
+              type: i.type,
+            }))}
             users={users || []}
             onSubmit={(values) =>
               createIssue.mutate(

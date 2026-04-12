@@ -73,6 +73,14 @@ const CHILD_TYPE_MAP: Record<string, { types: string[]; default: string }> = {
   bug: { types: ['subtask'], default: 'subtask' },
 }
 
+/** Issue types that may serve as a parent, indexed by the child's type. */
+const VALID_PARENT_TYPES: Record<string, string[]> = {
+  story: ['epic'],
+  task: ['epic', 'story'],
+  bug: ['epic', 'story'],
+  subtask: ['epic', 'story', 'task', 'bug'],
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Breadcrumb helpers                                                        */
 /* -------------------------------------------------------------------------- */
@@ -300,6 +308,22 @@ export function IssueDetailPage() {
     [childIssuesData, issueId],
   )
 
+  // Candidate parent issues for the current issue's type, filtered by search text.
+  // Excludes the issue itself and its own children to prevent circular references.
+  const eligibleParents = useMemo(() => {
+    if (!issue) return []
+    const validTypes = VALID_PARENT_TYPES[issue.type.toLowerCase()] ?? []
+    const childIds = new Set(childIssues.map((c) => c.id))
+    const needle = parentSearch.toLowerCase()
+    return (childIssuesData?.data || []).filter(
+      (p) =>
+        p.id !== issue.id &&
+        !childIds.has(p.id) &&
+        validTypes.includes(p.type.toLowerCase()) &&
+        (needle === '' || p.title.toLowerCase().includes(needle) || p.key.toLowerCase().includes(needle)),
+    )
+  }, [childIssuesData, issue, childIssues, parentSearch])
+
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
@@ -314,6 +338,7 @@ export function IssueDetailPage() {
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
   const [labelInput, setLabelInput] = useState('')
+  const [parentSearch, setParentSearch] = useState('')
 
   // Derive labels directly from issue data (no disconnected local state)
   const issueLabels = issue?.labels || []
@@ -477,7 +502,7 @@ export function IssueDetailPage() {
 
           {/* Linked Issues */}
           <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
-            <IssueLinksList issueId={issue.id} />
+            <IssueLinksList issueId={issue.id} projectId={issue.projectId} />
           </div>
 
           {/* GitHub Activity */}
@@ -766,6 +791,33 @@ export function IssueDetailPage() {
                   ))}
               </select>
             </SidebarField>
+
+            {/* Parent Issue — only shown for types that support a parent */}
+            {VALID_PARENT_TYPES[issue.type.toLowerCase()] && (
+              <SidebarField label="Parent Issue">
+                <input
+                  type="text"
+                  value={parentSearch}
+                  onChange={(e) => setParentSearch(e.target.value)}
+                  placeholder="Search by key or title…"
+                  className="w-full rounded-md border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors mb-1"
+                />
+                <select
+                  className={selectClasses}
+                  value={issue.parentId || ''}
+                  onChange={(e) =>
+                    updateIssue.mutate({ id: issue.id, parentId: e.target.value || null })
+                  }
+                >
+                  <option value="">— No parent —</option>
+                  {eligibleParents.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.key}] {p.title}
+                    </option>
+                  ))}
+                </select>
+              </SidebarField>
+            )}
 
             <div className="border-t border-gray-100 dark:border-gray-800" />
 

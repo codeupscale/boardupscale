@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link, useSearchParams, useLocation } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
@@ -17,7 +17,7 @@ import { BoardQuickFilters } from '@/components/board/board-filters'
 import { BoardSwimlane, groupIssuesBySwimlane } from '@/components/board/board-swimlane'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { IssueForm } from '@/components/issues/issue-form'
+import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,7 @@ export function ProjectBoardPage() {
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<string | undefined>()
+  const issueFormRef = useRef<IssueFormHandle>(null)
   const [groupBy, setGroupBy] = useState<SwimlaneGroupBy>('none')
 
   // Column management dialogs
@@ -601,25 +602,26 @@ export function ProjectBoardPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateDialog}
-        onClose={() => {
-          setShowCreateDialog(false)
-          setCreateStatusId(undefined)
-        }}
+        onClose={() => issueFormRef.current?.requestClose()}
         className="max-w-2xl"
       >
         <DialogHeader
-          onClose={() => {
-            setShowCreateDialog(false)
-            setCreateStatusId(undefined)
-          }}
+          onClose={() => issueFormRef.current?.requestClose()}
         >
           <DialogTitle>{t('issues.createIssue')}</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <IssueForm
+            ref={issueFormRef}
             projectId={project?.id || projectKey!}
             statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
             sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+            parentIssues={allIssues.map((i) => ({
+              id: i.id,
+              key: i.key,
+              title: i.title,
+              type: i.type,
+            }))}
             users={orgUsers || []}
             defaultValues={{ statusId: createStatusId }}
             onSubmit={(values) => {

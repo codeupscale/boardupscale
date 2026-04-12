@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X, Sparkles } from 'lucide-react'
-import { useUsersDropdown } from '@/hooks/useUsers'
+import { useUsersDropdown, DropdownUser } from '@/hooks/useUsers'
+import { useProjectMembers } from '@/hooks/useProjects'
 import { useAiAssignees, useAiStatus, AssigneeSuggestion } from '@/hooks/useAi'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -18,7 +19,20 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
-  const { data: users = [] } = useUsersDropdown()
+
+  // When projectId is supplied, scope the list to project members only
+  const { data: allUsers = [] } = useUsersDropdown()
+  const { data: projectMembers } = useProjectMembers(projectId || '')
+
+  const users: DropdownUser[] = projectId && projectMembers
+    ? projectMembers.map((m) => ({
+        id: m.user.id,
+        email: m.user.email,
+        displayName: m.user.displayName,
+        avatarUrl: m.user.avatarUrl,
+      }))
+    : allUsers
+
   const { data: aiStatus } = useAiStatus()
   const { data: aiSuggestions = [] } = useAiAssignees(projectId, issueType)
 

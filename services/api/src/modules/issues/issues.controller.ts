@@ -104,6 +104,7 @@ export class IssuesController {
   }
 
   @Patch('bulk-update')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Bulk update issues' })
   async bulkUpdate(
     @OrgId() organizationId: string,
@@ -113,6 +114,7 @@ export class IssuesController {
   }
 
   @Post('bulk-move')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Bulk move issues to another project' })
   async bulkMove(
     @OrgId() organizationId: string,
@@ -122,6 +124,7 @@ export class IssuesController {
   }
 
   @Post('bulk-delete')
+  @RequirePermission('issue', 'delete')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bulk soft-delete issues' })
   async bulkDelete(
@@ -132,6 +135,7 @@ export class IssuesController {
   }
 
   @Post('bulk-restore')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Bulk restore soft-deleted issues' })
   async bulkRestore(
     @OrgId() organizationId: string,
@@ -141,6 +145,7 @@ export class IssuesController {
   }
 
   @Post('bulk-transition')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Bulk transition issues to a new status' })
   async bulkTransition(
     @OrgId() organizationId: string,

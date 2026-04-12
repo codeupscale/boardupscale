@@ -1,7 +1,7 @@
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useState, useMemo, useImperativeHandle, forwardRef } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
@@ -13,6 +13,15 @@ import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
+
+/** Issue types that may serve as a parent, indexed by the prospective child's type. */
+const VALID_PARENT_TYPES: Record<string, string[]> = {
+  story: ['epic'],
+  task: ['epic', 'story'],
+  bug: ['epic', 'story'],
+  subtask: ['epic', 'story', 'task', 'bug'],
+}
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
@@ -34,6 +43,8 @@ interface IssueFormProps {
   projectId: string
   statuses?: Array<{ id: string; name: string }>
   sprints?: Array<{ id: string; name: string }>
+  /** Candidate parent issues for the current project — filtered by hierarchy rules in the UI. */
+  parentIssues?: Array<{ id: string; key: string; title: string; type: string }>
   customFieldDefs?: CustomFieldDefinition[]
   components?: ProjectComponent[]
   versions?: ProjectVersion[]
@@ -45,10 +56,16 @@ interface IssueFormProps {
   submitLabel?: string
 }
 
-export function IssueForm({
+export interface IssueFormHandle {
+  /** Call this from the Dialog's onClose to respect dirty-state confirmation */
+  requestClose: () => void
+}
+
+export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function IssueForm({
   projectId,
   statuses = [],
   sprints = [],
+  parentIssues = [],
   customFieldDefs = [],
   components = [],
   versions = [],
@@ -58,13 +75,16 @@ export function IssueForm({
   onCancel,
   isLoading,
   submitLabel,
-}: IssueFormProps) {
+}: IssueFormProps, ref) {
   const { t } = useTranslation()
   const [labels, setLabels] = useState<string[]>([])
   const [labelInput, setLabelInput] = useState('')
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
   const [selectedComponents, setSelectedComponents] = useState<string[]>([])
   const [selectedFixVersions, setSelectedFixVersions] = useState<string[]>([])
+  const [parentSearch, setParentSearch] = useState('')
+
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
   const {
     register,
@@ -72,7 +92,7 @@ export function IssueForm({
     control,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -82,8 +102,33 @@ export function IssueForm({
     },
   })
 
+  const handleCancel = () => {
+    const hasAnyInput = isDirty || labels.length > 0
+    if (hasAnyInput) {
+      setShowDiscardConfirm(true)
+    } else {
+      onCancel()
+    }
+  }
+
+  useImperativeHandle(ref, () => ({ requestClose: handleCancel }))
+
   // Watch title for duplicate detection
   const watchedTitle = useWatch({ control, name: 'title' }) || ''
+  const watchedType = useWatch({ control, name: 'type' }) || IssueType.TASK
+
+  // Parent issues eligible for the currently selected child type
+  const eligibleParents = useMemo(() => {
+    const validTypes = VALID_PARENT_TYPES[watchedType.toLowerCase()] ?? []
+    const needle = parentSearch.toLowerCase()
+    return parentIssues.filter(
+      (p) =>
+        validTypes.includes(p.type.toLowerCase()) &&
+        (needle === '' ||
+          p.title.toLowerCase().includes(needle) ||
+          p.key.toLowerCase().includes(needle)),
+    )
+  }, [parentIssues, watchedType, parentSearch])
 
   const addLabel = () => {
     const trimmed = labelInput.trim()
@@ -201,10 +246,50 @@ export function IssueForm({
               value={field.value || null}
               onChange={(id) => field.onChange(id)}
               placeholder={t('issues.unassigned')}
+              projectId={projectId}
             />
           </div>
         )}
       />
+
+      {/* Parent Issue — only shown when the selected type can have a parent */}
+      {VALID_PARENT_TYPES[watchedType?.toLowerCase() ?? ''] && (
+        <Controller
+          name="parentId"
+          control={control}
+          render={({ field }) => (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Issue
+              </label>
+              <input
+                type="text"
+                value={parentSearch}
+                onChange={(e) => setParentSearch(e.target.value)}
+                placeholder="Search by key or title…"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
+              />
+              <select
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value || undefined)}
+              >
+                <option value="">— No parent —</option>
+                {eligibleParents.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    [{p.key}] {p.title}
+                  </option>
+                ))}
+              </select>
+              {parentIssues.length > 0 && eligibleParents.length === 0 && parentSearch === '' && (
+                <p className="text-xs text-gray-400 mt-1">
+                  No eligible parents for a {watchedType} in this project.
+                </p>
+              )}
+            </div>
+          )}
+        />
+      )}
 
       {sprints.length > 0 && (
         <Controller
@@ -401,13 +486,27 @@ export function IssueForm({
       )}
 
       <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={handleCancel}>
           {t('common.cancel')}
         </Button>
         <Button type="submit" isLoading={isLoading}>
           {submitLabel || t('issues.createIssue')}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        onClose={() => setShowDiscardConfirm(false)}
+        onConfirm={() => {
+          setShowDiscardConfirm(false)
+          onCancel()
+        }}
+        title={t('issues.discardChanges', 'Discard changes?')}
+        description={t('issues.discardChangesDescription', 'You have unsaved changes. Are you sure you want to discard them?')}
+        confirmLabel={t('issues.discard', 'Discard')}
+        cancelLabel={t('issues.goBack', 'Go Back')}
+        destructive
+      />
     </form>
   )
-}
+})

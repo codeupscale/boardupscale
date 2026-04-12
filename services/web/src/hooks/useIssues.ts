@@ -86,6 +86,7 @@ export function useUpdateIssue() {
       priority?: string
       statusId?: string
       assigneeId?: string | null
+      parentId?: string | null
       sprintId?: string | null
       dueDate?: string | null
       storyPoints?: number | null

@@ -147,6 +147,7 @@ export function MyIssuesPage() {
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">{t('nav.projects', 'Project')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
@@ -157,7 +158,7 @@ export function MyIssuesPage() {
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
                 {filtered.map((issue) => (
-                  <IssueTableRow key={issue.id} issue={issue} />
+                  <IssueTableRow key={issue.id} issue={issue} showProject />
                 ))}
               </tbody>
             </table>

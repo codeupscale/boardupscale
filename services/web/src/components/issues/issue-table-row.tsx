@@ -12,9 +12,10 @@ interface IssueTableRowProps {
   className?: string
   selectable?: boolean
   showDeletedAt?: boolean
+  showProject?: boolean
 }
 
-export function IssueTableRow({ issue, className, selectable = false, showDeletedAt = false }: IssueTableRowProps) {
+export function IssueTableRow({ issue, className, selectable = false, showDeletedAt = false, showProject = false }: IssueTableRowProps) {
   const navigate = useNavigate()
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
@@ -62,6 +63,22 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
           </span>
         </div>
       </td>
+
+      {/* Project name — shown only in multi-project contexts */}
+      {showProject && (
+        <td
+          className="px-4 py-3 w-40"
+          onClick={() => navigate(`/issues/${issue.id}`)}
+        >
+          {issue.project ? (
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded truncate block max-w-[140px]" title={issue.project.name}>
+              {issue.project.name}
+            </span>
+          ) : (
+            <span className="text-xs text-gray-300 dark:text-gray-600">--</span>
+          )}
+        </td>
+      )}
 
       {/* Title */}
       <td

@@ -11,6 +11,7 @@ import { Topbar } from './topbar'
 import { ToastContainer } from '@/components/ui/toast'
 import { CommandPalette } from './command-palette'
 import { ProjectChat } from '@/components/chat/ProjectChat'
+import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
 
 export function AppLayout() {
   const { initialize, isAuthenticated, setUser } = useAuthStore()
@@ -67,6 +68,7 @@ export function AppLayout() {
       <ToastContainer />
       <CommandPalette />
       <ProjectChat />
+      <HelpSupportPanel />
     </div>
   )
 }

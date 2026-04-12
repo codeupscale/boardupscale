@@ -49,7 +49,7 @@ export enum UserRole {
 }
 
 export enum SprintStatus {
-  PLANNED = 'planning',
+  PLANNED = 'planned',
   ACTIVE = 'active',
   COMPLETED = 'completed',
 }
@@ -159,6 +159,7 @@ export interface Issue {
   timeSpent: number
   labels: string[]
   position: number
+  project?: { id: string; name: string; key: string }
   status?: IssueStatus
   assignee?: User
   reporter?: User

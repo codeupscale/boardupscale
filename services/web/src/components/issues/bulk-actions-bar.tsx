@@ -90,17 +90,15 @@ export function BulkActionsBar({
             Priority
           </Button>
 
-          {sprints && sprints.length > 0 && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-gray-300 hover:text-white hover:bg-gray-800"
-              onClick={() => setShowSprint(true)}
-            >
-              <ArrowRightLeft className="h-4 w-4" />
-              Sprint
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            onClick={() => setShowSprint(true)}
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            Sprint
+          </Button>
 
           <Button
             size="sm"
@@ -270,6 +268,18 @@ function SprintPickerDialog({
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Move to Sprint</h3>
         </div>
         <div className="p-2 max-h-64 overflow-y-auto">
+          <button
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left italic"
+            onClick={() =>
+              bulkUpdate.mutate(
+                { issueIds, sprintId: null },
+                { onSuccess: onClose },
+              )
+            }
+            disabled={bulkUpdate.isPending}
+          >
+            Move to Backlog
+          </button>
           {sprints.map((sprint) => (
             <button
               key={sprint.id}

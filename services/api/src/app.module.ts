@@ -41,6 +41,7 @@ import { JiraMigrationRun } from './modules/migration/entities/jira-migration-ru
 import { PagesModule } from './modules/pages/pages.module';
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
+import { SupportModule } from './modules/support/support.module';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -218,6 +219,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
     PagesModule,
     SavedViewsModule,
     TelemetryModule,
+    SupportModule,
   ],
   providers: [
     {
