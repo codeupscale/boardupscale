@@ -308,6 +308,8 @@ export function IssueDetailPage() {
     [childIssuesData, issueId],
   )
 
+  const [parentSearch, setParentSearch] = useState('')
+
   // Candidate parent issues for the current issue's type, filtered by search text.
   // Excludes the issue itself and its own children to prevent circular references.
   const eligibleParents = useMemo(() => {
@@ -338,7 +340,6 @@ export function IssueDetailPage() {
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
   const [labelInput, setLabelInput] = useState('')
-  const [parentSearch, setParentSearch] = useState('')
 
   // Derive labels directly from issue data (no disconnected local state)
   const issueLabels = issue?.labels || []
