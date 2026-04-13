@@ -11,12 +11,14 @@ import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
 import { IssueType, IssuePriority } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
@@ -164,24 +166,27 @@ export function ProjectIssuesPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExport('csv')}
-              disabled={exporting}
+            <DropdownMenu
+              trigger={
+                <Button size="sm" variant="outline" disabled={exporting}>
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              }
             >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExport('json')}
-              disabled={exporting}
-            >
-              <Download className="h-4 w-4" />
-              Export JSON
-            </Button>
+              <DropdownItem
+                icon={<Download className="h-4 w-4" />}
+                onClick={() => handleExport('csv')}
+              >
+                Export CSV
+              </DropdownItem>
+              <DropdownItem
+                icon={<Download className="h-4 w-4" />}
+                onClick={() => handleExport('json')}
+              >
+                Export JSON
+              </DropdownItem>
+            </DropdownMenu>
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" />
               {t('issues.createIssue')}
@@ -189,6 +194,8 @@ export function ProjectIssuesPage() {
           </div>
         }
       />
+
+      <ProjectTabNav projectKey={projectKey!} />
 
       <div className="p-6 lg:p-8 space-y-4 max-w-[1400px] mx-auto w-full">
         {/* Filters card */}
