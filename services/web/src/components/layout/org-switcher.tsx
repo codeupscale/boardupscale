@@ -90,7 +90,7 @@ export function OrgSwitcher() {
           {currentOrgName.charAt(0).toUpperCase()}
         </span>
         {isSidebarOpen && (
-          <span className="text-sm font-semibold text-foreground truncate">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
             {currentOrgName}
           </span>
         )}
@@ -109,9 +109,9 @@ export function OrgSwitcher() {
         aria-label="Switch organization"
         className={cn(
           'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all duration-150',
-          'hover:bg-accent/70',
-          'border border-border/60',
-          isOpen && 'bg-muted/70 border-border',
+          'hover:bg-[var(--plasma-hover)]',
+          'border border-[var(--plasma-border)]',
+          isOpen && 'bg-[var(--plasma-hover)]',
           !isSidebarOpen && 'justify-center px-2',
         )}
       >
@@ -123,7 +123,7 @@ export function OrgSwitcher() {
         </span>
         {isSidebarOpen && (
           <>
-            <span className="flex-1 text-left font-semibold text-foreground truncate">
+            <span className="flex-1 text-left font-semibold text-gray-900 dark:text-gray-100 truncate">
               {currentOrgName}
             </span>
             {switchOrg.isPending ? (
@@ -145,13 +145,13 @@ export function OrgSwitcher() {
           role="listbox"
           aria-label="Organizations"
           className={cn(
-            'absolute left-0 right-0 mt-1.5 py-1 bg-card border border-border/60 rounded-xl shadow-xl z-50',
+            'absolute left-0 right-0 mt-1.5 py-1 bg-white dark:bg-[var(--plasma-surface)] border border-[var(--plasma-border)] rounded-xl shadow-xl z-50',
             'animate-in fade-in slide-in-from-top-1 duration-150',
             !isSidebarOpen && 'left-full ml-2 top-0 w-56',
           )}
         >
           <div className="px-3 py-1.5">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
               Organizations
             </p>
           </div>
@@ -173,8 +173,8 @@ export function OrgSwitcher() {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all duration-150 text-left',
                   isCurrent
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-foreground hover:bg-accent',
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-[var(--plasma-hover)]',
                   switchOrg.isPending && !isCurrent && 'opacity-50 cursor-not-allowed',
                 )}
               >
@@ -186,10 +186,10 @@ export function OrgSwitcher() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{orgName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{membership.role}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{membership.role}</p>
                 </div>
                 {isCurrent && (
-                  <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                  <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                 )}
               </button>
             )
