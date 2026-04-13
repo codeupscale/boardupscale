@@ -36,6 +36,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -289,13 +290,13 @@ function SprintSection({
               ) : (
                 <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
               )}
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{sprint.name}</h3>
+              <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate">{sprint.name}</h3>
               {isActive && (
                 <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full flex-shrink-0">
                   {t('sprints.active')}
                 </span>
               )}
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
 
@@ -308,7 +309,7 @@ function SprintSection({
               )}
 
               {sprint.startDate && sprint.endDate && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 hidden sm:inline">
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0 hidden sm:inline">
                   {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
                 </span>
               )}
@@ -827,6 +828,8 @@ export function ProjectBacklogPage() {
           </div>
         }
       />
+
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
