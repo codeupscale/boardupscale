@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { ElementType, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   TrendingDown,
@@ -11,10 +11,14 @@ import {
   FileText,
   BarChart3,
 } from 'lucide-react'
-import { Tabs, TabContent } from '@/components/ui/tabs'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
+import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { useSprints } from '@/hooks/useSprints'
+import { useProjects } from '@/hooks/useProjects'
 import {
   useSprintBurndown,
   useSprintBurnup,
@@ -35,22 +39,29 @@ import { WorkloadChart } from '@/components/reports/workload-chart'
 import { CycleTimeChart } from '@/components/reports/cycle-time-chart'
 import { SprintReport } from '@/components/reports/sprint-report'
 import { CreatedVsResolvedChart } from '@/components/reports/created-vs-resolved-chart'
+import { cn } from '@/lib/utils'
 
-const TABS = [
-  { id: 'burndown', label: 'Burndown', icon: <TrendingDown className="h-4 w-4" /> },
-  { id: 'burnup', label: 'Burnup', icon: <TrendingUp className="h-4 w-4" /> },
-  { id: 'velocity', label: 'Velocity', icon: <Zap className="h-4 w-4" /> },
-  { id: 'created-vs-resolved', label: 'Created vs Resolved', icon: <BarChart3 className="h-4 w-4" /> },
-  { id: 'cumulative-flow', label: 'Cumulative Flow', icon: <Layers className="h-4 w-4" /> },
-  { id: 'breakdown', label: 'Breakdown', icon: <PieChartIcon className="h-4 w-4" /> },
-  { id: 'workload', label: 'Workload', icon: <Users className="h-4 w-4" /> },
-  { id: 'cycle-time', label: 'Cycle Time', icon: <Timer className="h-4 w-4" /> },
-  { id: 'sprint-report', label: 'Sprint Report', icon: <FileText className="h-4 w-4" /> },
+interface ReportItem {
+  id: string
+  label: string
+  icon: ElementType
+}
+
+const REPORT_ITEMS: ReportItem[] = [
+  { id: 'burndown', label: 'Burndown', icon: TrendingDown },
+  { id: 'burnup', label: 'Burnup', icon: TrendingUp },
+  { id: 'velocity', label: 'Velocity', icon: Zap },
+  { id: 'created-vs-resolved', label: 'Created vs Resolved', icon: BarChart3 },
+  { id: 'cumulative-flow', label: 'Cumulative Flow', icon: Layers },
+  { id: 'breakdown', label: 'Breakdown', icon: PieChartIcon },
+  { id: 'workload', label: 'Workload', icon: Users },
+  { id: 'cycle-time', label: 'Cycle Time', icon: Timer },
+  { id: 'sprint-report', label: 'Sprint Report', icon: FileText },
 ]
 
 export function ProjectReportsPage() {
   const { key: projectKey } = useParams<{ key: string }>()
-  const [activeTab, setActiveTab] = useState('burndown')
+  const [activeReport, setActiveReport] = useState('burndown')
   const [selectedSprintId, setSelectedSprintId] = useState('')
   const [cfdStartDate, setCfdStartDate] = useState('')
   const [cfdEndDate, setCfdEndDate] = useState('')
@@ -59,6 +70,9 @@ export function ProjectReportsPage() {
   const [cvrStartDate, setCvrStartDate] = useState('')
   const [cvrEndDate, setCvrEndDate] = useState('')
   const [cvrInterval, setCvrInterval] = useState<'day' | 'week'>('day')
+
+  const { data: projectsResult } = useProjects()
+  const project = projectsResult?.data?.find((p) => p.key === projectKey)
 
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey || '')
 
@@ -74,331 +88,321 @@ export function ProjectReportsPage() {
   // Data hooks
   const burndownQuery = useSprintBurndown(
     projectKey || '',
-    activeTab === 'burndown' ? activeSprint : '',
+    activeReport === 'burndown' ? activeSprint : '',
   )
   const velocityQuery = useVelocity(
     projectKey || '',
-    activeTab === 'velocity' ? 6 : 0,
+    activeReport === 'velocity' ? 6 : 0,
   )
   const cfdQuery = useCumulativeFlow(
     projectKey || '',
-    activeTab === 'cumulative-flow' ? cfdStartDate || undefined : undefined,
-    activeTab === 'cumulative-flow' ? cfdEndDate || undefined : undefined,
+    activeReport === 'cumulative-flow' ? cfdStartDate || undefined : undefined,
+    activeReport === 'cumulative-flow' ? cfdEndDate || undefined : undefined,
   )
   const breakdownQuery = useIssueBreakdown(
-    activeTab === 'breakdown' ? projectKey || '' : '',
+    activeReport === 'breakdown' ? projectKey || '' : '',
   )
   const workloadQuery = useAssigneeWorkload(
-    activeTab === 'workload' ? projectKey || '' : '',
+    activeReport === 'workload' ? projectKey || '' : '',
   )
   const cycleTimeQuery = useCycleTime(
-    activeTab === 'cycle-time' ? projectKey || '' : '',
-    activeTab === 'cycle-time' ? ctStartDate || undefined : undefined,
-    activeTab === 'cycle-time' ? ctEndDate || undefined : undefined,
+    activeReport === 'cycle-time' ? projectKey || '' : '',
+    activeReport === 'cycle-time' ? ctStartDate || undefined : undefined,
+    activeReport === 'cycle-time' ? ctEndDate || undefined : undefined,
   )
   const burnupQuery = useSprintBurnup(
     projectKey || '',
-    activeTab === 'burnup' ? activeSprint : '',
+    activeReport === 'burnup' ? activeSprint : '',
   )
   const createdVsResolvedQuery = useCreatedVsResolved(
-    activeTab === 'created-vs-resolved' ? projectKey || '' : '',
-    activeTab === 'created-vs-resolved' ? cvrStartDate || undefined : undefined,
-    activeTab === 'created-vs-resolved' ? cvrEndDate || undefined : undefined,
-    activeTab === 'created-vs-resolved' ? cvrInterval : undefined,
+    activeReport === 'created-vs-resolved' ? projectKey || '' : '',
+    activeReport === 'created-vs-resolved' ? cvrStartDate || undefined : undefined,
+    activeReport === 'created-vs-resolved' ? cvrEndDate || undefined : undefined,
+    activeReport === 'created-vs-resolved' ? cvrInterval : undefined,
   )
   const sprintReportQuery = useSprintReport(
     projectKey || '',
-    activeTab === 'sprint-report' ? activeSprint : '',
+    activeReport === 'sprint-report' ? activeSprint : '',
   )
 
   if (!projectKey) return null
 
   return (
-    <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Reports</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Analytics and insights for your project
-        </p>
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title={project?.name ?? 'Reports'}
+        breadcrumbs={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name ?? '...', href: `/projects/${projectKey}/board` },
+          { label: 'Reports' },
+        ]}
+      />
+      <ProjectTabNav projectKey={projectKey} />
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar — report list */}
+        <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-2">
+            Reports
+          </p>
+          {REPORT_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveReport(item.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full',
+                activeReport === item.id
+                  ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70',
+              )}
+            >
+              <item.icon className="h-4 w-4 flex-shrink-0" />
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right panel — chart */}
+        <div className="flex-1 overflow-auto p-6">
+          {/* Controls row */}
+          <div className="flex items-end gap-4 mb-6">
+            {/* Sprint selector for burndown, burnup, and sprint report */}
+            {(activeReport === 'burndown' || activeReport === 'burnup' || activeReport === 'sprint-report') && (
+              <div className="w-64">
+                {sprintsLoading ? (
+                  <div className="text-sm text-gray-500">Loading sprints...</div>
+                ) : sprints && sprints.length > 0 ? (
+                  <Select
+                    label="Sprint"
+                    value={activeSprint}
+                    onChange={(e) => setSelectedSprintId(e.target.value)}
+                    options={sprints.map((s) => ({ value: s.id, label: `${s.name} (${s.status})` }))}
+                    className="w-64"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500">No sprints available</p>
+                )}
+              </div>
+            )}
+
+            {/* Date range for cumulative flow */}
+            {activeReport === 'cumulative-flow' && (
+              <>
+                <DatePicker
+                  label="Start Date"
+                  value={cfdStartDate || undefined}
+                  onChange={(d) => setCfdStartDate(d ?? '')}
+                  placeholder="Start date"
+                />
+                <DatePicker
+                  label="End Date"
+                  value={cfdEndDate || undefined}
+                  onChange={(d) => setCfdEndDate(d ?? '')}
+                  placeholder="End date"
+                />
+              </>
+            )}
+
+            {/* Date range for cycle time */}
+            {activeReport === 'cycle-time' && (
+              <>
+                <DatePicker
+                  label="Start Date"
+                  value={ctStartDate || undefined}
+                  onChange={(d) => setCtStartDate(d ?? '')}
+                  placeholder="Start date"
+                />
+                <DatePicker
+                  label="End Date"
+                  value={ctEndDate || undefined}
+                  onChange={(d) => setCtEndDate(d ?? '')}
+                  placeholder="End date"
+                />
+              </>
+            )}
+
+            {/* Date range and interval for created vs resolved */}
+            {activeReport === 'created-vs-resolved' && (
+              <>
+                <DatePicker
+                  label="Start Date"
+                  value={cvrStartDate || undefined}
+                  onChange={(d) => setCvrStartDate(d ?? '')}
+                  placeholder="Start date"
+                />
+                <DatePicker
+                  label="End Date"
+                  value={cvrEndDate || undefined}
+                  onChange={(d) => setCvrEndDate(d ?? '')}
+                  placeholder="End date"
+                />
+                <div className="w-32">
+                  <Select
+                    label="Interval"
+                    value={cvrInterval}
+                    onChange={(e) => setCvrInterval(e.target.value as 'day' | 'week')}
+                    options={[
+                      { value: 'day', label: 'Daily' },
+                      { value: 'week', label: 'Weekly' },
+                    ]}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Chart content */}
+          {activeReport === 'burndown' && (
+            <>
+              {!activeSprint ? (
+                <EmptyState
+                  title="No sprint selected"
+                  description="Select a sprint to view the burndown chart."
+                />
+              ) : burndownQuery.isLoading ? (
+                <LoadingPage />
+              ) : burndownQuery.data ? (
+                <BurndownChart data={burndownQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No burndown data"
+                  description="Start a sprint to track burndown."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'burnup' && (
+            <>
+              {!activeSprint ? (
+                <EmptyState
+                  title="No sprint selected"
+                  description="Select a sprint to view the burnup chart."
+                />
+              ) : burnupQuery.isLoading ? (
+                <LoadingPage />
+              ) : burnupQuery.data ? (
+                <BurnupChart data={burnupQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No burnup data"
+                  description="Start a sprint to track burnup."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'velocity' && (
+            <>
+              {velocityQuery.isLoading ? (
+                <LoadingPage />
+              ) : velocityQuery.data ? (
+                <VelocityChart data={velocityQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No velocity data"
+                  description="Complete sprints to track velocity."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'created-vs-resolved' && (
+            <>
+              {createdVsResolvedQuery.isLoading ? (
+                <LoadingPage />
+              ) : createdVsResolvedQuery.data ? (
+                <CreatedVsResolvedChart data={createdVsResolvedQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No data"
+                  description="Create and resolve issues to see the chart."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'cumulative-flow' && (
+            <>
+              {cfdQuery.isLoading ? (
+                <LoadingPage />
+              ) : cfdQuery.data ? (
+                <CumulativeFlowChart data={cfdQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No flow data"
+                  description="Create issues to see cumulative flow."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'breakdown' && (
+            <>
+              {breakdownQuery.isLoading ? (
+                <LoadingPage />
+              ) : breakdownQuery.data ? (
+                <IssueBreakdownCharts data={breakdownQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No breakdown data"
+                  description="Create issues to see breakdowns."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'workload' && (
+            <>
+              {workloadQuery.isLoading ? (
+                <LoadingPage />
+              ) : workloadQuery.data ? (
+                <WorkloadChart data={workloadQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No workload data"
+                  description="Assign issues to team members to see workload."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'cycle-time' && (
+            <>
+              {cycleTimeQuery.isLoading ? (
+                <LoadingPage />
+              ) : cycleTimeQuery.data ? (
+                <CycleTimeChart data={cycleTimeQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No cycle time data"
+                  description="Complete issues to track cycle time."
+                />
+              )}
+            </>
+          )}
+
+          {activeReport === 'sprint-report' && (
+            <>
+              {!activeSprint ? (
+                <EmptyState
+                  title="No sprint selected"
+                  description="Select a sprint to view the report."
+                />
+              ) : sprintReportQuery.isLoading ? (
+                <LoadingPage />
+              ) : sprintReportQuery.data ? (
+                <SprintReport data={sprintReportQuery.data} />
+              ) : (
+                <EmptyState
+                  title="No sprint data"
+                  description="Select a sprint to view its report."
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
-
-      <Tabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
-
-      <TabContent>
-        {/* Sprint selector for burndown, burnup, and sprint report */}
-        {(activeTab === 'burndown' || activeTab === 'burnup' || activeTab === 'sprint-report') && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Sprint
-            </label>
-            {sprintsLoading ? (
-              <div className="text-sm text-gray-500">Loading sprints...</div>
-            ) : sprints && sprints.length > 0 ? (
-              <select
-                value={activeSprint}
-                onChange={(e) => setSelectedSprintId(e.target.value)}
-                className="block w-64 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {sprints.map((sprint) => (
-                  <option key={sprint.id} value={sprint.id}>
-                    {sprint.name} ({sprint.status})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="text-sm text-gray-500">No sprints available</p>
-            )}
-          </div>
-        )}
-
-        {/* Date range for cumulative flow */}
-        {activeTab === 'cumulative-flow' && (
-          <div className="mb-4 flex gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={cfdStartDate}
-                onChange={(e) => setCfdStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={cfdEndDate}
-                onChange={(e) => setCfdEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Date range for cycle time */}
-        {activeTab === 'cycle-time' && (
-          <div className="mb-4 flex gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={ctStartDate}
-                onChange={(e) => setCtStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={ctEndDate}
-                onChange={(e) => setCtEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Date range and interval for created vs resolved */}
-        {activeTab === 'created-vs-resolved' && (
-          <div className="mb-4 flex gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={cvrStartDate}
-                onChange={(e) => setCvrStartDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={cvrEndDate}
-                onChange={(e) => setCvrEndDate(e.target.value)}
-                className="block w-44 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Interval
-              </label>
-              <select
-                value={cvrInterval}
-                onChange={(e) => setCvrInterval(e.target.value as 'day' | 'week')}
-                className="block w-32 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="day">Daily</option>
-                <option value="week">Weekly</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Tab content */}
-        {activeTab === 'burndown' && (
-          <>
-            {!activeSprint ? (
-              <EmptyState
-                title="No sprint selected"
-                description="Select a sprint to view the burndown chart."
-              />
-            ) : burndownQuery.isLoading ? (
-              <LoadingPage />
-            ) : burndownQuery.data ? (
-              <BurndownChart data={burndownQuery.data} />
-            ) : (
-              <EmptyState
-                title="No burndown data"
-                description="Start a sprint to track burndown."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'burnup' && (
-          <>
-            {!activeSprint ? (
-              <EmptyState
-                title="No sprint selected"
-                description="Select a sprint to view the burnup chart."
-              />
-            ) : burnupQuery.isLoading ? (
-              <LoadingPage />
-            ) : burnupQuery.data ? (
-              <BurnupChart data={burnupQuery.data} />
-            ) : (
-              <EmptyState
-                title="No burnup data"
-                description="Start a sprint to track burnup."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'velocity' && (
-          <>
-            {velocityQuery.isLoading ? (
-              <LoadingPage />
-            ) : velocityQuery.data ? (
-              <VelocityChart data={velocityQuery.data} />
-            ) : (
-              <EmptyState
-                title="No velocity data"
-                description="Complete sprints to track velocity."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'created-vs-resolved' && (
-          <>
-            {createdVsResolvedQuery.isLoading ? (
-              <LoadingPage />
-            ) : createdVsResolvedQuery.data ? (
-              <CreatedVsResolvedChart data={createdVsResolvedQuery.data} />
-            ) : (
-              <EmptyState
-                title="No data"
-                description="Create and resolve issues to see the chart."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'cumulative-flow' && (
-          <>
-            {cfdQuery.isLoading ? (
-              <LoadingPage />
-            ) : cfdQuery.data ? (
-              <CumulativeFlowChart data={cfdQuery.data} />
-            ) : (
-              <EmptyState
-                title="No flow data"
-                description="Create issues to see cumulative flow."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'breakdown' && (
-          <>
-            {breakdownQuery.isLoading ? (
-              <LoadingPage />
-            ) : breakdownQuery.data ? (
-              <IssueBreakdownCharts data={breakdownQuery.data} />
-            ) : (
-              <EmptyState
-                title="No breakdown data"
-                description="Create issues to see breakdowns."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'workload' && (
-          <>
-            {workloadQuery.isLoading ? (
-              <LoadingPage />
-            ) : workloadQuery.data ? (
-              <WorkloadChart data={workloadQuery.data} />
-            ) : (
-              <EmptyState
-                title="No workload data"
-                description="Assign issues to team members to see workload."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'cycle-time' && (
-          <>
-            {cycleTimeQuery.isLoading ? (
-              <LoadingPage />
-            ) : cycleTimeQuery.data ? (
-              <CycleTimeChart data={cycleTimeQuery.data} />
-            ) : (
-              <EmptyState
-                title="No cycle time data"
-                description="Complete issues to track cycle time."
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'sprint-report' && (
-          <>
-            {!activeSprint ? (
-              <EmptyState
-                title="No sprint selected"
-                description="Select a sprint to view the report."
-              />
-            ) : sprintReportQuery.isLoading ? (
-              <LoadingPage />
-            ) : sprintReportQuery.data ? (
-              <SprintReport data={sprintReportQuery.data} />
-            ) : (
-              <EmptyState
-                title="No sprint data"
-                description="Select a sprint to view its report."
-              />
-            )}
-          </>
-        )}
-      </TabContent>
     </div>
   )
 }
