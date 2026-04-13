@@ -20,6 +20,10 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
+function isSyntheticEmail(email: string) {
+  return email.endsWith('@migrated.jira.local')
+}
+
 interface UserSelectProps {
   value: string | null
   onChange: (userId: string | null) => void
@@ -55,8 +59,6 @@ export function UserSelect({
   const { data: aiSuggestions = [] } = useAiAssignees(projectId, issueType)
   const selectedUser = users.find((u) => u.id === value) ?? null
 
-  const isSyntheticEmail = (email: string) => email.endsWith('@migrated.jira.local')
-
   const handleSelect = (userId: string | null) => {
     onChange(userId)
     setOpen(false)
@@ -80,8 +82,8 @@ export function UserSelect({
             <>
               <Avatar user={selectedUser} size="xs" />
               <span className="flex-1 text-foreground truncate">{selectedUser.displayName}</span>
-              <span
-                role="button"
+              <button
+                type="button"
                 aria-label="Clear selection"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -90,7 +92,7 @@ export function UserSelect({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
-              </span>
+              </button>
             </>
           ) : (
             <>
@@ -109,9 +111,7 @@ export function UserSelect({
             {/* AI Suggested Assignees */}
             {aiStatus?.enabled && aiSuggestions.length > 0 && (
               <>
-                <CommandGroup
-                  heading={undefined}
-                >
+                <CommandGroup>
                   <div className="flex items-center gap-1.5 px-2 py-1.5">
                     <Sparkles className="h-3 w-3 text-purple-500" />
                     <span className="text-xs font-medium text-purple-500">AI Suggested</span>
