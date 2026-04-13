@@ -121,13 +121,13 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
       {/* Empty state */}
       {(!rules || rules.length === 0) && (
         <div className="flex flex-col items-center justify-center py-16">
-          <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-            <Zap className="h-6 w-6 text-blue-600" />
+          <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+            <Zap className="h-6 w-6 text-primary" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          <h2 className="text-lg font-semibold text-foreground mb-2">
             No automation rules yet
           </h2>
-          <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
             Create automation rules to automatically perform actions when issues are created,
             updated, or when other events occur.
           </p>
@@ -145,7 +145,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
             <div
               key={rule.id}
               className={cn(
-                'bg-white rounded-xl border border-gray-200 p-4 transition-colors',
+                'bg-card rounded-xl border border-border p-4 transition-colors',
                 !rule.isActive && 'opacity-60',
               )}
             >
@@ -155,10 +155,10 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                     <Zap
                       className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        rule.isActive ? 'text-blue-600' : 'text-gray-400',
+                        rule.isActive ? 'text-primary' : 'text-gray-400',
                       )}
                     />
-                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                    <h3 className="text-sm font-semibold text-foreground truncate">
                       {rule.name}
                     </h3>
                     <span
@@ -166,16 +166,16 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                         'text-xs px-2 py-0.5 rounded-full font-medium',
                         rule.isActive
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500',
+                          : 'bg-muted text-muted-foreground',
                       )}
                     >
                       {rule.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   {rule.description && (
-                    <p className="text-sm text-gray-500 mb-2">{rule.description}</p>
+                    <p className="text-sm text-muted-foreground mb-2">{rule.description}</p>
                   )}
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>Trigger: {getTriggerLabel(rule.triggerType)}</span>
                     <span>{rule.conditions?.length || 0} condition(s)</span>
                     <span>{rule.actions?.length || 0} action(s)</span>
@@ -198,7 +198,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                     {rule.isActive ? (
                       <ToggleRight className="h-4 w-4 text-green-600" />
                     ) : (
-                      <ToggleLeft className="h-4 w-4 text-gray-400" />
+                      <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
                   <Button
@@ -233,7 +233,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="text-gray-400 hover:text-red-600"
+                    className="text-muted-foreground hover:text-red-600"
                     title="Delete rule"
                     onClick={() => setShowDeleteConfirm(rule.id)}
                   >
@@ -244,8 +244,8 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
 
               {/* Inline execution logs */}
               {showLogs === rule.id && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="text-sm font-medium text-foreground mb-2">
                     Execution History
                   </h4>
                   <ExecutionLog ruleId={rule.id} />
@@ -279,15 +279,15 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
               onChange={(e) => setRuleDescription(e.target.value)}
             />
 
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-border pt-4">
               <TriggerSelect value={triggerType} onChange={setTriggerType} />
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-border pt-4">
               <ConditionBuilder conditions={conditions} onChange={setConditions} />
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-border pt-4">
               <ActionBuilder actions={actions} onChange={setActions} />
             </div>
           </div>
@@ -335,7 +335,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
             <DialogTitle>Test Automation Rule</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Enter an issue ID to dry-run this rule. No changes will be made.
             </p>
             <Input
@@ -346,9 +346,9 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
             />
 
             {testRule.data && (
-              <div className="space-y-3 bg-gray-50 rounded-lg p-3">
+              <div className="space-y-3 bg-muted rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">Conditions:</span>
+                  <span className="text-sm font-medium text-foreground">Conditions:</span>
                   <span
                     className={cn(
                       'text-xs px-2 py-0.5 rounded-full font-medium',
@@ -369,10 +369,10 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                         cr.passed ? 'bg-green-500' : 'bg-red-500',
                       )}
                     />
-                    <span className="text-gray-600">
+                    <span className="text-muted-foreground">
                       {cr.field} {cr.operator} {JSON.stringify(cr.expected)}
                     </span>
-                    <span className="text-gray-500">
+                    <span className="text-muted-foreground">
                       (actual: {JSON.stringify(cr.actual)})
                     </span>
                   </div>
@@ -380,11 +380,11 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
 
                 {testRule.data.conditionsMet && testRule.data.actionsToExecute.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                       Actions that would execute:
                     </p>
                     {testRule.data.actionsToExecute.map((action: any, i: number) => (
-                      <div key={i} className="text-xs text-gray-600">
+                      <div key={i} className="text-xs text-muted-foreground">
                         {action.type}: {JSON.stringify(action.config)}
                       </div>
                     ))}

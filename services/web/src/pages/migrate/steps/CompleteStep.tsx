@@ -71,7 +71,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
             <CheckCircle2 className="h-8 w-8 text-green-500" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migration Complete</h2>
+        <h2 className="text-2xl font-bold text-foreground">Migration Complete</h2>
         <p className="mt-2 text-muted-foreground">
           Your Jira data has been successfully imported into Boardupscale.
         </p>
@@ -99,7 +99,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
           ].map((stat) => (
             <Card key={stat.label}>
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {stat.value.toLocaleString()}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
@@ -118,17 +118,17 @@ export function CompleteStep({ runId }: CompleteStepProps) {
               className="w-full flex items-center justify-between p-4 text-left"
               aria-expanded={projectsExpanded}
             >
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+              <span className="text-sm font-semibold text-foreground">
                 Project Breakdown
               </span>
               {projectsExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-400" />
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
             {projectsExpanded && (
-              <div className="border-t border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+              <div className="border-t border-border divide-y divide-border">
                 {projectBreakdown.map((proj) => (
                   <div key={proj.key} className="px-4 py-3 flex items-center gap-3">
                     <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground w-16 text-center flex-shrink-0">
@@ -184,7 +184,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
             {failedExpanded && (
               <div className="border-t border-amber-200 dark:border-amber-800 p-4 max-h-60 overflow-y-auto">
                 {failedItems.length > 0 ? (
-                  <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
                     {failedItems.map((item, i) => (
                       <li key={i} className="font-mono">
                         {item.key || item.type}: {item.reason}
@@ -192,7 +192,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Download the full report for detailed error information.
                   </p>
                 )}

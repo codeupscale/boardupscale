@@ -42,7 +42,7 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
   return (
     <div className="flex items-start justify-between gap-4 py-3">
       <div className="flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
         {description && (
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
@@ -52,8 +52,8 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-          checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700',
+          'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2',
+          checked ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700',
         )}
       >
         <span
@@ -89,7 +89,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold text-foreground">
           Configure Migration
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -100,7 +100,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Status Mapping */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Status Mapping
           </h3>
           <div className="space-y-2">
@@ -115,7 +115,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                   onChange={(e) =>
                     setStatusMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
                   }
-                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`Map ${row.jira} to`}
                 >
                   {BOARDUPSCALE_STATUSES.map((s) => (
@@ -133,10 +133,10 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Import Options */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+          <h3 className="text-sm font-semibold text-foreground mb-1">
             Import Options
           </h3>
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-border">
             <Toggle
               checked={importComments}
               onChange={setImportComments}
@@ -162,7 +162,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Role Mapping */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Role Mapping
           </h3>
           <div className="space-y-2">
@@ -177,7 +177,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                   onChange={(e) =>
                     setRoleMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
                   }
-                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`Map ${row.jira} role to`}
                 >
                   {BOARDUPSCALE_ROLES.map((r) => (

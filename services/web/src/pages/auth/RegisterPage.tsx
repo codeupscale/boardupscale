@@ -70,20 +70,20 @@ export function RegisterPage() {
             <div className="flex items-center justify-center h-16 w-16 bg-green-100 rounded-full mx-auto mb-5">
               <CheckCircle2 className="h-9 w-9 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Account created!</h2>
-            <p className="text-sm text-gray-600 mb-5">
+            <h2 className="text-xl font-bold text-foreground mb-2">Account created!</h2>
+            <p className="text-sm text-muted-foreground mb-5">
               We've sent a verification email to
             </p>
-            <div className="flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-5">
-              <Mail className="h-4 w-4 text-blue-500 shrink-0" />
-              <span className="text-sm font-medium text-blue-700 break-all">{registeredEmail}</span>
+            <div className="flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-4 py-2.5 mb-5">
+              <Mail className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm font-medium text-primary break-all">{registeredEmail}</span>
             </div>
-            <p className="text-xs text-gray-500 mb-6">
+            <p className="text-xs text-muted-foreground mb-6">
               Click the link in the email to activate your account. Check your spam folder if you don't see it.
             </p>
             <Link
               to="/login"
-              className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors text-center"
+              className="block w-full bg-primary hover:bg-primary/90 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors text-center"
             >
               Go to Login
             </Link>
@@ -100,7 +100,7 @@ export function RegisterPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <Logo size="lg" className="mb-1" />
-          <p className="text-sm text-gray-500 mt-2">{t('auth.registerSubtitle')}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t('auth.registerSubtitle')}</p>
         </div>
 
         {/* Card */}
@@ -154,7 +154,7 @@ export function RegisterPage() {
               {/* Divider */}
               <div className="relative mb-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
@@ -199,7 +199,7 @@ export function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -218,7 +218,7 @@ export function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -246,9 +246,9 @@ export function RegisterPage() {
         </div>
 
         {/* Login link */}
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           {t('auth.hasAccount')}{' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/login" className="text-primary hover:text-primary font-medium">
             {t('auth.signIn')}
           </Link>
         </p>

@@ -48,9 +48,9 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'flex items-center justify-center h-8 w-8 rounded-full text-sm font-semibold transition-colors',
                     isCompleted
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-primary text-white'
                       : isActive
-                        ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40'
+                        ? 'bg-primary text-white ring-4 ring-blue-100 dark:ring-blue-900/40'
                         : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground',
                   )}
                 >
@@ -64,7 +64,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'text-sm font-medium hidden sm:inline',
                     isActive
-                      ? 'text-blue-700 dark:text-blue-300'
+                      ? 'text-primary'
                       : isCompleted
                         ? 'text-foreground'
                         : 'text-muted-foreground',
@@ -164,8 +164,8 @@ function UploadStep({
         className={cn(
           'relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors',
           isDragOver
-            ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-border hover:border-blue-400 hover:bg-accent/50',
+            ? 'border-primary bg-primary/10'
+            : 'border-border hover:border-primary hover:bg-accent/50',
           isLoading && 'pointer-events-none opacity-60',
         )}
       >
@@ -179,15 +179,15 @@ function UploadStep({
 
         {isLoading ? (
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
+            <Loader2 className="h-12 w-12 text-primary animate-spin" />
             <p className="text-sm font-medium text-foreground">
               Uploading {selectedFile?.name}...
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div className="h-16 w-16 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <FileJson className="h-8 w-8 text-blue-500" />
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <FileJson className="h-8 w-8 text-primary" />
             </div>
             <div>
               <p className="text-base font-medium text-foreground">
@@ -195,7 +195,7 @@ function UploadStep({
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 or{' '}
-                <span className="text-blue-600 dark:text-blue-400 underline underline-offset-2">
+                <span className="text-primary underline underline-offset-2">
                   click to browse
                 </span>
               </p>
@@ -251,8 +251,8 @@ function PreviewStep({
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="flex items-center gap-3 py-4">
-            <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <FolderOpen className="h-5 w-5 text-blue-500" />
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FolderOpen className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-lg font-bold text-foreground">
@@ -291,7 +291,7 @@ function PreviewStep({
             <Card key={proj.key}>
               <CardContent className="py-3">
                 <div className="flex items-center gap-3">
-                  <span className="h-8 w-8 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                  <span className="h-8 w-8 rounded bg-primary/15 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
                     {proj.key.slice(0, 2)}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -373,7 +373,7 @@ function UserMappingRow({
   return (
     <tr
       className={cn(
-        'border-b border-gray-100 dark:border-gray-800 last:border-0',
+        'border-b border-border last:border-0',
         !jiraUser.matched && !selectedUserId && 'bg-yellow-50/50 dark:bg-yellow-900/10',
       )}
     >
@@ -396,7 +396,7 @@ function UserMappingRow({
             className={cn(
               'w-full text-sm rounded-md border px-2 py-1.5 bg-card',
               'border-border text-foreground',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary',
               !jiraUser.matched && !selectedUserId && 'border-yellow-400 dark:border-yellow-600',
             )}
           >
@@ -468,13 +468,13 @@ function ImportStep({
                 ? 'bg-red-500'
                 : status?.status === 'completed'
                   ? 'bg-green-500'
-                  : 'bg-blue-500',
+                  : 'bg-primary',
             )}
             style={{ width: `${percentage}%` }}
           />
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 dark:text-gray-400">
+          <span className="text-muted-foreground">
             {status?.processed ?? 0} of {status?.total ?? 0} issues imported
           </span>
           <span className="font-medium text-foreground">
@@ -486,7 +486,7 @@ function ImportStep({
       {/* Status indicator */}
       <div className="flex justify-center">
         {status?.status === 'processing' || status?.status === 'pending' ? (
-          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
         ) : status?.status === 'completed' ? (
           <CheckCircle className="h-8 w-8 text-green-500" />
         ) : status?.status === 'failed' ? (

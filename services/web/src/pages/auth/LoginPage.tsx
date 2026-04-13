@@ -131,11 +131,11 @@ export function LoginPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+            <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
               <ShieldCheck className="h-7 w-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Two-Factor Authentication</h1>
-            <p className="text-sm text-gray-500 mt-1">Enter the code from your authenticator app</p>
+            <p className="text-sm text-muted-foreground mt-1">Enter the code from your authenticator app</p>
           </div>
           <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
             <div className="space-y-4">
@@ -164,7 +164,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setTwoFactorState(null); setTwoFactorCode('') }}
-                className="w-full text-sm text-gray-500 hover:text-gray-700 mt-2"
+                className="w-full text-sm text-muted-foreground hover:text-foreground mt-2"
               >
                 Back to login
               </button>
@@ -182,7 +182,7 @@ export function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <Logo size="lg" className="mb-1" />
-          <p className="text-sm text-gray-500 mt-2">{t('auth.loginSubtitle')}</p>
+          <p className="text-sm text-muted-foreground mt-2">{t('auth.loginSubtitle')}</p>
         </div>
 
         {/* Card */}
@@ -236,7 +236,7 @@ export function LoginPage() {
               {/* Divider */}
               <div className="relative mb-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs">
                   <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
@@ -268,7 +268,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -277,7 +277,7 @@ export function LoginPage() {
               <div className="mt-1 text-right">
                 <Link
                   to="/forgot-password"
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-xs text-primary hover:text-primary font-medium"
                 >
                   Forgot password?
                 </Link>
@@ -294,14 +294,14 @@ export function LoginPage() {
 
             {/* Email verification notice */}
             {showVerificationNotice && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg px-4 py-3">
                 <div className="flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm text-blue-700 font-medium">
+                    <p className="text-sm text-primary font-medium">
                       Email not verified
                     </p>
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="text-sm text-primary mt-1">
                       Please check your inbox for a verification email.
                       {!verificationSent ? (
                         <button
@@ -352,7 +352,7 @@ export function LoginPage() {
           {/* SSO Divider */}
           <div className="relative mt-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs">
               <span className="bg-card px-2 text-muted-foreground">or</span>
@@ -406,9 +406,9 @@ export function LoginPage() {
         </div>
 
         {/* Register link */}
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           {t('auth.noAccount')}{' '}
-          <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/register" className="text-primary hover:text-primary font-medium">
             {t('auth.createOne')}
           </Link>
         </p>

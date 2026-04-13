@@ -220,7 +220,7 @@ export function RoleManagementPage() {
                     'bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow',
                     isSystem
                       ? 'border-l-4 border-l-purple-400 dark:border-l-purple-500'
-                      : 'border-l-4 border-l-blue-400 dark:border-l-blue-500',
+                      : 'border-l-4 border-l-primary',
                   )}
                 >
                   {/* Role header row */}
@@ -235,7 +235,7 @@ export function RoleManagementPage() {
                           'h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0',
                           isSystem
                             ? 'bg-purple-50 dark:bg-purple-900/20'
-                            : 'bg-blue-50 dark:bg-blue-900/20',
+                            : 'bg-primary/10',
                         )}
                       >
                         <Shield
@@ -243,14 +243,14 @@ export function RoleManagementPage() {
                             'h-4.5 w-4.5',
                             isSystem
                               ? 'text-purple-500 dark:text-purple-400'
-                              : 'text-blue-500 dark:text-blue-400',
+                              : 'text-primary dark:text-primary',
                           )}
                           style={{ width: '1.125rem', height: '1.125rem' }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <span className="text-sm font-semibold text-foreground">
                             {role.name}
                           </span>
                           {role.isSystem && (
@@ -283,7 +283,7 @@ export function RoleManagementPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                           onClick={() => setDeleteTarget(role)}
                           aria-label={`Delete ${role.name} role`}
                         >
@@ -295,7 +295,7 @@ export function RoleManagementPage() {
 
                   {/* Expanded permissions grid */}
                   {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-muted/50">
+                    <div className="border-t border-border px-5 py-4 bg-muted/50">
                       <PermissionsGrid
                         permissionGroups={permissionGroups}
                         allActions={allActions}
@@ -340,7 +340,7 @@ export function RoleManagementPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+              <h3 className="text-sm font-medium text-foreground mb-3">
                 Permissions
               </h3>
               <PermissionsGrid
@@ -433,7 +433,7 @@ function PermissionsGrid({
           {permissionGroups.map(([resource, perms]) => {
             const allSelected = perms.every((p) => selectedIds.has(p.id))
             return (
-              <tr key={resource} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
+              <tr key={resource} className="border-b border-border last:border-0">
                 <td className="py-2.5 pr-4 font-medium text-foreground">
                   {capitalize(resource)}
                 </td>
@@ -455,7 +455,7 @@ function PermissionsGrid({
                         disabled={readOnly}
                         onChange={() => onToggle?.(permId)}
                         className={cn(
-                          'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500',
+                          'h-4 w-4 rounded border-border text-primary focus:ring-ring',
                           readOnly && 'cursor-default opacity-70',
                         )}
                       />
@@ -468,7 +468,7 @@ function PermissionsGrid({
                       type="checkbox"
                       checked={allSelected}
                       onChange={() => onToggleResource?.(perms)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                     />
                   </td>
                 )}

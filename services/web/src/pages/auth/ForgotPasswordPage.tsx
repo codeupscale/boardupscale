@@ -48,11 +48,11 @@ export function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+          <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">Reset your password</p>
+          <p className="text-sm text-muted-foreground mt-1">Reset your password</p>
         </div>
 
         {/* Card */}
@@ -65,13 +65,13 @@ export function ForgotPasswordPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">
                 Check your email
               </h2>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 If an account with that email exists, we sent a password reset
                 link. The link will expire in 1 hour.
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary font-medium"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to login
@@ -79,7 +79,7 @@ export function ForgotPasswordPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm text-gray-600 mb-5">
+              <p className="text-sm text-muted-foreground mb-5">
                 Enter the email address associated with your account and we will
                 send you a link to reset your password.
               </p>
@@ -115,10 +115,10 @@ export function ForgotPasswordPage() {
 
         {/* Back to login */}
         {!isSuccess && (
-          <p className="text-center text-sm text-gray-500 mt-4">
+          <p className="text-center text-sm text-muted-foreground mt-4">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-flex items-center gap-1 text-primary hover:text-primary font-medium"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to login

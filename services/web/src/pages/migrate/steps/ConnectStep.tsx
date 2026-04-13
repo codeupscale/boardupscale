@@ -95,7 +95,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold text-foreground">
           Connect to Jira
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -156,7 +156,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
           <button
             type="button"
             onClick={() => setManualOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors w-full"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-gray-200 transition-colors w-full"
             aria-expanded={manualOpen}
           >
             {manualOpen ? (
@@ -209,7 +209,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
                     href="https://id.atlassian.com/manage-profile/security/api-tokens"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
                   >
                     How to get an API token <ExternalLink className="h-3 w-3" />
                   </a>
@@ -226,7 +226,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
                   <button
                     type="button"
                     onClick={() => setShowToken((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     aria-label={showToken ? 'Hide token' : 'Show token'}
                   >
                     {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -290,20 +290,20 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
                   {result.orgName && (
                     <div>
                       <p className="text-muted-foreground text-xs">Organisation</p>
-                      <p className="font-medium text-gray-900 dark:text-white capitalize">
+                      <p className="font-medium text-foreground capitalize">
                         {result.orgName}
                       </p>
                     </div>
                   )}
                   <div>
                     <p className="text-muted-foreground text-xs">Projects</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="font-medium text-foreground">
                       {result.projectCount}
                     </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs">Members</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="font-medium text-foreground">
                       {result.memberCount}
                     </p>
                   </div>

@@ -62,19 +62,19 @@ export function VerifyEmailPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+          <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">Email Verification</p>
+          <p className="text-sm text-muted-foreground mt-1">Email Verification</p>
         </div>
 
         {/* Card */}
         <div className="bg-card rounded-2xl shadow-sm border border-border p-6 text-center">
           {status === 'loading' && (
             <div className="py-8">
-              <Spinner className="h-8 w-8 mx-auto mb-4 text-blue-600" />
-              <p className="text-sm text-gray-600">
+              <Spinner className="h-8 w-8 mx-auto mb-4 text-primary" />
+              <p className="text-sm text-muted-foreground">
                 Verifying your email address...
               </p>
             </div>
@@ -88,16 +88,16 @@ export function VerifyEmailPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">
                 Email verified
               </h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Your email address has been verified successfully. You can now
                 use all features of Boardupscale.
               </p>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 Redirecting to login in {countdown} second{countdown !== 1 ? 's' : ''}...
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Go to login
               </Link>
@@ -112,10 +112,10 @@ export function VerifyEmailPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">
                 Verification failed
               </h2>
-              <p className="text-sm text-gray-600 mb-6">{errorMessage}</p>
+              <p className="text-sm text-muted-foreground mb-6">{errorMessage}</p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Go to login
               </Link>

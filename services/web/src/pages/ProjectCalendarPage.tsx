@@ -57,15 +57,15 @@ function heatLevel(count: number): HeatLevel {
 
 const HEAT_BG: Record<HeatLevel, string> = {
   0: '',
-  1: 'bg-blue-100 dark:bg-blue-900/40',
+  1: 'bg-primary/15',
   2: 'bg-blue-300 dark:bg-blue-700',
-  3: 'bg-blue-500 dark:bg-blue-600',
-  4: 'bg-blue-700 dark:bg-blue-500',
+  3: 'bg-primary dark:bg-primary',
+  4: 'bg-blue-700 dark:bg-primary',
 }
 
 const HEAT_TEXT: Record<HeatLevel, string> = {
   0: 'text-muted-foreground',
-  1: 'text-blue-700 dark:text-blue-300',
+  1: 'text-primary',
   2: 'text-blue-900 dark:text-white',
   3: 'text-white',
   4: 'text-white',
@@ -75,8 +75,8 @@ const HEAT_TEXT: Record<HeatLevel, string> = {
 const PRIORITY_ICON: Record<string, React.ReactNode> = {
   critical: <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />,
   high: <ArrowUp className="h-3.5 w-3.5 text-orange-500 shrink-0" />,
-  medium: <ArrowRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />,
-  low: <ArrowDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />,
+  medium: <ArrowRight className="h-3.5 w-3.5 text-primary shrink-0" />,
+  low: <ArrowDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
 }
 
 const PRIORITY_LABEL: Record<string, string> = {
@@ -96,8 +96,8 @@ type PriorityFilter = (typeof PRIORITY_OPTIONS)[number]
 const CHIP_COLOR: Record<string, string> = {
   critical: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
   high:     'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
-  medium:   'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
-  low:      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  medium:   'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary',
+  low:      'bg-muted text-gray-600 dark:bg-gray-700 dark:text-gray-300',
 }
 
 function IssueChip({ issue, projectKey }: { issue: Issue; projectKey: string }) {
@@ -123,18 +123,18 @@ function IssuePanelCard({ issue, projectKey }: { issue: Issue; projectKey: strin
   return (
     <button
       onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
-      className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-sm transition-all group"
+      className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-primary dark:hover:border-primary hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-2">
-        <span className="mt-0.5">{PRIORITY_ICON[issue.priority] ?? <Minus className="h-3.5 w-3.5 text-gray-400 shrink-0" />}</span>
+        <span className="mt-0.5">{PRIORITY_ICON[issue.priority] ?? <Minus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}</span>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-muted-foreground mb-0.5">{issue.key}</p>
-          <p className="text-sm text-gray-800 dark:text-gray-200 font-medium leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+          <p className="text-sm text-foreground font-medium leading-snug line-clamp-2 group-hover:text-primary dark:group-hover:text-primary">
             {issue.title}
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {issue.status && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-foreground font-medium">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted dark:bg-gray-700 text-foreground font-medium">
                 {issue.status.name}
               </span>
             )}
@@ -315,7 +315,7 @@ export function ProjectCalendarPage() {
         {/* Calendar area */}
         <div className="flex-1 overflow-auto p-4 bg-card">
           {issuesLoading ? (
-            <div className="flex items-center justify-center h-40 text-gray-400">Loading issues…</div>
+            <div className="flex items-center justify-center h-40 text-muted-foreground">Loading issues…</div>
           ) : (
             <>
               <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-border">
@@ -351,7 +351,7 @@ export function ProjectCalendarPage() {
                       className={cn(
                         'relative min-h-[100px] p-1.5 flex flex-col gap-1 transition-all cursor-pointer',
                         HEAT_BG[level] || 'bg-card',
-                        isSelected && 'ring-2 ring-inset ring-blue-500 z-10',
+                        isSelected && 'ring-2 ring-inset ring-ring z-10',
                         !isSelected && count > 0 && 'hover:brightness-95 dark:hover:brightness-110',
                         !isSelected && count === 0 && 'hover:bg-gray-50 dark:hover:bg-gray-750',
                       )}
@@ -361,7 +361,7 @@ export function ProjectCalendarPage() {
                         className={cn(
                           'text-xs font-semibold self-end leading-none mb-0.5',
                           isToday(day)
-                            ? 'bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[11px]'
+                            ? 'bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[11px]'
                             : count > 0 ? HEAT_TEXT[level] : 'text-muted-foreground',
                         )}
                       >
@@ -389,10 +389,10 @@ export function ProjectCalendarPage() {
                 <div className="flex items-center gap-1.5">
                   {[
                     { label: '0', bg: 'bg-gray-200 dark:bg-gray-700' },
-                    { label: '1', bg: 'bg-blue-100 dark:bg-blue-900/40' },
+                    { label: '1', bg: 'bg-primary/15' },
                     { label: '2–3', bg: 'bg-blue-300 dark:bg-blue-700' },
-                    { label: '4–6', bg: 'bg-blue-500 dark:bg-blue-600' },
-                    { label: '7+', bg: 'bg-blue-700 dark:bg-blue-500' },
+                    { label: '4–6', bg: 'bg-primary dark:bg-primary' },
+                    { label: '7+', bg: 'bg-blue-700 dark:bg-primary' },
                   ].map(({ label, bg }) => (
                     <div key={label} className="flex items-center gap-1">
                       <span className={cn('w-4 h-4 rounded', bg)} />
@@ -422,7 +422,7 @@ export function ProjectCalendarPage() {
               </div>
               <button
                 onClick={() => setSelectedDay(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="text-gray-400 hover:text-foreground dark:hover:text-foreground transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>

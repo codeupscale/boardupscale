@@ -109,7 +109,7 @@ function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
         <span key={ancestor.id} className="flex items-center gap-1.5">
           <Link
             to={`/issues/${ancestor.id}`}
-            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary dark:hover:text-primary transition-colors"
           >
             <IssueTypeIcon type={ancestor.type} className="h-3.5 w-3.5" />
             <span className="font-mono text-xs font-medium">{ancestor.key}</span>
@@ -188,7 +188,7 @@ function CommentItem({
         {currentUserId === comment.authorId && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
+              className="text-xs text-muted-foreground hover:text-primary dark:hover:text-primary font-medium transition-colors"
               onClick={() => {
                 setEditContent(comment.content)
                 setEditing(true)
@@ -197,7 +197,7 @@ function CommentItem({
               {t('common.edit')}
             </button>
             <button
-              className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 font-medium transition-colors"
+              className="text-xs text-muted-foreground hover:text-red-500 dark:hover:text-red-400 font-medium transition-colors"
               onClick={() => setShowDelete(true)}
             >
               {t('common.delete')}
@@ -360,7 +360,7 @@ export function IssueDetailPage() {
   const issueLabels = issue?.labels || []
 
   if (isLoading) return <LoadingPage />
-  if (!issue) return <div className="p-6 text-gray-500">{t('issues.issueNotFound')}</div>
+  if (!issue) return <div className="p-6 text-muted-foreground">{t('issues.issueNotFound')}</div>
 
   const handleAddLabel = () => {
     const trimmed = labelInput.trim()
@@ -379,13 +379,13 @@ export function IssueDetailPage() {
 
   // Select style shared across sidebar
   const selectClasses =
-    'w-full rounded-lg border border-border/60 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors'
+    'w-full rounded-lg border border-border/60 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors'
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-card flex items-center gap-2 text-sm flex-wrap">
-        <Link to="/projects" className="text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+      <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap">
+        <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">
           {t('nav.projects')}
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
@@ -393,7 +393,7 @@ export function IssueDetailPage() {
           <>
             <Link
               to={`/projects/${issue.projectId}/board`}
-              className="text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
             >
               {t('nav.board')}
             </Link>
@@ -406,7 +406,7 @@ export function IssueDetailPage() {
 
         <span className="inline-flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5" />
-          <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold">{issue.key}</span>
+          <span className="font-mono text-primary font-semibold">{issue.key}</span>
         </span>
       </div>
 
@@ -419,7 +419,7 @@ export function IssueDetailPage() {
           <div>
             <div className="flex items-center gap-2.5 mb-3">
               <IssueTypeIcon type={issue.type} className="h-5 w-5" />
-              <span className="text-sm font-mono text-blue-600 dark:text-blue-400 font-semibold">{issue.key}</span>
+              <span className="text-sm font-mono text-primary font-semibold">{issue.key}</span>
               {issue.status && <StatusBadge status={issue.status} />}
               <PriorityBadge priority={issue.priority as IssuePriority} />
             </div>
@@ -429,7 +429,7 @@ export function IssueDetailPage() {
                   autoFocus
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
-                  className="flex-1 text-2xl font-bold text-foreground bg-card border border-blue-300 dark:border-blue-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+                  className="flex-1 text-2xl font-bold text-foreground bg-card border border-primary/50 dark:border-primary rounded-xl px-4 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 transition-shadow"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       updateIssue.mutate({ id: issue.id, title: titleValue })
@@ -454,7 +454,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <h1
-                className="text-2xl font-bold text-foreground cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors leading-tight"
+                className="text-2xl font-bold text-foreground cursor-pointer hover:text-primary dark:hover:text-primary transition-colors leading-tight"
                 onClick={() => {
                   setTitleValue(issue.title)
                   setEditingTitle(true)
@@ -551,7 +551,7 @@ export function IssueDetailPage() {
                 }
               />
               {childIssues.length > 0 ? (
-                <div className="rounded-xl border border-border/60 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
+                <div className="rounded-xl border border-border/60 divide-y divide-border overflow-hidden">
                   {childIssues.map((child) => (
                     <Link
                       key={child.id}
@@ -559,7 +559,7 @@ export function IssueDetailPage() {
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors"
                     >
                       <IssueTypeIcon type={child.type} />
-                      <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium">{child.key}</span>
+                      <span className="text-xs font-mono text-primary font-medium">{child.key}</span>
                       <span className="text-sm text-foreground truncate flex-1">{child.title}</span>
                       <StatusBadge status={child.status} />
                     </Link>
@@ -593,7 +593,7 @@ export function IssueDetailPage() {
                     className={cn(
                       'relative px-5 py-3.5 text-sm font-medium transition-colors',
                       isActive
-                        ? 'text-blue-600 dark:text-blue-400'
+                        ? 'text-primary'
                         : 'text-muted-foreground hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
@@ -602,21 +602,21 @@ export function IssueDetailPage() {
                       <span className={cn(
                         'ml-1.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5',
                         isActive
-                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                          ? 'bg-primary/15 text-primary'
                           : 'bg-muted text-muted-foreground',
                       )}>
                         {count}
                       </span>
                     )}
                     {isActive && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400 rounded-t-full" />
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary dark:bg-primary rounded-t-full" />
                     )}
                   </button>
                 )
               })}
               <div className="flex-1" />
               <div className="pr-3">
-                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-muted-foreground hover:text-gray-700">
+                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-muted-foreground hover:text-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   Log work
                 </Button>
@@ -626,7 +626,7 @@ export function IssueDetailPage() {
             <div className="p-5">
               {/* Add Comment input — shown on Comments and All tabs */}
               {(activityTab === 'comments' || activityTab === 'all') && (
-                <div className="flex gap-3 mb-6 pb-5 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex gap-3 mb-6 pb-5 border-b border-border">
                   <Avatar user={currentUser || undefined} size="sm" />
                   <div className="flex-1 space-y-2">
                     <RichTextEditor
@@ -679,7 +679,7 @@ export function IssueDetailPage() {
 
               {/* --- Work Logs (only in All tab) --- */}
               {activityTab === 'all' && workLogs && workLogs.length > 0 && (
-                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800">
+                <div className="mt-6 pt-5 border-t border-border">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
                       <Clock className="h-3 w-3 text-teal-600 dark:text-teal-400" />
@@ -707,7 +707,7 @@ export function IssueDetailPage() {
 
               {/* --- History / Activity changelog --- */}
               {(activityTab === 'history' || activityTab === 'all') && (
-                <div className={cn(activityTab === 'all' ? 'mt-6 pt-5 border-t border-gray-100 dark:border-gray-800' : '')}>
+                <div className={cn(activityTab === 'all' ? 'mt-6 pt-5 border-t border-border' : '')}>
                   <ActivityList issueId={issue.id} />
                 </div>
               )}
@@ -718,7 +718,7 @@ export function IssueDetailPage() {
         {/* ================================================================ */}
         {/*  Sidebar                                                          */}
         {/* ================================================================ */}
-        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 overflow-y-auto bg-card/50">
+        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto bg-card/50">
           <div className="p-5 space-y-5">
             {/* Status */}
             <SidebarField label={t('common.status')}>
@@ -816,7 +816,7 @@ export function IssueDetailPage() {
                   value={parentSearch}
                   onChange={(e) => setParentSearch(e.target.value)}
                   placeholder="Search by key or title…"
-                  className="w-full rounded-md border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors mb-1"
+                  className="w-full rounded-md border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors mb-1"
                 />
                 <select
                   className={selectClasses}
@@ -835,7 +835,7 @@ export function IssueDetailPage() {
               </SidebarField>
             )}
 
-            <div className="border-t border-gray-100 dark:border-gray-800" />
+            <div className="border-t border-border" />
 
             {/* Due Date */}
             <SidebarField label={t('issues.dueDate')}>
@@ -890,7 +890,7 @@ export function IssueDetailPage() {
               )}
             </SidebarField>
 
-            <div className="border-t border-gray-100 dark:border-gray-800" />
+            <div className="border-t border-border" />
 
             {/* Labels */}
             <SidebarField label={t('issues.labels')}>
@@ -898,13 +898,13 @@ export function IssueDetailPage() {
                 {issueLabels.map((l) => (
                   <span
                     key={l}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium"
                   >
                     {l}
                     <button
                       type="button"
                       onClick={() => handleRemoveLabel(l)}
-                      className="hover:text-blue-900 dark:hover:text-blue-100 transition-colors"
+                      className="hover:text-primary/80 dark:hover:text-primary transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -923,7 +923,7 @@ export function IssueDetailPage() {
                     }
                   }}
                   placeholder={t('issues.addLabel')}
-                  className="flex-1 rounded-lg border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors"
+                  className="flex-1 rounded-lg border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel} className="rounded-lg">
                   <Plus className="h-3 w-3" />
@@ -1121,7 +1121,7 @@ export function IssueDetailPage() {
 
             {/* Custom Fields */}
             {customFieldDefs && customFieldDefs.length > 0 && (
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+              <div className="pt-3 border-t border-border">
                 <CustomFieldsForm
                   definitions={customFieldDefs}
                   values={customFieldValues || []}
@@ -1135,13 +1135,13 @@ export function IssueDetailPage() {
               </div>
             )}
 
-            <div className="border-t border-gray-100 dark:border-gray-800" />
+            <div className="border-t border-border" />
 
             {/* Watchers */}
             <WatchButton issueId={issue.id} />
 
             {/* Metadata */}
-            <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-1.5">
+            <div className="pt-3 border-t border-border space-y-1.5">
               <p className="text-xs text-muted-foreground">
                 {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
               </p>

@@ -74,7 +74,7 @@ export function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+            <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
               <Zap className="h-7 w-7 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Boardupscale</h1>
@@ -86,7 +86,7 @@ export function ResetPasswordPage() {
             </p>
             <Link
               to="/forgot-password"
-              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary font-medium"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Request new link
@@ -102,11 +102,11 @@ export function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+          <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">Set your new password</p>
+          <p className="text-sm text-muted-foreground mt-1">Set your new password</p>
         </div>
 
         {/* Card */}
@@ -119,13 +119,13 @@ export function ResetPasswordPage() {
               <h2 className="text-lg font-semibold text-foreground mb-2">
                 Password reset successful
               </h2>
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Your password has been updated. You can now log in with your new
                 password.
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary font-medium"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Go to login
@@ -133,7 +133,7 @@ export function ResetPasswordPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm text-gray-600 mb-5">
+              <p className="text-sm text-muted-foreground mb-5">
                 Your new password must be at least 8 characters and contain
                 uppercase, lowercase, number, and special character.
               </p>

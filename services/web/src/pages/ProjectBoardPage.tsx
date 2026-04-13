@@ -412,11 +412,11 @@ export function ProjectBoardPage() {
       />
 
       {activeSprints.length > 0 && (
-        <div className="flex items-center justify-between px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-b border-blue-100 dark:border-blue-800/40">
-          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+        <div className="flex items-center justify-between px-6 py-2.5 bg-primary/5 border-b border-primary/20">
+          <p className="text-sm font-medium text-primary">
             {t('board.activeSprint', { name: activeSprints[0].name })}
             {activeSprints[0].endDate && (
-              <span className="text-blue-500 dark:text-blue-400 ml-2">
+              <span className="text-primary dark:text-primary ml-2">
                 {t('board.endsOn', { date: new Date(activeSprints[0].endDate).toLocaleDateString() })}
               </span>
             )}
@@ -482,7 +482,7 @@ export function ProjectBoardPage() {
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: column.color || '#6b7280' }}
                       />
-                      <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide truncate">
+                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide truncate">
                         {column.name}
                       </h3>
                       <span
@@ -492,7 +492,7 @@ export function ProjectBoardPage() {
                             ? 'text-red-700 bg-red-100'
                             : isAt
                               ? 'text-amber-700 bg-amber-100'
-                              : 'text-gray-400 bg-gray-100',
+                              : 'text-muted-foreground bg-muted',
                         )}
                       >
                         {wipLimit > 0 ? `${totalIssues}/${wipLimit}` : totalIssues}
@@ -515,7 +515,7 @@ export function ProjectBoardPage() {
                 />
               ))
             ) : (
-              <div className="flex items-center justify-center py-12 text-sm text-gray-500">
+              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
                 No issues match the current filters
               </div>
             )}
@@ -566,7 +566,7 @@ export function ProjectBoardPage() {
                   {/* Add Column Button */}
                   <button
                     onClick={() => setShowAddColumn(true)}
-                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-blue-400 dark:hover:border-blue-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all"
+                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-primary dark:hover:border-primary hover:text-primary dark:hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all"
                   >
                     <Plus className="h-6 w-6 mb-1" />
                     <span className="text-sm font-medium">Add Column</span>
@@ -636,7 +636,7 @@ export function ProjectBoardPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
             />
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Category</label>
               <Select value={newColumnCategory} onValueChange={setNewColumnCategory}>
                 <SelectTrigger>
                   <SelectValue />
@@ -649,7 +649,7 @@ export function ProjectBoardPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Color</label>
               <div className="flex gap-2">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -657,7 +657,7 @@ export function ProjectBoardPage() {
                     onClick={() => setNewColumnColor(color)}
                     className={cn(
                       'h-7 w-7 rounded-full border-2 transition-all',
-                      newColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                      newColumnColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105',
                     )}
                     style={{ backgroundColor: color }}
                   />
@@ -689,7 +689,7 @@ export function ProjectBoardPage() {
               onKeyDown={(e) => e.key === 'Enter' && handleSaveEditColumn()}
             />
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Category</label>
               <Select value={editColumnCategory} onValueChange={setEditColumnCategory}>
                 <SelectTrigger>
                   <SelectValue />
@@ -702,7 +702,7 @@ export function ProjectBoardPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Color</label>
               <div className="flex gap-2">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -710,7 +710,7 @@ export function ProjectBoardPage() {
                     onClick={() => setEditColumnColor(color)}
                     className={cn(
                       'h-7 w-7 rounded-full border-2 transition-all',
-                      editColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                      editColumnColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105',
                     )}
                     style={{ backgroundColor: color }}
                   />
@@ -765,7 +765,7 @@ export function ProjectBoardPage() {
                 ) || []
                 return (
                   <>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <div className="text-sm text-muted-foreground space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
                           <CheckCircle className="h-4 w-4" /> {doneCount} done

@@ -210,7 +210,7 @@ export function ProjectIssuesPage() {
         <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 shadow-sm">
           {/* Stats strip */}
           {total > 0 && (
-            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
+            <p className="text-sm font-bold text-foreground">
               {total} issue{total !== 1 ? 's' : ''}
             </p>
           )}
@@ -321,8 +321,8 @@ export function ProjectIssuesPage() {
                 key={view.id}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border cursor-pointer transition-colors ${
                   activeViewId === view.id
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300'
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600'
+                    ? 'bg-primary/10 border-primary/50 text-primary dark:bg-primary/10 dark:border-primary dark:text-primary'
+                    : 'bg-gray-50 border-border text-muted-foreground hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <button onClick={() => applyView(view)} className="max-w-32 truncate">
@@ -349,7 +349,7 @@ export function ProjectIssuesPage() {
             {hasActiveFilters && !showSaveViewInput && (
               <button
                 onClick={() => setShowSaveViewInput(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 dark:border-gray-600 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-gray-300 text-muted-foreground hover:border-primary hover:text-primary dark:border-gray-600 dark:text-gray-400 dark:hover:border-primary dark:hover:text-primary transition-colors"
               >
                 <BookmarkPlus className="h-3 w-3" />
                 Save view
@@ -406,7 +406,7 @@ export function ProjectIssuesPage() {
                         if (el) el.indeterminate = someSelected && !allSelected
                       }}
                       onChange={() => selectAll(allIssueIds)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                       aria-label="Select all issues"
                     />
                   </th>
@@ -419,7 +419,7 @@ export function ProjectIssuesPage() {
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">SP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
+              <tbody className="divide-y divide-border/40">
                 {issues.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}

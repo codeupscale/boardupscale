@@ -150,7 +150,7 @@ export function ProjectReportsPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — report list */}
         <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4 pt-4 pb-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 pt-4 pb-2">
             Reports
           </p>
           {REPORT_ITEMS.map((item) => (
@@ -161,8 +161,8 @@ export function ProjectReportsPage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full',
                 activeReport === item.id
-                  ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70',
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-muted-foreground hover:bg-accent/70',
               )}
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -179,7 +179,7 @@ export function ProjectReportsPage() {
             {(activeReport === 'burndown' || activeReport === 'burnup' || activeReport === 'sprint-report') && (
               <div className="w-64">
                 {sprintsLoading ? (
-                  <div className="text-sm text-gray-500">Loading sprints...</div>
+                  <div className="text-sm text-muted-foreground">Loading sprints...</div>
                 ) : sprints && sprints.length > 0 ? (
                   <div className="w-full">
                     <Label className="mb-1">Sprint</Label>
@@ -197,7 +197,7 @@ export function ProjectReportsPage() {
                     </Select>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No sprints available</p>
+                  <p className="text-sm text-muted-foreground">No sprints available</p>
                 )}
               </div>
             )}

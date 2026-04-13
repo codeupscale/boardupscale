@@ -102,8 +102,8 @@ export function ProjectPagesPage() {
 
         {/* Main content — empty state when no page selected */}
         <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-card">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
-            <FileText size={32} className="text-blue-500" />
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <FileText size={32} className="text-primary" />
           </div>
           <h2 className="text-xl font-semibold text-foreground mb-2">
             {isLoading

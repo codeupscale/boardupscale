@@ -133,7 +133,7 @@ function MiniBurndownWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary dark:hover:text-primary mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -198,7 +198,7 @@ function VelocityWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary dark:hover:text-primary mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -235,7 +235,7 @@ function WorkloadSummaryWidget({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">In Progress</span>
-          <span className="text-sm font-semibold text-foreground bg-blue-50 dark:bg-blue-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm font-semibold text-foreground bg-primary/10 px-2.5 py-0.5 rounded-full">
             {inProgressCount} issues
           </span>
         </div>
@@ -326,10 +326,10 @@ export function DashboardPage() {
             color="bg-amber-50 dark:bg-amber-900/20"
           />
           <StatCard
-            icon={<Clock className="h-5 w-5 text-blue-600" />}
+            icon={<Clock className="h-5 w-5 text-primary" />}
             label={t('dashboard.inProgress')}
             value={stats.inProgress}
-            color="bg-blue-50 dark:bg-blue-900/20"
+            color="bg-primary/10"
           />
           <StatCard
             icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
@@ -344,7 +344,7 @@ export function DashboardPage() {
           <>
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <BarChart3 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </div>
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Insights</h2>
             </div>
@@ -374,8 +374,8 @@ export function DashboardPage() {
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Target className="h-4 w-4 text-primary" />
               </div>
               <h2 className="text-sm font-semibold text-foreground">{t('dashboard.myIssues')}</h2>
               {myIssues.length > 0 && (
@@ -386,7 +386,7 @@ export function DashboardPage() {
             </div>
             <Link
               to="/issues"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary dark:hover:text-primary transition-colors"
             >
               {t('common.viewAll')}
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -413,7 +413,7 @@ export function DashboardPage() {
                     <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">SP</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                <tbody className="divide-y divide-border">
                   {myIssues.map((issue) => (
                     <IssueTableRow key={issue.id} issue={issue} />
                   ))}
@@ -428,13 +428,13 @@ export function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <FolderOpen className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </div>
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">{t('dashboard.recentProjects')}</h2>
             </div>
             <Link
               to="/projects"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary dark:hover:text-primary transition-colors"
             >
               {t('common.viewAll')}
               <ArrowUpRight className="h-3.5 w-3.5" />

@@ -24,7 +24,7 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
 
   if (!progress || progress.total === 0) {
     return (
-      <div className="text-xs text-gray-500">No issues linked</div>
+      <div className="text-xs text-muted-foreground">No issues linked</div>
     )
   }
 
@@ -34,7 +34,7 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex h-2 rounded-full overflow-hidden bg-gray-100">
+      <div className="flex h-2 rounded-full overflow-hidden bg-muted">
         {donePercent > 0 && (
           <div
             className="bg-green-500 transition-all"
@@ -43,28 +43,28 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
         )}
         {inProgressPercent > 0 && (
           <div
-            className="bg-blue-500 transition-all"
+            className="bg-primary transition-all"
             style={{ width: `${inProgressPercent}%` }}
           />
         )}
         {todoPercent > 0 && (
           <div
-            className="bg-gray-300 transition-all"
+            className="bg-muted-foreground/30 transition-all"
             style={{ width: `${todoPercent}%` }}
           />
         )}
       </div>
-      <div className="flex items-center gap-4 text-xs text-gray-500">
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <CheckCircle2 className="h-3 w-3 text-green-500" />
           {progress.done} Done
         </span>
         <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3 text-blue-500" />
+          <Clock className="h-3 w-3 text-primary" />
           {progress.inProgress} In Progress
         </span>
         <span className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3 text-gray-400" />
+          <AlertCircle className="h-3 w-3 text-muted-foreground" />
           {progress.todo} To Do
         </span>
       </div>
@@ -96,7 +96,7 @@ function VersionCard({
                 isReleased
                   ? 'bg-green-100 text-green-700'
                   : isArchived
-                  ? 'bg-gray-100 text-gray-500'
+                  ? 'bg-muted text-muted-foreground'
                   : 'bg-amber-100 text-amber-700',
               )}
             >
@@ -104,7 +104,7 @@ function VersionCard({
             </span>
           </div>
           {version.description && (
-            <p className="text-sm text-gray-500">{version.description}</p>
+            <p className="text-sm text-muted-foreground">{version.description}</p>
           )}
         </div>
         {version.status === 'unreleased' && (
@@ -121,7 +121,7 @@ function VersionCard({
         )}
       </div>
 
-      <div className="flex gap-4 mb-3 text-xs text-gray-500">
+      <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
         {version.startDate && (
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
@@ -207,7 +207,7 @@ export function ProjectReleasesPage() {
         {/* Unreleased */}
         {unreleased.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            <h2 className="text-sm font-semibold text-foreground mb-3">
               Unreleased ({unreleased.length})
             </h2>
             <div className="space-y-3">
@@ -221,7 +221,7 @@ export function ProjectReleasesPage() {
         {/* Released */}
         {released.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            <h2 className="text-sm font-semibold text-foreground mb-3">
               Released ({released.length})
             </h2>
             <div className="space-y-3">
@@ -235,7 +235,7 @@ export function ProjectReleasesPage() {
         {/* Archived */}
         {archived.length > 0 && (
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            <h2 className="text-sm font-semibold text-foreground mb-3">
               Archived ({archived.length})
             </h2>
             <div className="space-y-3">
@@ -249,9 +249,9 @@ export function ProjectReleasesPage() {
         {/* Empty state */}
         {(!versions || versions.length === 0) && (
           <div className="text-center py-16">
-            <Rocket className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No versions yet</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <Rocket className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No versions yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Create your first version to start tracking releases.
             </p>
             <Button onClick={() => setShowCreate(true)}>

@@ -37,9 +37,9 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-all flex-shrink-0',
                     isCompleted
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                      ? 'bg-primary text-white shadow-sm shadow-primary/20'
                       : isActive
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-blue-200'
+                      ? 'bg-primary text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-primary/20'
                       : 'bg-muted text-muted-foreground',
                   )}
                   aria-current={isActive ? 'step' : undefined}
@@ -50,7 +50,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'text-xs sm:text-sm font-semibold hidden sm:inline',
                     isActive
-                      ? 'text-blue-700 dark:text-blue-300'
+                      ? 'text-primary'
                       : isCompleted
                       ? 'text-gray-700 dark:text-gray-200'
                       : 'text-muted-foreground',
@@ -195,12 +195,12 @@ export function JiraMigrationPage() {
       <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-blue-600 mb-4 shadow-lg shadow-blue-200 dark:shadow-blue-900/40">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/20 dark:shadow-primary/40">
             <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M11.53 2c-.59 0-1.04.46-1.04 1.04v8.49H2.04C1.46 11.53 1 11.99 1 12.57c0 3.54 2.82 6.43 6.43 6.43h4.06v2.96c0 .59.46 1.04 1.04 1.04s1.04-.46 1.04-1.04v-2.96h4.06c3.61 0 6.37-2.89 6.37-6.43 0-.58-.46-1.04-1.04-1.04H13.62V3.04c0-.58-.5-1.04-1.04-1.04H11.53z" />
             </svg>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Migrate from Jira
           </h1>
           <p className="mt-2 text-muted-foreground text-sm sm:text-base">
@@ -222,7 +222,7 @@ export function JiraMigrationPage() {
 
         {/* Step content */}
         <div className={cn(
-          'bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800',
+          'bg-card rounded-2xl shadow-sm border border-border',
           isWideStep ? 'p-6 sm:p-8' : 'p-6 sm:p-8',
         )}>
           {step === 1 && <ConnectStep onNext={handleConnect} />}

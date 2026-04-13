@@ -28,14 +28,14 @@ export function PrivacyPage() {
 
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="border-b border-gray-200 dark:border-gray-800 bg-card">
+        <header className="border-b border-border bg-card">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link to="/" aria-label="Boardupscale home">
               <Logo size="sm" />
             </Link>
             <Link
               to="/login"
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              className="text-sm font-medium text-primary hover:text-primary dark:text-primary dark:hover:text-primary transition-colors"
             >
               Back to login
             </Link>
@@ -57,7 +57,7 @@ export function PrivacyPage() {
                     <a
                       key={s.id}
                       href={`#${s.id}`}
-                      className="block rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-colors"
+                      className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-colors"
                     >
                       {s.label}
                     </a>
@@ -80,7 +80,7 @@ export function PrivacyPage() {
                   Boardupscale (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is a self-hosted project management
                   platform built by CodeUpscale. This Privacy Policy explains how we collect,
                   use, store, and protect information when you use{' '}
-                  <a href={APP_URL} className="text-blue-600 hover:underline dark:text-blue-400">
+                  <a href={APP_URL} className="text-primary hover:underline dark:text-primary">
                     {APP_URL}
                   </a>{' '}
                   and any related services (collectively, the &quot;Service&quot;).
@@ -163,7 +163,7 @@ export function PrivacyPage() {
                   </p>
 
                   <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                    <table className="min-w-full divide-y divide-border text-sm">
                       <thead className="bg-muted">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold text-foreground w-40">Provider</th>
@@ -171,7 +171,7 @@ export function PrivacyPage() {
                           <th className="px-4 py-3 text-left font-semibold text-foreground w-32">Privacy Policy</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-card">
+                      <tbody className="divide-y divide-border bg-card">
                         {[
                           {
                             name: 'Atlassian',
@@ -207,7 +207,7 @@ export function PrivacyPage() {
                                 href={row.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline dark:text-blue-400"
+                                className="text-primary hover:underline dark:text-primary"
                               >
                                 View
                               </a>
@@ -265,7 +265,7 @@ export function PrivacyPage() {
                   </ul>
                   <p>
                     To exercise any of these rights, contact us at{' '}
-                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline dark:text-blue-400">
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline dark:text-primary">
                       {SUPPORT_EMAIL}
                     </a>
                     . We will respond within 30 days.
@@ -289,7 +289,7 @@ export function PrivacyPage() {
                     aged 16 and above. We do not knowingly collect personal data from children
                     under 16. If you believe a child has provided us personal information, please
                     contact us at{' '}
-                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-blue-600 hover:underline dark:text-blue-400">
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline dark:text-primary">
                       {SUPPORT_EMAIL}
                     </a>{' '}
                     and we will delete it promptly.
@@ -310,20 +310,20 @@ export function PrivacyPage() {
                 {/* 12. Contact */}
                 <Section id="contact" title="12. Contact Us">
                   <p>For privacy-related questions, data access requests, or to report a concern:</p>
-                  <div className="mt-4 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 p-5">
+                  <div className="mt-4 rounded-lg bg-primary/10 border border-primary/20 p-5">
                     <p className="font-semibold text-foreground">CodeUpscale — Boardupscale Team</p>
                     <p className="mt-1 text-foreground">
                       Email:{' '}
                       <a
                         href={`mailto:${SUPPORT_EMAIL}`}
-                        className="text-blue-600 hover:underline dark:text-blue-400 font-medium"
+                        className="text-primary hover:underline dark:text-primary font-medium"
                       >
                         {SUPPORT_EMAIL}
                       </a>
                     </p>
                     <p className="mt-1 text-foreground">
                       Platform:{' '}
-                      <a href={APP_URL} className="text-blue-600 hover:underline dark:text-blue-400">
+                      <a href={APP_URL} className="text-primary hover:underline dark:text-primary">
                         {APP_URL}
                       </a>
                     </p>
@@ -333,11 +333,11 @@ export function PrivacyPage() {
               </div>
 
               {/* Footer */}
-              <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+              <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
                 <p>© {new Date().getFullYear()} CodeUpscale. All rights reserved.</p>
                 <Link
                   to="/login"
-                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                  className="text-primary hover:text-primary dark:text-primary dark:hover:text-primary font-medium transition-colors"
                 >
                   Back to Boardupscale
                 </Link>
@@ -364,7 +364,7 @@ function Section({
   return (
     <section id={id} className="scroll-mt-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50 mb-4">{title}</h2>
-      <div className="text-foreground leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-gray-800 [&_strong]:dark:text-gray-200 [&_code]:bg-gray-100 [&_code]:dark:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
+      <div className="text-foreground leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-gray-800 [&_strong]:dark:text-gray-200 [&_code]:bg-muted [&_code]:dark:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
         {children}
       </div>
     </section>
@@ -373,7 +373,7 @@ function Section({
 
 function SubHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="mt-4 mb-1 text-sm font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide">
+    <h3 className="mt-4 mb-1 text-sm font-semibold text-foreground uppercase tracking-wide">
       {children}
     </h3>
   )

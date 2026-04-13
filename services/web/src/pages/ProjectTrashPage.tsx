@@ -50,7 +50,7 @@ export function TrashContent({ projectKey }: { projectKey: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Trash2 className="h-4 w-4" />
           <span>Deleted issues are kept for 30 days before being permanently removed.</span>
         </div>
@@ -82,16 +82,16 @@ export function TrashContent({ projectKey }: { projectKey: string }) {
                       if (el) el.indeterminate = someSelected && !allSelected
                     }}
                     onChange={() => selectAll(allIssueIds)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                   />
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-32">Key</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">Title</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Priority</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-36">Status</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-16">Assignee</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 w-28">Deleted</th>
-                <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 w-16">SP</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground w-32">Key</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Title</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground w-28">Priority</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground w-36">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground w-16">Assignee</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground w-28">Deleted</th>
+                <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground w-16">SP</th>
               </tr>
             </thead>
             <tbody>
@@ -103,8 +103,8 @@ export function TrashContent({ projectKey }: { projectKey: string }) {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-              <span className="text-sm text-gray-500">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+              <span className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 25 + 1}--{Math.min(page * 25, total)} of {total}
               </span>
               <div className="flex gap-2">

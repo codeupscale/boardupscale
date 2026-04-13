@@ -66,11 +66,11 @@ const ROLE_CONFIG = [
     label: 'Admin',
     description: 'Manage members, projects, and organization settings',
     icon: Shield,
-    iconColor: 'text-blue-500',
-    selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
+    iconColor: 'text-primary',
+    selectedBg: 'bg-primary/10 border-primary dark:border-primary',
     defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+      'bg-primary/15 text-primary border border-primary/30 dark:border-primary/40',
   },
   {
     value: 'member',
@@ -81,7 +81,7 @@ const ROLE_CONFIG = [
     selectedBg: 'bg-gray-50 dark:bg-gray-700/50 border-gray-400 dark:border-gray-500',
     defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-gray-100 dark:bg-gray-700 text-foreground border border-gray-200 dark:border-gray-600',
+      'bg-muted dark:bg-gray-700 text-foreground border border-border dark:border-gray-600',
   },
 ] as const
 
@@ -159,7 +159,7 @@ function RoleCard({
       className={cn(
         'w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all duration-150',
         selected ? config.selectedBg : config.defaultBg,
-        'hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+        'hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2 dark:focus:ring-offset-gray-900',
       )}
     >
       <div
@@ -175,7 +175,7 @@ function RoleCard({
           <span className="text-sm font-semibold text-foreground">
             {config.label}
           </span>
-          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />}
+          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {config.description}
@@ -237,7 +237,7 @@ function Pagination({
         </Button>
         {pages.map((p, i) =>
           p === '…' ? (
-            <span key={`ellipsis-${i}`} className="w-8 text-center text-sm text-gray-400">
+            <span key={`ellipsis-${i}`} className="w-8 text-center text-sm text-muted-foreground">
               …
             </span>
           ) : (
@@ -247,8 +247,8 @@ function Pagination({
               className={cn(
                 'h-8 w-8 rounded-md text-sm font-medium transition-colors',
                 p === page
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-accent',
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent',
               )}
             >
               {p}
@@ -429,8 +429,8 @@ export function TeamPage() {
           {[
             {
               icon: Users,
-              iconBg: 'bg-blue-50 dark:bg-blue-900/20',
-              iconColor: 'text-blue-600 dark:text-blue-400',
+              iconBg: 'bg-primary/10',
+              iconColor: 'text-primary',
               label: 'Total Members',
               value: activeMembers.length,
             },
@@ -486,13 +486,13 @@ export function TeamPage() {
           {/* Search + Filter */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search by name or email…"
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg border border-border bg-card text-sm text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 h-9 rounded-lg border border-border bg-card text-sm text-foreground placeholder-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
               />
             </div>
             <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
@@ -504,7 +504,7 @@ export function TeamPage() {
                     'px-3 h-7 rounded-md text-xs font-medium transition-all',
                     roleFilter === r
                       ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200',
+                      : 'text-muted-foreground hover:text-foreground dark:hover:text-gray-200',
                   )}
                 >
                   {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}
@@ -528,7 +528,7 @@ export function TeamPage() {
           ) : (
             <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-gray-50/60 dark:bg-gray-800/40">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Member
                 </span>
@@ -556,7 +556,7 @@ export function TeamPage() {
                     className={cn(
                       'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40 group',
                       idx < pagedMembers.length - 1
-                        ? 'border-b border-gray-100 dark:border-gray-800'
+                        ? 'border-b border-border'
                         : '',
                     )}
                   >
@@ -569,7 +569,7 @@ export function TeamPage() {
                             {member.displayName}
                           </span>
                           {isMe && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">
                               You
                             </span>
                           )}
@@ -618,21 +618,21 @@ export function TeamPage() {
                             <button
                               onClick={() => openEditDialog(member)}
                               title="Edit member info"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => openRoleDialog(member)}
                               title="Change role"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => setDeactivateTarget(member)}
                               title="Remove member"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
                               <UserX className="h-3.5 w-3.5" />
                             </button>
@@ -672,7 +672,7 @@ export function TeamPage() {
 
             <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-amber-50/60 dark:bg-amber-900/10">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-amber-50/60 dark:bg-amber-900/10">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Invited Email
                 </span>
@@ -698,7 +698,7 @@ export function TeamPage() {
                     className={cn(
                       'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-900/5',
                       idx < pendingMembers.length - 1
-                        ? 'border-b border-gray-100 dark:border-gray-800'
+                        ? 'border-b border-border'
                         : '',
                     )}
                   >
@@ -736,14 +736,14 @@ export function TeamPage() {
                         <button
                           onClick={() => resendInvitation.mutate(member.id)}
                           title="Resend invitation"
-                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors"
                         >
                           <RefreshCw className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setRevokeTarget(member)}
                           title="Revoke invitation"
-                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -758,9 +758,9 @@ export function TeamPage() {
 
         {/* ── Empty invite CTA ───────────────────────────────────────────── */}
         {pendingMembers.length === 0 && activeMembers.length === 0 && isAdmin && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl border border-blue-100 dark:border-blue-800/40 p-8 text-center">
-            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
-              <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="bg-primary/5 rounded-xl border border-primary/20 p-8 text-center">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+              <UserPlus className="h-6 w-6 text-primary" />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-1">
               Build your team
@@ -783,8 +783,8 @@ export function TeamPage() {
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <UserPlus className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <DialogTitle>Invite Team Member</DialogTitle>
@@ -852,7 +852,7 @@ export function TeamPage() {
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                <Pencil className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
                 <DialogTitle>Edit Member</DialogTitle>

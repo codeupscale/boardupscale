@@ -153,10 +153,10 @@ export function TimesheetPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<Timer className="h-5 w-5 text-blue-600" />}
+            icon={<Timer className="h-5 w-5 text-primary" />}
             label="Total This Week"
             value={formatMinutes(totalMinutes) === '-' ? '0h' : formatMinutes(totalMinutes)}
-            color="bg-blue-50 dark:bg-blue-900/20"
+            color="bg-primary/10"
           />
           <StatCard
             icon={<ListChecks className="h-5 w-5 text-emerald-600" />}
@@ -321,12 +321,12 @@ function MyTimesheetView({
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-gray-100 dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted dark:bg-gray-700">
                 Total
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-border">
             {issueRows.map((row) => {
               const rowTotal = row.dailyMinutes.reduce(
                 (s: number, m: number) => s + m,
@@ -373,7 +373,7 @@ function MyTimesheetView({
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-gray-100 dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted dark:bg-gray-700">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>
@@ -446,12 +446,12 @@ function TeamTimesheetView({
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-gray-100 dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted dark:bg-gray-700">
                 Total
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-border">
             {members.map((member: any) => (
               <tr
                 key={member.userId}
@@ -466,7 +466,7 @@ function TeamTimesheetView({
                         className="h-6 w-6 rounded-full"
                       />
                     ) : (
-                      <div className="h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
                         {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                     )}
@@ -505,7 +505,7 @@ function TeamTimesheetView({
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-gray-100 dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted dark:bg-gray-700">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>

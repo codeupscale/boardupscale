@@ -38,7 +38,7 @@ function StatPill({
       className={cn(
         'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all duration-200',
         active
-          ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+          ? 'border-primary/50 dark:border-primary bg-primary/10 shadow-sm'
           : 'border-border/60 bg-card/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm',
       )}
     >
@@ -46,7 +46,7 @@ function StatPill({
         <Icon className="h-4 w-4 text-white" />
       </div>
       <div className="text-left">
-        <p className="text-lg font-bold text-gray-900 dark:text-white">{count}</p>
+        <p className="text-lg font-bold text-foreground">{count}</p>
         <p className="text-xs text-muted-foreground -mt-0.5">{label}</p>
       </div>
     </button>
@@ -95,7 +95,7 @@ export function MyIssuesPage() {
             label="Total"
             count={total}
             icon={CircleDot}
-            color="bg-gray-500"
+            color="bg-muted-foreground/30"
             active={!filterCategory}
             onClick={() => setFilterCategory('')}
           />
@@ -111,7 +111,7 @@ export function MyIssuesPage() {
             label={t('settings.inProgress')}
             count={inProgressCount}
             icon={Clock}
-            color="bg-blue-500"
+            color="bg-primary"
             active={filterCategory === IssueStatusCategory.IN_PROGRESS}
             onClick={() => handleCategoryClick(IssueStatusCategory.IN_PROGRESS)}
           />
@@ -165,7 +165,7 @@ export function MyIssuesPage() {
                   <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">SP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
+              <tbody className="divide-y divide-border/40">
                 {filtered.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} showProject />
                 ))}
@@ -174,7 +174,7 @@ export function MyIssuesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/30">
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/30">
                 <span className="text-sm text-muted-foreground">
                   {t('common.pageOf', { page, totalPages, total })}
                 </span>

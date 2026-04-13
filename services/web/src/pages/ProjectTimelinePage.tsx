@@ -39,7 +39,7 @@ type Zoom = keyof typeof ZOOM_CFG
 
 const TYPE_BAR: Record<string, string> = {
   epic: 'bg-purple-500',
-  story: 'bg-blue-500',
+  story: 'bg-primary',
   task: 'bg-emerald-500',
   bug: 'bg-red-500',
   subtask: 'bg-gray-400',
@@ -47,10 +47,10 @@ const TYPE_BAR: Record<string, string> = {
 
 const TYPE_BADGE: Record<string, string> = {
   epic: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  story: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  story: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary',
   task: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   bug: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  subtask: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  subtask: 'bg-muted text-gray-600 dark:bg-gray-700 dark:text-gray-300',
 }
 
 const TYPE_OPTIONS = ['all', 'epic', 'story', 'task', 'bug', 'subtask'] as const
@@ -160,8 +160,8 @@ export function ProjectTimelinePage() {
                 className={cn(
                   'px-3 py-1.5 font-medium transition-colors',
                   zoom === z
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-card text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                    ? 'bg-primary text-white'
+                    : 'bg-card text-muted-foreground hover:bg-gray-50 dark:hover:bg-gray-700',
                 )}
               >
                 {z.charAt(0).toUpperCase() + z.slice(1)}
@@ -188,7 +188,7 @@ export function ProjectTimelinePage() {
       {/* Timeline body */}
       {issuesLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <span className="text-gray-400">Loading…</span>
+          <span className="text-muted-foreground">Loading…</span>
         </div>
       ) : filteredIssues.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
@@ -230,7 +230,7 @@ export function ProjectTimelinePage() {
                   {monthSegs.map((seg) => (
                     <div
                       key={seg.label}
-                      className="flex items-center px-2 border-r border-border text-xs font-semibold text-gray-600 dark:text-gray-400 bg-muted"
+                      className="flex items-center px-2 border-r border-border text-xs font-semibold text-muted-foreground bg-muted"
                       style={{ width: seg.count * cfg.dayPx, flexShrink: 0 }}
                     >
                       {seg.label}
@@ -243,11 +243,11 @@ export function ProjectTimelinePage() {
                   {sprintBands.map((b) => (
                     <div
                       key={b.id}
-                      className="absolute inset-y-0 bg-blue-100 dark:bg-blue-900/40 border-x border-blue-200 dark:border-blue-800 flex items-center px-1 overflow-hidden"
+                      className="absolute inset-y-0 bg-primary/15 border-x border-primary/30 flex items-center px-1 overflow-hidden"
                       style={{ left: b.sStart * cfg.dayPx, width: (b.sEnd - b.sStart) * cfg.dayPx }}
                       title={b.name}
                     >
-                      <span className="text-[10px] font-medium text-blue-700 dark:text-blue-300 truncate">
+                      <span className="text-[10px] font-medium text-primary truncate">
                         {b.name}
                       </span>
                     </div>
@@ -262,9 +262,9 @@ export function ProjectTimelinePage() {
                       className={cn(
                         'flex items-center justify-center text-[10px] border-r border-border flex-shrink-0',
                         isWeekend(day)
-                          ? 'bg-gray-100 dark:bg-gray-700/50 text-muted-foreground'
+                          ? 'bg-muted dark:bg-gray-700/50 text-muted-foreground'
                           : 'bg-card text-muted-foreground',
-                        i === todayOffset && 'font-bold text-blue-600 dark:text-blue-400',
+                        i === todayOffset && 'font-bold text-primary',
                       )}
                       style={{ width: cfg.dayPx }}
                     >
@@ -279,7 +279,7 @@ export function ProjectTimelinePage() {
                   {/* Today marker in day row */}
                   {todayInView && (
                     <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-blue-500 dark:bg-blue-400 pointer-events-none"
+                      className="absolute top-0 bottom-0 w-0.5 bg-primary dark:bg-primary pointer-events-none"
                       style={{ left: todayOffset * cfg.dayPx + cfg.dayPx / 2 }}
                     />
                   )}
@@ -315,7 +315,7 @@ export function ProjectTimelinePage() {
               return (
                 <div
                   key={issue.id}
-                  className="flex border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
+                  className="flex border-b border-border hover:bg-primary/5 dark:hover:bg-primary/5"
                   style={{ minWidth: LABEL_W + totalWidth, height: 44 }}
                 >
                   {/* Label (sticky left) */}
@@ -328,7 +328,7 @@ export function ProjectTimelinePage() {
                     </span>
                     <button
                       onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
-                      className="text-xs text-foreground truncate hover:text-blue-600 dark:hover:text-blue-400 text-left min-w-0"
+                      className="text-xs text-foreground truncate hover:text-primary dark:hover:text-primary text-left min-w-0"
                       title={issue.title}
                     >
                       {issue.title}
@@ -340,7 +340,7 @@ export function ProjectTimelinePage() {
                     {/* Today line (faint in body rows) */}
                     {todayInView && (
                       <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-blue-400/30 dark:bg-blue-500/30 pointer-events-none z-10"
+                        className="absolute top-0 bottom-0 w-0.5 bg-blue-400/30 dark:bg-primary/30 pointer-events-none z-10"
                         style={{ left: todayOffset * cfg.dayPx + cfg.dayPx / 2 }}
                       />
                     )}

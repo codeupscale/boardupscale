@@ -41,16 +41,16 @@ function UsageBar({
             className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
               isNearLimit
                 ? 'bg-amber-50 dark:bg-amber-900/20'
-                : 'bg-blue-50 dark:bg-blue-900/20'
+                : 'bg-primary/10'
             }`}
           >
             <Icon
               className={`h-5 w-5 ${
-                isNearLimit ? 'text-amber-500 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                isNearLimit ? 'text-amber-500 dark:text-amber-400' : 'text-primary'
               }`}
             />
           </div>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">{label}</span>
+          <span className="text-sm font-semibold text-foreground">{label}</span>
         </div>
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
           {used} / {isUnlimited ? 'Unlimited' : `${max} ${unit}`}
@@ -99,7 +99,7 @@ function UpgradeCard({
     <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Upgrade your plan</h3>
+          <h3 className="text-lg font-bold text-foreground">Upgrade your plan</h3>
           <p className="text-sm text-muted-foreground mt-0.5">
             Get more users, storage, and advanced features.
           </p>
@@ -109,8 +109,8 @@ function UpgradeCard({
             onClick={() => setCycle('monthly')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'monthly'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'
             }`}
           >
             Monthly
@@ -119,8 +119,8 @@ function UpgradeCard({
             onClick={() => setCycle('yearly')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'yearly'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'
             }`}
           >
             Yearly{' '}
@@ -140,8 +140,8 @@ function UpgradeCard({
               key={plan.id}
               className={`relative rounded-2xl p-5 transition-all hover:shadow-md ${
                 isPopular
-                  ? 'border-2 border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/10 hover:border-blue-600'
-                  : 'border border-border hover:border-blue-300 dark:hover:border-blue-600'
+                  ? 'border-2 border-primary dark:border-primary bg-primary/5 dark:bg-primary/10 hover:border-primary'
+                  : 'border border-border hover:border-primary/50 dark:hover:border-primary'
               }`}
             >
               {isPopular && (
@@ -152,10 +152,10 @@ function UpgradeCard({
                 </div>
               )}
               <div className="mb-3">
-                <h4 className="font-bold text-gray-900 dark:text-white text-base">{plan.name}</h4>
+                <h4 className="font-bold text-foreground text-base">{plan.name}</h4>
               </div>
               <p className="mb-1">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">${price}</span>
+                <span className="text-3xl font-bold text-foreground">${price}</span>
                 <span className="text-sm font-normal text-muted-foreground">{period}</span>
               </p>
               <p className="text-xs text-muted-foreground mb-4">
@@ -166,8 +166,8 @@ function UpgradeCard({
                   .filter(([, v]) => v)
                   .map(([key]) => (
                     <li key={key} className="flex items-center gap-2 text-xs text-foreground">
-                      <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-                        <Check className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
+                      <div className="h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+                        <Check className="h-2.5 w-2.5 text-primary" />
                       </div>
                       {key === 'ai' && 'AI-powered features'}
                       {key === 'github' && 'GitHub integration'}
@@ -177,7 +177,7 @@ function UpgradeCard({
               </ul>
               <Button
                 size="sm"
-                className={`w-full ${isPopular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                className={`w-full ${isPopular ? 'bg-primary hover:bg-primary/90' : ''}`}
                 variant={isPopular ? 'default' : 'outline'}
                 isLoading={isLoading}
                 onClick={() => onCheckout(plan.slug, cycle)}
@@ -234,7 +234,7 @@ export function BillingPage() {
           breadcrumbs={[{ label: 'Settings', href: '/settings' }, { label: 'Billing' }]}
         />
         <div className="flex items-center justify-center flex-1">
-          <Spinner className="h-8 w-8 text-blue-600" />
+          <Spinner className="h-8 w-8 text-primary" />
         </div>
       </div>
     )
@@ -331,7 +331,7 @@ export function BillingPage() {
         {/* Usage section */}
         {usage && (
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Usage This Month</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-4">Usage This Month</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <UsageBar
                 label="Team members"

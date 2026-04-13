@@ -177,7 +177,7 @@ export function ProjectSettingsPage() {
         <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
           {SETTINGS_GROUPS.map((group) => (
             <div key={group.label} className="px-2 pt-4 pb-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 pb-1">
                 {group.label}
               </p>
               {group.items.map((item) => (
@@ -188,8 +188,8 @@ export function ProjectSettingsPage() {
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                     activeTab === item.id
-                      ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70',
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-accent/70',
                   )}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -200,8 +200,8 @@ export function ProjectSettingsPage() {
           ))}
 
           {/* Administration — bottom, separated */}
-          <div className="px-2 pt-2 pb-4 mt-auto border-t border-gray-100 dark:border-gray-800">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1 pt-3">
+          <div className="px-2 pt-2 pb-4 mt-auto border-t border-border">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 pb-1 pt-3">
               Administration
             </p>
             <button
@@ -210,8 +210,8 @@ export function ProjectSettingsPage() {
               className={cn(
                 'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                 activeTab === 'trash'
-                  ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70',
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-muted-foreground hover:bg-accent/70',
               )}
             >
               <Trash2 className="h-4 w-4 flex-shrink-0" />
@@ -268,7 +268,7 @@ export function ProjectSettingsPage() {
                   {t('projects.addMember')}
                 </Button>
               </div>
-              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 <MemberList projectId={projectKey!} members={members || []} />
               </div>
             </div>
@@ -296,7 +296,7 @@ export function ProjectSettingsPage() {
                   {t('settings.addStatus')}
                 </Button>
               </div>
-              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 {board?.statuses?.map((status) => (
                   <div key={status.id} className="flex items-center gap-3 px-4 py-3">
                     <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color || '#6b7280' }} />
@@ -308,7 +308,7 @@ export function ProjectSettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                       onClick={() => deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -339,7 +339,7 @@ export function ProjectSettingsPage() {
                   </Button>
                 </Link>
               </div>
-              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 <MemberRoleList projectId={projectKey!} />
               </div>
             </div>
@@ -354,7 +354,7 @@ export function ProjectSettingsPage() {
               </div>
               <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <div className="h-9 w-9 rounded-lg bg-muted dark:bg-gray-700 flex items-center justify-center">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
@@ -485,11 +485,11 @@ export function ProjectSettingsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.user')}</label>
+              <label className="block text-sm font-medium text-foreground mb-1">{t('settings.user')}</label>
               <UserSelect value={newMemberId} onChange={setNewMemberId} />
-              <p className="mt-1.5 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-muted-foreground">
                 Only users in your organization are shown.{' '}
-                <Link to="/settings/team" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                <Link to="/settings/team" className="text-primary hover:text-primary font-medium underline">
                   Invite new users from Settings &rarr; Team
                 </Link>{' '}
                 first, then add them to this project.
@@ -558,7 +558,7 @@ export function ProjectSettingsPage() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.color')}</label>
+              <label className="block text-sm font-medium text-foreground mb-2">{t('settings.color')}</label>
               <div className="flex gap-2 flex-wrap">
                 {STATUS_COLORS.map((c) => (
                   <button
@@ -621,7 +621,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
 
   if (members.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-500">
+      <div className="py-8 text-center text-sm text-muted-foreground">
         No members in this project.
       </div>
     )
@@ -635,7 +635,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
             <span className="text-sm font-medium text-foreground">
               {member.user?.displayName || member.userId}
             </span>
-            <span className="text-xs text-gray-500 ml-2">
+            <span className="text-xs text-muted-foreground ml-2">
               {member.user?.email}
             </span>
           </div>

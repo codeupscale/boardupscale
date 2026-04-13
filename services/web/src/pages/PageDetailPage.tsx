@@ -184,7 +184,7 @@ export function PageDetailPage() {
           <nav className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
             <Link
               to={`/projects/${key}/pages`}
-              className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+              className="hover:text-foreground dark:hover:text-gray-200 transition-colors flex-shrink-0"
             >
               Pages
             </Link>
@@ -193,7 +193,7 @@ export function PageDetailPage() {
                 <ChevronRight size={10} className="flex-shrink-0" />
                 <Link
                   to={`/projects/${key}/pages/${a.id}`}
-                  className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors truncate max-w-[120px]"
+                  className="hover:text-foreground dark:hover:text-gray-200 transition-colors truncate max-w-[120px]"
                 >
                   {a.title}
                 </Link>
@@ -213,7 +213,7 @@ export function PageDetailPage() {
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {saveStatus === 'saving' && (
                 <>
-                  <div className="w-3 h-3 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
+                  <div className="w-3 h-3 rounded-full border-2 border-border border-t-primary animate-spin" />
                   Saving…
                 </>
               )}
@@ -290,8 +290,8 @@ export function PageDetailPage() {
                           key={emoji}
                           type="button"
                           className={cn(
-                            'text-xl p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                            page.icon === emoji && 'bg-blue-50 dark:bg-blue-900/20',
+                            'text-xl p-1 rounded hover:bg-muted dark:hover:bg-gray-700 transition-colors',
+                            page.icon === emoji && 'bg-primary/10',
                           )}
                           onClick={() => handleIconSelect(emoji)}
                         >
@@ -301,7 +301,7 @@ export function PageDetailPage() {
                     </div>
                     <button
                       type="button"
-                      className="mt-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="mt-2 text-xs text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
                       onClick={() => handleIconSelect('')}
                     >
                       Remove icon

@@ -32,10 +32,10 @@ export function AuditLogPage() {
     <div className="flex flex-col h-full">
       <div className="px-6 py-4 border-b border-border bg-card">
         <div className="flex items-center gap-3">
-          <Shield className="h-6 w-6 text-blue-600" />
+          <Shield className="h-6 w-6 text-primary" />
           <div>
             <h1 className="text-xl font-bold text-foreground">{t('audit.title')}</h1>
-            <p className="text-sm text-gray-500">{t('audit.subtitle')}</p>
+            <p className="text-sm text-muted-foreground">{t('audit.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -43,11 +43,11 @@ export function AuditLogPage() {
       {/* Filters */}
       <div className="px-6 py-3 border-b border-border bg-muted/50 flex flex-wrap gap-3 items-end">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
             {t('audit.entityType')}
           </label>
           <select
-            className="rounded-lg border border-gray-200 dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-lg border border-border dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={entityType}
             onChange={(e) => { setEntityType(e.target.value); setPage(1) }}
           >
@@ -58,7 +58,7 @@ export function AuditLogPage() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
             {t('audit.action')}
           </label>
           <Input
@@ -69,7 +69,7 @@ export function AuditLogPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
             {t('audit.startDate')}
           </label>
           <Input
@@ -79,7 +79,7 @@ export function AuditLogPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
             {t('audit.endDate')}
           </label>
           <Input
@@ -95,37 +95,37 @@ export function AuditLogPage() {
         {isLoading ? (
           <LoadingPage />
         ) : logs.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
+          <div className="p-12 text-center text-muted-foreground">
             {t('audit.noLogs')}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-muted border-b border-border sticky top-0">
               <tr>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.when')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.user')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.action')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.entityType')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.details')}
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('audit.ipAddress')}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-border">
               {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-accent/50">
-                  <td className="px-6 py-3 text-gray-500 whitespace-nowrap">
+                  <td className="px-6 py-3 text-muted-foreground whitespace-nowrap">
                     {formatRelativeTime(log.createdAt)}
                   </td>
                   <td className="px-6 py-3 whitespace-nowrap">
@@ -137,17 +137,17 @@ export function AuditLogPage() {
                     </div>
                   </td>
                   <td className="px-6 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-blue-800">
                       {log.action}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-gray-600 dark:text-gray-400">
+                  <td className="px-6 py-3 text-muted-foreground">
                     {log.entityType || '-'}
                   </td>
-                  <td className="px-6 py-3 text-gray-500 max-w-xs truncate">
+                  <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">
                     {log.changes ? JSON.stringify(log.changes).substring(0, 100) : '-'}
                   </td>
-                  <td className="px-6 py-3 text-gray-500 text-xs font-mono">
+                  <td className="px-6 py-3 text-muted-foreground text-xs font-mono">
                     {log.ipAddress || '-'}
                   </td>
                 </tr>
@@ -169,7 +169,7 @@ export function AuditLogPage() {
             <ChevronLeft className="h-3.5 w-3.5" />
             {t('common.previous')}
           </Button>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-muted-foreground">
             {t('common.pageOf', {
               page: meta.page,
               totalPages: meta.totalPages,

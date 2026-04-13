@@ -91,7 +91,7 @@ function FilterPill({
   const active = value === current
   const colorMap = {
     blue: active
-      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/40'
+      ? 'bg-primary text-white shadow-sm shadow-primary/20 dark:shadow-primary/40'
       : 'bg-muted text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700',
     violet: active
       ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900/40'
@@ -106,7 +106,7 @@ function FilterPill({
       )}
     >
       {label}
-      <span className={cn('rounded-md px-1.5 py-0.5 text-xs font-bold', active ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400')}>
+      <span className={cn('rounded-md px-1.5 py-0.5 text-xs font-bold', active ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground')}>
         {count}
       </span>
     </button>
@@ -135,8 +135,8 @@ function ProjectCard({
       className={cn(
         'flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150 group border',
         isSelected
-          ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 shadow-sm'
-          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-blue-100 hover:bg-blue-50/40 dark:hover:bg-blue-950/10',
+          ? 'bg-primary/10 border-primary/30 shadow-sm'
+          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-primary/20 hover:bg-primary/5 dark:hover:bg-primary/5',
       )}
     >
       {/* Gradient key badge */}
@@ -151,7 +151,7 @@ function ProjectCard({
 
       {/* Name + key */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
+        <p className="text-sm font-semibold text-foreground truncate leading-tight">
           {project.name}
         </p>
         <p className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -163,13 +163,13 @@ function ProjectCard({
       <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <FileText className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
-          <span className="font-medium text-gray-600 dark:text-gray-400">{project.issueCount.toLocaleString()}</span>
+          <span className="font-medium text-muted-foreground">{project.issueCount.toLocaleString()}</span>
           <span>issues</span>
         </span>
         {project.sprintCount > 0 && (
           <span className="flex items-center gap-1.5">
             <Layers className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
-            <span className="font-medium text-gray-600 dark:text-gray-400">{project.sprintCount}</span>
+            <span className="font-medium text-muted-foreground">{project.sprintCount}</span>
             <span>sprints</span>
           </span>
         )}
@@ -178,7 +178,7 @@ function ProjectCard({
       {/* Checkbox */}
       <div className="flex-shrink-0 ml-2">
         {isSelected ? (
-          <CheckSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CheckSquare className="h-5 w-5 text-primary" />
         ) : (
           <Square className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
         )}
@@ -241,7 +241,7 @@ function MemberCard({
 
       {/* Name + email */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
+        <p className="text-sm font-semibold text-foreground truncate leading-tight">
           {member.displayName}
         </p>
         {member.email && (
@@ -430,7 +430,7 @@ export function PreviewStep({
     <div className="flex flex-col gap-6">
       {/* Page header */}
       <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-bold text-foreground">
           What would you like to import?
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -444,15 +444,15 @@ export function PreviewStep({
         {/* ── Projects Panel ─────────────────────────────────────────── */}
         <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           {/* Panel header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/10">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/10">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-200 dark:shadow-blue-900/40">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20 dark:shadow-primary/40">
                 <FolderOpen className="h-4 w-4 text-white" />
               </div>
               <div>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">Projects</span>
+                <span className="text-sm font-bold text-foreground">Projects</span>
                 {!isLoading && enrichedProjects.length > 0 && (
-                  <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-semibold">
+                  <span className="ml-2 text-xs bg-primary/10 dark:bg-primary/15 text-primary px-2 py-0.5 rounded-full font-semibold">
                     {selectedKeys.size} / {enrichedProjects.length} selected
                   </span>
                 )}
@@ -465,7 +465,7 @@ export function PreviewStep({
                     ? setSelectedKeys(new Set())
                     : setSelectedKeys(new Set(enrichedProjects.map((p) => p.key)))
                 }
-                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-semibold transition-colors"
+                className="text-xs text-primary hover:text-primary/80 dark:hover:text-primary font-semibold transition-colors"
               >
                 {allProjectsSelected ? 'Deselect all' : 'Select all'}
               </button>
@@ -475,18 +475,18 @@ export function PreviewStep({
           {/* Search + filters */}
           <div className="px-4 pt-3.5 pb-2 space-y-2.5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search projects by name or key..."
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:focus:ring-blue-600/40 focus:border-blue-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
+                className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary text-foreground placeholder:text-muted-foreground transition-all"
               />
               {projectSearch && (
                 <button
                   onClick={() => setProjectSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -495,7 +495,7 @@ export function PreviewStep({
             {/* Filter pills */}
             {!isLoading && enrichedProjects.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <Filter className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                <Filter className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 <FilterPill value="all" current={projectFilter} label="All" count={projectCounts.all} color="blue" onChange={setProjectFilter} />
                 <FilterPill value="selected" current={projectFilter} label="Selected" count={projectCounts.selected} color="blue" onChange={setProjectFilter} />
                 <FilterPill value="unselected" current={projectFilter} label="Unselected" count={projectCounts.unselected} color="blue" onChange={setProjectFilter} />
@@ -510,7 +510,7 @@ export function PreviewStep({
             {!isLoading && filteredProjects.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FolderOpen className="h-10 w-10 text-gray-200 dark:text-gray-700 mb-3" />
-                <p className="text-sm font-medium text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   {projectSearch || projectFilter !== 'all'
                     ? 'No projects match your filters.'
                     : 'No projects found in this Jira instance.'}
@@ -518,7 +518,7 @@ export function PreviewStep({
                 {(projectSearch || projectFilter !== 'all') && (
                   <button
                     onClick={() => { setProjectSearch(''); setProjectFilter('all') }}
-                    className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    className="mt-2 text-xs text-primary hover:underline font-medium"
                   >
                     Clear filters
                   </button>
@@ -541,13 +541,13 @@ export function PreviewStep({
         {connectionId ? (
           <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
             {/* Panel header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-violet-50/80 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-violet-50/80 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center shadow-sm shadow-violet-200 dark:shadow-violet-900/40">
                   <Users className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">Team Members</span>
+                  <span className="text-sm font-bold text-foreground">Team Members</span>
                   {!membersQuery.isLoading && members.length > 0 && (
                     <span className="ml-2 text-xs bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-full font-semibold">
                       {selectedMemberIds.size} / {members.length} selected
@@ -572,18 +572,18 @@ export function PreviewStep({
             {/* Search + filters */}
             <div className="px-4 pt-3.5 pb-2 space-y-2.5">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search by name or email..."
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:focus:ring-violet-600/40 focus:border-violet-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
+                  className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:focus:ring-violet-600/40 focus:border-violet-400 text-foreground placeholder:text-muted-foreground transition-all"
                 />
                 {memberSearch && (
                   <button
                     onClick={() => setMemberSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -592,7 +592,7 @@ export function PreviewStep({
               {/* Filter pills */}
               {!membersQuery.isLoading && members.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <Filter className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <FilterPill value="all" current={memberFilter} label="All" count={memberCounts.all} color="violet" onChange={setMemberFilter} />
                   <FilterPill value="selected" current={memberFilter} label="Selected" count={memberCounts.selected} color="violet" onChange={setMemberFilter} />
                   <FilterPill value="unselected" current={memberFilter} label="Unselected" count={memberCounts.unselected} color="violet" onChange={setMemberFilter} />
@@ -607,7 +607,7 @@ export function PreviewStep({
               {!membersQuery.isLoading && filteredMembers.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Users className="h-10 w-10 text-gray-200 dark:text-gray-700 mb-3" />
-                  <p className="text-sm font-medium text-gray-400">
+                  <p className="text-sm font-medium text-muted-foreground">
                     {memberSearch || memberFilter !== 'all'
                       ? 'No members match your filters.'
                       : 'No members found in this Jira instance.'}
@@ -637,7 +637,7 @@ export function PreviewStep({
           /* Placeholder when no connectionId */
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-gray-50/50 dark:bg-gray-900/30 p-12 text-center">
             <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <Users className="h-6 w-6 text-gray-400" />
+              <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <p className="text-sm font-semibold text-muted-foreground">
               Team members will appear here
@@ -651,7 +651,7 @@ export function PreviewStep({
 
       {/* ── Summary Bar ────────────────────────────────────────────────── */}
       {selectedKeys.size > 0 && (
-        <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-5 text-white shadow-lg shadow-blue-500/25 dark:shadow-blue-900/40">
+        <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-5 text-white shadow-lg shadow-blue-500/25 dark:shadow-primary/40">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-1">Projects</p>
@@ -688,7 +688,7 @@ export function PreviewStep({
         <Button
           onClick={handleContinue}
           disabled={selectedKeys.size === 0 || isLoading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 gap-2 shadow-sm shadow-blue-200 dark:shadow-blue-900/40"
+          className="bg-primary hover:bg-primary/90 text-white px-8 gap-2 shadow-sm shadow-primary/20 dark:shadow-primary/40"
         >
           {isLoading ? (
             <>
