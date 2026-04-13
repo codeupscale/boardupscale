@@ -64,7 +64,7 @@ const HEAT_BG: Record<HeatLevel, string> = {
 }
 
 const HEAT_TEXT: Record<HeatLevel, string> = {
-  0: 'text-gray-500 dark:text-gray-400',
+  0: 'text-muted-foreground',
   1: 'text-blue-700 dark:text-blue-300',
   2: 'text-blue-900 dark:text-white',
   3: 'text-white',
@@ -123,22 +123,22 @@ function IssuePanelCard({ issue, projectKey }: { issue: Issue; projectKey: strin
   return (
     <button
       onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
-      className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-sm transition-all group"
+      className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-2">
         <span className="mt-0.5">{PRIORITY_ICON[issue.priority] ?? <Minus className="h-3.5 w-3.5 text-gray-400 shrink-0" />}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-0.5">{issue.key}</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-0.5">{issue.key}</p>
           <p className="text-sm text-gray-800 dark:text-gray-200 font-medium leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
             {issue.title}
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {issue.status && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-medium">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-foreground font-medium">
                 {issue.status.name}
               </span>
             )}
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 capitalize">
+            <span className="text-[11px] text-muted-foreground capitalize">
               {PRIORITY_LABEL[issue.priority] ?? issue.priority}
             </span>
           </div>
@@ -233,7 +233,7 @@ export function ProjectCalendarPage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -245,7 +245,7 @@ export function ProjectCalendarPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 min-w-[160px] text-center">
+          <h2 className="text-base font-semibold text-foreground min-w-[160px] text-center">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
           <Button
@@ -272,13 +272,13 @@ export function ProjectCalendarPage() {
 
         {/* Month stats */}
         {!issuesLoading && (
-          <div className="flex items-center gap-4 ml-4 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-4 ml-4 text-sm text-muted-foreground">
             <span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{monthStats.total}</span>{' '}
+              <span className="font-semibold text-foreground">{monthStats.total}</span>{' '}
               {monthStats.total === 1 ? 'issue' : 'issues'} due
             </span>
             <span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{monthStats.activeDays}</span>{' '}
+              <span className="font-semibold text-foreground">{monthStats.activeDays}</span>{' '}
               active {monthStats.activeDays === 1 ? 'day' : 'days'}
             </span>
           </div>
@@ -313,17 +313,17 @@ export function ProjectCalendarPage() {
       {/* Body: calendar + optional side panel */}
       <div className="flex flex-1 overflow-hidden">
         {/* Calendar area */}
-        <div className="flex-1 overflow-auto p-4 bg-white dark:bg-gray-900">
+        <div className="flex-1 overflow-auto p-4 bg-card">
           {issuesLoading ? (
             <div className="flex items-center justify-center h-40 text-gray-400">Loading issues…</div>
           ) : (
             <>
-              <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-border">
                 {/* Day headers */}
                 {DAY_HEADERS.map((d) => (
                   <div
                     key={d}
-                    className="bg-gray-100 dark:bg-gray-800 px-2 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                    className="bg-muted px-2 py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
                   >
                     {d}
                   </div>
@@ -350,7 +350,7 @@ export function ProjectCalendarPage() {
                       onClick={() => setSelectedDay(isSelected ? null : day)}
                       className={cn(
                         'relative min-h-[100px] p-1.5 flex flex-col gap-1 transition-all cursor-pointer',
-                        HEAT_BG[level] || 'bg-white dark:bg-gray-800',
+                        HEAT_BG[level] || 'bg-card',
                         isSelected && 'ring-2 ring-inset ring-blue-500 z-10',
                         !isSelected && count > 0 && 'hover:brightness-95 dark:hover:brightness-110',
                         !isSelected && count === 0 && 'hover:bg-gray-50 dark:hover:bg-gray-750',
@@ -362,7 +362,7 @@ export function ProjectCalendarPage() {
                           'text-xs font-semibold self-end leading-none mb-0.5',
                           isToday(day)
                             ? 'bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[11px]'
-                            : count > 0 ? HEAT_TEXT[level] : 'text-gray-500 dark:text-gray-400',
+                            : count > 0 ? HEAT_TEXT[level] : 'text-muted-foreground',
                         )}
                       >
                         {format(day, 'd')}
@@ -374,7 +374,7 @@ export function ProjectCalendarPage() {
                       ))}
 
                       {overflow > 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 px-1.5">
+                        <span className="text-xs text-muted-foreground px-1.5">
                           +{overflow} more
                         </span>
                       )}
@@ -385,7 +385,7 @@ export function ProjectCalendarPage() {
 
               {/* Legend */}
               <div className="flex items-center gap-3 mt-3 justify-end">
-                <span className="text-xs text-gray-400 dark:text-gray-500">Issues due:</span>
+                <span className="text-xs text-muted-foreground">Issues due:</span>
                 <div className="flex items-center gap-1.5">
                   {[
                     { label: '0', bg: 'bg-gray-200 dark:bg-gray-700' },
@@ -396,7 +396,7 @@ export function ProjectCalendarPage() {
                   ].map(({ label, bg }) => (
                     <div key={label} className="flex items-center gap-1">
                       <span className={cn('w-4 h-4 rounded', bg)} />
-                      <span className="text-[11px] text-gray-400 dark:text-gray-500">{label}</span>
+                      <span className="text-[11px] text-muted-foreground">{label}</span>
                     </div>
                   ))}
                 </div>
@@ -407,14 +407,14 @@ export function ProjectCalendarPage() {
 
         {/* Side panel — shown when a day is selected */}
         {selectedDay && (
-          <div className="w-72 shrink-0 border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+          <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
             {/* Panel header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-semibold text-foreground">
                   {format(selectedDay, 'MMMM d, yyyy')}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedDayIssues.length === 0
                     ? 'No issues due'
                     : `${selectedDayIssues.length} ${selectedDayIssues.length === 1 ? 'issue' : 'issues'} due`}
@@ -433,7 +433,7 @@ export function ProjectCalendarPage() {
               {selectedDayIssues.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 text-center">
                   <CalendarDays className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
-                  <p className="text-sm text-gray-400 dark:text-gray-500">No issues due on this day</p>
+                  <p className="text-sm text-muted-foreground">No issues due on this day</p>
                 </div>
               ) : (
                 selectedDayIssues.map((issue) => (

@@ -26,9 +26,9 @@ export function PrivacyPage() {
     <>
       <SEO title="Privacy Policy — Boardupscale" description="How Boardupscale collects, uses, and protects your data." />
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <header className="border-b border-gray-200 dark:border-gray-800 bg-card">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link to="/" aria-label="Boardupscale home">
               <Logo size="sm" />
@@ -49,7 +49,7 @@ export function PrivacyPage() {
             {/* Sidebar TOC — sticky on desktop */}
             <aside className="hidden lg:block">
               <div className="sticky top-8">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Contents
                 </p>
                 <nav className="space-y-1">
@@ -73,10 +73,10 @@ export function PrivacyPage() {
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
                   Privacy Policy
                 </h1>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Last updated: {LAST_UPDATED}
                 </p>
-                <p className="mt-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+                <p className="mt-4 text-foreground leading-relaxed">
                   Boardupscale (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is a self-hosted project management
                   platform built by CodeUpscale. This Privacy Policy explains how we collect,
                   use, store, and protect information when you use{' '}
@@ -162,16 +162,16 @@ export function PrivacyPage() {
                     features are enabled:
                   </p>
 
-                  <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="mt-4 overflow-x-auto rounded-lg border border-border">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-                      <thead className="bg-gray-50 dark:bg-gray-800">
+                      <thead className="bg-muted">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 w-40">Provider</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Purpose</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 w-32">Privacy Policy</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground w-40">Provider</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground">Purpose</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground w-32">Privacy Policy</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-card">
                         {[
                           {
                             name: 'Atlassian',
@@ -200,8 +200,8 @@ export function PrivacyPage() {
                           },
                         ].map((row) => (
                           <tr key={row.name}>
-                            <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{row.name}</td>
-                            <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{row.purpose}</td>
+                            <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
+                            <td className="px-4 py-3 text-foreground">{row.purpose}</td>
                             <td className="px-4 py-3">
                               <a
                                 href={row.url}
@@ -311,8 +311,8 @@ export function PrivacyPage() {
                 <Section id="contact" title="12. Contact Us">
                   <p>For privacy-related questions, data access requests, or to report a concern:</p>
                   <div className="mt-4 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 p-5">
-                    <p className="font-semibold text-gray-900 dark:text-gray-100">CodeUpscale — Boardupscale Team</p>
-                    <p className="mt-1 text-gray-600 dark:text-gray-300">
+                    <p className="font-semibold text-foreground">CodeUpscale — Boardupscale Team</p>
+                    <p className="mt-1 text-foreground">
                       Email:{' '}
                       <a
                         href={`mailto:${SUPPORT_EMAIL}`}
@@ -321,7 +321,7 @@ export function PrivacyPage() {
                         {SUPPORT_EMAIL}
                       </a>
                     </p>
-                    <p className="mt-1 text-gray-600 dark:text-gray-300">
+                    <p className="mt-1 text-foreground">
                       Platform:{' '}
                       <a href={APP_URL} className="text-blue-600 hover:underline dark:text-blue-400">
                         {APP_URL}
@@ -333,7 +333,7 @@ export function PrivacyPage() {
               </div>
 
               {/* Footer */}
-              <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
                 <p>© {new Date().getFullYear()} CodeUpscale. All rights reserved.</p>
                 <Link
                   to="/login"
@@ -364,7 +364,7 @@ function Section({
   return (
     <section id={id} className="scroll-mt-6">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50 mb-4">{title}</h2>
-      <div className="text-gray-600 dark:text-gray-300 leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-gray-800 [&_strong]:dark:text-gray-200 [&_code]:bg-gray-100 [&_code]:dark:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
+      <div className="text-foreground leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-gray-800 [&_strong]:dark:text-gray-200 [&_code]:bg-gray-100 [&_code]:dark:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
         {children}
       </div>
     </section>

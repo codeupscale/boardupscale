@@ -72,7 +72,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
           </div>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Migration Complete</h2>
-        <p className="mt-2 text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-muted-foreground">
           Your Jira data has been successfully imported into Boardupscale.
         </p>
       </div>
@@ -83,8 +83,8 @@ export function CompleteStep({ runId }: CompleteStepProps) {
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardContent className="p-4 text-center">
-                <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded animate-pulse mb-2" />
-                <div className="h-4 w-16 mx-auto bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                <div className="h-8 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-4 w-16 mx-auto bg-muted rounded animate-pulse" />
               </CardContent>
             </Card>
           ))}
@@ -102,7 +102,7 @@ export function CompleteStep({ runId }: CompleteStepProps) {
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stat.value.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+                <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
               </CardContent>
             </Card>
           ))}
@@ -131,13 +131,13 @@ export function CompleteStep({ runId }: CompleteStepProps) {
               <div className="border-t border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
                 {projectBreakdown.map((proj) => (
                   <div key={proj.key} className="px-4 py-3 flex items-center gap-3">
-                    <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 w-16 text-center flex-shrink-0">
+                    <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground w-16 text-center flex-shrink-0">
                       {proj.key}
                     </span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">
+                    <span className="flex-1 text-sm text-foreground truncate">
                       {proj.name}
                     </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">
+                    <span className="text-sm text-muted-foreground flex-shrink-0">
                       {proj.issueCount.toLocaleString()} issues
                     </span>
                     <span

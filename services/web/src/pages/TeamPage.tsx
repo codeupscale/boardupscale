@@ -57,7 +57,7 @@ const ROLE_CONFIG = [
     icon: Crown,
     iconColor: 'text-purple-500',
     selectedBg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
       'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
   },
@@ -68,7 +68,7 @@ const ROLE_CONFIG = [
     icon: Shield,
     iconColor: 'text-blue-500',
     selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
       'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
   },
@@ -77,11 +77,11 @@ const ROLE_CONFIG = [
     label: 'Member',
     description: 'Access and collaborate on assigned projects',
     icon: User2,
-    iconColor: 'text-gray-500 dark:text-gray-400',
+    iconColor: 'text-muted-foreground',
     selectedBg: 'bg-gray-50 dark:bg-gray-700/50 border-gray-400 dark:border-gray-500',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
+      'bg-gray-100 dark:bg-gray-700 text-foreground border border-gray-200 dark:border-gray-600',
   },
 ] as const
 
@@ -165,19 +165,19 @@ function RoleCard({
       <div
         className={cn(
           'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center',
-          selected ? 'bg-white dark:bg-gray-900/60' : 'bg-gray-50 dark:bg-gray-700',
+          selected ? 'bg-card/60' : 'bg-gray-50 dark:bg-gray-700',
         )}
       >
         <Icon className={cn('h-4 w-4', config.iconColor)} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-semibold text-foreground">
             {config.label}
           </span>
           {selected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />}
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {config.description}
         </p>
       </div>
@@ -218,13 +218,13 @@ function Pagination({
 
   return (
     <div className="flex items-center justify-between px-1 mt-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Showing{' '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
+        <span className="font-medium text-foreground">
           {from}–{to}
         </span>{' '}
         of{' '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{total}</span> members
+        <span className="font-medium text-foreground">{total}</span> members
       </p>
       <div className="flex items-center gap-1">
         <Button
@@ -248,7 +248,7 @@ function Pagination({
                 'h-8 w-8 rounded-md text-sm font-medium transition-colors',
                 p === page
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-accent',
               )}
             >
               {p}
@@ -451,14 +451,14 @@ export function TeamPage() {
           ].map(({ icon: Icon, iconBg, iconColor, label, value }) => (
             <div
               key={label}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 p-4 flex items-center gap-4"
+              className="bg-card rounded-xl border border-border/60 p-4 flex items-center gap-4"
             >
               <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0', iconBg)}>
                 <Icon className={cn('h-5 w-5', iconColor)} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
               </div>
             </div>
           ))}
@@ -468,10 +468,10 @@ export function TeamPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-base font-semibold text-foreground">
                 Active Members
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {activeMembers.length} people with access to this organization
               </p>
             </div>
@@ -492,10 +492,10 @@ export function TeamPage() {
                 placeholder="Search by name or email…"
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 h-9 rounded-lg border border-border bg-card text-sm text-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
               {['all', 'owner', 'admin', 'member'].map((r) => (
                 <button
                   key={r}
@@ -503,8 +503,8 @@ export function TeamPage() {
                   className={cn(
                     'px-3 h-7 rounded-md text-xs font-medium transition-all',
                     roleFilter === r
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                      ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-200',
                   )}
                 >
                   {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}
@@ -514,7 +514,7 @@ export function TeamPage() {
           </div>
 
           {filteredActive.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 py-16">
+            <div className="bg-card rounded-xl border border-border/60 py-16">
               <EmptyState
                 icon={<Users className="h-10 w-10" />}
                 title={search || roleFilter !== 'all' ? 'No results found' : 'No active members'}
@@ -526,20 +526,20 @@ export function TeamPage() {
               />
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
               <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Member
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Role
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Status
                 </span>
                 {isAdmin && (
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Actions
                   </span>
                 )}
@@ -565,7 +565,7 @@ export function TeamPage() {
                       <MemberAvatar member={member} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          <span className="text-sm font-medium text-foreground truncate">
                             {member.displayName}
                           </span>
                           {isMe && (
@@ -580,7 +580,7 @@ export function TeamPage() {
                             Migrated (no email)
                           </span>
                         ) : (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {member.email}
                           </p>
                         )}
@@ -598,7 +598,7 @@ export function TeamPage() {
                     {/* Status */}
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Active</span>
+                      <span className="text-xs text-muted-foreground">Active</span>
                     </div>
 
                     {/* Actions — always visible, not hidden behind ... */}
@@ -661,29 +661,29 @@ export function TeamPage() {
         {pendingMembers.length > 0 && (
           <section>
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-base font-semibold text-foreground">
                 Pending Invitations
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {pendingMembers.length} invitation{pendingMembers.length !== 1 ? 's' : ''} awaiting
                 acceptance
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
               <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-amber-50/60 dark:bg-amber-900/10">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Invited Email
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Role
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Status
                 </span>
                 {isAdmin && (
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Actions
                   </span>
                 )}
@@ -708,10 +708,10 @@ export function TeamPage() {
                         <Mail className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {member.email}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {member.displayName !== member.email ? member.displayName : 'No display name set'}
                         </p>
                       </div>
@@ -762,10 +762,10 @@ export function TeamPage() {
             <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
               <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
               Build your team
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Invite your colleagues to collaborate on projects
             </p>
             <Button size="sm" onClick={() => setShowInviteDialog(true)}>
@@ -788,7 +788,7 @@ export function TeamPage() {
               </div>
               <div>
                 <DialogTitle>Invite Team Member</DialogTitle>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   They'll receive an email with a link to join
                 </p>
               </div>
@@ -814,7 +814,7 @@ export function TeamPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Role
               </label>
               <div className="space-y-2">
@@ -851,12 +851,12 @@ export function TeamPage() {
         <DialogContent>
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
+              <div className="h-9 w-9 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0">
                 <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
               </div>
               <div>
                 <DialogTitle>Edit Member</DialogTitle>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Update this member's display info
                 </p>
               </div>
@@ -865,13 +865,13 @@ export function TeamPage() {
 
           <div className="space-y-4">
             {editTarget && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
                 <MemberAvatar member={editTarget} size={10} />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="text-sm font-semibold text-foreground">
                     {editTarget.displayName}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{editTarget.email}</p>
+                  <p className="text-xs text-muted-foreground">{editTarget.email}</p>
                 </div>
               </div>
             )}
@@ -888,11 +888,11 @@ export function TeamPage() {
               onChange={(e) => setEditAvatar(e.target.value)}
             />
             {editAvatar && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <img
                   src={editAvatar}
                   alt="Preview"
-                  className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                  className="h-8 w-8 rounded-full object-cover border border-border"
                   onError={(e) => (e.currentTarget.style.display = 'none')}
                 />
                 Avatar preview
@@ -928,18 +928,18 @@ export function TeamPage() {
           </DialogHeader>
           <div className="space-y-4">
             {roleTarget && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
                 <MemberAvatar member={roleTarget} size={10} />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="text-sm font-semibold text-foreground">
                     {roleTarget.displayName}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{roleTarget.email}</p>
+                  <p className="text-xs text-muted-foreground">{roleTarget.email}</p>
                 </div>
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 New role
               </label>
               <div className="space-y-2">
@@ -976,7 +976,7 @@ export function TeamPage() {
               </div>
               <div>
                 <DialogTitle>Add Email Address</DialogTitle>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Set the real email for this Jira-migrated member
                 </p>
               </div>
@@ -985,10 +985,10 @@ export function TeamPage() {
 
           <div className="space-y-4">
             {emailTarget && (
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
                 <MemberAvatar member={emailTarget} size={10} />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <p className="text-sm font-semibold text-foreground">
                     {emailTarget.displayName}
                   </p>
                   <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">

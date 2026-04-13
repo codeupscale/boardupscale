@@ -174,7 +174,7 @@ export function ProjectSettingsPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
           {SETTINGS_GROUPS.map((group) => (
             <div key={group.label} className="px-2 pt-4 pb-2">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1">
@@ -189,7 +189,7 @@ export function ProjectSettingsPage() {
                     'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                     activeTab === item.id
                       ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70',
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70',
                   )}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -211,7 +211,7 @@ export function ProjectSettingsPage() {
                 'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                 activeTab === 'trash'
                   ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70',
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70',
               )}
             >
               <Trash2 className="h-4 w-4 flex-shrink-0" />
@@ -234,16 +234,16 @@ export function ProjectSettingsPage() {
         </div>
 
         {/* Content panel */}
-        <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
+        <div className="flex-1 overflow-auto p-6 bg-card">
 
           {/* General */}
           {activeTab === 'general' && project && (
             <div className="max-w-lg">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.generalSettings')}</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage your project name, key, type, and description.</p>
+                <h2 className="text-base font-semibold text-foreground">{t('settings.generalSettings')}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Manage your project name, key, type, and description.</p>
               </div>
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+              <div className="rounded-xl border border-border bg-card p-5">
                 <ProjectForm
                   project={project}
                   onSubmit={(values) => updateProject.mutate({ id: project.id, ...values })}
@@ -260,15 +260,15 @@ export function ProjectSettingsPage() {
             <div className="max-w-2xl">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('projects.projectMembers')}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add and manage who has access to this project.</p>
+                  <h2 className="text-base font-semibold text-foreground">{t('projects.projectMembers')}</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Add and manage who has access to this project.</p>
                 </div>
                 <Button size="sm" onClick={() => setShowAddMember(true)}>
                   <Plus className="h-4 w-4" />
                   {t('projects.addMember')}
                 </Button>
               </div>
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
                 <MemberList projectId={projectKey!} members={members || []} />
               </div>
             </div>
@@ -279,8 +279,8 @@ export function ProjectSettingsPage() {
             <div className="max-w-2xl">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.issueStatuses')}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Define the statuses issues move through in this project.</p>
+                  <h2 className="text-base font-semibold text-foreground">{t('settings.issueStatuses')}</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Define the statuses issues move through in this project.</p>
                 </div>
                 <Button
                   size="sm"
@@ -296,12 +296,12 @@ export function ProjectSettingsPage() {
                   {t('settings.addStatus')}
                 </Button>
               </div>
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
                 {board?.statuses?.map((status) => (
                   <div key={status.id} className="flex items-center gap-3 px-4 py-3">
                     <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color || '#6b7280' }} />
-                    <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{status.name}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 capitalize">{status.category}</span>
+                    <span className="flex-1 text-sm font-medium text-foreground">{status.name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{status.category}</span>
                     <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEditStatus(status)}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
@@ -316,7 +316,7 @@ export function ProjectSettingsPage() {
                   </div>
                 ))}
                 {(!board?.statuses || board.statuses.length === 0) && (
-                  <div className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <div className="py-10 text-center text-sm text-muted-foreground">
                     {t('settings.noStatusesConfigured')}
                   </div>
                 )}
@@ -329,8 +329,8 @@ export function ProjectSettingsPage() {
             <div className="max-w-2xl">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Roles & Permissions</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Assign roles to project members and manage access levels.</p>
+                  <h2 className="text-base font-semibold text-foreground">Roles & Permissions</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Assign roles to project members and manage access levels.</p>
                 </div>
                 <Link to="/settings/roles">
                   <Button size="sm" variant="outline">
@@ -339,7 +339,7 @@ export function ProjectSettingsPage() {
                   </Button>
                 </Link>
               </div>
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
+              <div className="rounded-xl border border-border bg-card divide-y divide-gray-100 dark:divide-gray-700/60">
                 <MemberRoleList projectId={projectKey!} />
               </div>
             </div>
@@ -349,17 +349,17 @@ export function ProjectSettingsPage() {
           {activeTab === 'webhooks' && (
             <div className="max-w-lg">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Webhooks</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Receive HTTP callbacks when events occur in this project.</p>
+                <h2 className="text-base font-semibold text-foreground">Webhooks</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Receive HTTP callbacks when events occur in this project.</p>
               </div>
-              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 flex items-center justify-between">
+              <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                    <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <Globe className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Project Webhooks</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Configure outgoing HTTP callbacks</p>
+                    <p className="text-sm font-medium text-foreground">Project Webhooks</p>
+                    <p className="text-xs text-muted-foreground">Configure outgoing HTTP callbacks</p>
                   </div>
                 </div>
                 <Button size="sm" onClick={() => navigate(`/projects/${projectKey}/webhooks`)}>
@@ -373,8 +373,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'custom-fields' && (
             <div className="max-w-2xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Custom Fields</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add extra fields to issues in this project.</p>
+                <h2 className="text-base font-semibold text-foreground">Custom Fields</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Add extra fields to issues in this project.</p>
               </div>
               <CustomFieldSettings projectId={projectKey!} />
             </div>
@@ -384,8 +384,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'components' && (
             <div className="max-w-2xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Components</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Organize issues by functional areas of your project.</p>
+                <h2 className="text-base font-semibold text-foreground">Components</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Organize issues by functional areas of your project.</p>
               </div>
               <ComponentList projectId={projectKey!} />
             </div>
@@ -395,8 +395,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'versions' && (
             <div className="max-w-2xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Versions</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track releases and milestones for this project.</p>
+                <h2 className="text-base font-semibold text-foreground">Versions</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Track releases and milestones for this project.</p>
               </div>
               <VersionList projectId={projectKey!} />
             </div>
@@ -406,8 +406,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'github' && (
             <div className="max-w-lg">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">GitHub Integration</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Connect a GitHub repository to auto-link commits and pull requests.</p>
+                <h2 className="text-base font-semibold text-foreground">GitHub Integration</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Connect a GitHub repository to auto-link commits and pull requests.</p>
               </div>
               <GitHubConnection projectId={projectKey!} />
             </div>
@@ -417,8 +417,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'ai' && (
             <div className="max-w-3xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">AI Usage</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Monitor AI feature usage and credits for this project.</p>
+                <h2 className="text-base font-semibold text-foreground">AI Usage</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Monitor AI feature usage and credits for this project.</p>
               </div>
               <AiUsageDashboard />
             </div>
@@ -428,8 +428,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'automations' && projectKey && (
             <div className="max-w-3xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Automations</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Create rules to automate repetitive tasks in this project.</p>
+                <h2 className="text-base font-semibold text-foreground">Automations</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Create rules to automate repetitive tasks in this project.</p>
               </div>
               <AutomationsContent projectKey={projectKey} />
             </div>
@@ -439,8 +439,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'trash' && projectKey && (
             <div>
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Trash</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Deleted issues are kept here for 30 days before permanent removal.</p>
+                <h2 className="text-base font-semibold text-foreground">Trash</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Deleted issues are kept here for 30 days before permanent removal.</p>
               </div>
               <TrashContent projectKey={projectKey} />
             </div>
@@ -450,8 +450,8 @@ export function ProjectSettingsPage() {
           {activeTab === 'danger' && (
             <div className="max-w-lg">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Danger Zone</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Irreversible actions that affect this project permanently.</p>
+                <h2 className="text-base font-semibold text-foreground">Danger Zone</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Irreversible actions that affect this project permanently.</p>
               </div>
               <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/10 p-5">
                 <div className="flex items-start gap-3">
@@ -632,7 +632,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
       {members.map((member) => (
         <div key={member.id} className="flex items-center gap-3 px-4 py-3">
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <span className="text-sm font-medium text-foreground">
               {member.user?.displayName || member.userId}
             </span>
             <span className="text-xs text-gray-500 ml-2">

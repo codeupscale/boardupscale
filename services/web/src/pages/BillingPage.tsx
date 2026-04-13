@@ -34,7 +34,7 @@ function UsageBar({
   const isNearLimit = percentage >= 80
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
+    <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div
@@ -52,11 +52,11 @@ function UsageBar({
           </div>
           <span className="text-sm font-semibold text-gray-900 dark:text-white">{label}</span>
         </div>
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
+        <span className="text-xs font-medium text-muted-foreground tabular-nums">
           {used} / {isUnlimited ? 'Unlimited' : `${max} ${unit}`}
         </span>
       </div>
-      <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${
             isNearLimit
@@ -96,21 +96,21 @@ function UpgradeCard({
   if (upgradePlans.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+    <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Upgrade your plan</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Get more users, storage, and advanced features.
           </p>
         </div>
-        <div className="inline-flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg flex-shrink-0">
+        <div className="inline-flex items-center gap-1 p-1 bg-muted rounded-lg flex-shrink-0">
           <button
             onClick={() => setCycle('monthly')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'monthly'
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             Monthly
@@ -120,7 +120,7 @@ function UpgradeCard({
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'yearly'
                 ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                : 'text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             Yearly{' '}
@@ -141,7 +141,7 @@ function UpgradeCard({
               className={`relative rounded-2xl p-5 transition-all hover:shadow-md ${
                 isPopular
                   ? 'border-2 border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/10 hover:border-blue-600'
-                  : 'border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                  : 'border border-border hover:border-blue-300 dark:hover:border-blue-600'
               }`}
             >
               {isPopular && (
@@ -156,16 +156,16 @@ function UpgradeCard({
               </div>
               <p className="mb-1">
                 <span className="text-3xl font-bold text-gray-900 dark:text-white">${price}</span>
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{period}</span>
+                <span className="text-sm font-normal text-muted-foreground">{period}</span>
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 {plan.maxUsers < 0 ? 'Unlimited' : `Up to ${plan.maxUsers}`} users &middot; {plan.maxStorageGb} GB storage
               </p>
               <ul className="space-y-2 mb-5">
                 {Object.entries(plan.features)
                   .filter(([, v]) => v)
                   .map(([key]) => (
-                    <li key={key} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                    <li key={key} className="flex items-center gap-2 text-xs text-foreground">
                       <div className="h-4 w-4 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
                         <Check className="h-2.5 w-2.5 text-blue-600 dark:text-blue-400" />
                       </div>
@@ -259,7 +259,7 @@ export function BillingPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-auto p-6 bg-background">
         {/* Current plan hero — full-width gradient card */}
         <div className="relative rounded-2xl overflow-hidden mb-6 shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700" />

@@ -126,7 +126,7 @@ export function PageDetailPage() {
   if (pageLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-sm text-gray-400 dark:text-gray-500 animate-pulse">Loading page…</div>
+        <div className="text-sm text-muted-foreground animate-pulse">Loading page…</div>
       </div>
     )
   }
@@ -135,7 +135,7 @@ export function PageDetailPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-3">Page not found.</p>
+          <p className="text-muted-foreground mb-3">Page not found.</p>
           <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${key}/pages`)}>
             Back to Pages
           </Button>
@@ -147,8 +147,8 @@ export function PageDetailPage() {
   return (
     <div className="flex h-full min-h-0">
       {/* ── Sidebar ── */}
-      <div className="w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="w-60 flex-shrink-0 border-r border-border flex flex-col bg-card">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
             <BookOpen size={15} />
             Pages
@@ -177,11 +177,11 @@ export function PageDetailPage() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-gray-900">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-card">
         {/* Top bar — breadcrumb + actions */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-2.5 border-b border-border bg-muted flex-shrink-0">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 min-w-0">
+          <nav className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
             <Link
               to={`/projects/${key}/pages`}
               className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors flex-shrink-0"
@@ -210,7 +210,7 @@ export function PageDetailPage() {
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Save indicator */}
-            <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {saveStatus === 'saving' && (
                 <>
                   <div className="w-3 h-3 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
@@ -227,7 +227,7 @@ export function PageDetailPage() {
 
             {/* Last edited */}
             {page.lastEditor && (
-              <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+              <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock size={11} />
                 <Avatar user={page.lastEditor as any} size="xs" />
                 <span>{formatDistanceToNow(new Date(page.updatedAt), { addSuffix: true })}</span>
@@ -282,8 +282,8 @@ export function PageDetailPage() {
                 </button>
 
                 {showEmojiPicker && (
-                  <div className="absolute top-12 left-0 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3 w-64">
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Choose an icon</div>
+                  <div className="absolute top-12 left-0 z-20 bg-card border border-border rounded-xl shadow-lg p-3 w-64">
+                    <div className="text-xs text-muted-foreground mb-2 font-medium">Choose an icon</div>
                     <div className="grid grid-cols-8 gap-1">
                       {EMOJI_PICKS.map((emoji) => (
                         <button
@@ -316,7 +316,7 @@ export function PageDetailPage() {
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="Untitled"
-                className="w-full text-3xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-gray-600 resize-none"
+                className="w-full text-3xl font-bold text-foreground bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-gray-600 resize-none"
               />
             </div>
 

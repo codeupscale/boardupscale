@@ -34,7 +34,7 @@ const PHASES: PhaseConfig[] = [
   { id: 3, label: 'Sprints',     icon: Zap,            color: 'text-amber-600 dark:text-amber-400',    bgColor: 'bg-amber-50 dark:bg-amber-900/20'    },
   { id: 4, label: 'Issues',      icon: FileText,       color: 'text-indigo-600 dark:text-indigo-400',  bgColor: 'bg-indigo-50 dark:bg-indigo-900/20'  },
   { id: 5, label: 'Comments',    icon: MessageSquare,  color: 'text-teal-600 dark:text-teal-400',      bgColor: 'bg-teal-50 dark:bg-teal-900/20'      },
-  { id: 6, label: 'Attachments', icon: Paperclip,      color: 'text-gray-600 dark:text-gray-400',      bgColor: 'bg-gray-50 dark:bg-gray-800'         },
+  { id: 6, label: 'Attachments', icon: Paperclip,      color: 'text-gray-600 dark:text-gray-400',      bgColor: 'bg-muted'         },
 ]
 
 interface LogEntry { time: string; message: string }
@@ -226,7 +226,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Migration in Progress</h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Keep this window open until migration completes.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Keep this window open until migration completes.</p>
       </div>
 
       {/* Overall progress card */}
@@ -234,7 +234,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
         'rounded-xl border p-4 space-y-3',
         isCompleted ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
           : isFailed ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-          : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800',
+          : 'bg-card border-gray-200 dark:border-gray-800',
       )}>
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm text-gray-900 dark:text-white">Overall Progress</span>
@@ -249,7 +249,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
             </span>
           </div>
         </div>
-        <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div
             className={cn(
               'h-full rounded-full transition-all duration-700',
@@ -267,11 +267,11 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
             { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400' },
             { label: 'Comments', val: liveCounts.processedComments, total: liveCounts.totalComments, icon: MessageSquare, color: 'text-teal-600 dark:text-teal-400' },
           ].map(({ label, val, total, icon: Icon, color }) => (
-            <div key={label} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2 text-center">
+            <div key={label} className="bg-muted/50 rounded-lg p-2 text-center">
               <Icon className={cn('h-3.5 w-3.5 mx-auto mb-1', color)} />
               <div className="text-sm font-bold text-gray-900 dark:text-white">{val.toLocaleString()}</div>
               {total > 0 && <div className="text-[10px] text-gray-400">of {total.toLocaleString()}</div>}
-              <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{label}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
             </div>
           ))}
         </div>
@@ -284,7 +284,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
       </div>
 
       {/* Phase cards */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Sync Phases</h3>
         </div>
@@ -309,7 +309,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                     'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                     isDone ? 'bg-green-100 dark:bg-green-900/30'
                       : isRunning ? phase.bgColor
-                      : 'bg-gray-100 dark:bg-gray-800',
+                      : 'bg-muted',
                   )}>
                     {isDone ? (
                       <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -327,13 +327,13 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                         'text-sm font-medium',
                         isDone ? 'text-gray-900 dark:text-white'
                           : isRunning ? phase.color.split(' ')[0]
-                          : 'text-gray-400 dark:text-gray-500',
+                          : 'text-muted-foreground',
                       )}>
                         {phase.label}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {isRunning && total > 0 && (
-                          <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                          <span className="text-xs font-mono text-muted-foreground">
                             {processed.toLocaleString()} / {total.toLocaleString()}
                           </span>
                         )}
@@ -357,7 +357,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                     </div>
                     {/* Progress bar (only when running or done with counts) */}
                     {(isRunning || (isDone && total > 0)) && (
-                      <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all duration-500',
@@ -377,10 +377,10 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
       {/* Projects list (collapsible) */}
       {payload.projectKeys.length > 0 && (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-card overflow-hidden">
           <button
             onClick={() => setProjectsExpanded(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4 text-blue-500" />
@@ -397,7 +397,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                   <span className="text-[11px] font-mono font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-100 dark:border-blue-800 flex-shrink-0">
                     {key}
                   </span>
-                  <span className="flex-1 text-sm text-gray-600 dark:text-gray-300 truncate">{key}</span>
+                  <span className="flex-1 text-sm text-foreground truncate">{key}</span>
                   {(completedPhases.includes(4) || isCompleted) && (
                     <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
                   )}
@@ -412,7 +412,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
       )}
 
       {/* Activity log */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Activity Log</h3>
@@ -481,9 +481,9 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
       {/* Cancel dialog */}
       {cancelDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-gray-200 dark:border-gray-700">
+          <div className="bg-card rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-border">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cancel Migration?</h3>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-sm text-muted-foreground">
               Completed phases are preserved. You can retry from the migration history page.
             </p>
             <div className="mt-5 flex gap-3 justify-end">

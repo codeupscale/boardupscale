@@ -51,7 +51,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                       ? 'bg-blue-600 text-white'
                       : isActive
                         ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
+                        : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground',
                   )}
                 >
                   {isCompleted ? (
@@ -66,8 +66,8 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                     isActive
                       ? 'text-blue-700 dark:text-blue-300'
                       : isCompleted
-                        ? 'text-gray-900 dark:text-gray-100'
-                        : 'text-gray-400 dark:text-gray-500',
+                        ? 'text-foreground'
+                        : 'text-muted-foreground',
                   )}
                 >
                   {label}
@@ -148,10 +148,10 @@ function UploadStep({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           Import from Jira
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Upload your Jira JSON export file to get started
         </p>
       </div>
@@ -165,7 +165,7 @@ function UploadStep({
           'relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors',
           isDragOver
             ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
-            : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800/50',
+            : 'border-border hover:border-blue-400 hover:bg-accent/50',
           isLoading && 'pointer-events-none opacity-60',
         )}
       >
@@ -180,7 +180,7 @@ function UploadStep({
         {isLoading ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <p className="text-sm font-medium text-foreground">
               Uploading {selectedFile?.name}...
             </p>
           </div>
@@ -190,17 +190,17 @@ function UploadStep({
               <FileJson className="h-8 w-8 text-blue-500" />
             </div>
             <div>
-              <p className="text-base font-medium text-gray-700 dark:text-gray-300">
+              <p className="text-base font-medium text-foreground">
                 Drag and drop your Jira export JSON file here
               </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 or{' '}
                 <span className="text-blue-600 dark:text-blue-400 underline underline-offset-2">
                   click to browse
                 </span>
               </p>
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Only .json files are accepted
             </p>
           </div>
@@ -239,10 +239,10 @@ function PreviewStep({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           Preview Import
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Review the data that will be imported into Boardupscale
         </p>
       </div>
@@ -255,10 +255,10 @@ function PreviewStep({
               <FolderOpen className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-lg font-bold text-foreground">
                 {preview.projects.length}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 {preview.projects.length === 1 ? 'Project' : 'Projects'}
               </p>
             </div>
@@ -270,10 +270,10 @@ function PreviewStep({
               <FileJson className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-lg font-bold text-foreground">
                 {preview.totalIssues}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Total Issues
               </p>
             </div>
@@ -283,7 +283,7 @@ function PreviewStep({
 
       {/* Projects */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+        <h3 className="text-sm font-semibold text-foreground mb-3">
           Detected Projects
         </h3>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -295,10 +295,10 @@ function PreviewStep({
                     {proj.key.slice(0, 2)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {proj.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {proj.key} &middot; {proj.issueCount} issues
                     </p>
                   </div>
@@ -312,7 +312,7 @@ function PreviewStep({
       {/* User Mapping */}
       {preview.users.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             <Users className="h-4 w-4 inline-block mr-1.5 -mt-0.5" />
             User Mapping
           </h3>
@@ -320,14 +320,14 @@ function PreviewStep({
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                       Jira User
                     </th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                       Email
                     </th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">
                       Boardupscale User
                     </th>
                   </tr>
@@ -377,10 +377,10 @@ function UserMappingRow({
         !jiraUser.matched && !selectedUserId && 'bg-yellow-50/50 dark:bg-yellow-900/10',
       )}
     >
-      <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100">
+      <td className="px-4 py-2.5 text-sm text-foreground">
         {jiraUser.displayName}
       </td>
-      <td className="px-4 py-2.5 text-sm text-gray-500 dark:text-gray-400">
+      <td className="px-4 py-2.5 text-sm text-muted-foreground">
         {jiraUser.email}
       </td>
       <td className="px-4 py-2.5">
@@ -394,8 +394,8 @@ function UserMappingRow({
             value={selectedUserId}
             onChange={(e) => onChange(e.target.value)}
             className={cn(
-              'w-full text-sm rounded-md border px-2 py-1.5 bg-white dark:bg-gray-900',
-              'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300',
+              'w-full text-sm rounded-md border px-2 py-1.5 bg-card',
+              'border-border text-foreground',
               'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
               !jiraUser.matched && !selectedUserId && 'border-yellow-400 dark:border-yellow-600',
             )}
@@ -442,14 +442,14 @@ function ImportStep({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           {status?.status === 'completed'
             ? 'Import Complete'
             : status?.status === 'failed'
               ? 'Import Failed'
               : 'Importing...'}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {status?.status === 'completed'
             ? 'All data has been imported successfully'
             : status?.status === 'failed'
@@ -477,7 +477,7 @@ function ImportStep({
           <span className="text-gray-600 dark:text-gray-400">
             {status?.processed ?? 0} of {status?.total ?? 0} issues imported
           </span>
-          <span className="font-medium text-gray-900 dark:text-gray-100">
+          <span className="font-medium text-foreground">
             {percentage}%
           </span>
         </div>
@@ -570,10 +570,10 @@ function CompleteStep({
       </div>
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           {isSuccess ? 'Import Successful' : 'Import Completed with Errors'}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <p className="text-sm text-muted-foreground mt-2">
           {isSuccess
             ? `Successfully imported ${importStatus?.processed ?? 0} issues from ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}`
             : `Imported ${importStatus?.processed ?? 0} of ${importStatus?.total ?? 0} issues with ${importStatus?.errors?.length ?? 0} errors`}
@@ -601,7 +601,7 @@ function CompleteStep({
                 </p>
               ))}
               {importStatus.errors.length > 10 && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   ... and {importStatus.errors.length - 10} more
                 </p>
               )}

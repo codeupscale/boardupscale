@@ -91,7 +91,7 @@ function DeliveryHistory({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Delivery History</h2>
+          <h2 className="text-base font-semibold text-foreground">Delivery History</h2>
           <p className="text-sm text-gray-500">{webhook.name}</p>
         </div>
       </div>
@@ -105,11 +105,11 @@ function DeliveryHistory({
           description="Webhook deliveries will appear here once events are triggered."
         />
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <div className="bg-card rounded-xl border border-border divide-y divide-gray-100 dark:divide-gray-700">
           {data.items.map((delivery: WebhookDelivery) => (
             <div key={delivery.id}>
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
                 onClick={() =>
                   setExpandedId(expandedId === delivery.id ? null : delivery.id)
                 }
@@ -142,16 +142,16 @@ function DeliveryHistory({
               </button>
               {expandedId === delivery.id && (
                 <div className="px-4 pb-3 space-y-2">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Request Payload</p>
-                    <pre className="text-xs text-gray-700 dark:text-gray-300 overflow-auto max-h-40">
+                  <div className="bg-muted rounded-lg p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Request Payload</p>
+                    <pre className="text-xs text-foreground overflow-auto max-h-40">
                       {JSON.stringify(delivery.payload, null, 2)}
                     </pre>
                   </div>
                   {delivery.responseBody && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Response Body</p>
-                      <pre className="text-xs text-gray-700 dark:text-gray-300 overflow-auto max-h-40">
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Response Body</p>
+                      <pre className="text-xs text-foreground overflow-auto max-h-40">
                         {delivery.responseBody}
                       </pre>
                     </div>
@@ -367,7 +367,7 @@ export function WebhooksPage() {
       <div className="p-6 max-w-4xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Webhooks</h2>
+            <h2 className="text-base font-semibold text-foreground">Webhooks</h2>
             <p className="text-sm text-gray-500 mt-1">
               Receive HTTP callbacks when events happen in this project.
             </p>
@@ -386,7 +386,7 @@ export function WebhooksPage() {
             action={{ label: 'Add Webhook', onClick: openCreate }}
           />
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+          <div className="bg-card rounded-xl border border-border divide-y divide-gray-100 dark:divide-gray-700">
             {webhooks.map((webhook) => (
               <div
                 key={webhook.id}
@@ -401,7 +401,7 @@ export function WebhooksPage() {
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {webhook.name}
                     </span>
                     <Badge variant="outline" className="text-xs">

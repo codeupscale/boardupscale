@@ -107,7 +107,7 @@ function RunCard({ run, onRetry }: { run: MigrationRun; onRetry: (id: string) =>
                 </span>
               )}
             </div>
-            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
               <span>
                 {run.processedIssues.toLocaleString()} / {run.totalIssues.toLocaleString()} issues
               </span>
@@ -163,7 +163,7 @@ export function MigrationHistoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Migration History</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             All Jira migration runs for this organisation.
           </p>
         </div>
@@ -192,7 +192,7 @@ export function MigrationHistoryPage() {
       {!isLoading && runs.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No migrations yet.</p>
+            <p className="text-muted-foreground">No migrations yet.</p>
             <Button className="mt-4" onClick={() => navigate('/settings/migrate/jira')}>
               Start your first migration
             </Button>

@@ -121,7 +121,7 @@ export function Sidebar() {
         role="navigation"
         aria-label="Main navigation"
         className={cn(
-          'fixed left-0 top-0 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 z-40',
+          'fixed left-0 top-0 h-full bg-card border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-200 z-40',
           'md:relative',
           isSidebarOpen ? 'w-60' : 'w-16',
           // On mobile, hide completely when collapsed
@@ -152,12 +152,12 @@ export function Sidebar() {
                   'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150',
                   active
                     ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                   !isSidebarOpen && 'justify-center px-2',
                 )}
               >
                 <Icon
-                  className={cn('h-5 w-5 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')}
+                  className={cn('h-5 w-5 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground')}
                 />
                 {isSidebarOpen ? label : <span className="sr-only">{label}</span>}
               </Link>
@@ -177,7 +177,7 @@ export function Sidebar() {
         {/* Current Project Navigation */}
         {isSidebarOpen && currentProject && (
           <div className="mt-5 px-4">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2">
               {currentProject.key} - {currentProject.name}
             </p>
             <div className="space-y-0.5">
@@ -192,10 +192,10 @@ export function Sidebar() {
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
                         ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')} />
+                    <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground')} />
                     <span className="truncate">{label}</span>
                   </Link>
                 )
@@ -207,7 +207,7 @@ export function Sidebar() {
         {/* Settings Sub-Navigation */}
         {isSidebarOpen && isOnSettingsPath && (
           <div className="mt-5 px-4">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2">
               Account & Settings
             </p>
             <div className="space-y-0.5">
@@ -224,13 +224,13 @@ export function Sidebar() {
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
                         ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <Icon
                       className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500',
+                        active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground',
                       )}
                     />
                     <span className="truncate">{label}</span>
@@ -244,7 +244,7 @@ export function Sidebar() {
         {/* Recent Projects */}
         {isSidebarOpen && projects && projects.length > 0 && (
           <div className="mt-5 px-4">
-            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 px-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-2">
               {t('nav.recentProjects')}
             </p>
             <div className="space-y-0.5">
@@ -258,14 +258,14 @@ export function Sidebar() {
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       isProjectActive
                         ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-900 dark:hover:text-gray-200',
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <span className={cn(
                       'h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0',
                       isProjectActive
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+                        : 'bg-muted text-muted-foreground',
                     )}>
                       {project.key.slice(0, 2)}
                     </span>
@@ -291,8 +291,8 @@ export function Sidebar() {
             <Avatar user={user} size="sm" />
             {isSidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{user.displayName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                <p className="text-sm font-semibold text-foreground truncate">{user.displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             )}
           </div>
@@ -304,7 +304,7 @@ export function Sidebar() {
           aria-expanded={isSidebarOpen}
           aria-label="Toggle sidebar"
           className={cn(
-            'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-t border-gray-50 dark:border-gray-800',
+            'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground hover:bg-accent/70 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-t border-gray-50 dark:border-gray-800',
             !isSidebarOpen && 'justify-center px-2',
           )}
         >

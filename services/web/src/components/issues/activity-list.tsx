@@ -29,13 +29,13 @@ const FIELD_META: Record<string, { icon: React.ElementType; label: string; iconB
   priority:     { icon: Flag,      label: 'Priority',      iconBg: 'bg-orange-100 dark:bg-orange-900/40', iconColor: 'text-orange-600 dark:text-orange-400' },
   type:         { icon: Tag,       label: 'Type',          iconBg: 'bg-purple-100 dark:bg-purple-900/40', iconColor: 'text-purple-600 dark:text-purple-400' },
   sprintId:     { icon: Target,    label: 'Sprint',        iconBg: 'bg-indigo-100 dark:bg-indigo-900/40', iconColor: 'text-indigo-600 dark:text-indigo-400' },
-  title:        { icon: Type,      label: 'Title',         iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
-  description:  { icon: FileText,  label: 'Description',   iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
+  title:        { icon: Type,      label: 'Title',         iconBg: 'bg-muted',        iconColor: 'text-gray-600 dark:text-gray-400' },
+  description:  { icon: FileText,  label: 'Description',   iconBg: 'bg-muted',        iconColor: 'text-gray-600 dark:text-gray-400' },
   dueDate:      { icon: Calendar,  label: 'Due Date',      iconBg: 'bg-red-100 dark:bg-red-900/40',       iconColor: 'text-red-600 dark:text-red-400' },
   storyPoints:  { icon: BarChart3, label: 'Story Points',  iconBg: 'bg-violet-100 dark:bg-violet-900/40', iconColor: 'text-violet-600 dark:text-violet-400' },
   timeEstimate: { icon: Clock,     label: 'Time Estimate', iconBg: 'bg-teal-100 dark:bg-teal-900/40',     iconColor: 'text-teal-600 dark:text-teal-400' },
   labels:       { icon: Tag,       label: 'Labels',        iconBg: 'bg-yellow-100 dark:bg-yellow-900/40', iconColor: 'text-yellow-700 dark:text-yellow-400' },
-  parentId:     { icon: GitBranch, label: 'Parent',        iconBg: 'bg-gray-100 dark:bg-gray-800',        iconColor: 'text-gray-600 dark:text-gray-400' },
+  parentId:     { icon: GitBranch, label: 'Parent',        iconBg: 'bg-muted',        iconColor: 'text-gray-600 dark:text-gray-400' },
 }
 
 function formatDisplayValue(value: string | null | undefined, field?: string): string {
@@ -61,7 +61,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
   const field = activity.field || ''
   const meta = FIELD_META[field]
   const Icon = meta?.icon || Pencil
-  const iconBg = meta?.iconBg || 'bg-gray-100 dark:bg-gray-800'
+  const iconBg = meta?.iconBg || 'bg-muted'
   const iconColor = meta?.iconColor || 'text-gray-500'
 
   // For "created" action
@@ -73,11 +73,11 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
           <Tag className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
         </div>
         <div className="flex-1 min-w-0 pb-6">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="text-sm text-foreground">
             <span className="font-semibold text-gray-900 dark:text-white">{activity.user?.displayName || 'System'}</span>
             {' '}created this issue
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
         </div>
       </div>
     )
@@ -103,10 +103,10 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
           <span className="text-sm font-semibold text-gray-900 dark:text-white">
             {activity.user?.displayName || 'System'}
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-muted-foreground">
             changed {meta?.label || field}
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0">
+          <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
             {formatRelativeTime(activity.createdAt)}
           </span>
         </div>
@@ -115,7 +115,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
         {!isDescriptionChange && (activity.oldValue || activity.newValue) && (
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {activity.oldValue && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400 line-through decoration-gray-400/60">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted text-xs font-medium text-muted-foreground line-through decoration-gray-400/60">
                 {oldDisplay}
               </span>
             )}
@@ -125,7 +125,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
                 {newDisplay}
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-50 dark:bg-gray-800 text-xs text-gray-400 dark:text-gray-500 italic">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-xs text-muted-foreground italic">
                 None
               </span>
             )}
@@ -166,7 +166,7 @@ export function ActivityList({ issueId }: { issueId: string }) {
     return (
       <div className="text-center py-10">
         <Clock className="h-8 w-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
-        <p className="text-sm text-gray-400 dark:text-gray-500">{t('activity.noActivity')}</p>
+        <p className="text-sm text-muted-foreground">{t('activity.noActivity')}</p>
       </div>
     )
   }
@@ -188,7 +188,7 @@ export function ActivityList({ issueId }: { issueId: string }) {
             variant="ghost"
             onClick={() => setPage((p) => p + 1)}
             disabled={page >= meta.totalPages}
-            className="text-xs text-gray-500 dark:text-gray-400"
+            className="text-xs text-muted-foreground"
           >
             <ChevronDown className="h-3.5 w-3.5 mr-1" />
             Show older ({meta.total - page * meta.limit > 0 ? meta.total - page * meta.limit : 0} more)

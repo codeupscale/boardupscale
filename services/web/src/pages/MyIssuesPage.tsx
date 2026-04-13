@@ -39,7 +39,7 @@ function StatPill({
         'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all duration-200',
         active
           ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
-          : 'border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm',
+          : 'border-border/60 bg-card/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm',
       )}
     >
       <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', color)}>
@@ -47,7 +47,7 @@ function StatPill({
       </div>
       <div className="text-left">
         <p className="text-lg font-bold text-gray-900 dark:text-white">{count}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-0.5">{label}</p>
+        <p className="text-xs text-muted-foreground -mt-0.5">{label}</p>
       </div>
     </button>
   )
@@ -127,8 +127,8 @@ export function MyIssuesPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-            <ListFilter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <ListFilter className="h-4 w-4 text-muted-foreground" />
           </div>
           <Select
             value={filterPriority || '__all__'}
@@ -151,18 +151,18 @@ export function MyIssuesPage() {
         {isLoading ? (
           <LoadingPage />
         ) : filtered.length > 0 ? (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">{t('nav.projects', 'Project')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">{t('common.assignee')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">SP</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-32">Key</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-40">{t('nav.projects', 'Project')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">SP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
@@ -175,19 +175,19 @@ export function MyIssuesPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/30">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-sm text-muted-foreground">
                   {t('common.pageOf', { page, totalPages, total })}
                 </span>
                 <div className="flex gap-2">
                   <button
-                    className="px-3.5 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300 transition-colors"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-foreground transition-colors"
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     {t('common.previous')}
                   </button>
                   <button
-                    className="px-3.5 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-gray-700 dark:text-gray-300 transition-colors"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-foreground transition-colors"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

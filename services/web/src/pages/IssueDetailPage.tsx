@@ -144,14 +144,14 @@ function CommentItem({
   return (
     <div className="flex gap-3 group">
       <Avatar user={comment.author} size="sm" />
-      <div className="flex-1 min-w-0 rounded-xl bg-white dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
+      <div className="flex-1 min-w-0 rounded-xl bg-card/60 border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-semibold text-foreground">
             {comment.author?.displayName || 'Unknown'}
           </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{formatRelativeTime(comment.createdAt)}</span>
+          <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.createdAt)}</span>
           {comment.editedAt && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 italic">{t('issues.edited')}</span>
+            <span className="text-xs text-muted-foreground italic">{t('issues.edited')}</span>
           )}
         </div>
         {editing ? (
@@ -183,7 +183,7 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <RichTextDisplay content={comment.content} className="text-sm text-gray-700 dark:text-gray-300" />
+          <RichTextDisplay content={comment.content} className="text-sm text-foreground" />
         )}
         {currentUserId === comment.authorId && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -230,7 +230,7 @@ function CommentItem({
 function SidebarField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
         {label}
       </label>
       {children}
@@ -255,11 +255,11 @@ function SectionHeader({
   return (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">
           {title}
           {count !== undefined && (
-            <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
               ({count})
             </span>
           )}
@@ -379,13 +379,13 @@ export function IssueDetailPage() {
 
   // Select style shared across sidebar
   const selectClasses =
-    'w-full rounded-lg border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors'
+    'w-full rounded-lg border border-border/60 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors'
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-950">
+    <div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-2 text-sm flex-wrap">
-        <Link to="/projects" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-card flex items-center gap-2 text-sm flex-wrap">
+        <Link to="/projects" className="text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
           {t('nav.projects')}
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
@@ -393,7 +393,7 @@ export function IssueDetailPage() {
           <>
             <Link
               to={`/projects/${issue.projectId}/board`}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="text-muted-foreground hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               {t('nav.board')}
             </Link>
@@ -429,7 +429,7 @@ export function IssueDetailPage() {
                   autoFocus
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
-                  className="flex-1 text-2xl font-bold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
+                  className="flex-1 text-2xl font-bold text-foreground bg-card border border-blue-300 dark:border-blue-600 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-shadow"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       updateIssue.mutate({ id: issue.id, title: titleValue })
@@ -454,7 +454,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <h1
-                className="text-2xl font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors leading-tight"
+                className="text-2xl font-bold text-foreground cursor-pointer hover:text-blue-700 dark:hover:text-blue-400 transition-colors leading-tight"
                 onClick={() => {
                   setTitleValue(issue.title)
                   setEditingTitle(true)
@@ -466,8 +466,8 @@ export function IssueDetailPage() {
           </div>
 
           {/* Description */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               {t('common.description')}
             </h3>
             {editingDesc ? (
@@ -498,7 +498,7 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <div
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl p-3 -mx-1 transition-colors min-h-[48px]"
+                className="cursor-pointer hover:bg-accent/50 rounded-xl p-3 -mx-1 transition-colors min-h-[48px]"
                 onClick={() => {
                   setDescValue(issue.description || '')
                   setEditingDesc(true)
@@ -507,7 +507,7 @@ export function IssueDetailPage() {
                 {issue.description ? (
                   <RichTextDisplay content={issue.description} />
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">{t('issues.clickToAddDescription')}</p>
+                  <p className="text-sm text-muted-foreground italic">{t('issues.clickToAddDescription')}</p>
                 )}
               </div>
             )}
@@ -517,7 +517,7 @@ export function IssueDetailPage() {
           <AiSummaryPanel issueId={issue.id} />
 
           {/* Linked Issues */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
             <IssueLinksList issueId={issue.id} projectId={issue.projectId} />
           </div>
 
@@ -533,7 +533,7 @@ export function IssueDetailPage() {
 
           {/* Child Issues */}
           {childConfig && (
-            <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
               <SectionHeader
                 icon={ListTree}
                 title="Child Issues"
@@ -551,35 +551,35 @@ export function IssueDetailPage() {
                 }
               />
               {childIssues.length > 0 ? (
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700/60 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
+                <div className="rounded-xl border border-border/60 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
                   {childIssues.map((child) => (
                     <Link
                       key={child.id}
                       to={`/issues/${child.id}`}
-                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors"
                     >
                       <IssueTypeIcon type={child.type} />
                       <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium">{child.key}</span>
-                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{child.title}</span>
+                      <span className="text-sm text-foreground truncate flex-1">{child.title}</span>
                       <StatusBadge status={child.status} />
                     </Link>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 dark:text-gray-500">No child issues yet.</p>
+                <p className="text-sm text-muted-foreground">No child issues yet.</p>
               )}
             </div>
           )}
 
           {/* Attachments */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
             <AttachmentPanel issueId={issue.id} />
           </div>
 
           {/* Activity Panel — Tabbed: Comments | History | All */}
-          <div className="rounded-2xl bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
             {/* Tab bar */}
-            <div className="flex items-center gap-0 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-0 border-b border-border">
               {([
                 { key: 'comments' as const, label: 'Comments', count: comments?.length },
                 { key: 'history' as const, label: 'History' },
@@ -594,7 +594,7 @@ export function IssueDetailPage() {
                       'relative px-5 py-3.5 text-sm font-medium transition-colors',
                       isActive
                         ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200',
+                        : 'text-muted-foreground hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     {label}
@@ -603,7 +603,7 @@ export function IssueDetailPage() {
                         'ml-1.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5',
                         isActive
                           ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
+                          : 'bg-muted text-muted-foreground',
                       )}>
                         {count}
                       </span>
@@ -616,7 +616,7 @@ export function IssueDetailPage() {
               })}
               <div className="flex-1" />
               <div className="pr-3">
-                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700">
+                <Button size="sm" variant="ghost" onClick={() => setShowWorkLogDialog(true)} className="text-xs text-muted-foreground hover:text-gray-700">
                   <Clock className="h-3.5 w-3.5" />
                   Log work
                 </Button>
@@ -671,7 +671,7 @@ export function IssueDetailPage() {
                   {activityTab === 'comments' && (!comments || comments.length === 0) && (
                     <div className="text-center py-8">
                       <MessageSquare className="h-8 w-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
-                      <p className="text-sm text-gray-400 dark:text-gray-500">{t('issues.noComments')}</p>
+                      <p className="text-sm text-muted-foreground">{t('issues.noComments')}</p>
                     </div>
                   )}
                 </div>
@@ -684,19 +684,19 @@ export function IssueDetailPage() {
                     <div className="w-6 h-6 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center">
                       <Clock className="h-3 w-3 text-teal-600 dark:text-teal-400" />
                     </div>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Time Logged
                     </span>
                   </div>
                   <div className="space-y-1.5 ml-8">
                     {workLogs.map((log) => (
-                      <div key={log.id} className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
+                      <div key={log.id} className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-accent/40 transition-colors">
                         <Avatar user={log.user} size="xs" />
-                        <span className="font-semibold text-gray-900 dark:text-gray-100">{formatDuration(log.timeSpent)}</span>
+                        <span className="font-semibold text-foreground">{formatDuration(log.timeSpent)}</span>
                         {log.description && (
-                          <span className="text-gray-500 dark:text-gray-400 truncate">{log.description}</span>
+                          <span className="text-muted-foreground truncate">{log.description}</span>
                         )}
-                        <span className="text-gray-400 dark:text-gray-500 text-xs ml-auto flex-shrink-0">
+                        <span className="text-muted-foreground text-xs ml-auto flex-shrink-0">
                           {formatRelativeTime(log.createdAt)}
                         </span>
                       </div>
@@ -718,7 +718,7 @@ export function IssueDetailPage() {
         {/* ================================================================ */}
         {/*  Sidebar                                                          */}
         {/* ================================================================ */}
-        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 overflow-y-auto bg-white dark:bg-gray-900/50">
+        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-800 overflow-y-auto bg-card/50">
           <div className="p-5 space-y-5">
             {/* Status */}
             <SidebarField label={t('common.status')}>
@@ -782,7 +782,7 @@ export function IssueDetailPage() {
             <SidebarField label={t('common.reporter')}>
               <div className="flex items-center gap-2.5 py-1">
                 <Avatar user={issue.reporter} size="xs" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="text-sm text-foreground">
                   {issue.reporter?.displayName || 'Unknown'}
                 </span>
               </div>
@@ -816,7 +816,7 @@ export function IssueDetailPage() {
                   value={parentSearch}
                   onChange={(e) => setParentSearch(e.target.value)}
                   placeholder="Search by key or title…"
-                  className="w-full rounded-md border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors mb-1"
+                  className="w-full rounded-md border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors mb-1"
                 />
                 <select
                   className={selectClasses}
@@ -882,7 +882,7 @@ export function IssueDetailPage() {
                 className="dark:bg-gray-800 dark:border-gray-700/60"
               />
               {issue.timeSpent > 0 && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+                <p className="text-xs text-muted-foreground mt-1.5">
                   {issue.timeEstimate
                     ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
                     : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
@@ -923,7 +923,7 @@ export function IssueDetailPage() {
                     }
                   }}
                   placeholder={t('issues.addLabel')}
-                  className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors"
+                  className="flex-1 rounded-lg border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-colors"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel} className="rounded-lg">
                   <Plus className="h-3 w-3" />
@@ -1142,10 +1142,10 @@ export function IssueDetailPage() {
 
             {/* Metadata */}
             <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-1.5">
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
               </p>
             </div>
@@ -1237,7 +1237,7 @@ export function IssueDetailPage() {
           <div className="space-y-4">
             {(() => {
               const config = CHILD_TYPE_MAP[issue.type]
-              if (!config) return <p className="text-sm text-gray-500 dark:text-gray-400">This issue type cannot have children.</p>
+              if (!config) return <p className="text-sm text-muted-foreground">This issue type cannot have children.</p>
 
               const selectedChildType = childType || config.default
 

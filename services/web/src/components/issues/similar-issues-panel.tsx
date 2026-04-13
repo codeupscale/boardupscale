@@ -61,21 +61,21 @@ function SimilarIssueItem({ item }: { item: SearchResultItem }) {
       to={`/issues/${item.id}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white dark:bg-gray-800 border border-amber-100 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-600 transition-colors group"
+      className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-amber-100 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-600 transition-colors group"
     >
       <IssueTypeIcon type={item.type as IssueType} />
       <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium flex-shrink-0">
         {item.key}
       </span>
-      <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
+      <span className="text-xs text-foreground truncate flex-1">
         {item.title}
       </span>
       {item.statusName && (
-        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded flex-shrink-0">
+        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-muted-foreground rounded flex-shrink-0">
           {item.statusName}
         </span>
       )}
-      <ExternalLink className="h-3 w-3 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </Link>
   )
 }

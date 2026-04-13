@@ -462,7 +462,7 @@ export function ProjectBoardPage() {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-auto">
             {/* Column Headers (sticky) */}
-            <div className="flex gap-4 px-6 pt-4 pb-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+            <div className="flex gap-4 px-6 pt-4 pb-2 bg-card border-b border-border sticky top-0 z-10">
               {board.statuses.map((column) => {
                 const wipLimit = column.wipLimit || 0
                 const totalIssues = column.issues.length
@@ -527,7 +527,7 @@ export function ProjectBoardPage() {
           <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
             {(provided) => (
               <div
-                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-gray-50 dark:bg-gray-950"
+                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-background"
                 ref={provided.innerRef}
                 {...provided.droppableProps}
               >
@@ -780,7 +780,7 @@ export function ProjectBoardPage() {
 
                     {incompleteCount > 0 && (
                       <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <label className="text-sm font-medium text-foreground">
                           Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                         </label>
                         <Select
@@ -799,7 +799,7 @@ export function ProjectBoardPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {boardMoveToSprintId
                             ? `Incomplete issues will be moved to the selected sprint.`
                             : `Incomplete issues will be moved to the backlog.`}

@@ -174,7 +174,7 @@ export function BoardColumn({
       {/* WIP Limit Progress Bar */}
       {wipLimit > 0 && (
         <div className="px-3 py-2 bg-white/60 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1.5">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1.5">
             <span className="font-medium">WIP</span>
             <span className={cn('font-semibold', isOverLimit && 'text-red-500')}>
               {issueCount}/{wipLimit}

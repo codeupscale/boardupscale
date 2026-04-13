@@ -18,7 +18,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, breadcrumbs, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900', className)}>
+    <div className={cn('flex items-center justify-between px-6 py-4 border-b border-border bg-card', className)}>
       <div>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1 mb-1">
@@ -28,7 +28,7 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions, className }:
                 {crumb.href ? (
                   <Link
                     to={crumb.href}
-                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    className="text-xs text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                   >
                     {crumb.label}
                   </Link>
@@ -39,9 +39,9 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions, className }:
             ))}
           </nav>
         )}
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
+        <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         {subtitle && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
         )}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

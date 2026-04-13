@@ -25,7 +25,7 @@ export function GithubCallbackPage() {
   }, [searchParams])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-white dark:bg-gray-900">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-card">
       <div className="h-12 w-12 rounded-xl bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
         <Github className="h-6 w-6 text-white" />
       </div>

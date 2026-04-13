@@ -72,8 +72,8 @@ export function ProjectPagesPage() {
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar — page tree */}
-        <div className="w-60 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="w-60 flex-shrink-0 border-r border-border flex flex-col bg-card">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
               <BookOpen size={15} />
               Pages
@@ -101,18 +101,18 @@ export function ProjectPagesPage() {
         </div>
 
         {/* Main content — empty state when no page selected */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-gray-900">
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-card">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
             <FileText size={32} className="text-blue-500" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h2 className="text-xl font-semibold text-foreground mb-2">
             {isLoading
               ? 'Loading pages...'
               : pages.length === 0
                 ? 'Create your first page'
                 : 'Select a page'}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
+          <p className="text-sm text-muted-foreground max-w-sm mb-6">
             {isLoading
               ? ''
               : pages.length === 0

@@ -33,7 +33,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
           {...provided.dragHandleProps}
           onClick={() => navigate(`/issues/${issue.id}`)}
           className={cn(
-            'group relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200/80 dark:border-gray-700/80',
+            'group relative bg-card rounded-xl border border-gray-200/80 dark:border-gray-700/80',
             'shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer',
             'hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-600',
             borderClass,
@@ -79,7 +79,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
                   </span>
                 ))}
                 {labels.length > 2 && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-full">
+                  <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded-full">
                     +{labels.length - 2}
                   </span>
                 )}
@@ -98,13 +98,13 @@ export function BoardCard({ issue, index }: BoardCardProps) {
               <div className="flex items-center gap-1.5">
                 {issue.assignee ? (
                   <>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] hidden group-hover:inline">
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[80px] hidden group-hover:inline">
                       {issue.assignee.displayName}
                     </span>
                     <Avatar user={issue.assignee} size="xs" />
                   </>
                 ) : (
-                  <div className="w-5 h-5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 flex-shrink-0" />
+                  <div className="w-5 h-5 rounded-full border border-dashed border-border flex-shrink-0" />
                 )}
               </div>
             </div>

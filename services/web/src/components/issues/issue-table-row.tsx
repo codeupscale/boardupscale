@@ -58,7 +58,7 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
       >
         <div className="flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} />
-          <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-400">
+          <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded text-gray-600 dark:text-gray-400">
             {issue.key}
           </span>
         </div>
@@ -71,7 +71,7 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
           onClick={() => navigate(`/issues/${issue.id}`)}
         >
           {issue.project ? (
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded truncate block max-w-[140px]" title={issue.project.name}>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-muted px-2 py-0.5 rounded truncate block max-w-[140px]" title={issue.project.name}>
               {issue.project.name}
             </span>
           ) : (

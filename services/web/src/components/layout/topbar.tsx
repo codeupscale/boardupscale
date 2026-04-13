@@ -44,7 +44,7 @@ export function Topbar() {
         <button
           onClick={toggleSidebar}
           aria-label="Toggle menu"
-          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -56,11 +56,11 @@ export function Topbar() {
         <button
           onClick={() => setSearchOpen(true)}
           aria-label="Search (Cmd+K)"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">{t('common.search')}</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md font-mono text-gray-400 dark:text-gray-500">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md font-mono text-muted-foreground">
             ⌘K
           </kbd>
         </button>
@@ -70,7 +70,7 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <button
               aria-label="Switch theme"
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             >
               {(() => {
                 const Icon = themeIcon
@@ -104,7 +104,7 @@ export function Topbar() {
         {/* Language Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+            <button className="flex items-center gap-1 p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               <Globe className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">{i18n.language.slice(0, 2)}</span>
             </button>
@@ -130,7 +130,7 @@ export function Topbar() {
         <Link
           to="/notifications"
           aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
-          className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="relative p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
@@ -143,15 +143,15 @@ export function Topbar() {
         {/* User dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1">
+            <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-accent transition-colors ml-1">
               <Avatar user={user || undefined} size="sm" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {user && (
               <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.displayName}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
+                <p className="text-sm font-semibold text-foreground">{user.displayName}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
               </div>
             )}
             <DropdownMenuItem onClick={() => navigate('/settings')}>

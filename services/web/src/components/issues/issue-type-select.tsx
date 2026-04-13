@@ -72,7 +72,7 @@ export function IssueTypeSelect({
   return (
     <div className={cn('w-full', className)} ref={containerRef}>
       {label && (
-        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {label}
         </label>
       )}
@@ -86,7 +86,7 @@ export function IssueTypeSelect({
           disabled={disabled}
           className={cn(
             'flex items-center gap-2 w-full rounded-lg border border-gray-200 dark:border-gray-600',
-            'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm',
+            'bg-card text-foreground px-3 py-2 text-sm',
             'focus:outline-none focus:ring-2 focus:ring-blue-500',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'hover:border-gray-300 dark:hover:border-gray-500 transition-colors',
@@ -105,7 +105,7 @@ export function IssueTypeSelect({
             aria-label="Issue types"
             className={cn(
               'absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600',
-              'bg-white dark:bg-gray-800 shadow-lg py-1 max-h-60 overflow-auto',
+              'bg-card shadow-lg py-1 max-h-60 overflow-auto',
             )}
           >
             {typeOptions.map((type) => (

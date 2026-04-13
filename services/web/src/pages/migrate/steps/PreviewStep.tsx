@@ -92,10 +92,10 @@ function FilterPill({
   const colorMap = {
     blue: active
       ? 'bg-blue-600 text-white shadow-sm shadow-blue-200 dark:shadow-blue-900/40'
-      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700',
+      : 'bg-muted text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700',
     violet: active
       ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900/40'
-      : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700',
+      : 'bg-muted text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700',
   }
   return (
     <button
@@ -136,7 +136,7 @@ function ProjectCard({
         'flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150 group border',
         isSelected
           ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 shadow-sm'
-          : 'bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700 hover:border-blue-100 hover:bg-blue-50/40 dark:hover:bg-blue-950/10',
+          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-blue-100 hover:bg-blue-50/40 dark:hover:bg-blue-950/10',
       )}
     >
       {/* Gradient key badge */}
@@ -154,13 +154,13 @@ function ProjectCard({
         <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">
           {project.name}
         </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
+        <p className="text-xs text-muted-foreground font-mono mt-0.5">
           {project.key}
         </p>
       </div>
 
       {/* Stats */}
-      <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-xs text-gray-400 dark:text-gray-500">
+      <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <FileText className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
           <span className="font-medium text-gray-600 dark:text-gray-400">{project.issueCount.toLocaleString()}</span>
@@ -210,7 +210,7 @@ function MemberCard({
         'flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-150 group border',
         isSelected
           ? 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800 shadow-sm'
-          : 'bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700 hover:border-violet-100 hover:bg-violet-50/40 dark:hover:bg-violet-950/10',
+          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-violet-100 hover:bg-violet-50/40 dark:hover:bg-violet-950/10',
       )}
     >
       {/* Avatar */}
@@ -245,7 +245,7 @@ function MemberCard({
           {member.displayName}
         </p>
         {member.email && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
             <Mail className="h-3 w-3 flex-shrink-0" />
             {member.email}
           </p>
@@ -270,7 +270,7 @@ function ProjectSkeleton() {
   return (
     <div className="space-y-2.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-gray-50 dark:bg-gray-800 animate-pulse border border-gray-100 dark:border-gray-700">
+        <div key={i} className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-muted animate-pulse border border-gray-100 dark:border-gray-700">
           <div className="h-11 w-11 rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
           <div className="flex-1 space-y-2">
             <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded-md w-36" />
@@ -290,7 +290,7 @@ function MemberSkeleton() {
   return (
     <div className="space-y-2">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 animate-pulse border border-gray-100 dark:border-gray-700">
+        <div key={i} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-muted animate-pulse border border-gray-100 dark:border-gray-700">
           <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-md w-28" />
@@ -433,7 +433,7 @@ export function PreviewStep({
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">
           What would you like to import?
         </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           Select the projects and team members to migrate into Boardupscale.
         </p>
       </div>
@@ -442,7 +442,7 @@ export function PreviewStep({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* ── Projects Panel ─────────────────────────────────────────── */}
-        <div className="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+        <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           {/* Panel header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/10">
             <div className="flex items-center gap-3">
@@ -481,7 +481,7 @@ export function PreviewStep({
                 placeholder="Search projects by name or key..."
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:focus:ring-blue-600/40 focus:border-blue-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
+                className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:focus:ring-blue-600/40 focus:border-blue-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
               />
               {projectSearch && (
                 <button
@@ -539,7 +539,7 @@ export function PreviewStep({
 
         {/* ── Members Panel ──────────────────────────────────────────── */}
         {connectionId ? (
-          <div className="flex flex-col rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+          <div className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
             {/* Panel header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-violet-50/80 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/10">
               <div className="flex items-center gap-3">
@@ -578,7 +578,7 @@ export function PreviewStep({
                   placeholder="Search by name or email..."
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:focus:ring-violet-600/40 focus:border-violet-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
+                  className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:focus:ring-violet-600/40 focus:border-violet-400 text-gray-900 dark:text-white placeholder:text-gray-400 transition-all"
                 />
                 {memberSearch && (
                   <button
@@ -635,14 +635,14 @@ export function PreviewStep({
           </div>
         ) : (
           /* Placeholder when no connectionId */
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 p-12 text-center">
-            <div className="h-12 w-12 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-gray-50/50 dark:bg-gray-900/30 p-12 text-center">
+            <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-4">
               <Users className="h-6 w-6 text-gray-400" />
             </div>
-            <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+            <p className="text-sm font-semibold text-muted-foreground">
               Team members will appear here
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
               Connect via OAuth to automatically import and sync your Jira team members.
             </p>
           </div>

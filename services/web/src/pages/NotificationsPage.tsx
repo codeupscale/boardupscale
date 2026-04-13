@@ -57,7 +57,7 @@ function getNotificationIconBg(type: string) {
     'sprint_started':           'bg-blue-50 dark:bg-blue-900/20',
     'sprint_completed':         'bg-emerald-50 dark:bg-emerald-900/20',
   }
-  return map[type] || 'bg-gray-100 dark:bg-gray-800'
+  return map[type] || 'bg-muted'
 }
 
 function getNotificationLink(notification: Notification): string | null {
@@ -79,15 +79,15 @@ function StatCard({
   color: string
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-center gap-4">
+    <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
       <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <p className="text-2xl font-bold text-foreground">
           {value}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
       </div>
     </div>
   )
@@ -115,7 +115,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
         'w-full flex items-start gap-4 px-5 py-4 transition-colors text-left',
         'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500',
         !notification.read && 'bg-blue-50/50 dark:bg-blue-900/10',
-        'hover:bg-gray-50 dark:hover:bg-gray-800/50',
+        'hover:bg-accent/50',
         link && 'cursor-pointer',
       )}
     >
@@ -126,13 +126,13 @@ function NotificationItem({ notification }: { notification: Notification }) {
         {getNotificationIcon(notification.type)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm', !notification.read ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300')}>
+        <p className={cn('text-sm', !notification.read ? 'font-semibold text-foreground' : 'text-foreground')}>
           {notification.title}
         </p>
         {notification.body && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{notification.body}</p>
+          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
         )}
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatRelativeTime(notification.createdAt)}</p>
+        <p className="text-xs text-muted-foreground mt-1">{formatRelativeTime(notification.createdAt)}</p>
       </div>
       {!notification.read && (
         <div className="flex-shrink-0">
@@ -203,20 +203,20 @@ export function NotificationsPage() {
             <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mb-5">
               <Bell className="h-10 w-10 text-blue-400 dark:text-blue-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               {t('notifications.noNotifications')}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            <p className="text-sm text-muted-foreground max-w-sm">
               {t('notifications.noNotificationsDesc')}
             </p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
             {/* Unread section */}
             {unreadCount > 0 && (
               <>
-                <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="px-5 py-3 bg-muted border-b border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {t('notifications.unread', { count: unreadCount })}
                   </p>
                 </div>
@@ -233,8 +233,8 @@ export function NotificationsPage() {
             {/* Read section */}
             {notifications.some((n) => n.read) && (
               <>
-                <div className="px-5 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-t border-t-gray-200 dark:border-t-gray-700">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="px-5 py-3 bg-muted border-b border-border border-t border-t-gray-200 dark:border-t-gray-700">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {t('notifications.earlier')}
                   </p>
                 </div>

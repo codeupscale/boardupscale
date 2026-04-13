@@ -136,7 +136,7 @@ export function ProjectTimelinePage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0">
         <Button variant="outline" size="sm" onClick={() => setViewStart((d) => subDays(d, cfg.step))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -146,13 +146,13 @@ export function ProjectTimelinePage() {
         <Button variant="outline" size="sm" onClick={() => setViewStart(subDays(today, 7))}>
           Today
         </Button>
-        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+        <span className="text-sm text-muted-foreground ml-2">
           {format(viewStart, 'MMM d')} – {format(viewEnd, 'MMM d, yyyy')}
         </span>
 
         <div className="ml-auto flex items-center gap-3">
           {/* Zoom toggle */}
-          <div className="flex border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden text-xs">
+          <div className="flex border border-border rounded-md overflow-hidden text-xs">
             {(['week', 'month', 'quarter'] as Zoom[]).map((z) => (
               <button
                 key={z}
@@ -161,7 +161,7 @@ export function ProjectTimelinePage() {
                   'px-3 py-1.5 font-medium transition-colors',
                   zoom === z
                     ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                    : 'bg-card text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
                 )}
               >
                 {z.charAt(0).toUpperCase() + z.slice(1)}
@@ -203,7 +203,7 @@ export function ProjectTimelinePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+        <div className="flex-1 overflow-auto bg-card">
           <div style={{ minWidth: LABEL_W + totalWidth }}>
             {/* STICKY HEADER */}
             <div
@@ -212,25 +212,25 @@ export function ProjectTimelinePage() {
             >
               {/* Corner cell (sticky top + left) */}
               <div
-                className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 flex items-end px-3 pb-1"
+                className="sticky left-0 z-30 bg-muted border-r border-b border-border flex items-end px-3 pb-1"
                 style={{ width: LABEL_W, flexShrink: 0, minHeight: 68 }}
               >
-                <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Issue
                 </span>
               </div>
 
               {/* Time header columns */}
               <div
-                className="relative bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+                className="relative bg-muted border-b border-border"
                 style={{ width: totalWidth, flexShrink: 0, minHeight: 68 }}
               >
                 {/* Row 1: Month labels */}
-                <div className="flex h-7 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex h-7 border-b border-border">
                   {monthSegs.map((seg) => (
                     <div
                       key={seg.label}
-                      className="flex items-center px-2 border-r border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800"
+                      className="flex items-center px-2 border-r border-border text-xs font-semibold text-gray-600 dark:text-gray-400 bg-muted"
                       style={{ width: seg.count * cfg.dayPx, flexShrink: 0 }}
                     >
                       {seg.label}
@@ -239,7 +239,7 @@ export function ProjectTimelinePage() {
                 </div>
 
                 {/* Row 2: Sprint bands */}
-                <div className="relative h-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <div className="relative h-5 border-b border-border bg-card">
                   {sprintBands.map((b) => (
                     <div
                       key={b.id}
@@ -260,10 +260,10 @@ export function ProjectTimelinePage() {
                     <div
                       key={i}
                       className={cn(
-                        'flex items-center justify-center text-[10px] border-r border-gray-200 dark:border-gray-700 flex-shrink-0',
+                        'flex items-center justify-center text-[10px] border-r border-border flex-shrink-0',
                         isWeekend(day)
-                          ? 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500'
-                          : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400',
+                          ? 'bg-gray-100 dark:bg-gray-700/50 text-muted-foreground'
+                          : 'bg-card text-muted-foreground',
                         i === todayOffset && 'font-bold text-blue-600 dark:text-blue-400',
                       )}
                       style={{ width: cfg.dayPx }}
@@ -320,7 +320,7 @@ export function ProjectTimelinePage() {
                 >
                   {/* Label (sticky left) */}
                   <div
-                    className="sticky left-0 z-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex items-center gap-2 px-3"
+                    className="sticky left-0 z-10 bg-card border-r border-border flex items-center gap-2 px-3"
                     style={{ width: LABEL_W, flexShrink: 0 }}
                   >
                     <span className={cn('text-[10px] font-bold px-1 rounded flex-shrink-0', badgeClass)}>
@@ -328,7 +328,7 @@ export function ProjectTimelinePage() {
                     </span>
                     <button
                       onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
-                      className="text-xs text-gray-700 dark:text-gray-300 truncate hover:text-blue-600 dark:hover:text-blue-400 text-left min-w-0"
+                      className="text-xs text-foreground truncate hover:text-blue-600 dark:hover:text-blue-400 text-left min-w-0"
                       title={issue.title}
                     >
                       {issue.title}

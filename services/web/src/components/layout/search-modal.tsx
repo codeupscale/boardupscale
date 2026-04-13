@@ -60,7 +60,7 @@ function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] 
     <div className="mt-1 space-y-0.5">
       {shown.map((hl) => (
         <div key={hl.field} className="flex items-start gap-1.5 text-xs">
-          <span className="text-gray-400 dark:text-gray-500 flex-shrink-0 font-medium">
+          <span className="text-muted-foreground flex-shrink-0 font-medium">
             {FIELD_LABELS[hl.field] || hl.field}:
           </span>
           <span className="text-gray-600 dark:text-gray-400 line-clamp-1">
@@ -144,9 +144,9 @@ export function SearchModal() {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-xl bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="relative w-full max-w-xl bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
         {/* Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
           <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
           <input
             ref={inputRef}
@@ -163,7 +163,7 @@ export function SearchModal() {
             aria-autocomplete="list"
             role="combobox"
             aria-expanded={items.length > 0}
-            className="flex-1 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none bg-transparent"
+            className="flex-1 text-sm text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none bg-transparent"
           />
           {query && (
             <button
@@ -174,7 +174,7 @@ export function SearchModal() {
               <X className="h-4 w-4" />
             </button>
           )}
-          <kbd className="text-xs text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 font-mono">
+          <kbd className="text-xs text-muted-foreground border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 font-mono">
             ESC
           </kbd>
         </div>
@@ -212,14 +212,14 @@ export function SearchModal() {
                     aria-selected={index === activeIndex}
                     onClick={() => handleSelect(item)}
                     className={cn(
-                      'w-full flex flex-col px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left',
+                      'w-full flex flex-col px-4 py-2.5 hover:bg-accent transition-colors text-left',
                       index === activeIndex && 'bg-blue-50 dark:bg-blue-900/30',
                     )}
                   >
                     <div className="flex items-center gap-3">
                       <IssueTypeIcon type={item.type as IssueType} className="h-4 w-4 flex-shrink-0" />
                       <span className="text-xs font-mono text-blue-600 dark:text-blue-400 flex-shrink-0">{item.key}</span>
-                      <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{item.title}</span>
+                      <span className="text-sm text-foreground truncate">{item.title}</span>
                       {item.projectName && (
                         <span className="ml-auto text-[10px] text-gray-500 flex-shrink-0">
                           {item.projectName}

@@ -20,8 +20,8 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-10" onClick={onClose} />
-      <div className="relative z-20 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 p-3">
-        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+      <div className="relative z-20 mb-2 bg-card border border-border rounded-lg shadow-lg dark:shadow-black/40 p-3">
+        <div className="text-xs font-semibold text-foreground mb-2">
           {t('board.wipLimit', 'WIP Limit')}
         </div>
         <p className="text-xs text-gray-500 mb-2">
@@ -37,7 +37,7 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
               if (e.key === 'Enter') handleSave()
               if (e.key === 'Escape') onClose()
             }}
-            className="w-20 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-20 px-2 py-1.5 text-sm border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             autoFocus
           />
           <button
@@ -48,7 +48,7 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
           </button>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-border rounded-md hover:bg-accent transition-colors"
           >
             {t('common.cancel', 'Cancel')}
           </button>

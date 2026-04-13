@@ -199,7 +199,7 @@ export function RoleManagementPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-auto p-6 bg-background">
         {roles.length === 0 ? (
           <EmptyState
             icon={<Shield className="h-12 w-12" />}
@@ -217,7 +217,7 @@ export function RoleManagementPage() {
                 <div
                   key={role.id}
                   className={cn(
-                    'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow',
+                    'bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow',
                     isSystem
                       ? 'border-l-4 border-l-purple-400 dark:border-l-purple-500'
                       : 'border-l-4 border-l-blue-400 dark:border-l-blue-500',
@@ -261,12 +261,12 @@ export function RoleManagementPage() {
                           )}
                         </div>
                         {role.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
                             {role.description}
                           </p>
                         )}
                       </div>
-                      <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
+                      <span className="bg-muted text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
                         {role.permissions.length} permission{role.permissions.length !== 1 ? 's' : ''}
                       </span>
                     </button>
@@ -295,7 +295,7 @@ export function RoleManagementPage() {
 
                   {/* Expanded permissions grid */}
                   {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-muted/50">
                       <PermissionsGrid
                         permissionGroups={permissionGroups}
                         allActions={allActions}
@@ -410,20 +410,20 @@ function PermissionsGrid({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-700">
-            <th className="text-left py-2 pr-4 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+          <tr className="border-b border-border">
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">
               Resource
             </th>
             {allActions.map((action) => (
               <th
                 key={action}
-                className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider"
+                className="text-center py-2 px-2 font-medium text-muted-foreground text-xs uppercase tracking-wider"
               >
                 {capitalize(action)}
               </th>
             ))}
             {!readOnly && (
-              <th className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+              <th className="text-center py-2 px-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                 All
               </th>
             )}
@@ -434,7 +434,7 @@ function PermissionsGrid({
             const allSelected = perms.every((p) => selectedIds.has(p.id))
             return (
               <tr key={resource} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                <td className="py-2.5 pr-4 font-medium text-gray-700 dark:text-gray-300">
+                <td className="py-2.5 pr-4 font-medium text-foreground">
                   {capitalize(resource)}
                 </td>
                 {allActions.map((action) => {

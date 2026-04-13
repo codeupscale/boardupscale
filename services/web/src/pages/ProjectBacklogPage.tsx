@@ -94,7 +94,7 @@ function DraggableIssueRow({
           ref={provided.innerRef}
           {...provided.draggableProps}
           className={cn(
-            'group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
+            'group hover:bg-accent/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
             selectable && isSelected && 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20',
             snapshot.isDragging && 'bg-blue-50 dark:bg-blue-900/30 shadow-lg rounded-lg border border-blue-200 dark:border-blue-700',
           )}
@@ -123,7 +123,7 @@ function DraggableIssueRow({
                   toggleIssue(issue.id)
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
               />
             </td>
           )}
@@ -144,7 +144,7 @@ function DraggableIssueRow({
           <td className="px-3 py-3">
             <Link
               to={`/issues/${issue.id}`}
-              className="text-sm text-gray-900 dark:text-gray-100 font-medium line-clamp-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-foreground font-medium line-clamp-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               {issue.title}
@@ -198,14 +198,14 @@ function DraggableIssueRow({
             {issue.assignee ? (
               <Avatar user={issue.assignee} size="xs" />
             ) : (
-              <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600" />
+              <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-dashed border-border" />
             )}
           </td>
 
           {/* Story Points */}
           <td className="px-3 py-3 w-14 text-center">
             {issue.storyPoints != null ? (
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+              <span className="text-xs font-medium text-foreground bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
                 {issue.storyPoints}
               </span>
             ) : (
@@ -283,7 +283,7 @@ function SprintSection({
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
               ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
-              : 'border-gray-200 dark:border-gray-700',
+              : 'border-border',
           )}
         >
           {/* Sprint Header */}
@@ -292,15 +292,15 @@ function SprintSection({
               'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
               isActive
                 ? 'bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800'
-                : 'bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700',
+                : 'bg-muted/50 border-b border-gray-100 dark:border-gray-700',
             )}
             onClick={() => setCollapsed((c) => !c)}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {collapsed ? (
-                <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               )}
               <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200 truncate">{sprint.name}</h3>
               {isActive && (
@@ -308,20 +308,20 @@ function SprintSection({
                   {t('sprints.active')}
                 </span>
               )}
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+              <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
 
               {/* Story Points Summary */}
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-foreground flex-shrink-0">
                   <Target className="h-3 w-3" />
                   {completedPoints}/{totalPoints} SP
                 </span>
               )}
 
               {sprint.startDate && sprint.endDate && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0 hidden sm:inline">
+                <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 hidden sm:inline">
                   {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
                 </span>
               )}
@@ -346,7 +346,7 @@ function SprintSection({
                 size="icon-sm"
                 variant="ghost"
                 onClick={() => setShowConfirm('delete')}
-                className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -382,7 +382,7 @@ function SprintSection({
                         setEditingGoal(false)
                         setGoalText(sprint.goal || '')
                       }}
-                      className="text-gray-400 dark:text-gray-500"
+                      className="text-muted-foreground"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -396,9 +396,9 @@ function SprintSection({
                     setEditingGoal(true)
                   }}
                 >
-                  <Target className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
+                  <Target className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-gray-600 dark:text-gray-400 flex-1">
-                    <span className="font-medium text-gray-500 dark:text-gray-400">Goal:</span>{' '}
+                    <span className="font-medium text-muted-foreground">Goal:</span>{' '}
                     {sprint.goal}
                   </p>
                   <Pencil className="h-3 w-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
@@ -412,7 +412,7 @@ function SprintSection({
             <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-700">
               <button
                 onClick={() => setEditingGoal(true)}
-                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors flex items-center gap-1"
+                className="text-xs text-muted-foreground hover:text-gray-600 dark:hover:text-gray-400 transition-colors flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" />
                 Add sprint goal
@@ -441,7 +441,7 @@ function SprintSection({
                             if (el) el.indeterminate = someSelected && !allSelected
                           }}
                           onChange={() => selectAll(issueIds)}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </th>
                       <th colSpan={6} />
@@ -454,7 +454,7 @@ function SprintSection({
                   </tbody>
                 </table>
               ) : (
-                <div className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                <div className="py-6 text-center text-sm text-muted-foreground">
                   Drag issues here or create new ones
                 </div>
               )}
@@ -538,7 +538,7 @@ function SprintSection({
 
                       {incompleteCount > 0 && (
                         <div className="space-y-1.5">
-                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          <label className="text-sm font-medium text-foreground">
                             Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                           </label>
                           <Select
@@ -557,7 +557,7 @@ function SprintSection({
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             {moveToSprintId
                               ? `Incomplete issues will be moved to the selected sprint.`
                               : `Incomplete issues will be moved to the backlog.`}
@@ -648,19 +648,19 @@ function BacklogSection({
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
               ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
-              : 'border-gray-200 dark:border-gray-700',
+              : 'border-border',
           )}
         >
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t('sprints.backlog')}
               </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-foreground">
                   <Target className="h-3 w-3" />
                   {totalPoints} SP
                 </span>
@@ -687,7 +687,7 @@ function BacklogSection({
                           if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
                         }}
                         onChange={() => selectAll(backlogIds)}
-                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        className="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
                     <th colSpan={6} />
@@ -852,7 +852,7 @@ export function ProjectBacklogPage() {
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           {/* Summary Bar */}
           {activeSprints.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
               <span>
                 {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>

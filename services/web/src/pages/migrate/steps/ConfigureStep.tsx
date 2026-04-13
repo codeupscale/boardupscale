@@ -44,7 +44,7 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
       <div className="flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
         {description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <button
@@ -92,7 +92,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Configure Migration
         </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           Map Jira statuses and roles to Boardupscale equivalents.
         </p>
       </div>
@@ -106,7 +106,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
           <div className="space-y-2">
             {DEFAULT_JIRA_STATUSES.map((row) => (
               <div key={row.jira} className="flex items-center gap-3">
-                <div className="flex-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
+                <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
                 <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
@@ -115,7 +115,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                   onChange={(e) =>
                     setStatusMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
                   }
-                  className="flex-1 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label={`Map ${row.jira} to`}
                 >
                   {BOARDUPSCALE_STATUSES.map((s) => (
@@ -168,7 +168,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
           <div className="space-y-2">
             {DEFAULT_JIRA_ROLES.map((row) => (
               <div key={row.jira} className="flex items-center gap-3">
-                <div className="flex-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
+                <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
                 <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
@@ -177,7 +177,7 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                   onChange={(e) =>
                     setRoleMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
                   }
-                  className="flex-1 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label={`Map ${row.jira} role to`}
                 >
                   {BOARDUPSCALE_ROLES.map((r) => (

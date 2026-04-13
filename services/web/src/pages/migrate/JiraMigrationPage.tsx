@@ -40,7 +40,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                       ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
                       : isActive
                       ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-blue-200'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500',
+                      : 'bg-muted text-muted-foreground',
                   )}
                   aria-current={isActive ? 'step' : undefined}
                 >
@@ -53,7 +53,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                       ? 'text-blue-700 dark:text-blue-300'
                       : isCompleted
                       ? 'text-gray-700 dark:text-gray-200'
-                      : 'text-gray-400 dark:text-gray-500',
+                      : 'text-muted-foreground',
                   )}
                 >
                   {STEP_LABELS[step]}
@@ -191,7 +191,7 @@ export function JiraMigrationPage() {
   const isWideStep = WIDE_STEPS.includes(step)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
       <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">
@@ -203,7 +203,7 @@ export function JiraMigrationPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Migrate from Jira
           </h1>
-          <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm sm:text-base">
+          <p className="mt-2 text-muted-foreground text-sm sm:text-base">
             Import your projects, issues, sprints, and team members into Boardupscale.
           </p>
         </div>
@@ -222,7 +222,7 @@ export function JiraMigrationPage() {
 
         {/* Step content */}
         <div className={cn(
-          'bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800',
+          'bg-card rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800',
           isWideStep ? 'p-6 sm:p-8' : 'p-6 sm:p-8',
         )}>
           {step === 1 && <ConnectStep onNext={handleConnect} />}
