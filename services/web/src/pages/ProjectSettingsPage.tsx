@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { ElementType, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Plus, Trash2, Edit2, AlertTriangle, Shield, Globe } from 'lucide-react'
+import {
+  Plus, Trash2, Edit2, AlertTriangle, Shield, Globe,
+  Settings, Users, GitBranch, SlidersHorizontal, Layers,
+  Tag, Sparkles, Github,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   useProject,
@@ -15,7 +19,7 @@ import { useMe } from '@/hooks/useAuth'
 import { useRoles, useAssignRole } from '@/hooks/usePermissions'
 import { IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
-import { Tabs, TabContent } from '@/components/ui/tabs'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -36,6 +40,40 @@ import { cn } from '@/lib/utils'
 const STATUS_COLORS = [
   '#6b7280', '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
   '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316',
+]
+
+interface SettingItem {
+  id: string
+  label: string
+  icon: ElementType
+}
+
+const SETTINGS_GROUPS: Array<{ label: string; items: SettingItem[] }> = [
+  {
+    label: 'Project',
+    items: [
+      { id: 'general', label: 'General', icon: Settings },
+      { id: 'workflow', label: 'Workflow', icon: GitBranch },
+      { id: 'custom-fields', label: 'Custom Fields', icon: SlidersHorizontal },
+      { id: 'components', label: 'Components', icon: Layers },
+      { id: 'versions', label: 'Versions', icon: Tag },
+    ],
+  },
+  {
+    label: 'Integrations',
+    items: [
+      { id: 'github', label: 'GitHub', icon: Github },
+      { id: 'webhooks', label: 'Webhooks', icon: Globe },
+      { id: 'ai', label: 'AI Usage', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Team',
+    items: [
+      { id: 'members', label: 'Members', icon: Users },
+      { id: 'roles', label: 'Roles & Permissions', icon: Shield },
+    ],
+  },
 ]
 
 export function ProjectSettingsPage() {
@@ -122,54 +160,92 @@ export function ProjectSettingsPage() {
         ]}
       />
 
-      <div className="p-6">
-        <Tabs
-          tabs={[
-            { id: 'general', label: t('settings.general') },
-            { id: 'members', label: t('projects.members') },
-            { id: 'workflow', label: t('settings.workflow') },
-            { id: 'roles', label: 'Roles & Permissions' },
-            { id: 'webhooks', label: 'Webhooks' },
-            { id: 'custom-fields', label: 'Custom Fields' },
-            { id: 'components', label: 'Components' },
-            { id: 'versions', label: 'Versions' },
-            { id: 'github', label: 'GitHub' },
-            { id: 'ai', label: 'AI Usage' },
-            { id: 'danger', label: t('settings.dangerZone') },
-          ]}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-          className="overflow-x-auto"
-        />
+      <ProjectTabNav projectKey={projectKey!} />
 
-        <TabContent>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-56 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+          {SETTINGS_GROUPS.map((group) => (
+            <div key={group.label} className="px-2 pt-4 pb-2">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1">
+                {group.label}
+              </p>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  aria-current={activeTab === item.id ? 'true' : undefined}
+                  className={cn(
+                    'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
+                    activeTab === item.id
+                      ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70',
+                  )}
+                >
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
+
+          {/* Danger Zone — at the bottom, separated */}
+          <div className="px-2 pt-2 pb-4 mt-auto border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1 pt-3">
+              Danger
+            </p>
+            <button
+              onClick={() => setActiveTab('danger')}
+              aria-current={activeTab === 'danger' ? 'true' : undefined}
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full',
+                activeTab === 'danger'
+                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium'
+                  : 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20',
+              )}
+            >
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              Danger Zone
+            </button>
+          </div>
+        </div>
+
+        {/* Content panel */}
+        <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
+
           {/* General */}
           {activeTab === 'general' && project && (
             <div className="max-w-lg">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('settings.generalSettings')}</h2>
-              <ProjectForm
-                project={project}
-                onSubmit={(values) =>
-                  updateProject.mutate({ id: project.id, ...values })
-                }
-                onCancel={() => {}}
-                isLoading={updateProject.isPending}
-                submitLabel={t('settings.saveChanges')}
-              />
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.generalSettings')}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Manage your project name, key, type, and description.</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
+                <ProjectForm
+                  project={project}
+                  onSubmit={(values) => updateProject.mutate({ id: project.id, ...values })}
+                  onCancel={() => {}}
+                  isLoading={updateProject.isPending}
+                  submitLabel={t('settings.saveChanges')}
+                />
+              </div>
             </div>
           )}
 
           {/* Members */}
           {activeTab === 'members' && (
             <div className="max-w-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('projects.projectMembers')}</h2>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('projects.projectMembers')}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add and manage who has access to this project.</p>
+                </div>
                 <Button size="sm" onClick={() => setShowAddMember(true)}>
                   <Plus className="h-4 w-4" />
                   {t('projects.addMember')}
                 </Button>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 px-4">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
                 <MemberList projectId={projectKey!} members={members || []} />
               </div>
             </div>
@@ -178,8 +254,11 @@ export function ProjectSettingsPage() {
           {/* Workflow */}
           {activeTab === 'workflow' && (
             <div className="max-w-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.issueStatuses')}</h2>
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('settings.issueStatuses')}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Define the statuses issues move through in this project.</p>
+                </div>
                 <Button
                   size="sm"
                   onClick={() => {
@@ -194,36 +273,27 @@ export function ProjectSettingsPage() {
                   {t('settings.addStatus')}
                 </Button>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
                 {board?.statuses?.map((status) => (
                   <div key={status.id} className="flex items-center gap-3 px-4 py-3">
-                    <span
-                      className="h-3 w-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: status.color || '#6b7280' }}
-                    />
+                    <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color || '#6b7280' }} />
                     <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{status.name}</span>
-                    <span className="text-xs text-gray-500">{status.category}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => handleOpenEditStatus(status)}
-                    >
+                    <span className="text-xs text-gray-400 dark:text-gray-500 capitalize">{status.category}</span>
+                    <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEditStatus(status)}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="text-gray-400 hover:text-red-600"
-                      onClick={() =>
-                        deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })
-                      }
+                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      onClick={() => deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 ))}
                 {(!board?.statuses || board.statuses.length === 0) && (
-                  <div className="py-8 text-center text-sm text-gray-500">
+                  <div className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">
                     {t('settings.noStatusesConfigured')}
                   </div>
                 )}
@@ -231,15 +301,13 @@ export function ProjectSettingsPage() {
             </div>
           )}
 
-          {/* Roles & Permissions */}
+          {/* Roles */}
           {activeTab === 'roles' && (
             <div className="max-w-2xl">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-start justify-between mb-6">
                 <div>
                   <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Roles & Permissions</h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Manage organization-wide roles or assign roles to project members.
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Assign roles to project members and manage access levels.</p>
                 </div>
                 <Link to="/settings/roles">
                   <Button size="sm" variant="outline">
@@ -248,9 +316,7 @@ export function ProjectSettingsPage() {
                   </Button>
                 </Link>
               </div>
-
-              {/* Assign roles to members inline */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60">
                 <MemberRoleList projectId={projectKey!} />
               </div>
             </div>
@@ -259,20 +325,23 @@ export function ProjectSettingsPage() {
           {/* Webhooks */}
           {activeTab === 'webhooks' && (
             <div className="max-w-lg">
-              <div className="flex items-start gap-3">
-                <Globe className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Webhooks</h2>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Configure webhooks to receive real-time HTTP callbacks when events occur in this project.
-                  </p>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate(`/projects/${projectKey}/webhooks`)}
-                  >
-                    Manage Webhooks
-                  </Button>
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Webhooks</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Receive HTTP callbacks when events occur in this project.</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Project Webhooks</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Configure outgoing HTTP callbacks</p>
+                  </div>
                 </div>
+                <Button size="sm" onClick={() => navigate(`/projects/${projectKey}/webhooks`)}>
+                  Manage
+                </Button>
               </div>
             </div>
           )}
@@ -280,6 +349,10 @@ export function ProjectSettingsPage() {
           {/* Custom Fields */}
           {activeTab === 'custom-fields' && (
             <div className="max-w-2xl">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Custom Fields</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Add extra fields to issues in this project.</p>
+              </div>
               <CustomFieldSettings projectId={projectKey!} />
             </div>
           )}
@@ -287,6 +360,10 @@ export function ProjectSettingsPage() {
           {/* Components */}
           {activeTab === 'components' && (
             <div className="max-w-2xl">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Components</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Organize issues by functional areas of your project.</p>
+              </div>
               <ComponentList projectId={projectKey!} />
             </div>
           )}
@@ -294,6 +371,10 @@ export function ProjectSettingsPage() {
           {/* Versions */}
           {activeTab === 'versions' && (
             <div className="max-w-2xl">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Versions</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Track releases and milestones for this project.</p>
+              </div>
               <VersionList projectId={projectKey!} />
             </div>
           )}
@@ -301,6 +382,10 @@ export function ProjectSettingsPage() {
           {/* GitHub */}
           {activeTab === 'github' && (
             <div className="max-w-lg">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">GitHub Integration</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Connect a GitHub repository to auto-link commits and pull requests.</p>
+              </div>
               <GitHubConnection projectId={projectKey!} />
             </div>
           )}
@@ -308,6 +393,10 @@ export function ProjectSettingsPage() {
           {/* AI Usage */}
           {activeTab === 'ai' && (
             <div className="max-w-3xl">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">AI Usage</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Monitor AI feature usage and credits for this project.</p>
+              </div>
               <AiUsageDashboard />
             </div>
           )}
@@ -315,21 +404,23 @@ export function ProjectSettingsPage() {
           {/* Danger Zone */}
           {activeTab === 'danger' && (
             <div className="max-w-lg">
-              <div className="border border-red-200 rounded-xl p-5 bg-red-50">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Danger Zone</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Irreversible actions that affect this project permanently.</p>
+              </div>
+              <div className="rounded-xl border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-900/10 p-5">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="h-9 w-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-semibold text-red-800 mb-1">
+                    <h3 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
                       {t('settings.deleteProject')}
                     </h3>
-                    <p className="text-sm text-red-700 mb-4">
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-4">
                       {t('settings.deleteProjectDesc')}
                     </p>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowDeleteProject(true)}
-                    >
+                    <Button variant="destructive" size="sm" onClick={() => setShowDeleteProject(true)}>
                       {t('settings.deleteProject')}
                     </Button>
                   </div>
@@ -337,7 +428,8 @@ export function ProjectSettingsPage() {
               </div>
             </div>
           )}
-        </TabContent>
+
+        </div>
       </div>
 
       {/* Add Member Dialog */}
