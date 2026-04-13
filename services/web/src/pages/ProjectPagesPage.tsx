@@ -22,26 +22,34 @@ export function ProjectPagesPage() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
 
+  if (!key) return null
+
   async function handleCreatePage(parentId?: string) {
     if (!project) return
-    const page = await createPage.mutateAsync({
-      projectId: project.id,
-      parentPageId: parentId,
-      title: 'Untitled',
-      content: '',
-    })
-    navigate(`/projects/${key}/pages/${page.id}`)
+    try {
+      const page = await createPage.mutateAsync({
+        projectId: project.id,
+        parentPageId: parentId,
+        title: 'Untitled',
+        content: '',
+      })
+      navigate(`/projects/${key}/pages/${page.id}`)
+    } catch {
+      // error handled by mutation's onError
+    }
   }
 
-  async function handleDeletePage(id: string, title: string) {
-    if (!project) return
+  function handleDeletePage(id: string, title: string) {
     setDeleteConfirm({ id, title })
   }
 
   async function handleConfirmDelete() {
     if (!deleteConfirm || !project) return
-    await deletePage.mutateAsync({ id: deleteConfirm.id, projectId: project.id })
-    setDeleteConfirm(null)
+    try {
+      await deletePage.mutateAsync({ id: deleteConfirm.id, projectId: project.id })
+    } finally {
+      setDeleteConfirm(null)
+    }
   }
 
   return (
@@ -54,13 +62,13 @@ export function ProjectPagesPage() {
           { label: 'Pages' },
         ]}
         actions={
-          <Button size="sm" onClick={() => handleCreatePage()} disabled={!project}>
+          <Button size="sm" onClick={() => handleCreatePage()} disabled={!project || createPage.isPending}>
             <Plus size={14} className="mr-1.5" />
             New Page
           </Button>
         }
       />
-      <ProjectTabNav projectKey={key!} />
+      <ProjectTabNav projectKey={key} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar — page tree */}
@@ -84,7 +92,7 @@ export function ProjectPagesPage() {
           <div className="flex-1 overflow-y-auto py-1">
             <PageTree
               pages={pages}
-              projectKey={key || ''}
+              projectKey={key}
               onCreatePage={handleCreatePage}
               onDeletePage={handleDeletePage}
               loading={isLoading}
@@ -98,12 +106,18 @@ export function ProjectPagesPage() {
             <FileText size={32} className="text-blue-500" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            {pages.length === 0 ? 'Create your first page' : 'Select a page'}
+            {isLoading
+              ? 'Loading pages...'
+              : pages.length === 0
+                ? 'Create your first page'
+                : 'Select a page'}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
-            {pages.length === 0
-              ? 'Write specs, runbooks, meeting notes, and RFCs — all in one place alongside your issues.'
-              : 'Click a page in the sidebar to open it, or create a new one.'}
+            {isLoading
+              ? ''
+              : pages.length === 0
+                ? 'Write specs, runbooks, meeting notes, and RFCs — all in one place alongside your issues.'
+                : 'Click a page in the sidebar to open it, or create a new one.'}
           </p>
           <Button
             onClick={() => handleCreatePage()}
