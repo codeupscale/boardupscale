@@ -5,7 +5,7 @@ import { useProjects, useCreateProject } from '@/hooks/useProjects'
 import { useAuthStore } from '@/store/auth.store'
 import { ProjectCard } from '@/components/projects/project-card'
 import { ProjectForm } from '@/components/projects/project-form'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { PageHeader } from '@/components/common/page-header'
@@ -269,11 +269,11 @@ export function ProjectsPage() {
       </div>
 
       {/* Create Project Dialog */}
-      <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
-        <DialogHeader onClose={() => setShowCreate(false)}>
-          <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
-        </DialogHeader>
+      <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && setShowCreate(false)}>
         <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
+          </DialogHeader>
           <ProjectForm
             onSubmit={(values) =>
               createProject.mutate(

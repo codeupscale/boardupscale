@@ -1,6 +1,6 @@
 import { IssueStatus } from '@/types'
 import { useBulkTransition } from '@/hooks/useBulkOperations'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface BulkStatusDialogProps {
   open: boolean
@@ -20,11 +20,11 @@ export function BulkStatusDialog({ open, onClose, statuses, issueIds }: BulkStat
   }
 
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-xs">
-      <DialogHeader onClose={onClose}>
-        <DialogTitle>Set Status</DialogTitle>
-      </DialogHeader>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-xs">
+        <DialogHeader>
+          <DialogTitle>Set Status</DialogTitle>
+        </DialogHeader>
         <div className="space-y-0.5">
           {statuses.map((status) => (
             <button

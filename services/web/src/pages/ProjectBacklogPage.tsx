@@ -465,41 +465,42 @@ function SprintSection({
           {/* Start Sprint Confirm */}
           <Dialog
             open={showConfirm === 'start'}
-            onClose={() => setShowConfirm(null)}
-            className="max-w-sm"
+            onOpenChange={(o) => !o && setShowConfirm(null)}
           >
-            <DialogHeader onClose={() => setShowConfirm(null)}>
-              <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
-            </DialogHeader>
-            <DialogContent className="space-y-3">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
-              </div>
-              <DatePicker
-                label={t('sprints.startDate')}
-                value={startDate || undefined}
-                onChange={(date) => setStartDate(date ?? '')}
-              />
-              <DatePicker
-                label={t('sprints.endDate')}
-                value={endDate || undefined}
-                onChange={(date) => setEndDate(date ?? '')}
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowConfirm(null)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  isLoading={startSprint.isPending}
-                  onClick={() =>
-                    startSprint.mutate(
-                      { projectId, sprintId: sprint.id, startDate, endDate },
-                      { onSuccess: () => setShowConfirm(null) },
-                    )
-                  }
-                >
-                  {t('sprints.start')}
-                </Button>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
+                </div>
+                <DatePicker
+                  label={t('sprints.startDate')}
+                  value={startDate || undefined}
+                  onChange={(date) => setStartDate(date ?? '')}
+                />
+                <DatePicker
+                  label={t('sprints.endDate')}
+                  value={endDate || undefined}
+                  onChange={(date) => setEndDate(date ?? '')}
+                />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    isLoading={startSprint.isPending}
+                    onClick={() =>
+                      startSprint.mutate(
+                        { projectId, sprintId: sprint.id, startDate, endDate },
+                        { onSuccess: () => setShowConfirm(null) },
+                      )
+                    }
+                  >
+                    {t('sprints.start')}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -507,86 +508,87 @@ function SprintSection({
           {/* Complete Sprint Dialog */}
           <Dialog
             open={showConfirm === 'complete'}
-            onClose={() => setShowConfirm(null)}
-            className="max-w-md"
+            onOpenChange={(o) => !o && setShowConfirm(null)}
           >
-            <DialogHeader onClose={() => setShowConfirm(null)}>
-              <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
-            </DialogHeader>
-            <DialogContent className="space-y-4">
-              {(() => {
-                const doneCount = issues.filter((i) => i.status?.category === 'done').length
-                const incompleteCount = issues.length - doneCount
-                const otherSprints = allSprints.filter(
-                  (s) => s.id !== sprint.id && s.status !== 'completed',
-                )
-                return (
-                  <>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                          <CheckCircle className="h-4 w-4" /> {doneCount} done
-                        </span>
-                        {incompleteCount > 0 && (
-                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                            · {incompleteCount} incomplete
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {(() => {
+                  const doneCount = issues.filter((i) => i.status?.category === 'done').length
+                  const incompleteCount = issues.length - doneCount
+                  const otherSprints = allSprints.filter(
+                    (s) => s.id !== sprint.id && s.status !== 'completed',
+                  )
+                  return (
+                    <>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                            <CheckCircle className="h-4 w-4" /> {doneCount} done
                           </span>
-                        )}
+                          {incompleteCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                              · {incompleteCount} incomplete
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    {incompleteCount > 0 && (
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
-                        </label>
-                        <Select
-                          value={moveToSprintId || '__backlog__'}
-                          onValueChange={(v) => setMoveToSprintId(v === '__backlog__' ? '' : v)}
+                      {incompleteCount > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                          </label>
+                          <Select
+                            value={moveToSprintId || '__backlog__'}
+                            onValueChange={(v) => setMoveToSprintId(v === '__backlog__' ? '' : v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__backlog__">Backlog</SelectItem>
+                              {otherSprints.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}{s.status === 'active' ? ' (active)' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
+                            {moveToSprintId
+                              ? `Incomplete issues will be moved to the selected sprint.`
+                              : `Incomplete issues will be moved to the backlog.`}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                          {t('common.cancel')}
+                        </Button>
+                        <Button
+                          isLoading={completeSprint.isPending}
+                          onClick={() =>
+                            completeSprint.mutate(
+                              {
+                                projectId,
+                                sprintId: sprint.id,
+                                moveToSprintId: moveToSprintId || null,
+                              },
+                              { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
+                            )
+                          }
                         >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__backlog__">Backlog</SelectItem>
-                            {otherSprints.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}{s.status === 'active' ? ' (active)' : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {moveToSprintId
-                            ? `Incomplete issues will be moved to the selected sprint.`
-                            : `Incomplete issues will be moved to the backlog.`}
-                        </p>
+                          {t('sprints.completeSprint')}
+                        </Button>
                       </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={() => setShowConfirm(null)}>
-                        {t('common.cancel')}
-                      </Button>
-                      <Button
-                        isLoading={completeSprint.isPending}
-                        onClick={() =>
-                          completeSprint.mutate(
-                            {
-                              projectId,
-                              sprintId: sprint.id,
-                              moveToSprintId: moveToSprintId || null,
-                            },
-                            { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
-                          )
-                        }
-                      >
-                        {t('sprints.completeSprint')}
-                      </Button>
-                    </div>
-                  </>
-                )
-              })()}
+                    </>
+                  )
+                })()}
+              </div>
             </DialogContent>
           </Dialog>
 
@@ -899,51 +901,52 @@ export function ProjectBacklogPage() {
       {/* Create Sprint Dialog */}
       <Dialog
         open={showCreateSprint}
-        onClose={() => setShowCreateSprint(false)}
-        className="max-w-sm"
+        onOpenChange={(o) => !o && setShowCreateSprint(false)}
       >
-        <DialogHeader onClose={() => setShowCreateSprint(false)}>
-          <DialogTitle>{t('sprints.createSprint')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-3">
-          <Input
-            label={t('sprints.sprintName')}
-            placeholder={`Sprint ${(sprints?.length || 0) + 1}`}
-            value={sprintName}
-            onChange={(e) => setSprintName(e.target.value)}
-          />
-          <Textarea
-            label="Sprint Goal (optional)"
-            placeholder="What do you want to achieve in this sprint?"
-            value={sprintGoal}
-            onChange={(e) => setSprintGoal(e.target.value)}
-            rows={3}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              isLoading={createSprint.isPending}
-              onClick={() =>
-                createSprint.mutate(
-                  {
-                    projectId: projectKey!,
-                    name: sprintName || `Sprint ${(sprints?.length || 0) + 1}`,
-                    goal: sprintGoal || undefined,
-                  },
-                  {
-                    onSuccess: () => {
-                      setShowCreateSprint(false)
-                      setSprintName('')
-                      setSprintGoal('')
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('sprints.createSprint')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              label={t('sprints.sprintName')}
+              placeholder={`Sprint ${(sprints?.length || 0) + 1}`}
+              value={sprintName}
+              onChange={(e) => setSprintName(e.target.value)}
+            />
+            <Textarea
+              label="Sprint Goal (optional)"
+              placeholder="What do you want to achieve in this sprint?"
+              value={sprintGoal}
+              onChange={(e) => setSprintGoal(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                isLoading={createSprint.isPending}
+                onClick={() =>
+                  createSprint.mutate(
+                    {
+                      projectId: projectKey!,
+                      name: sprintName || `Sprint ${(sprints?.length || 0) + 1}`,
+                      goal: sprintGoal || undefined,
                     },
-                  },
-                )
-              }
-            >
-              {t('common.create')}
-            </Button>
+                    {
+                      onSuccess: () => {
+                        setShowCreateSprint(false)
+                        setSprintName('')
+                        setSprintGoal('')
+                      },
+                    },
+                  )
+                }
+              >
+                {t('common.create')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -951,13 +954,12 @@ export function ProjectBacklogPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateIssue}
-        onClose={() => issueFormRef.current?.requestClose()}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
       >
-        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
           <IssueForm
             ref={issueFormRef}
             projectId={project?.id || projectKey!}

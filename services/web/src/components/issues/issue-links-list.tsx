@@ -7,7 +7,7 @@ import { useIssues } from '@/hooks/useIssues'
 import { IssueLink, IssueLinkType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { StatusBadge } from '@/components/issues/status-badge'
 
 const LINK_TYPES: { value: IssueLinkType; label: string }[] = [
@@ -148,97 +148,100 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
       {/* Add Link Dialog */}
       <Dialog
         open={showAddDialog}
-        onClose={() => {
-          setShowAddDialog(false)
-          setSearchTerm('')
-          setSelectedIssueId(null)
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setShowAddDialog(false)
+            setSearchTerm('')
+            setSelectedIssueId(null)
+          }
         }}
-        className="max-w-md"
       >
-        <DialogHeader onClose={() => setShowAddDialog(false)}>
-          <DialogTitle>{t('issues.linkIssue', 'Link Issue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          {/* Link type selector */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.linkType', 'Link Type')}
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={selectedLinkType}
-              onChange={(e) => setSelectedLinkType(e.target.value as IssueLinkType)}
-            >
-              {LINK_TYPES.map((lt) => (
-                <option key={lt.value} value={lt.value}>
-                  {lt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Issue search */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-              {t('issues.searchIssues', 'Search Issues')}
-            </label>
-            <Input
-              placeholder={t('issues.searchIssues', 'Search by title or key...')}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setSelectedIssueId(null)
-              }}
-            />
-          </div>
-
-          {/* Search results */}
-          {searchTerm.length > 0 && (
-            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
-              {issueList.length === 0 ? (
-                <p className="p-3 text-sm text-gray-500 text-center">
-                  {t('common.noResults', 'No results found')}
-                </p>
-              ) : (
-                issueList
-                  .filter((i: any) => i.id !== issueId)
-                  .map((i: any) => (
-                    <button
-                      key={i.id}
-                      type="button"
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 transition-colors ${
-                        selectedIssueId === i.id ? 'bg-blue-50 ring-1 ring-blue-300' : ''
-                      }`}
-                      onClick={() => setSelectedIssueId(i.id)}
-                    >
-                      <span className="font-mono text-blue-600 text-xs flex-shrink-0">
-                        {i.key}
-                      </span>
-                      <span className="truncate text-gray-700">{i.title}</span>
-                    </button>
-                  ))
-              )}
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('issues.linkIssue', 'Link Issue')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Link type selector */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                {t('issues.linkType', 'Link Type')}
+              </label>
+              <select
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedLinkType}
+                onChange={(e) => setSelectedLinkType(e.target.value as IssueLinkType)}
+              >
+                {LINK_TYPES.map((lt) => (
+                  <option key={lt.value} value={lt.value}>
+                    {lt.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAddDialog(false)
-                setSearchTerm('')
-                setSelectedIssueId(null)
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              disabled={!selectedIssueId}
-              isLoading={createLink.isPending}
-              onClick={handleCreate}
-            >
-              {t('issues.addLink', 'Link')}
-            </Button>
+            {/* Issue search */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                {t('issues.searchIssues', 'Search Issues')}
+              </label>
+              <Input
+                placeholder={t('issues.searchIssues', 'Search by title or key...')}
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setSelectedIssueId(null)
+                }}
+              />
+            </div>
+
+            {/* Search results */}
+            {searchTerm.length > 0 && (
+              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                {issueList.length === 0 ? (
+                  <p className="p-3 text-sm text-gray-500 text-center">
+                    {t('common.noResults', 'No results found')}
+                  </p>
+                ) : (
+                  issueList
+                    .filter((i: any) => i.id !== issueId)
+                    .map((i: any) => (
+                      <button
+                        key={i.id}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 transition-colors ${
+                          selectedIssueId === i.id ? 'bg-blue-50 ring-1 ring-blue-300' : ''
+                        }`}
+                        onClick={() => setSelectedIssueId(i.id)}
+                      >
+                        <span className="font-mono text-blue-600 text-xs flex-shrink-0">
+                          {i.key}
+                        </span>
+                        <span className="truncate text-gray-700">{i.title}</span>
+                      </button>
+                    ))
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddDialog(false)
+                  setSearchTerm('')
+                  setSelectedIssueId(null)
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!selectedIssueId}
+                isLoading={createLink.isPending}
+                onClick={handleCreate}
+              >
+                {t('issues.addLink', 'Link')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

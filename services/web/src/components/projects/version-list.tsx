@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { formatDate } from '@/lib/utils'
 
@@ -167,51 +167,52 @@ export function VersionList({ projectId }: VersionListProps) {
       {/* Add/Edit Dialog */}
       <Dialog
         open={showDialog}
-        onClose={() => setShowDialog(false)}
-        className="max-w-sm"
+        onOpenChange={(isOpen) => !isOpen && setShowDialog(false)}
       >
-        <DialogHeader onClose={() => setShowDialog(false)}>
-          <DialogTitle>{editing ? 'Edit Version' : 'Add Version'}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label="Version Name"
-            placeholder="e.g. v1.0.0"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Textarea
-            label="Description (optional)"
-            placeholder="Describe this version..."
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Version' : 'Add Version'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <Input
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              label="Version Name"
+              placeholder="e.g. v1.0.0"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-            <Input
-              label="Release Date"
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
+            <Textarea
+              label="Description (optional)"
+              placeholder="Describe this version..."
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!name.trim()}
-              isLoading={createVersion.isPending || updateVersion.isPending}
-              onClick={handleSubmit}
-            >
-              {editing ? 'Save' : 'Add'}
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Start Date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <Input
+                label="Release Date"
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!name.trim()}
+                isLoading={createVersion.isPending || updateVersion.isPending}
+                onClick={handleSubmit}
+              >
+                {editing ? 'Save' : 'Add'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

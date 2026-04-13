@@ -315,56 +315,57 @@ export function RoleManagementPage() {
       {/* Create / Edit Role Dialog */}
       <Dialog
         open={showRoleDialog}
-        onClose={() => setShowRoleDialog(false)}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && setShowRoleDialog(false)}
       >
-        <DialogHeader onClose={() => setShowRoleDialog(false)}>
-          <DialogTitle>
-            {editingRole ? 'Edit Role' : 'Create Role'}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Role Name"
-              placeholder="e.g. QA Engineer"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-            />
-            <Input
-              label="Description"
-              placeholder="Optional description"
-              value={roleDescription}
-              onChange={(e) => setRoleDescription(e.target.value)}
-            />
-          </div>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRole ? 'Edit Role' : 'Create Role'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Role Name"
+                placeholder="e.g. QA Engineer"
+                value={roleName}
+                onChange={(e) => setRoleName(e.target.value)}
+              />
+              <Input
+                label="Description"
+                placeholder="Optional description"
+                value={roleDescription}
+                onChange={(e) => setRoleDescription(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              Permissions
-            </h3>
-            <PermissionsGrid
-              permissionGroups={permissionGroups}
-              allActions={allActions}
-              permLookup={permLookup}
-              selectedIds={selectedPermissionIds}
-              onToggle={togglePermission}
-              onToggleResource={toggleResourceAll}
-            />
+            <div>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                Permissions
+              </h3>
+              <PermissionsGrid
+                permissionGroups={permissionGroups}
+                allActions={allActions}
+                permLookup={permLookup}
+                selectedIds={selectedPermissionIds}
+                onToggle={togglePermission}
+                onToggleResource={toggleResourceAll}
+              />
+            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!roleName.trim()}
+              isLoading={createRole.isPending || updateRole.isPending}
+            >
+              {editingRole ? 'Save Changes' : 'Create Role'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!roleName.trim()}
-            isLoading={createRole.isPending || updateRole.isPending}
-          >
-            {editingRole ? 'Save Changes' : 'Create Role'}
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Delete confirmation */}

@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar } from '@/components/ui/avatar'
 import { UserSelect } from '@/components/common/user-select'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 interface ComponentListProps {
@@ -128,43 +128,44 @@ export function ComponentList({ projectId }: ComponentListProps) {
       {/* Add/Edit Dialog */}
       <Dialog
         open={showDialog}
-        onClose={() => setShowDialog(false)}
-        className="max-w-sm"
+        onOpenChange={(isOpen) => !isOpen && setShowDialog(false)}
       >
-        <DialogHeader onClose={() => setShowDialog(false)}>
-          <DialogTitle>{editing ? 'Edit Component' : 'Add Component'}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label="Name"
-            placeholder="e.g. Authentication"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Textarea
-            label="Description (optional)"
-            placeholder="What is this component responsible for?"
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lead (optional)
-            </label>
-            <UserSelect value={leadId} onChange={setLeadId} placeholder="Select lead..." />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!name.trim()}
-              isLoading={createComponent.isPending || updateComponent.isPending}
-              onClick={handleSubmit}
-            >
-              {editing ? 'Save' : 'Add'}
-            </Button>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Component' : 'Add Component'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              label="Name"
+              placeholder="e.g. Authentication"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Textarea
+              label="Description (optional)"
+              placeholder="What is this component responsible for?"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lead (optional)
+              </label>
+              <UserSelect value={leadId} onChange={setLeadId} placeholder="Select lead..." />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!name.trim()}
+                isLoading={createComponent.isPending || updateComponent.isPending}
+                onClick={handleSubmit}
+              >
+                {editing ? 'Save' : 'Add'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -466,23 +466,20 @@ export function WebhooksPage() {
       {/* Create/Edit Dialog */}
       <Dialog
         open={showForm}
-        onClose={() => {
-          setShowForm(false)
-          resetForm()
-        }}
-        className="max-w-lg"
-      >
-        <DialogHeader
-          onClose={() => {
+        onOpenChange={(o) => {
+          if (!o) {
             setShowForm(false)
             resetForm()
-          }}
-        >
-          <DialogTitle>
-            {editingWebhook ? 'Edit Webhook' : 'Create Webhook'}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingWebhook ? 'Edit Webhook' : 'Create Webhook'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
           <Input
             label="Name"
             placeholder="e.g. CI/CD Pipeline"
@@ -581,6 +578,7 @@ export function WebhooksPage() {
             >
               {editingWebhook ? 'Save' : 'Create'}
             </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>

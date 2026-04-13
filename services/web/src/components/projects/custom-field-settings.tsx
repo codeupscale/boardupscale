@@ -18,7 +18,7 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 interface CustomFieldSettingsProps {
@@ -183,13 +183,13 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
       {/* Add/Edit Dialog */}
       <Dialog
         open={showDialog}
-        onClose={() => setShowDialog(false)}
-        className="max-w-md"
+        onOpenChange={(isOpen) => !isOpen && setShowDialog(false)}
       >
-        <DialogHeader onClose={() => setShowDialog(false)}>
-          <DialogTitle>{editing ? 'Edit Custom Field' : 'Add Custom Field'}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Custom Field' : 'Add Custom Field'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
           <Input
             label="Field Name"
             placeholder="e.g. Environment"
@@ -292,6 +292,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
             >
               {editing ? 'Save' : 'Add Field'}
             </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>

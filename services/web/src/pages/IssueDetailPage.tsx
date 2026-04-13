@@ -1171,55 +1171,56 @@ export function IssueDetailPage() {
       {/* Work Log Dialog */}
       <Dialog
         open={showWorkLogDialog}
-        onClose={() => setShowWorkLogDialog(false)}
-        className="max-w-sm"
+        onOpenChange={(o) => !o && setShowWorkLogDialog(false)}
       >
-        <DialogHeader onClose={() => setShowWorkLogDialog(false)}>
-          <DialogTitle>{t('issues.addWorkLog')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label={t('issues.timeSpentMinutes')}
-            type="number"
-            min="1"
-            placeholder="e.g. 90"
-            value={workLogTime}
-            onChange={(e) => setWorkLogTime(e.target.value)}
-          />
-          <Textarea
-            label={`${t('common.description')} (${t('common.optional', 'optional')})`}
-            placeholder={t('issues.describeIssue')}
-            rows={3}
-            value={workLogDesc}
-            onChange={(e) => setWorkLogDesc(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowWorkLogDialog(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              disabled={!workLogTime}
-              isLoading={addWorkLog.isPending}
-              onClick={() => {
-                addWorkLog.mutate(
-                  {
-                    issueId: issue.id,
-                    timeSpent: parseInt(workLogTime) * 60,
-                    description: workLogDesc || undefined,
-                    loggedAt: new Date().toISOString(),
-                  },
-                  {
-                    onSuccess: () => {
-                      setShowWorkLogDialog(false)
-                      setWorkLogTime('')
-                      setWorkLogDesc('')
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('issues.addWorkLog')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              label={t('issues.timeSpentMinutes')}
+              type="number"
+              min="1"
+              placeholder="e.g. 90"
+              value={workLogTime}
+              onChange={(e) => setWorkLogTime(e.target.value)}
+            />
+            <Textarea
+              label={`${t('common.description')} (${t('common.optional', 'optional')})`}
+              placeholder={t('issues.describeIssue')}
+              rows={3}
+              value={workLogDesc}
+              onChange={(e) => setWorkLogDesc(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowWorkLogDialog(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!workLogTime}
+                isLoading={addWorkLog.isPending}
+                onClick={() => {
+                  addWorkLog.mutate(
+                    {
+                      issueId: issue.id,
+                      timeSpent: parseInt(workLogTime) * 60,
+                      description: workLogDesc || undefined,
+                      loggedAt: new Date().toISOString(),
                     },
-                  },
-                )
-              }}
-            >
-              {t('issues.addWorkLog')}
-            </Button>
+                    {
+                      onSuccess: () => {
+                        setShowWorkLogDialog(false)
+                        setWorkLogTime('')
+                        setWorkLogDesc('')
+                      },
+                    },
+                  )
+                }}
+              >
+                {t('issues.addWorkLog')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1227,66 +1228,67 @@ export function IssueDetailPage() {
       {/* Create Child Issue Dialog */}
       <Dialog
         open={showCreateChild}
-        onClose={() => setShowCreateChild(false)}
-        className="max-w-sm"
+        onOpenChange={(o) => !o && setShowCreateChild(false)}
       >
-        <DialogHeader onClose={() => setShowCreateChild(false)}>
-          <DialogTitle>Create Child Issue</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          {(() => {
-            const config = CHILD_TYPE_MAP[issue.type]
-            if (!config) return <p className="text-sm text-gray-500 dark:text-gray-400">This issue type cannot have children.</p>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create Child Issue</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const config = CHILD_TYPE_MAP[issue.type]
+              if (!config) return <p className="text-sm text-gray-500 dark:text-gray-400">This issue type cannot have children.</p>
 
-            const selectedChildType = childType || config.default
+              const selectedChildType = childType || config.default
 
-            return (
-              <>
-                <Input
-                  label="Title"
-                  placeholder="Child issue title"
-                  value={childTitle}
-                  onChange={(e) => setChildTitle(e.target.value)}
-                  autoFocus
-                />
-                <IssueTypeSelect
-                  label="Type"
-                  value={selectedChildType}
-                  onChange={(val) => setChildType(val)}
-                  options={config.types}
-                />
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setShowCreateChild(false)}>
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    disabled={!childTitle.trim()}
-                    isLoading={createIssue.isPending}
-                    onClick={() => {
-                      createIssue.mutate(
-                        {
-                          projectId: issue.projectId,
-                          title: childTitle.trim(),
-                          type: selectedChildType,
-                          priority: 'medium',
-                          parentId: issue.id,
-                        },
-                        {
-                          onSuccess: () => {
-                            setShowCreateChild(false)
-                            setChildTitle('')
-                            setChildType('')
+              return (
+                <>
+                  <Input
+                    label="Title"
+                    placeholder="Child issue title"
+                    value={childTitle}
+                    onChange={(e) => setChildTitle(e.target.value)}
+                    autoFocus
+                  />
+                  <IssueTypeSelect
+                    label="Type"
+                    value={selectedChildType}
+                    onChange={(val) => setChildType(val)}
+                    options={config.types}
+                  />
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setShowCreateChild(false)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      disabled={!childTitle.trim()}
+                      isLoading={createIssue.isPending}
+                      onClick={() => {
+                        createIssue.mutate(
+                          {
+                            projectId: issue.projectId,
+                            title: childTitle.trim(),
+                            type: selectedChildType,
+                            priority: 'medium',
+                            parentId: issue.id,
                           },
-                        },
-                      )
-                    }}
-                  >
-                    Create
-                  </Button>
-                </div>
-              </>
-            )
-          })()}
+                          {
+                            onSuccess: () => {
+                              setShowCreateChild(false)
+                              setChildTitle('')
+                              setChildType('')
+                            },
+                          },
+                        )
+                      }}
+                    >
+                      Create
+                    </Button>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
 

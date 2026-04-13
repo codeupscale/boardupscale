@@ -38,7 +38,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { cn } from '@/lib/utils'
@@ -445,11 +445,11 @@ export function ProjectCalendarPage() {
         )}
       </div>
 
-      <Dialog open={showCreate} onClose={() => issueFormRef.current?.requestClose()} className="max-w-2xl">
-        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
-          <DialogTitle>Create Issue</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && issueFormRef.current?.requestClose()}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create Issue</DialogTitle>
+          </DialogHeader>
           <IssueForm
             ref={issueFormRef}
             projectId={project?.id || projectKey!}

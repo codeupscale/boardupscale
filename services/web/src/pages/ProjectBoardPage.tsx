@@ -581,15 +581,12 @@ export function ProjectBoardPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateDialog}
-        onClose={() => issueFormRef.current?.requestClose()}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
       >
-        <DialogHeader
-          onClose={() => issueFormRef.current?.requestClose()}
-        >
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
           <IssueForm
             ref={issueFormRef}
             projectId={project?.id || projectKey!}
@@ -624,11 +621,11 @@ export function ProjectBoardPage() {
       </Dialog>
 
       {/* Add Column Dialog */}
-      <Dialog open={showAddColumn} onClose={() => setShowAddColumn(false)} className="max-w-sm">
-        <DialogHeader onClose={() => setShowAddColumn(false)}>
-          <DialogTitle>Add Column</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={showAddColumn} onOpenChange={(o) => !o && setShowAddColumn(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <Input
               label="Column Name"
@@ -668,21 +665,21 @@ export function ProjectBoardPage() {
               </div>
             </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddColumn(false)}>Cancel</Button>
+            <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} isLoading={createStatus.isPending}>
+              Add Column
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowAddColumn(false)}>Cancel</Button>
-          <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} isLoading={createStatus.isPending}>
-            Add Column
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Edit Column Dialog */}
-      <Dialog open={!!editColumnId} onClose={() => setEditColumnId(null)} className="max-w-sm">
-        <DialogHeader onClose={() => setEditColumnId(null)}>
-          <DialogTitle>Edit Column</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={!!editColumnId} onOpenChange={(o) => !o && setEditColumnId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Column</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <Input
               label="Column Name"
@@ -721,13 +718,13 @@ export function ProjectBoardPage() {
               </div>
             </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditColumnId(null)}>Cancel</Button>
+            <Button onClick={handleSaveEditColumn} disabled={!editColumnName.trim()} isLoading={updateStatus.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditColumnId(null)}>Cancel</Button>
-          <Button onClick={handleSaveEditColumn} disabled={!editColumnName.trim()} isLoading={updateStatus.isPending}>
-            Save Changes
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Delete Column Confirmation */}
@@ -750,89 +747,90 @@ export function ProjectBoardPage() {
       {activeSprints.length > 0 && (
         <Dialog
           open={showCompleteSprint}
-          onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}
-          className="max-w-md"
+          onOpenChange={(o) => !o && (setShowCompleteSprint(false), setBoardMoveToSprintId(''))}
         >
-          <DialogHeader onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
-            <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
-          </DialogHeader>
-          <DialogContent className="space-y-4">
-            {(() => {
-              const doneCount = board?.statuses
-                .filter((s) => s.category === 'done')
-                .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
-              const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
-              const incompleteCount = totalCount - doneCount
-              const otherSprints = sprints?.filter(
-                (s) => s.id !== activeSprints[0].id && s.status !== 'completed',
-              ) || []
-              return (
-                <>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                        <CheckCircle className="h-4 w-4" /> {doneCount} done
-                      </span>
-                      {incompleteCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                          · {incompleteCount} incomplete
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {(() => {
+                const doneCount = board?.statuses
+                  .filter((s) => s.category === 'done')
+                  .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+                const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+                const incompleteCount = totalCount - doneCount
+                const otherSprints = sprints?.filter(
+                  (s) => s.id !== activeSprints[0].id && s.status !== 'completed',
+                ) || []
+                return (
+                  <>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                          <CheckCircle className="h-4 w-4" /> {doneCount} done
                         </span>
-                      )}
+                        {incompleteCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            · {incompleteCount} incomplete
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {incompleteCount > 0 && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
-                      </label>
-                      <Select
-                        value={boardMoveToSprintId || '__backlog__'}
-                        onValueChange={(v) => setBoardMoveToSprintId(v === '__backlog__' ? '' : v)}
+                    {incompleteCount > 0 && (
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                        </label>
+                        <Select
+                          value={boardMoveToSprintId || '__backlog__'}
+                          onValueChange={(v) => setBoardMoveToSprintId(v === '__backlog__' ? '' : v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__backlog__">Backlog</SelectItem>
+                            {otherSprints.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}{s.status === 'active' ? ' (active)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {boardMoveToSprintId
+                            ? `Incomplete issues will be moved to the selected sprint.`
+                            : `Incomplete issues will be moved to the backlog.`}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
+                        {t('common.cancel')}
+                      </Button>
+                      <Button
+                        isLoading={completeSprint.isPending}
+                        onClick={() =>
+                          completeSprint.mutate(
+                            {
+                              projectId: project?.id || projectKey!,
+                              sprintId: activeSprints[0].id,
+                              moveToSprintId: boardMoveToSprintId || null,
+                            },
+                            { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
+                          )
+                        }
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__backlog__">Backlog</SelectItem>
-                          {otherSprints.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}{s.status === 'active' ? ' (active)' : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {boardMoveToSprintId
-                          ? `Incomplete issues will be moved to the selected sprint.`
-                          : `Incomplete issues will be moved to the backlog.`}
-                      </p>
+                        {t('sprints.completeSprint')}
+                      </Button>
                     </div>
-                  )}
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      isLoading={completeSprint.isPending}
-                      onClick={() =>
-                        completeSprint.mutate(
-                          {
-                            projectId: project?.id || projectKey!,
-                            sprintId: activeSprints[0].id,
-                            moveToSprintId: boardMoveToSprintId || null,
-                          },
-                          { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
-                        )
-                      }
-                    >
-                      {t('sprints.completeSprint')}
-                    </Button>
-                  </div>
-                </>
-              )
-            })()}
+                  </>
+                )
+              })()}
+            </div>
           </DialogContent>
         </Dialog>
       )}

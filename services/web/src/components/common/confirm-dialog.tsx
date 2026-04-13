@@ -1,5 +1,11 @@
 import { ReactNode } from 'react'
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 interface ConfirmDialogProps {
@@ -26,27 +32,27 @@ export function ConfirmDialog({
   destructive = false,
 }: ConfirmDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} className="max-w-sm">
-      <DialogHeader onClose={onClose}>
-        <DialogTitle>{title}</DialogTitle>
-      </DialogHeader>
-      {description && (
-        <DialogContent>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        {description && (
           <p className="text-sm text-gray-600">{description}</p>
-        </DialogContent>
-      )}
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose}>
-          {cancelLabel}
-        </Button>
-        <Button
-          variant={destructive ? 'destructive' : 'default'}
-          onClick={onConfirm}
-          isLoading={isLoading}
-        >
-          {confirmLabel}
-        </Button>
-      </DialogFooter>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            {cancelLabel}
+          </Button>
+          <Button
+            variant={destructive ? 'destructive' : 'default'}
+            onClick={onConfirm}
+            isLoading={isLoading}
+          >
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }

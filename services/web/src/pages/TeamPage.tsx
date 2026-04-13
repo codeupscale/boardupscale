@@ -780,241 +780,249 @@ export function TeamPage() {
       {/* ────────────────────────── Dialogs ─────────────────────────────────── */}
 
       {/* Invite Member */}
-      <Dialog open={showInviteDialog} onClose={() => setShowInviteDialog(false)}>
-        <DialogHeader onClose={() => setShowInviteDialog(false)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <Dialog open={showInviteDialog} onOpenChange={(o) => !o && setShowInviteDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle>Invite Team Member</DialogTitle>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  They'll receive an email with a link to join
+                </p>
+              </div>
             </div>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Email address"
+                type="email"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+              />
+              <Input
+                label="Display name (optional)"
+                placeholder="Jane Doe"
+                value={inviteDisplayName}
+                onChange={(e) => setInviteDisplayName(e.target.value)}
+              />
+            </div>
+
             <div>
-              <DialogTitle>Invite Team Member</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                They'll receive an email with a link to join
-              </p>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Role
+              </label>
+              <div className="space-y-2">
+                {ROLE_CONFIG.map((conf) => (
+                  <RoleCard
+                    key={conf.value}
+                    config={conf}
+                    selected={inviteRole === conf.value}
+                    onClick={() => setInviteRole(conf.value as RoleValue)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </DialogHeader>
 
-        <DialogContent className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Email address"
-              type="email"
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-            />
-            <Input
-              label="Display name (optional)"
-              placeholder="Jane Doe"
-              value={inviteDisplayName}
-              onChange={(e) => setInviteDisplayName(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Role
-            </label>
-            <div className="space-y-2">
-              {ROLE_CONFIG.map((conf) => (
-                <RoleCard
-                  key={conf.value}
-                  config={conf}
-                  selected={inviteRole === conf.value}
-                  onClick={() => setInviteRole(conf.value as RoleValue)}
-                />
-              ))}
-            </div>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInvite}
+              disabled={!inviteEmail.trim()}
+              isLoading={inviteMember.isPending}
+            >
+              <Mail className="h-4 w-4" />
+              Send Invitation
+            </Button>
+          </DialogFooter>
         </DialogContent>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleInvite}
-            disabled={!inviteEmail.trim()}
-            isLoading={inviteMember.isPending}
-          >
-            <Mail className="h-4 w-4" />
-            Send Invitation
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Edit Member Info */}
-      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)}>
-        <DialogHeader onClose={() => setEditTarget(null)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
-              <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </div>
-            <div>
-              <DialogTitle>Edit Member</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Update this member's display info
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <DialogContent className="space-y-4">
-          {editTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={editTarget} size={10} />
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
+                <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {editTarget.displayName}
+                <DialogTitle>Edit Member</DialogTitle>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Update this member's display info
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{editTarget.email}</p>
               </div>
             </div>
-          )}
-          <Input
-            label="Display name"
-            placeholder="Jane Doe"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <Input
-            label="Avatar URL (optional)"
-            placeholder="https://example.com/avatar.png"
-            value={editAvatar}
-            onChange={(e) => setEditAvatar(e.target.value)}
-          />
-          {editAvatar && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <img
-                src={editAvatar}
-                alt="Preview"
-                className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-              Avatar preview
-            </div>
-          )}
-        </DialogContent>
+          </DialogHeader>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditTarget(null)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEditSave}
-            disabled={!editName.trim()}
-            isLoading={updateMember.isPending}
-          >
-            Save Changes
-          </Button>
-        </DialogFooter>
+          <div className="space-y-4">
+            {editTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                <MemberAvatar member={editTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {editTarget.displayName}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{editTarget.email}</p>
+                </div>
+              </div>
+            )}
+            <Input
+              label="Display name"
+              placeholder="Jane Doe"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
+            <Input
+              label="Avatar URL (optional)"
+              placeholder="https://example.com/avatar.png"
+              value={editAvatar}
+              onChange={(e) => setEditAvatar(e.target.value)}
+            />
+            {editAvatar && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <img
+                  src={editAvatar}
+                  alt="Preview"
+                  className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                Avatar preview
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={!editName.trim()}
+              isLoading={updateMember.isPending}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Change Role */}
-      <Dialog open={showRoleDialog} onClose={() => setShowRoleDialog(false)}>
-        <DialogHeader onClose={() => setShowRoleDialog(false)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+      <Dialog open={showRoleDialog} onOpenChange={(o) => !o && setShowRoleDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <DialogTitle>Change Role</DialogTitle>
             </div>
-            <DialogTitle>Change Role</DialogTitle>
-          </div>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          {roleTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={roleTarget} size={10} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {roleTarget.displayName}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{roleTarget.email}</p>
+          </DialogHeader>
+          <div className="space-y-4">
+            {roleTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                <MemberAvatar member={roleTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {roleTarget.displayName}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{roleTarget.email}</p>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                New role
+              </label>
+              <div className="space-y-2">
+                {ROLE_CONFIG.map((conf) => (
+                  <RoleCard
+                    key={conf.value}
+                    config={conf}
+                    selected={newRole === conf.value}
+                    onClick={() => setNewRole(conf.value as RoleValue)}
+                  />
+                ))}
               </div>
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              New role
-            </label>
-            <div className="space-y-2">
-              {ROLE_CONFIG.map((conf) => (
-                <RoleCard
-                  key={conf.value}
-                  config={conf}
-                  selected={newRole === conf.value}
-                  onClick={() => setNewRole(conf.value as RoleValue)}
-                />
-              ))}
-            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRoleChange} isLoading={updateRole.isPending}>
+              <ShieldCheck className="h-4 w-4" />
+              Update Role
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleRoleChange} isLoading={updateRole.isPending}>
-            <ShieldCheck className="h-4 w-4" />
-            Update Role
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Add Email for Migrated Member */}
-      <Dialog open={!!emailTarget} onClose={() => setEmailTarget(null)}>
-        <DialogHeader onClose={() => setEmailTarget(null)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <DialogTitle>Add Email Address</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Set the real email for this Jira-migrated member
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <DialogContent className="space-y-4">
-          {emailTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={emailTarget} size={10} />
+      <Dialog open={!!emailTarget} onOpenChange={(o) => !o && setEmailTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {emailTarget.displayName}
+                <DialogTitle>Add Email Address</DialogTitle>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Set the real email for this Jira-migrated member
                 </p>
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
-                  <AtSign className="h-3 w-3" />
-                  Migrated (no email)
-                </span>
               </div>
             </div>
-          )}
-          <Input
-            label="Real email address"
-            type="email"
-            placeholder="colleague@company.com"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
-          />
-        </DialogContent>
+          </DialogHeader>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEmailTarget(null)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEmailSave}
-            disabled={!newEmail.trim()}
-            isLoading={updateMemberEmail.isPending}
-          >
-            <AtSign className="h-4 w-4" />
-            Save Email
-          </Button>
-        </DialogFooter>
+          <div className="space-y-4">
+            {emailTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                <MemberAvatar member={emailTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {emailTarget.displayName}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                    <AtSign className="h-3 w-3" />
+                    Migrated (no email)
+                  </span>
+                </div>
+              </div>
+            )}
+            <Input
+              label="Real email address"
+              type="email"
+              placeholder="colleague@company.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEmailSave}
+              disabled={!newEmail.trim()}
+              isLoading={updateMemberEmail.isPending}
+            >
+              <AtSign className="h-4 w-4" />
+              Save Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Deactivate / Remove */}

@@ -478,110 +478,114 @@ export function ProjectSettingsPage() {
       </div>
 
       {/* Add Member Dialog */}
-      <Dialog open={showAddMember} onClose={() => setShowAddMember(false)} className="max-w-sm">
-        <DialogHeader onClose={() => setShowAddMember(false)}>
-          <DialogTitle>{t('projects.addMember')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.user')}</label>
-            <UserSelect value={newMemberId} onChange={setNewMemberId} />
-            <p className="mt-1.5 text-xs text-gray-500">
-              Only users in your organization are shown.{' '}
-              <Link to="/settings/team" className="text-blue-600 hover:text-blue-700 font-medium underline">
-                Invite new users from Settings &rarr; Team
-              </Link>{' '}
-              first, then add them to this project.
-            </p>
-          </div>
-          <div className="w-full">
-            <Label className="mb-1">{t('settings.role')}</Label>
-            <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="viewer">{t('settings.viewer')}</SelectItem>
-                <SelectItem value="member">{t('projects.member')}</SelectItem>
-                <SelectItem value="manager">{t('settings.manager')}</SelectItem>
-                <SelectItem value="admin">{t('settings.admin')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShowAddMember(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              disabled={!newMemberId}
-              isLoading={addMember.isPending}
-              onClick={() => {
-                if (!newMemberId) return
-                addMember.mutate(
-                  { projectId: projectKey!, userId: newMemberId, role: newMemberRole },
-                  { onSuccess: () => { setShowAddMember(false); setNewMemberId(null) } },
-                )
-              }}
-            >
-              {t('projects.addMember')}
-            </Button>
+      <Dialog open={showAddMember} onOpenChange={(o) => !o && setShowAddMember(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('projects.addMember')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.user')}</label>
+              <UserSelect value={newMemberId} onChange={setNewMemberId} />
+              <p className="mt-1.5 text-xs text-gray-500">
+                Only users in your organization are shown.{' '}
+                <Link to="/settings/team" className="text-blue-600 hover:text-blue-700 font-medium underline">
+                  Invite new users from Settings &rarr; Team
+                </Link>{' '}
+                first, then add them to this project.
+              </p>
+            </div>
+            <div className="w-full">
+              <Label className="mb-1">{t('settings.role')}</Label>
+              <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="viewer">{t('settings.viewer')}</SelectItem>
+                  <SelectItem value="member">{t('projects.member')}</SelectItem>
+                  <SelectItem value="manager">{t('settings.manager')}</SelectItem>
+                  <SelectItem value="admin">{t('settings.admin')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAddMember(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!newMemberId}
+                isLoading={addMember.isPending}
+                onClick={() => {
+                  if (!newMemberId) return
+                  addMember.mutate(
+                    { projectId: projectKey!, userId: newMemberId, role: newMemberRole },
+                    { onSuccess: () => { setShowAddMember(false); setNewMemberId(null) } },
+                  )
+                }}
+              >
+                {t('projects.addMember')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Add/Edit Status Dialog */}
-      <Dialog open={showAddStatus} onClose={() => setShowAddStatus(false)} className="max-w-sm">
-        <DialogHeader onClose={() => setShowAddStatus(false)}>
-          <DialogTitle>{editStatus ? t('settings.editStatus') : t('settings.addStatus')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label={t('settings.statusName')}
-            placeholder="e.g. In Review"
-            value={statusName}
-            onChange={(e) => setStatusName(e.target.value)}
-          />
-          <div className="w-full">
-            <Label className="mb-1">{t('settings.category')}</Label>
-            <Select value={statusCategory} onValueChange={(v) => setStatusCategory(v as IssueStatusCategory)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={IssueStatusCategory.TODO}>{t('settings.toDo')}</SelectItem>
-                <SelectItem value={IssueStatusCategory.IN_PROGRESS}>{t('settings.inProgress')}</SelectItem>
-                <SelectItem value={IssueStatusCategory.DONE}>{t('settings.done')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.color')}</label>
-            <div className="flex gap-2 flex-wrap">
-              {STATUS_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  style={{ backgroundColor: c }}
-                  className={cn(
-                    'h-7 w-7 rounded-full transition-transform',
-                    statusColor === c && 'ring-2 ring-offset-2 ring-gray-400 scale-110',
-                  )}
-                  onClick={() => setStatusColor(c)}
-                />
-              ))}
+      <Dialog open={showAddStatus} onOpenChange={(o) => !o && setShowAddStatus(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editStatus ? t('settings.editStatus') : t('settings.addStatus')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              label={t('settings.statusName')}
+              placeholder="e.g. In Review"
+              value={statusName}
+              onChange={(e) => setStatusName(e.target.value)}
+            />
+            <div className="w-full">
+              <Label className="mb-1">{t('settings.category')}</Label>
+              <Select value={statusCategory} onValueChange={(v) => setStatusCategory(v as IssueStatusCategory)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={IssueStatusCategory.TODO}>{t('settings.toDo')}</SelectItem>
+                  <SelectItem value={IssueStatusCategory.IN_PROGRESS}>{t('settings.inProgress')}</SelectItem>
+                  <SelectItem value={IssueStatusCategory.DONE}>{t('settings.done')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddStatus(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              isLoading={createStatus.isPending || updateStatus.isPending}
-              onClick={handleStatusSubmit}
-              disabled={!statusName}
-            >
-              {editStatus ? t('common.save') : t('common.add')}
-            </Button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.color')}</label>
+              <div className="flex gap-2 flex-wrap">
+                {STATUS_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    style={{ backgroundColor: c }}
+                    className={cn(
+                      'h-7 w-7 rounded-full transition-transform',
+                      statusColor === c && 'ring-2 ring-offset-2 ring-gray-400 scale-110',
+                    )}
+                    onClick={() => setStatusColor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddStatus(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                isLoading={createStatus.isPending || updateStatus.isPending}
+                onClick={handleStatusSubmit}
+                disabled={!statusName}
+              >
+                {editStatus ? t('common.save') : t('common.add')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

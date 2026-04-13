@@ -265,49 +265,50 @@ export function ProjectReleasesPage() {
       {/* Create Dialog */}
       <Dialog
         open={showCreate}
-        onClose={() => setShowCreate(false)}
-        className="max-w-sm"
+        onOpenChange={(o) => !o && setShowCreate(false)}
       >
-        <DialogHeader onClose={() => setShowCreate(false)}>
-          <DialogTitle>Create Version</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label="Version Name"
-            placeholder="e.g. v1.0.0"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Textarea
-            label="Description (optional)"
-            placeholder="What will be included in this version?"
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <DatePicker
-              label="Start Date"
-              value={startDate || undefined}
-              onChange={(date) => setStartDate(date ?? '')}
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Create Version</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              label="Version Name"
+              placeholder="e.g. v1.0.0"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-            <DatePicker
-              label="Release Date"
-              value={releaseDate || undefined}
-              onChange={(date) => setReleaseDate(date ?? '')}
+            <Textarea
+              label="Description (optional)"
+              placeholder="What will be included in this version?"
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!name.trim()}
-              isLoading={createVersion.isPending}
-              onClick={handleCreate}
-            >
-              Create Version
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <DatePicker
+                label="Start Date"
+                value={startDate || undefined}
+                onChange={(date) => setStartDate(date ?? '')}
+              />
+              <DatePicker
+                label="Release Date"
+                value={releaseDate || undefined}
+                onChange={(date) => setReleaseDate(date ?? '')}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreate(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!name.trim()}
+                isLoading={createVersion.isPending}
+                onClick={handleCreate}
+              >
+                Create Version
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

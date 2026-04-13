@@ -451,11 +451,11 @@ export function ProjectIssuesPage() {
         projectId={projectKey}
       />
 
-      <Dialog open={showCreate} onClose={() => issueFormRef.current?.requestClose()} className="max-w-2xl">
-        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={showCreate} onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
           <IssueForm
             ref={issueFormRef}
             projectId={project?.id || projectKey!}

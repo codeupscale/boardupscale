@@ -259,50 +259,51 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
       {/* Create/Edit Rule Dialog */}
       <Dialog
         open={showEditor}
-        onClose={() => setShowEditor(false)}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && setShowEditor(false)}
       >
-        <DialogHeader onClose={() => setShowEditor(false)}>
-          <DialogTitle>{editingRule ? 'Edit Rule' : 'Create Automation Rule'}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-5 max-h-[60vh] overflow-y-auto">
-          <Input
-            label="Rule Name"
-            placeholder="e.g. Auto-assign P0 bugs"
-            value={ruleName}
-            onChange={(e) => setRuleName(e.target.value)}
-          />
-          <Input
-            label="Description (optional)"
-            placeholder="Describe what this rule does"
-            value={ruleDescription}
-            onChange={(e) => setRuleDescription(e.target.value)}
-          />
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingRule ? 'Edit Rule' : 'Create Automation Rule'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 max-h-[60vh] overflow-y-auto">
+            <Input
+              label="Rule Name"
+              placeholder="e.g. Auto-assign P0 bugs"
+              value={ruleName}
+              onChange={(e) => setRuleName(e.target.value)}
+            />
+            <Input
+              label="Description (optional)"
+              placeholder="Describe what this rule does"
+              value={ruleDescription}
+              onChange={(e) => setRuleDescription(e.target.value)}
+            />
 
-          <div className="border-t border-gray-200 pt-4">
-            <TriggerSelect value={triggerType} onChange={setTriggerType} />
-          </div>
+            <div className="border-t border-gray-200 pt-4">
+              <TriggerSelect value={triggerType} onChange={setTriggerType} />
+            </div>
 
-          <div className="border-t border-gray-200 pt-4">
-            <ConditionBuilder conditions={conditions} onChange={setConditions} />
-          </div>
+            <div className="border-t border-gray-200 pt-4">
+              <ConditionBuilder conditions={conditions} onChange={setConditions} />
+            </div>
 
-          <div className="border-t border-gray-200 pt-4">
-            <ActionBuilder actions={actions} onChange={setActions} />
+            <div className="border-t border-gray-200 pt-4">
+              <ActionBuilder actions={actions} onChange={setActions} />
+            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditor(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!ruleName || actions.length === 0}
+              isLoading={createRule.isPending || updateRule.isPending}
+            >
+              {editingRule ? 'Save Changes' : 'Create Rule'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowEditor(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!ruleName || actions.length === 0}
-            isLoading={createRule.isPending || updateRule.isPending}
-          >
-            {editingRule ? 'Save Changes' : 'Create Rule'}
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirmation */}
@@ -327,83 +328,84 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
       {/* Test Rule Dialog */}
       <Dialog
         open={!!showTestDialog}
-        onClose={() => setShowTestDialog(null)}
-        className="max-w-md"
+        onOpenChange={(o) => !o && setShowTestDialog(null)}
       >
-        <DialogHeader onClose={() => setShowTestDialog(null)}>
-          <DialogTitle>Test Automation Rule</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Enter an issue ID to dry-run this rule. No changes will be made.
-          </p>
-          <Input
-            label="Issue ID"
-            placeholder="Paste an issue UUID"
-            value={testIssueId}
-            onChange={(e) => setTestIssueId(e.target.value)}
-          />
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Test Automation Rule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Enter an issue ID to dry-run this rule. No changes will be made.
+            </p>
+            <Input
+              label="Issue ID"
+              placeholder="Paste an issue UUID"
+              value={testIssueId}
+              onChange={(e) => setTestIssueId(e.target.value)}
+            />
 
-          {testRule.data && (
-            <div className="space-y-3 bg-gray-50 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Conditions:</span>
-                <span
-                  className={cn(
-                    'text-xs px-2 py-0.5 rounded-full font-medium',
-                    testRule.data.conditionsMet
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700',
-                  )}
-                >
-                  {testRule.data.conditionsMet ? 'All Passed' : 'Not Met'}
-                </span>
-              </div>
-
-              {testRule.data.conditionResults.map((cr, i) => (
-                <div key={i} className="text-xs flex items-center gap-2">
+            {testRule.data && (
+              <div className="space-y-3 bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Conditions:</span>
                   <span
                     className={cn(
-                      'h-2 w-2 rounded-full',
-                      cr.passed ? 'bg-green-500' : 'bg-red-500',
+                      'text-xs px-2 py-0.5 rounded-full font-medium',
+                      testRule.data.conditionsMet
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700',
                     )}
-                  />
-                  <span className="text-gray-600">
-                    {cr.field} {cr.operator} {JSON.stringify(cr.expected)}
-                  </span>
-                  <span className="text-gray-500">
-                    (actual: {JSON.stringify(cr.actual)})
+                  >
+                    {testRule.data.conditionsMet ? 'All Passed' : 'Not Met'}
                   </span>
                 </div>
-              ))}
 
-              {testRule.data.conditionsMet && testRule.data.actionsToExecute.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                    Actions that would execute:
-                  </p>
-                  {testRule.data.actionsToExecute.map((action: any, i: number) => (
-                    <div key={i} className="text-xs text-gray-600">
-                      {action.type}: {JSON.stringify(action.config)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+                {testRule.data.conditionResults.map((cr, i) => (
+                  <div key={i} className="text-xs flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'h-2 w-2 rounded-full',
+                        cr.passed ? 'bg-green-500' : 'bg-red-500',
+                      )}
+                    />
+                    <span className="text-gray-600">
+                      {cr.field} {cr.operator} {JSON.stringify(cr.expected)}
+                    </span>
+                    <span className="text-gray-500">
+                      (actual: {JSON.stringify(cr.actual)})
+                    </span>
+                  </div>
+                ))}
+
+                {testRule.data.conditionsMet && testRule.data.actionsToExecute.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Actions that would execute:
+                    </p>
+                    {testRule.data.actionsToExecute.map((action: any, i: number) => (
+                      <div key={i} className="text-xs text-gray-600">
+                        {action.type}: {JSON.stringify(action.config)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTestDialog(null)}>
+              Close
+            </Button>
+            <Button
+              onClick={handleTest}
+              disabled={!testIssueId}
+              isLoading={testRule.isPending}
+            >
+              Run Test
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowTestDialog(null)}>
-            Close
-          </Button>
-          <Button
-            onClick={handleTest}
-            disabled={!testIssueId}
-            isLoading={testRule.isPending}
-          >
-            Run Test
-          </Button>
-        </DialogFooter>
       </Dialog>
     </>
   )
