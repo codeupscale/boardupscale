@@ -9,6 +9,7 @@ import { ProjectsService } from '../projects/projects.service';
 import { EmailService } from '../notifications/email.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { EventsGateway } from '../../websocket/events.gateway';
 import {
   createMockRepository,
   createMockQueryBuilder,
@@ -47,6 +48,7 @@ describe('SprintsService', () => {
         { provide: ProjectsService, useValue: projectsService },
         { provide: EmailService, useValue: emailService },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
+        { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
