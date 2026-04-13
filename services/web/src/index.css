@@ -68,8 +68,6 @@ html, body, #root {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
-  background-color: #f8fafc;
-  color: #111827;
   margin: 0;
 }
 
@@ -84,12 +82,6 @@ body {
   --tooltip-bg: #1e293b;
   --tooltip-fg: #e2e8f0;
   --tooltip-border: #334155;
-}
-
-/* Dark mode body */
-.dark body {
-  background-color: #0f172a;
-  color: #e2e8f0;
 }
 
 /* Smooth theme transitions */
