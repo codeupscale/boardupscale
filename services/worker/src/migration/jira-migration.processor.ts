@@ -725,18 +725,79 @@ async function runProjectsPhase(
         [projectId, state.triggeredById],
       ).catch((err: any) => addError(state, `project member insert ${proj.key}: ${err.message}`));
 
-      // Add all existing org members as project members (viewer role) so the project
-      // is visible to everyone in the org after migration — not just the migration owner.
-      await client.query(
-        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
-         SELECT gen_random_uuid(), $1::uuid, u.id, 'member', NOW()
-         FROM users u
-         WHERE u.organization_id = $2::uuid
-           AND u.is_active = true
-           AND u.id != $3::uuid
-         ON CONFLICT (project_id, user_id) DO NOTHING`,
-        [projectId, state.organizationId, state.triggeredById],
-      ).catch((err: any) => addError(state, `bulk project members insert ${proj.key}: ${err.message}`));
+      // ── Fetch Jira project role members and add only them as project_members ──
+      // This mirrors Jira's actual project membership — only users assigned to a
+      // role in this specific Jira project get a project_members row.
+      // The migration owner's admin row (inserted above) is preserved via ON CONFLICT DO NOTHING.
+      {
+        const projectMemberRoles = new Map<string, 'admin' | 'member'>();
+        const ADMIN_ROLE_KEYWORDS = ['administrator', 'lead', 'owner'];
+
+        try {
+          // GET /rest/api/3/project/{key}/role → { "Administrators": "https://.../10002", ... }
+          const roleIndex = await jiraGet<Record<string, string>>(
+            credentials,
+            `/rest/api/3/project/${proj.key}/role`,
+          ).catch(() => null as Record<string, string> | null);
+
+          if (roleIndex && typeof roleIndex === 'object') {
+            for (const [roleName, roleUrl] of Object.entries(roleIndex)) {
+              const roleIdMatch = String(roleUrl).match(/\/(\d+)$/);
+              if (!roleIdMatch) continue;
+              const roleId = roleIdMatch[1];
+              const isAdminRole = ADMIN_ROLE_KEYWORDS.some((kw) =>
+                roleName.toLowerCase().includes(kw),
+              );
+
+              interface JiraRoleDetail {
+                actors: Array<{ accountId?: string; type: string }>;
+              }
+              const roleDetail = await jiraGet<JiraRoleDetail>(
+                credentials,
+                `/rest/api/3/project/${proj.key}/role/${roleId}`,
+              ).catch(() => null as JiraRoleDetail | null);
+
+              for (const actor of roleDetail?.actors ?? []) {
+                if (actor.type !== 'atlassian-user-role-actor' || !actor.accountId) continue;
+                const localUserId = state.jiraAccountIdToLocalId[actor.accountId];
+                if (!localUserId) continue;
+                // Admin role wins if user appears in multiple roles
+                if (isAdminRole || !projectMemberRoles.has(localUserId)) {
+                  projectMemberRoles.set(localUserId, isAdminRole ? 'admin' : 'member');
+                }
+              }
+
+              await delay(REQUEST_DELAY_MS);
+            }
+          }
+        } catch (err: any) {
+          addError(state, `project role members fetch ${proj.key}: ${err.message}`);
+        }
+
+        // Batch-insert only the Jira-sourced project members (skip triggeredById — already inserted above)
+        if (projectMemberRoles.size > 0) {
+          const entries = Array.from(projectMemberRoles.entries()).filter(
+            ([userId]) => userId !== state.triggeredById,
+          );
+          if (entries.length > 0) {
+            const pmPlaceholders: string[] = [];
+            const pmParams: unknown[] = [];
+            entries.forEach(([userId, role], idx) => {
+              const b = idx * 3;
+              pmPlaceholders.push(
+                `(gen_random_uuid(), $${b + 1}::uuid, $${b + 2}::uuid, $${b + 3}::text, NOW())`,
+              );
+              pmParams.push(projectId, userId, role);
+            });
+            await client.query(
+              `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+               VALUES ${pmPlaceholders.join(', ')}
+               ON CONFLICT (project_id, user_id) DO NOTHING`,
+              pmParams,
+            ).catch((err: any) => addError(state, `project members insert ${proj.key}: ${err.message}`));
+          }
+        }
+      }
 
       state.jiraProjectIdToLocalId[proj.key] = projectId;
 
@@ -1407,11 +1468,15 @@ async function runIssuesPhase(
           }
         }
 
+        // Collect issue IDs upserted in this page so we can create timeline activities below.
+        const pageUpsertedIds: string[] = [];
+
         if (!bulkInsertFailed) {
           // Normal path: ON CONFLICT DO UPDATE upsert — RETURNING gives ALL rows (new + updated).
           // No existingKeys lookup needed.
           for (const row of insertedIssues) {
             state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
+            pageUpsertedIds.push(row.id);
             processedIssues++;
             projectIssueCount++;
           }
@@ -1434,6 +1499,37 @@ async function runIssuesPhase(
               state.jiraIssueKeyToLocalId[row.jira_key] = row.id;
             }
           }
+          // Collect all IDs that were successfully upserted in the fallback path
+          for (const jiraKey of Object.keys(state.jiraIssueKeyToLocalId)) {
+            if (issueRowsToInsert.some(r => r.jiraKey === jiraKey)) {
+              const id = state.jiraIssueKeyToLocalId[jiraKey];
+              if (id) pageUpsertedIds.push(id);
+            }
+          }
+        }
+
+        // ── Create timeline (activity) records for imported issues ──────────────
+        // Use the issue's own reporter_id and created_at so the timeline reflects
+        // the original Jira history. Idempotent: skips issues that already have a
+        // 'created' activity (safe on re-import).
+        if (pageUpsertedIds.length > 0) {
+          await client.query(
+            `INSERT INTO activities (id, organization_id, issue_id, user_id, action, metadata, created_at)
+             SELECT
+               gen_random_uuid(),
+               $1::uuid,
+               i.id,
+               COALESCE(i.reporter_id, $2::uuid),
+               'created',
+               '{"importedFromJira": true}'::jsonb,
+               i.created_at
+             FROM issues i
+             WHERE i.id = ANY($3::uuid[])
+               AND NOT EXISTS (
+                 SELECT 1 FROM activities a WHERE a.issue_id = i.id AND a.action = 'created'
+               )`,
+            [state.organizationId, state.triggeredById, pageUpsertedIds],
+          ).catch((err: any) => addError(state, `activities insert page ${proj.key}@page${pageNumber}: ${err.message}`));
         }
       }
 

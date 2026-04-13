@@ -104,7 +104,10 @@ export function ProjectTimelinePage() {
   const filteredIssues = useMemo(() => {
     const all = issuesData?.data ?? []
     return all.filter((issue) => {
-      if (!issue.dueDate) return false
+      // Show if it has a due date OR is in a sprint with defined dates
+      const hasDueDate = !!issue.dueDate
+      const hasSprintDates = !!(issue.sprint?.startDate && issue.sprint?.endDate)
+      if (!hasDueDate && !hasSprintDates) return false
       if (typeFilter !== 'all' && issue.type !== typeFilter) return false
       return true
     })
@@ -213,11 +216,11 @@ export function ProjectTimelinePage() {
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
             icon={<GanttChart className="h-8 w-8" />}
-            title="No issues with due dates"
+            title="No issues to show"
             description={
               typeFilter === 'all'
-                ? 'Set due dates on issues to see them on the timeline'
-                : `No ${typeFilter} issues have due dates`
+                ? 'Add issues to a sprint or set due dates to see them on the timeline'
+                : `No ${typeFilter} issues are in a sprint or have due dates`
             }
           />
         </div>
@@ -308,11 +311,17 @@ export function ProjectTimelinePage() {
 
             {/* BODY ROWS */}
             {filteredIssues.map((issue) => {
-              const issueCreated = startOfDay(parseISO(issue.createdAt))
-              const issueDue = startOfDay(parseISO(issue.dueDate!))
-              const effectiveEnd = issueDue >= issueCreated ? issueDue : issueCreated
+              // Use due date range if set; otherwise fall back to sprint date range
+              const usingSprintDates = !issue.dueDate && !!(issue.sprint?.startDate && issue.sprint?.endDate)
+              const barStart = usingSprintDates
+                ? startOfDay(parseISO(issue.sprint!.startDate!))
+                : startOfDay(parseISO(issue.createdAt))
+              const barEnd = usingSprintDates
+                ? startOfDay(parseISO(issue.sprint!.endDate!))
+                : startOfDay(parseISO(issue.dueDate!))
+              const effectiveEnd = barEnd >= barStart ? barEnd : barStart
 
-              const rawStart = differenceInDays(issueCreated, viewStart)
+              const rawStart = differenceInDays(barStart, viewStart)
               const rawEnd = differenceInDays(effectiveEnd, viewStart) + 1
               const clampedStart = Math.max(0, rawStart)
               const clampedEnd = Math.min(cfg.days, rawEnd)
@@ -363,10 +372,11 @@ export function ProjectTimelinePage() {
                       <div
                         className={cn(
                           'absolute top-2.5 h-5 rounded cursor-pointer transition-opacity hover:opacity-80 flex items-center overflow-hidden',
+                          usingSprintDates ? 'opacity-60 border border-dashed border-white/50' : '',
                           barColor,
                         )}
                         style={{ left: barLeft, width: barWidth }}
-                        title={`${issue.key}: ${issue.title}\n${format(issueCreated, 'MMM d')} → ${format(effectiveEnd, 'MMM d, yyyy')}`}
+                        title={`${issue.key}: ${issue.title}\n${format(barStart, 'MMM d')} → ${format(effectiveEnd, 'MMM d, yyyy')}${usingSprintDates ? ' (sprint dates)' : ''}`}
                         onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
                       >
                         {barWidth >= 50 && (
