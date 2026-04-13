@@ -9,7 +9,12 @@ import {
   Trash2,
   Edit3,
 } from 'lucide-react'
-import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 
 export interface PageTreeNode {
   id: string
@@ -94,30 +99,28 @@ function PageTreeItem({
           </button>
 
           <div onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
                 >
                   <MoreHorizontal size={12} />
                 </button>
-              }
-              align="right"
-            >
-              <DropdownItem
-                icon={<Edit3 size={14} />}
-                onClick={() => navigate(`/projects/${projectKey}/pages/${node.id}`)}
-              >
-                Open
-              </DropdownItem>
-              <DropdownItem
-                icon={<Trash2 size={14} />}
-                destructive
-                onClick={() => onDelete(node.id, node.title)}
-              >
-                Delete
-              </DropdownItem>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/projects/${projectKey}/pages/${node.id}`)}>
+                  <Edit3 size={14} />
+                  Open
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={() => onDelete(node.id, node.title)}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>

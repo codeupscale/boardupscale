@@ -44,7 +44,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10

@@ -16,7 +16,12 @@ import {
   MoreHorizontal,
   Check,
 } from 'lucide-react'
-import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -230,20 +235,25 @@ export function PageDetailPage() {
             )}
 
             {/* More actions */}
-            <DropdownMenu
-              align="right"
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                   <MoreHorizontal size={14} />
                 </Button>
-              }
-            >
-              <DropdownItem icon={<Plus size={14} />} onClick={() => handleCreatePage(pageId)}>
-                Add sub-page
-              </DropdownItem>
-              <DropdownItem icon={<Trash2 size={14} />} destructive onClick={() => handleDeletePage(page.id, page.title)}>
-                Delete page
-              </DropdownItem>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleCreatePage(pageId)}>
+                  <Plus size={14} />
+                  Add sub-page
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={() => handleDeletePage(page.id, page.title)}
+                >
+                  <Trash2 size={14} />
+                  Delete page
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>

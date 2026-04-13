@@ -24,7 +24,12 @@ import {
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
@@ -172,26 +177,23 @@ export function ProjectIssuesPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <DropdownMenu
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" disabled={exporting}>
                   <Download className="h-4 w-4" />
                   Export
                 </Button>
-              }
-            >
-              <DropdownItem
-                icon={<Download className="h-4 w-4" />}
-                onClick={() => handleExport('csv')}
-              >
-                Export CSV
-              </DropdownItem>
-              <DropdownItem
-                icon={<Download className="h-4 w-4" />}
-                onClick={() => handleExport('json')}
-              >
-                Export JSON
-              </DropdownItem>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  <Download className="h-4 w-4" />
+                  Export JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" />

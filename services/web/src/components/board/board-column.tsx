@@ -14,7 +14,13 @@ import { useScrollPagination } from '@/hooks/useScrollPagination'
 import { useTranslation } from 'react-i18next'
 import { BoardColumn as BoardColumnType, Issue } from '@/types'
 import { cn } from '@/lib/utils'
-import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { BoardCard } from './board-card'
 import { WipLimitSettings } from './wip-limit-settings'
 
@@ -117,38 +123,41 @@ export function BoardColumn({
           )}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <DropdownMenu
-            trigger={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
                 className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
                 title={t('board.columnSettings', 'Column settings')}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
-            }
-          >
-            {onEditColumn && (
-              <DropdownItem icon={<Pencil className="h-4 w-4" />} onClick={() => onEditColumn(column.id)}>
-                Edit column
-              </DropdownItem>
-            )}
-            {onUpdateWipLimit && (
-              <DropdownItem icon={<Gauge className="h-4 w-4" />} onClick={() => setShowWipSettings(true)}>
-                WIP limit{wipLimit > 0 ? ` (${wipLimit})` : ''}
-              </DropdownItem>
-            )}
-            {onDeleteColumn && (
-              <>
-                <DropdownSeparator />
-                <DropdownItem
-                  icon={<Trash2 className="h-4 w-4" />}
-                  destructive
-                  onClick={() => onDeleteColumn(column.id)}
-                >
-                  Delete column
-                </DropdownItem>
-              </>
-            )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEditColumn && (
+                <DropdownMenuItem onClick={() => onEditColumn(column.id)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit column
+                </DropdownMenuItem>
+              )}
+              {onUpdateWipLimit && (
+                <DropdownMenuItem onClick={() => setShowWipSettings(true)}>
+                  <Gauge className="h-4 w-4" />
+                  WIP limit{wipLimit > 0 ? ` (${wipLimit})` : ''}
+                </DropdownMenuItem>
+              )}
+              {onDeleteColumn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    onClick={() => onDeleteColumn(column.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete column
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
           </DropdownMenu>
           {onAddIssue && (
             <button

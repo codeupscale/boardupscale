@@ -7,7 +7,14 @@ import { useThemeStore } from '@/store/theme.store'
 import { useUnreadCount } from '@/hooks/useNotifications'
 import { useLogout } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const SUPPORTED_LANGUAGES = [
@@ -59,8 +66,8 @@ export function Topbar() {
         </button>
 
         {/* Theme Switcher */}
-        <DropdownMenu
-          trigger={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               aria-label="Switch theme"
               className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
@@ -70,57 +77,53 @@ export function Topbar() {
                 return <Icon className="h-5 w-5" />
               })()}
             </button>
-          }
-        >
-          <DropdownLabel>Theme</DropdownLabel>
-          <DropdownItem
-            icon={<Sun className="h-4 w-4" />}
-            onClick={() => setTheme('light')}
-          >
-            <span className={cn('text-sm', theme === 'light' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              Light
-            </span>
-          </DropdownItem>
-          <DropdownItem
-            icon={<Moon className="h-4 w-4" />}
-            onClick={() => setTheme('dark')}
-          >
-            <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              Dark
-            </span>
-          </DropdownItem>
-          <DropdownItem
-            icon={<Monitor className="h-4 w-4" />}
-            onClick={() => setTheme('system')}
-          >
-            <span className={cn('text-sm', theme === 'system' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              System
-            </span>
-          </DropdownItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setTheme('light')}>
+              <Sun className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'light' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+                Light
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('dark')}>
+              <Moon className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+                Dark
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('system')}>
+              <Monitor className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'system' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+                System
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Language Switcher */}
-        <DropdownMenu
-          trigger={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-1 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
               <Globe className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">{i18n.language.slice(0, 2)}</span>
             </button>
-          }
-        >
-          {SUPPORTED_LANGUAGES.map((lang) => (
-            <DropdownItem
-              key={lang.code}
-              onClick={() => i18n.changeLanguage(lang.code)}
-            >
-              <span className={cn(
-                'text-sm',
-                i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600 dark:text-blue-400',
-              )}>
-                {lang.label}
-              </span>
-            </DropdownItem>
-          ))}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => i18n.changeLanguage(lang.code)}
+              >
+                <span className={cn(
+                  'text-sm',
+                  i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600 dark:text-blue-400',
+                )}>
+                  {lang.label}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Notifications */}
@@ -138,39 +141,36 @@ export function Topbar() {
         </Link>
 
         {/* User dropdown */}
-        <DropdownMenu
-          trigger={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1">
               <Avatar user={user || undefined} size="sm" />
             </button>
-          }
-        >
-          {user && (
-            <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.displayName}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
-            </div>
-          )}
-          <DropdownItem
-            icon={<User className="h-4 w-4" />}
-            onClick={() => navigate('/settings')}
-          >
-            {t('nav.profile')}
-          </DropdownItem>
-          <DropdownItem
-            icon={<Settings className="h-4 w-4" />}
-            onClick={() => navigate('/settings')}
-          >
-            {t('nav.settings')}
-          </DropdownItem>
-          <DropdownSeparator />
-          <DropdownItem
-            icon={<LogOut className="h-4 w-4" />}
-            destructive
-            onClick={() => logout.mutate()}
-          >
-            {t('auth.logOut')}
-          </DropdownItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {user && (
+              <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.displayName}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
+              </div>
+            )}
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <User className="h-4 w-4" />
+              {t('nav.profile')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <Settings className="h-4 w-4" />
+              {t('nav.settings')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+              onClick={() => logout.mutate()}
+            >
+              <LogOut className="h-4 w-4" />
+              {t('auth.logOut')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
