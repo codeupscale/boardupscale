@@ -120,7 +120,7 @@ export function ChatMessageList({ messages, userName, userAvatar }: ChatMessageL
           className={cn(
             'absolute bottom-3 left-1/2 -translate-x-1/2 z-10',
             'flex items-center gap-1 px-3 py-1.5 rounded-full',
-            'bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700',
+            'bg-card shadow-lg border border-border',
             'text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
             'transition-all duration-200 hover:shadow-xl',
           )}

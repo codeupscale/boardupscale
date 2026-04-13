@@ -16,7 +16,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
 
   if (!sprintId) {
     return (
-      <div className={cn('rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-900 p-4', className)}>
+      <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-purple-500" />
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Sprint Intelligence</h3>
@@ -28,7 +28,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
 
   if (isLoading) {
     return (
-      <div className={cn('rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-900 p-4', className)}>
+      <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 text-purple-400 animate-spin" />
           <span className="text-xs text-purple-500">Analyzing sprint...</span>
@@ -43,7 +43,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
   const maxPoints = Math.max(...workloadBalance.map((w) => w.assignedPoints), 1)
 
   return (
-    <div className={cn('rounded-xl border border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-900 p-4', className)}>
+    <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-500" />

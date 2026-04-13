@@ -130,7 +130,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
       role="article"
       onClick={() => navigate(`/projects/${project.key}/board`)}
       className={cn(
-        'group relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700',
+        'group relative bg-card rounded-xl border border-border',
         'cursor-pointer overflow-hidden',
         'hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200',
       )}

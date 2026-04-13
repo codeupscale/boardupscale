@@ -85,7 +85,7 @@ export function BoardColumn({
       <div
         className={cn(
           'flex items-center justify-between px-3 py-2.5 flex-shrink-0',
-          'bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800',
+          'bg-card/80 backdrop-blur-sm border-b border-border',
           isOverLimit && 'border-b-red-200 dark:border-b-red-800',
           isAtLimit && !isOverLimit && 'border-b-amber-200 dark:border-b-amber-800',
         )}
@@ -173,7 +173,7 @@ export function BoardColumn({
 
       {/* WIP Limit Progress Bar */}
       {wipLimit > 0 && (
-        <div className="px-3 py-2 bg-white/60 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div className="px-3 py-2 bg-card/60 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1.5">
             <span className="font-medium">WIP</span>
             <span className={cn('font-semibold', isOverLimit && 'text-red-500')}>
@@ -184,7 +184,7 @@ export function BoardColumn({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-300',
-                isOverLimit ? 'bg-red-500' : isAtLimit ? 'bg-amber-500' : 'bg-blue-500',
+                isOverLimit ? 'bg-red-500' : isAtLimit ? 'bg-amber-500' : 'bg-primary',
               )}
               style={{ width: `${wipPercent}%` }}
             />

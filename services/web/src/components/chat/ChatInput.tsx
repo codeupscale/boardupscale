@@ -97,7 +97,7 @@ export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps)
               'placeholder:text-gray-400 dark:placeholder:text-gray-500',
               'text-gray-800 dark:text-gray-100',
               'focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400',
-              'focus:bg-white dark:focus:bg-gray-800',
+              'focus:bg-card',
               'disabled:opacity-40',
               'transition-all duration-150',
             )}

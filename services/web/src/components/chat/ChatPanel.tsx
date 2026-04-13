@@ -109,9 +109,9 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
       aria-label="Upsy AI Assistant"
       className={cn(
         'fixed bottom-20 right-5 z-50 flex flex-col',
-        'bg-white dark:bg-gray-900 rounded-2xl',
+        'bg-card rounded-2xl',
         'shadow-[0_8px_40px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.6)]',
-        'border border-gray-200/60 dark:border-gray-700/60',
+        'border border-border',
         'animate-in slide-in-from-bottom-4 fade-in duration-300',
         isResizing && 'select-none',
       )}
@@ -127,7 +127,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         onMouseDown={handleResizeStart}
         aria-hidden
       >
-        <div className="w-2.5 h-2.5 mt-1 ml-1 rounded-sm border border-gray-300 dark:border-gray-600 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800" />
+        <div className="w-2.5 h-2.5 mt-1 ml-1 rounded-sm border border-border opacity-0 group-hover:opacity-100 transition-opacity bg-card" />
       </div>
 
       {/* Header */}
@@ -152,7 +152,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         <div className="flex items-center gap-0.5">
           <button
             onClick={handleNewConversation}
-            className="p-1.5 rounded-lg hover:bg-white/80 dark:hover:bg-gray-800 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-accent text-gray-400 hover:text-primary transition-colors"
             aria-label="New conversation"
             title="New conversation"
           >
@@ -164,7 +164,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
               'p-1.5 rounded-lg transition-colors',
               showHistory
                 ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                : 'hover:bg-white/80 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+                : 'hover:bg-accent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
             )}
             aria-label="Conversation history"
             title="History"
@@ -173,7 +173,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-white/80 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-accent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             aria-label="Close"
           >
             <X className="h-3.5 w-3.5" />
