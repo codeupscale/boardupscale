@@ -1,6 +1,12 @@
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import type { AutomationAction } from '@/hooks/useAutomation'
 
@@ -82,10 +88,18 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <Select
-                options={ACTION_OPTIONS}
                 value={action.type}
-                onChange={(e) => handleTypeChange(index, e.target.value)}
-              />
+                onValueChange={(v) => handleTypeChange(index, v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               variant="ghost"
@@ -101,10 +115,18 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
           {action.type === 'set_field' && (
             <div className="grid grid-cols-2 gap-2">
               <Select
-                options={SET_FIELD_OPTIONS}
-                value={action.config.field || ''}
-                onChange={(e) => updateActionConfig(index, 'field', e.target.value)}
-              />
+                value={action.config.field || SET_FIELD_OPTIONS[0].value}
+                onValueChange={(v) => updateActionConfig(index, 'field', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SET_FIELD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 placeholder="Value"
                 value={action.config.value ?? ''}

@@ -1,4 +1,11 @@
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 
 const TRIGGER_OPTIONS = [
   { value: 'issue.created', label: 'Issue Created' },
@@ -30,13 +37,17 @@ interface TriggerSelectProps {
 export function TriggerSelect({ value, onChange }: TriggerSelectProps) {
   return (
     <div>
-      <Select
-        label="When this happens..."
-        options={TRIGGER_OPTIONS}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Select a trigger"
-      />
+      <Label className="mb-1">When this happens...</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a trigger" />
+        </SelectTrigger>
+        <SelectContent>
+          {TRIGGER_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {value && (
         <p className="mt-1.5 text-xs text-gray-500">
           {TRIGGER_DESCRIPTIONS[value]}

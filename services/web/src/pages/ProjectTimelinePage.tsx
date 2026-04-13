@@ -16,7 +16,13 @@ import { useSprints } from '@/hooks/useSprints'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
@@ -164,15 +170,18 @@ export function ProjectTimelinePage() {
           </div>
 
           {/* Type filter */}
-          <Select
-            options={TYPE_OPTIONS.map((t) => ({
-              value: t,
-              label: t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1),
-            }))}
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="w-36"
-          />
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPE_OPTIONS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

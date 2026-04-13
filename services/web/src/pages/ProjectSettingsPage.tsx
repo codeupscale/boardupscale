@@ -24,7 +24,14 @@ import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { LoadingPage } from '@/components/ui/spinner'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
@@ -487,17 +494,20 @@ export function ProjectSettingsPage() {
               first, then add them to this project.
             </p>
           </div>
-          <Select
-            label={t('settings.role')}
-            options={[
-              { value: 'viewer', label: t('settings.viewer') },
-              { value: 'member', label: t('projects.member') },
-              { value: 'manager', label: t('settings.manager') },
-              { value: 'admin', label: t('settings.admin') },
-            ]}
-            value={newMemberRole}
-            onChange={(e) => setNewMemberRole(e.target.value)}
-          />
+          <div className="w-full">
+            <Label className="mb-1">{t('settings.role')}</Label>
+            <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="viewer">{t('settings.viewer')}</SelectItem>
+                <SelectItem value="member">{t('projects.member')}</SelectItem>
+                <SelectItem value="manager">{t('settings.manager')}</SelectItem>
+                <SelectItem value="admin">{t('settings.admin')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAddMember(false)}>
               {t('common.cancel')}
@@ -531,16 +541,19 @@ export function ProjectSettingsPage() {
             value={statusName}
             onChange={(e) => setStatusName(e.target.value)}
           />
-          <Select
-            label={t('settings.category')}
-            options={[
-              { value: IssueStatusCategory.TODO, label: t('settings.toDo') },
-              { value: IssueStatusCategory.IN_PROGRESS, label: t('settings.inProgress') },
-              { value: IssueStatusCategory.DONE, label: t('settings.done') },
-            ]}
-            value={statusCategory}
-            onChange={(e) => setStatusCategory(e.target.value as IssueStatusCategory)}
-          />
+          <div className="w-full">
+            <Label className="mb-1">{t('settings.category')}</Label>
+            <Select value={statusCategory} onValueChange={(v) => setStatusCategory(v as IssueStatusCategory)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={IssueStatusCategory.TODO}>{t('settings.toDo')}</SelectItem>
+                <SelectItem value={IssueStatusCategory.IN_PROGRESS}>{t('settings.inProgress')}</SelectItem>
+                <SelectItem value={IssueStatusCategory.DONE}>{t('settings.done')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">{t('settings.color')}</label>
             <div className="flex gap-2 flex-wrap">
@@ -627,23 +640,28 @@ function MemberRoleList({ projectId }: { projectId: string }) {
             <div className="w-40">
               <Select
                 value={member.roleId ?? ''}
-                onChange={(e) => {
-                  if (e.target.value) {
+                onValueChange={(v) => {
+                  if (v) {
                     assignRole.mutate({
                       projectId,
                       memberId: member.id,
-                      roleId: e.target.value,
+                      roleId: v,
                     })
                   }
                 }}
-                placeholder="Assign role..."
-                options={roles.map((r) => ({
-                  value: r.id,
-                  label: `${r.name}${r.isSystem ? ' (system)' : ''}`,
-                }))}
-                className="text-xs"
                 disabled={assignRole.isPending}
-              />
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Assign role..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}{r.isSystem ? ' (system)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

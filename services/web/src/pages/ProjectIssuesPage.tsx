@@ -14,7 +14,13 @@ import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
@@ -219,62 +225,83 @@ export function ProjectIssuesPage() {
             </div>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allTypes') },
-                { value: IssueType.EPIC, label: t('issues.epic') },
-                { value: IssueType.STORY, label: t('issues.story') },
-                { value: IssueType.TASK, label: t('issues.task') },
-                { value: IssueType.BUG, label: t('issues.bug') },
-                { value: IssueType.SUBTASK, label: t('issues.subtask') },
-              ]}
-              value={filterType}
-              onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
-              className="w-36"
-            />
+              value={filterType || '__all__'}
+              onValueChange={(v) => { setFilterType(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allTypes')}</SelectItem>
+                <SelectItem value={IssueType.EPIC}>{t('issues.epic')}</SelectItem>
+                <SelectItem value={IssueType.STORY}>{t('issues.story')}</SelectItem>
+                <SelectItem value={IssueType.TASK}>{t('issues.task')}</SelectItem>
+                <SelectItem value={IssueType.BUG}>{t('issues.bug')}</SelectItem>
+                <SelectItem value={IssueType.SUBTASK}>{t('issues.subtask')}</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allPriorities') },
-                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-                { value: IssuePriority.HIGH, label: t('priorities.high') },
-                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-                { value: IssuePriority.LOW, label: t('priorities.low') },
-              ]}
-              value={filterPriority}
-              onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterPriority || '__all__'}
+              onValueChange={(v) => { setFilterPriority(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allPriorities')}</SelectItem>
+                <SelectItem value={IssuePriority.CRITICAL}>{t('priorities.critical')}</SelectItem>
+                <SelectItem value={IssuePriority.HIGH}>{t('priorities.high')}</SelectItem>
+                <SelectItem value={IssuePriority.MEDIUM}>{t('priorities.medium')}</SelectItem>
+                <SelectItem value={IssuePriority.LOW}>{t('priorities.low')}</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allStatuses') },
-                ...(board?.statuses?.map((s) => ({ value: s.id, label: s.name })) || []),
-              ]}
-              value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterStatus || '__all__'}
+              onValueChange={(v) => { setFilterStatus(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allStatuses')}</SelectItem>
+                {board?.statuses?.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allAssignees') },
-                ...(users?.map((u) => ({ value: u.id, label: u.displayName })) || []),
-              ]}
-              value={filterAssignee}
-              onChange={(e) => { setFilterAssignee(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterAssignee || '__all__'}
+              onValueChange={(v) => { setFilterAssignee(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allAssignees')}</SelectItem>
+                {users?.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {sprints && sprints.length > 0 && (
               <Select
-                options={[
-                  { value: '', label: t('issues.allSprints') },
-                  ...(sprints?.map((s) => ({ value: s.id, label: s.name })) || []),
-                ]}
-                value={filterSprint}
-                onChange={(e) => { setFilterSprint(e.target.value); setPage(1) }}
-                className="w-40"
-              />
+                value={filterSprint || '__all__'}
+                onValueChange={(v) => { setFilterSprint(v === '__all__' ? '' : v); setPage(1) }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{t('issues.allSprints')}</SelectItem>
+                  {sprints?.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
         </div>

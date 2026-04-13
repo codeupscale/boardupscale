@@ -38,7 +38,13 @@ import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -155,10 +161,17 @@ function DraggableIssueRow({
             {statuses && onUpdateIssue ? (
               <Select
                 value={issue.statusId || ''}
-                onChange={(e) => onUpdateIssue(issue.id, { statusId: e.target.value })}
-                options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-                className="text-xs py-1"
-              />
+                onValueChange={(v) => onUpdateIssue(issue.id, { statusId: v })}
+              >
+                <SelectTrigger className="text-xs py-1 h-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <StatusBadge status={issue.status} />
             )}
@@ -528,16 +541,21 @@ function SprintSection({
                           Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                         </label>
                         <Select
-                          value={moveToSprintId}
-                          onChange={(e) => setMoveToSprintId(e.target.value)}
-                          options={[
-                            { value: '', label: 'Backlog' },
-                            ...otherSprints.map((s) => ({
-                              value: s.id,
-                              label: `${s.name}${s.status === 'active' ? ' (active)' : ''}`,
-                            })),
-                          ]}
-                        />
+                          value={moveToSprintId || '__backlog__'}
+                          onValueChange={(v) => setMoveToSprintId(v === '__backlog__' ? '' : v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__backlog__">Backlog</SelectItem>
+                            {otherSprints.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}{s.status === 'active' ? ' (active)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                           {moveToSprintId
                             ? `Incomplete issues will be moved to the selected sprint.`

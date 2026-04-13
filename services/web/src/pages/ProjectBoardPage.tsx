@@ -22,7 +22,13 @@ import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
@@ -632,12 +638,19 @@ export function ProjectBoardPage() {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
             />
-            <Select
-              label="Category"
-              options={CATEGORY_OPTIONS}
-              value={newColumnCategory}
-              onChange={(e) => setNewColumnCategory(e.target.value)}
-            />
+            <div className="w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <Select value={newColumnCategory} onValueChange={setNewColumnCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
               <div className="flex gap-2">
@@ -678,12 +691,19 @@ export function ProjectBoardPage() {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleSaveEditColumn()}
             />
-            <Select
-              label="Category"
-              options={CATEGORY_OPTIONS}
-              value={editColumnCategory}
-              onChange={(e) => setEditColumnCategory(e.target.value)}
-            />
+            <div className="w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <Select value={editColumnCategory} onValueChange={setEditColumnCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
               <div className="flex gap-2">
@@ -767,16 +787,21 @@ export function ProjectBoardPage() {
                         Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                       </label>
                       <Select
-                        options={[
-                          { value: '', label: 'Backlog' },
-                          ...otherSprints.map((s) => ({
-                            value: s.id,
-                            label: `${s.name}${s.status === 'active' ? ' (active)' : ''}`,
-                          })),
-                        ]}
-                        value={boardMoveToSprintId}
-                        onChange={(e) => setBoardMoveToSprintId(e.target.value)}
-                      />
+                        value={boardMoveToSprintId || '__backlog__'}
+                        onValueChange={(v) => setBoardMoveToSprintId(v === '__backlog__' ? '' : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__backlog__">Backlog</SelectItem>
+                          {otherSprints.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}{s.status === 'active' ? ' (active)' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <p className="text-xs text-gray-400 dark:text-gray-500">
                         {boardMoveToSprintId
                           ? `Incomplete issues will be moved to the selected sprint.`

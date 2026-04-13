@@ -13,7 +13,14 @@ import {
 } from 'lucide-react'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { DatePicker } from '@/components/ui/date-picker'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
@@ -174,12 +181,21 @@ export function ProjectReportsPage() {
                 {sprintsLoading ? (
                   <div className="text-sm text-gray-500">Loading sprints...</div>
                 ) : sprints && sprints.length > 0 ? (
-                  <Select
-                    label="Sprint"
-                    value={activeSprint}
-                    onChange={(e) => setSelectedSprintId(e.target.value)}
-                    options={sprints.map((s) => ({ value: s.id, label: `${s.name} (${s.status})` }))}
-                  />
+                  <div className="w-full">
+                    <Label className="mb-1">Sprint</Label>
+                    <Select value={activeSprint} onValueChange={setSelectedSprintId}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sprints.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} ({s.status})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500">No sprints available</p>
                 )}
@@ -238,15 +254,16 @@ export function ProjectReportsPage() {
                   placeholder="End date"
                 />
                 <div className="w-32">
-                  <Select
-                    label="Interval"
-                    value={cvrInterval}
-                    onChange={(e) => setCvrInterval(e.target.value as 'day' | 'week')}
-                    options={[
-                      { value: 'day', label: 'Daily' },
-                      { value: 'week', label: 'Weekly' },
-                    ]}
-                  />
+                  <Label className="mb-1">Interval</Label>
+                  <Select value={cvrInterval} onValueChange={(v) => setCvrInterval(v as 'day' | 'week')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">Daily</SelectItem>
+                      <SelectItem value="week">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
             )}

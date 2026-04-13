@@ -31,7 +31,13 @@ import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
@@ -280,17 +286,23 @@ export function ProjectCalendarPage() {
 
         <div className="ml-auto flex items-center gap-2">
           <Select
-            options={PRIORITY_OPTIONS.map((p) => ({
-              value: p,
-              label: p === 'all' ? 'All priorities' : p.charAt(0).toUpperCase() + p.slice(1),
-            }))}
             value={priorityFilter}
-            onChange={(e) => {
-              setPriorityFilter(e.target.value as PriorityFilter)
+            onValueChange={(v) => {
+              setPriorityFilter(v as PriorityFilter)
               setSelectedDay(null)
             }}
-            className="w-40"
-          />
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PRIORITY_OPTIONS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p === 'all' ? 'All priorities' : p.charAt(0).toUpperCase() + p.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4" />
             Create Issue

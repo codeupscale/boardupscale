@@ -10,7 +10,14 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
@@ -200,12 +207,19 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
               onChange={(e) => setFieldKey(e.target.value)}
             />
           )}
-          <Select
-            label="Field Type"
-            options={FIELD_TYPES}
-            value={fieldType}
-            onChange={(e) => setFieldType(e.target.value as CustomFieldType)}
-          />
+          <div className="w-full">
+            <Label className="mb-1">Field Type</Label>
+            <Select value={fieldType} onValueChange={(v) => setFieldType(v as CustomFieldType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FIELD_TYPES.map((ft) => (
+                  <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Textarea
             label="Description (optional)"
             placeholder="Describe what this field is for..."

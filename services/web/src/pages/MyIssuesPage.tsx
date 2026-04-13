@@ -4,7 +4,13 @@ import { useIssues } from '@/hooks/useIssues'
 import { useAuthStore } from '@/store/auth.store'
 import { IssuePriority, IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
@@ -125,17 +131,20 @@ export function MyIssuesPage() {
             <ListFilter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
           </div>
           <Select
-            options={[
-              { value: '', label: t('issues.allPriorities') },
-              { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-              { value: IssuePriority.HIGH, label: t('priorities.high') },
-              { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-              { value: IssuePriority.LOW, label: t('priorities.low') },
-            ]}
-            value={filterPriority}
-            onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
-            className="w-40"
-          />
+            value={filterPriority || '__all__'}
+            onValueChange={(v) => { setFilterPriority(v === '__all__' ? '' : v); setPage(1) }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('issues.allPriorities')}</SelectItem>
+              <SelectItem value={IssuePriority.CRITICAL}>{t('priorities.critical')}</SelectItem>
+              <SelectItem value={IssuePriority.HIGH}>{t('priorities.high')}</SelectItem>
+              <SelectItem value={IssuePriority.MEDIUM}>{t('priorities.medium')}</SelectItem>
+              <SelectItem value={IssuePriority.LOW}>{t('priorities.low')}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Table */}

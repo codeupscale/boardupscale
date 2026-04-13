@@ -1,6 +1,6 @@
 import { UserRole } from '@/types'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -22,7 +22,14 @@ import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
 import { useMe, useSetup2FA, useConfirm2FA, useDisable2FA, useRegenerateBackupCodes } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Avatar } from '@/components/ui/avatar'
 import { LoadingPage } from '@/components/ui/spinner'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
@@ -113,6 +120,7 @@ function ProfileTab() {
   const {
     register,
     handleSubmit,
+    control,
     watch,
     formState: { errors, isDirty },
   } = useForm<ProfileValues>({
@@ -161,15 +169,43 @@ function ProfileTab() {
         />
 
         <div className="grid grid-cols-2 gap-4">
-          <Select
-            label={t('settings.timezone')}
-            options={timezoneOptions}
-            {...register('timezone')}
+          <Controller
+            name="timezone"
+            control={control}
+            render={({ field }) => (
+              <div className="w-full">
+                <Label className="mb-1">{t('settings.timezone')}</Label>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timezoneOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           />
-          <Select
-            label={t('settings.language')}
-            options={languageOptions}
-            {...register('language')}
+          <Controller
+            name="language"
+            control={control}
+            render={({ field }) => (
+              <div className="w-full">
+                <Label className="mb-1">{t('settings.language')}</Label>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           />
         </div>
 

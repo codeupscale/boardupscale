@@ -7,7 +7,14 @@ import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
@@ -206,17 +213,21 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="priority"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('common.priority')}
-              options={[
-                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-                { value: IssuePriority.HIGH, label: t('priorities.high') },
-                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-                { value: IssuePriority.LOW, label: t('priorities.low') },
-                { value: IssuePriority.NONE, label: t('priorities.none') },
-              ]}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('common.priority')}</Label>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={IssuePriority.CRITICAL}>{t('priorities.critical')}</SelectItem>
+                  <SelectItem value={IssuePriority.HIGH}>{t('priorities.high')}</SelectItem>
+                  <SelectItem value={IssuePriority.MEDIUM}>{t('priorities.medium')}</SelectItem>
+                  <SelectItem value={IssuePriority.LOW}>{t('priorities.low')}</SelectItem>
+                  <SelectItem value={IssuePriority.NONE}>{t('priorities.none')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       </div>
@@ -226,12 +237,19 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="statusId"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('common.status')}
-              placeholder={t('common.status') + '...'}
-              options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('common.status')}</Label>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('common.status') + '...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       )}
@@ -296,12 +314,19 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="sprintId"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('issues.sprint')}
-              placeholder={t('common.noSprint')}
-              options={sprints.map((s) => ({ value: s.id, label: s.name }))}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('issues.sprint')}</Label>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('common.noSprint')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sprints.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       )}

@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { Project } from '@/types'
 import { useBulkMove } from '@/hooks/useBulkOperations'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
 interface BulkMoveDialogProps {
@@ -48,18 +55,21 @@ export function BulkMoveDialog({
           Move {issueIds.length} issue{issueIds.length !== 1 ? 's' : ''} to another project.
           Issues will be re-keyed and assigned the default status of the target project.
         </p>
-        <Select
-          label="Target Project"
-          options={[
-            { value: '', label: 'Select a project...' },
-            ...availableProjects.map((p) => ({
-              value: p.id,
-              label: `${p.name} (${p.key})`,
-            })),
-          ]}
-          value={targetProjectId}
-          onChange={(e) => setTargetProjectId(e.target.value)}
-        />
+        <div className="w-full">
+          <Label className="mb-1">Target Project</Label>
+          <Select value={targetProjectId || '__none__'} onValueChange={(v) => setTargetProjectId(v === '__none__' ? '' : v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a project..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableProjects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name} ({p.key})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </DialogContent>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>

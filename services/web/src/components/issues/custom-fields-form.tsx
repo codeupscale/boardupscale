@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CustomFieldDefinition, CustomFieldValue, CustomFieldType } from '@/types'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import { UserSelect } from '@/components/common/user-select'
 import { Button } from '@/components/ui/button'
 
