@@ -111,6 +111,7 @@ export interface ProjectMember {
   userId: string
   user: User
   role: string
+  roleId?: string
   createdAt: string
 }
 

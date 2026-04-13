@@ -496,7 +496,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
             <Badge variant="outline">{member.role}</Badge>
             <div className="w-40">
               <Select
-                value={(member as any).roleId || ''}
+                value={member.roleId ?? ''}
                 onChange={(e) => {
                   if (e.target.value) {
                     assignRole.mutate({
@@ -512,6 +512,7 @@ function MemberRoleList({ projectId }: { projectId: string }) {
                   label: `${r.name}${r.isSystem ? ' (system)' : ''}`,
                 }))}
                 className="text-xs"
+                disabled={assignRole.isPending}
               />
             </div>
           </div>
