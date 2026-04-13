@@ -4,47 +4,47 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 260 15% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 260 15% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
+    --popover-foreground: 260 15% 12%;
+    --primary: 315 65% 28%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --secondary: 260 20% 95%;
+    --secondary-foreground: 260 15% 20%;
+    --muted: 260 15% 95%;
+    --muted-foreground: 260 10% 45%;
+    --accent: 260 20% 94%;
+    --accent-foreground: 260 15% 20%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 260 20% 88%;
+    --input: 260 15% 92%;
+    --ring: 315 65% 45%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222 47% 4%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 7%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
+    --background: 240 35% 5%;
+    --foreground: 260 15% 92%;
+    --card: 260 30% 8%;
+    --card-foreground: 260 15% 92%;
+    --popover: 260 30% 8%;
+    --popover-foreground: 260 15% 92%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 315 50% 20%;
+    --secondary: 260 25% 14%;
+    --secondary-foreground: 260 15% 75%;
+    --muted: 260 20% 11%;
+    --muted-foreground: 260 10% 52%;
+    --accent: 260 25% 15%;
+    --accent-foreground: 260 15% 85%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 260 20% 22%;
+    --input: 260 20% 16%;
+    --ring: 315 60% 55%;
   }
 }
 
@@ -56,6 +56,88 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+}
+
+/* ============================================================
+   PLASMA THEME TOKENS — change these to retheme the whole app
+   ============================================================ */
+
+:root {
+  /* Brand gradient stops */
+  --plasma-stop-0: #000000;
+  --plasma-stop-1: oklch(0.18 0.1 315);
+  --plasma-stop-2: oklch(0.52 0.26 316);
+  --plasma-glow: oklch(0.52 0.26 316 / 0.35);
+
+  /* Primary button (light) */
+  --plasma-btn-bg: linear-gradient(
+    135deg,
+    var(--plasma-stop-0) 0%,
+    var(--plasma-stop-0) 30%,
+    var(--plasma-stop-1) 58%,
+    var(--plasma-stop-2) 100%
+  );
+  --plasma-btn-color: #ffffff;
+  --plasma-btn-shadow:
+    0 0 0 1px oklch(0.35 0.18 315 / 0.5),
+    0 4px 18px rgba(0, 0, 0, 0.35),
+    0 0 22px var(--plasma-glow);
+
+  /* Active nav item */
+  --plasma-nav-active-bg: var(--plasma-btn-bg);
+  --plasma-nav-active-color: #ffffff;
+  --plasma-nav-active-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.dark {
+  /* Dark mode: glow override */
+  --plasma-glow: oklch(0.65 0.22 314 / 0.18);
+
+  /* Button flips to white gradient */
+  --plasma-btn-bg: linear-gradient(135deg, #ffffff 0%, #f4edff 55%, #ecdeff 100%);
+  --plasma-btn-color: oklch(0.22 0.14 312);
+  --plasma-btn-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    0 2px 12px rgba(255, 255, 255, 0.12),
+    0 0 20px var(--plasma-glow);
+
+  /* Active nav in dark uses violet-to-rose */
+  --plasma-nav-active-bg: linear-gradient(
+    135deg,
+    oklch(0.18 0.12 310) 0%,
+    oklch(0.30 0.22 300) 50%,
+    oklch(0.45 0.24 350) 100%
+  );
+  --plasma-nav-active-color: #ffffff;
+  --plasma-nav-active-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Plasma primary button ── */
+.plasma-btn {
+  background: var(--plasma-btn-bg) !important;
+  color: var(--plasma-btn-color) !important;
+  box-shadow: var(--plasma-btn-shadow) !important;
+  border: none !important;
+}
+.plasma-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.plasma-btn:active:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+/* ── Plasma active nav item ── */
+.plasma-nav-active {
+  background: var(--plasma-nav-active-bg) !important;
+  color: var(--plasma-nav-active-color) !important;
+  box-shadow: var(--plasma-nav-active-shadow) !important;
+}
+.plasma-nav-active svg {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.plasma-nav-active .project-badge {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
 }
 
 * {
@@ -118,6 +200,20 @@ html.theme-transition *::after {
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
+}
+
+/* Dark mode plasma background blobs */
+.dark body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 420px 420px at 0% 100%,   oklch(0.45 0.28 310 / 0.45) 0%, transparent 70%),
+    radial-gradient(ellipse 360px 360px at 100% 100%, oklch(0.55 0.22 350 / 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 230px 230px at 82% 4%,    oklch(0.50 0.20 290 / 0.12) 0%, transparent 70%);
+  filter: blur(50px);
 }
 
 /* Dark mode select option styling */
