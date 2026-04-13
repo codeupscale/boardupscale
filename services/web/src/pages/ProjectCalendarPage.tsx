@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useMemo, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   format,
   startOfMonth,
@@ -22,12 +22,19 @@ import {
   ArrowDown,
   Minus,
   CalendarDays,
+  Plus,
 } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
-import { useIssues } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import { useBoard } from '@/hooks/useBoard'
+import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
+import { Select } from '@/components/ui/select'
+import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { cn } from '@/lib/utils'
 import { Issue } from '@/types'
 
@@ -138,10 +145,15 @@ function IssuePanelCard({ issue, projectKey }: { issue: Issue; projectKey: strin
 // ─── Main page ─────────────────────────────────────────────────────────────
 export function ProjectCalendarPage() {
   const { key: projectKey } = useParams<{ key: string }>()
-  const location = useLocation()
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const issueFormRef = useRef<IssueFormHandle>(null)
+  const createIssue = useCreateIssue()
+  const { data: board } = useBoard(projectKey!)
+  const { data: usersResult } = useUsers()
+  const orgUsers = usersResult?.data
 
   const { data: project, isLoading: projectLoading } = useProject(projectKey!)
 
@@ -201,16 +213,6 @@ export function ProjectCalendarPage() {
 
   if (projectLoading) return <LoadingPage />
 
-  const tabs = [
-    { label: 'Board', href: `/projects/${projectKey}/board` },
-    { label: 'Backlog', href: `/projects/${projectKey}/backlog` },
-    { label: 'Issues', href: `/projects/${projectKey}/issues` },
-    { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
-    { label: 'Trash', href: `/projects/${projectKey}/trash` },
-    { label: 'Automations', href: `/projects/${projectKey}/automations` },
-    { label: 'Settings', href: `/projects/${projectKey}/settings` },
-  ]
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -222,26 +224,7 @@ export function ProjectCalendarPage() {
         ]}
       />
 
-      {/* Tab nav */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {tabs.map((tab) => {
-          const isActive = location.pathname === tab.href
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
-              )}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -296,21 +279,22 @@ export function ProjectCalendarPage() {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Priority:</span>
-          <select
+          <Select
+            options={PRIORITY_OPTIONS.map((p) => ({
+              value: p,
+              label: p === 'all' ? 'All priorities' : p.charAt(0).toUpperCase() + p.slice(1),
+            }))}
             value={priorityFilter}
             onChange={(e) => {
               setPriorityFilter(e.target.value as PriorityFilter)
               setSelectedDay(null)
             }}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {PRIORITY_OPTIONS.map((p) => (
-              <option key={p} value={p}>
-                {p === 'all' ? 'All priorities' : p.charAt(0).toUpperCase() + p.slice(1)}
-              </option>
-            ))}
-          </select>
+            className="w-40"
+          />
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" />
+            Create Issue
+          </Button>
         </div>
       </div>
 
@@ -448,6 +432,28 @@ export function ProjectCalendarPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={showCreate} onClose={() => issueFormRef.current?.requestClose()} className="max-w-2xl">
+        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
+          <DialogTitle>Create Issue</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <IssueForm
+            ref={issueFormRef}
+            projectId={project?.id || projectKey!}
+            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+            users={orgUsers || []}
+            onSubmit={(values) =>
+              createIssue.mutate(
+                { ...values, projectId: project?.id || projectKey! } as any,
+                { onSuccess: () => setShowCreate(false) },
+              )
+            }
+            onCancel={() => setShowCreate(false)}
+            isLoading={createIssue.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
