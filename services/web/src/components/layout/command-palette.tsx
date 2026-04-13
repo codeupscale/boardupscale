@@ -285,7 +285,7 @@ export function CommandPalette() {
           label: `${project.name}`,
           description: project.key,
           icon: (
-            <span className="h-4 w-4 rounded bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-[10px] font-bold text-blue-600 dark:text-blue-400">
+            <span className="h-4 w-4 rounded bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
               {project.key.slice(0, 2)}
             </span>
           ),
@@ -479,7 +479,7 @@ export function CommandPalette() {
       />
 
       {/* Palette */}
-      <div className="relative w-full max-w-[560px] mx-4 bg-card rounded-xl shadow-2xl dark:shadow-black/50 border border-gray-200/80 dark:border-gray-700 overflow-hidden flex flex-col max-h-[min(480px,70vh)]">
+      <div className="relative w-full max-w-[560px] mx-4 bg-card rounded-xl shadow-2xl dark:shadow-black/50 border border-border overflow-hidden flex flex-col max-h-[min(480px,70vh)]">
         {/* ── Input ── */}
         <div className="flex items-center gap-3 px-4 h-12 border-b border-border flex-shrink-0">
           <Search className="h-[18px] w-[18px] text-muted-foreground flex-shrink-0" />
@@ -514,7 +514,7 @@ export function CommandPalette() {
           {/* Loading state */}
           {isSearching && query.length >= 2 && !isCommandMode && (
             <div className="flex items-center gap-2 px-4 py-6 justify-center">
-              <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <span className="text-sm text-muted-foreground">Searching...</span>
             </div>
           )}
@@ -548,13 +548,13 @@ export function CommandPalette() {
                       onMouseEnter={() => setActiveIndex(flatIndex)}
                       className={cn(
                         'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
-                        isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-accent',
+                        isActive ? 'bg-primary/10' : 'hover:bg-accent',
                       )}
                     >
                       <IssueTypeIcon type={issue.type as IssueType} className="h-4 w-4 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-blue-600 dark:text-blue-400 flex-shrink-0">{issue.key}</span>
+                          <span className="text-xs font-mono text-primary flex-shrink-0">{issue.key}</span>
                           <span className="text-sm text-foreground truncate">{issue.title}</span>
                         </div>
                         {issue.highlights && issue.highlights.length > 0 && (
@@ -582,12 +582,12 @@ export function CommandPalette() {
                     onMouseEnter={() => setActiveIndex(flatIndex)}
                     className={cn(
                       'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
-                      isActive ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-accent',
+                      isActive ? 'bg-primary/10' : 'hover:bg-accent',
                     )}
                   >
                     <span className={cn(
                       'flex items-center justify-center h-7 w-7 rounded-md flex-shrink-0',
-                      isActive ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' : 'bg-muted text-muted-foreground',
+                      isActive ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground',
                     )}>
                       {cmd.icon}
                     </span>
@@ -606,7 +606,7 @@ export function CommandPalette() {
                       <kbd className={cn(
                         'text-[11px] border rounded px-1.5 py-0.5 font-mono leading-none flex-shrink-0',
                         isActive
-                          ? 'bg-blue-100 dark:bg-blue-900/50 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                          ? 'bg-primary/20 border-primary/30 text-primary'
                           : 'bg-muted border-border text-muted-foreground',
                       )}>
                         {cmd.shortcut}
@@ -627,7 +627,7 @@ export function CommandPalette() {
         </div>
 
         {/* ── Footer ── */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/50 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border bg-muted/50 flex-shrink-0">
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <ArrowUpDown className="h-3 w-3" /> Navigate

@@ -173,8 +173,8 @@ export function OrgSwitcher() {
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-all duration-150 text-left',
                   isCurrent
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                    : 'text-foreground hover:bg-gray-50 dark:hover:bg-gray-700/60',
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-foreground hover:bg-accent',
                   switchOrg.isPending && !isCurrent && 'opacity-50 cursor-not-allowed',
                 )}
               >
@@ -189,7 +189,7 @@ export function OrgSwitcher() {
                   <p className="text-xs text-muted-foreground capitalize">{membership.role}</p>
                 </div>
                 {isCurrent && (
-                  <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <Check className="h-4 w-4 text-primary flex-shrink-0" />
                 )}
               </button>
             )

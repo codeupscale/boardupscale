@@ -38,7 +38,7 @@ export function Topbar() {
   const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <header className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
@@ -82,19 +82,19 @@ export function Topbar() {
             <DropdownMenuLabel>Theme</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setTheme('light')}>
               <Sun className="h-4 w-4" />
-              <span className={cn('text-sm', theme === 'light' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              <span className={cn('text-sm', theme === 'light' && 'font-semibold text-primary')}>
                 Light
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme('dark')}>
               <Moon className="h-4 w-4" />
-              <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-primary')}>
                 Dark
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme('system')}>
               <Monitor className="h-4 w-4" />
-              <span className={cn('text-sm', theme === 'system' && 'font-semibold text-blue-600 dark:text-blue-400')}>
+              <span className={cn('text-sm', theme === 'system' && 'font-semibold text-primary')}>
                 System
               </span>
             </DropdownMenuItem>
@@ -117,7 +117,7 @@ export function Topbar() {
               >
                 <span className={cn(
                   'text-sm',
-                  i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600 dark:text-blue-400',
+                  i18n.language.startsWith(lang.code) && 'font-semibold text-primary',
                 )}>
                   {lang.label}
                 </span>
@@ -134,7 +134,7 @@ export function Topbar() {
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-white dark:ring-gray-900">
+            <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-background">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -149,7 +149,7 @@ export function Topbar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {user && (
-              <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
+              <div className="px-3 py-2.5 border-b border-border">
                 <p className="text-sm font-semibold text-foreground">{user.displayName}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
               </div>
