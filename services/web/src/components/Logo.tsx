@@ -29,11 +29,9 @@ export function Logo({ size = 'md', variant = 'full', className }: LogoProps) {
         role="img"
       >
         <defs>
-          <linearGradient id="bu-logo-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#000000" />
-            <stop offset="30%" stopColor="#000000" />
-            <stop offset="58%" stopColor="oklch(0.18 0.1 315)" />
-            <stop offset="100%" stopColor="oklch(0.52 0.26 316)" />
+          <linearGradient id="bu-logo-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#1d4ed8" />
           </linearGradient>
         </defs>
 
@@ -63,11 +61,11 @@ export function Logo({ size = 'md', variant = 'full', className }: LogoProps) {
       {variant === 'full' && (
         <span
           className={cn(
-            'font-bold tracking-tight text-[var(--plasma-text)] select-none',
+            'font-bold tracking-tight text-gray-900 dark:text-gray-100 select-none',
             textSize,
           )}
         >
-          Board<span className="text-[oklch(0.52_0.26_316)] dark:text-[oklch(0.65_0.22_316)]">upscale</span>
+          Board<span className="text-primary">upscale</span>
         </span>
       )}
     </div>
