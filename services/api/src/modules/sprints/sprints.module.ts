@@ -10,6 +10,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
+import { EventsModule } from '../../websocket/events.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AutomationModule } from '../automation/automation.module';
     PermissionsModule,
     WebhooksModule,
     forwardRef(() => AutomationModule),
+    EventsModule,
   ],
   controllers: [SprintsController],
   providers: [SprintsService],

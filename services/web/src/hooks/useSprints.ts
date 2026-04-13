@@ -114,6 +114,7 @@ export function useCompleteSprint() {
       qc.invalidateQueries({ queryKey: ['sprints'] })
       qc.invalidateQueries({ queryKey: ['board'] })
       qc.invalidateQueries({ queryKey: ['issues'] })
+      qc.invalidateQueries({ queryKey: ['issue'] })
       toast('Sprint completed')
     },
     onError: (err: any) =>

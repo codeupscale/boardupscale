@@ -62,6 +62,7 @@ export function ProjectBoardPage() {
 
   const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null)
   const [showCompleteSprint, setShowCompleteSprint] = useState(false)
+  const [boardMoveToSprintId, setBoardMoveToSprintId] = useState('')
 
   // Load-more state: extra issues appended per column beyond the first page
   const [extraIssues, setExtraIssues] = useState<Record<string, Issue[]>>({})
@@ -753,33 +754,91 @@ export function ProjectBoardPage() {
         isLoading={deleteStatus.isPending}
       />
 
-      {/* Complete Sprint Confirmation */}
+      {/* Complete Sprint Dialog */}
       {activeSprints.length > 0 && (
-        <ConfirmDialog
+        <Dialog
           open={showCompleteSprint}
-          onClose={() => setShowCompleteSprint(false)}
-          onConfirm={() =>
-            completeSprint.mutate(
-              { projectId: project?.id || projectKey!, sprintId: activeSprints[0].id },
-              { onSuccess: () => setShowCompleteSprint(false) },
-            )
-          }
-          title={t('sprints.completeSprint')}
-          description={
-            (() => {
+          onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}
+          className="max-w-md"
+        >
+          <DialogHeader onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
+            <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="space-y-4">
+            {(() => {
               const doneCount = board?.statuses
                 .filter((s) => s.category === 'done')
                 .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
               const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
               const incompleteCount = totalCount - doneCount
-              return incompleteCount > 0
-                ? `${incompleteCount} issue(s) are not in Done status. All issues and their subtasks must be Done before completing ${activeSprints[0].name}.`
-                : `Complete ${activeSprints[0].name}? All ${totalCount} issues are in Done status.`
-            })()
-          }
-          confirmLabel={t('sprints.completeSprint')}
-          isLoading={completeSprint.isPending}
-        />
+              const otherSprints = sprints?.filter(
+                (s) => s.id !== activeSprints[0].id && s.status !== 'completed',
+              ) || []
+              return (
+                <>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                        <CheckCircle className="h-4 w-4" /> {doneCount} done
+                      </span>
+                      {incompleteCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                          · {incompleteCount} incomplete
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {incompleteCount > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                      </label>
+                      <select
+                        value={boardMoveToSprintId}
+                        onChange={(e) => setBoardMoveToSprintId(e.target.value)}
+                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Backlog</option>
+                        {otherSprints.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}{s.status === 'active' ? ' (active)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        {boardMoveToSprintId
+                          ? `Incomplete issues will be moved to the selected sprint.`
+                          : `Incomplete issues will be moved to the backlog.`}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      isLoading={completeSprint.isPending}
+                      onClick={() =>
+                        completeSprint.mutate(
+                          {
+                            projectId: project?.id || projectKey!,
+                            sprintId: activeSprints[0].id,
+                            moveToSprintId: boardMoveToSprintId || null,
+                          },
+                          { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
+                        )
+                      }
+                    >
+                      {t('sprints.completeSprint')}
+                    </Button>
+                  </div>
+                </>
+              )
+            })()}
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

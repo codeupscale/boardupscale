@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { getSocket } from '@/lib/socket'
 import {
   Send,
   Trash2,
@@ -275,6 +277,19 @@ export function IssueDetailPage() {
   const { t } = useTranslation()
   const { id: issueId } = useParams<{ id: string }>()
   const currentUser = useAuthStore((s) => s.user)
+  const qc = useQueryClient()
+
+  // Re-fetch when the backend pushes an update for this issue (e.g. sprint completion)
+  useEffect(() => {
+    const socket = getSocket()
+    const handler = (updated: { id: string }) => {
+      if (updated?.id === issueId) {
+        qc.invalidateQueries({ queryKey: ['issue', issueId] })
+      }
+    }
+    socket.on('issue:updated', handler)
+    return () => { socket.off('issue:updated', handler) }
+  }, [issueId, qc])
 
   const { data: issue, isLoading } = useIssue(issueId!)
   const { data: comments } = useComments(issueId!)

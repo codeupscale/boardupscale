@@ -18,6 +18,7 @@ import { EmailService } from '../notifications/email.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { EventsGateway } from '../../websocket/events.gateway';
 
 @Injectable()
 export class SprintsService {
@@ -33,6 +34,7 @@ export class SprintsService {
     private projectsService: ProjectsService,
     private emailService: EmailService,
     private webhookEventEmitter: WebhookEventEmitter,
+    private eventsGateway: EventsGateway,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -167,6 +169,16 @@ export class SprintsService {
           .set({ sprintId: moveToSprintId ?? null })
           .where('id IN (:...ids)', { ids: incompleteIssues.map((i) => i.id) })
           .execute();
+
+        // Notify all connected clients that these issues changed so open detail
+        // pages refresh their sprint field without requiring a manual page reload.
+        for (const issue of incompleteIssues) {
+          this.eventsGateway.emitToOrg(organizationId, 'issue:updated', {
+            ...issue,
+            sprintId: moveToSprintId ?? null,
+            sprint: null,
+          });
+        }
       }
     }
 
