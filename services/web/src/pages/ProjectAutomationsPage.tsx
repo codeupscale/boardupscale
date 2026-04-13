@@ -37,10 +37,8 @@ function getTriggerLabel(triggerType: string): string {
   return option?.label || triggerType
 }
 
-export function ProjectAutomationsPage() {
-  const { key: projectKey } = useParams<{ key: string }>()
-  const { data: project } = useProject(projectKey!)
-  const { data: rules, isLoading } = useAutomationRules(projectKey!)
+export function AutomationsContent({ projectKey }: { projectKey: string }) {
+  const { data: rules, isLoading } = useAutomationRules(projectKey)
 
   const createRule = useCreateRule()
   const updateRule = useUpdateRule()
@@ -98,7 +96,7 @@ export function ProjectAutomationsPage() {
       )
     } else {
       createRule.mutate(
-        { projectId: projectKey!, ...payload },
+        { projectId: projectKey, ...payload },
         { onSuccess: () => setShowEditor(false) },
       )
     }
@@ -112,161 +110,151 @@ export function ProjectAutomationsPage() {
   if (isLoading) return <LoadingPage />
 
   return (
-    <div className="flex flex-col h-full">
-      <PageHeader
-        title="Automations"
-        breadcrumbs={[
-          { label: 'Projects', href: '/projects' },
-          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
-          { label: 'Automations' },
-        ]}
-        actions={
+    <>
+      <div className="mb-4 flex justify-end">
+        <Button onClick={openCreateEditor}>
+          <Plus className="h-4 w-4" />
+          Create Rule
+        </Button>
+      </div>
+
+      {/* Empty state */}
+      {(!rules || rules.length === 0) && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+            <Zap className="h-6 w-6 text-blue-600" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            No automation rules yet
+          </h2>
+          <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+            Create automation rules to automatically perform actions when issues are created,
+            updated, or when other events occur.
+          </p>
           <Button onClick={openCreateEditor}>
             <Plus className="h-4 w-4" />
-            Create Rule
+            Create Your First Rule
           </Button>
-        }
-      />
+        </div>
+      )}
 
-      <div className="p-6">
-        {/* Empty state */}
-        {(!rules || rules.length === 0) && (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-              <Zap className="h-6 w-6 text-blue-600" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              No automation rules yet
-            </h2>
-            <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
-              Create automation rules to automatically perform actions when issues are created,
-              updated, or when other events occur.
-            </p>
-            <Button onClick={openCreateEditor}>
-              <Plus className="h-4 w-4" />
-              Create Your First Rule
-            </Button>
-          </div>
-        )}
-
-        {/* Rules list */}
-        {rules && rules.length > 0 && (
-          <div className="space-y-3">
-            {rules.map((rule) => (
-              <div
-                key={rule.id}
-                className={cn(
-                  'bg-white rounded-xl border border-gray-200 p-4 transition-colors',
-                  !rule.isActive && 'opacity-60',
-                )}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Zap
-                        className={cn(
-                          'h-4 w-4 flex-shrink-0',
-                          rule.isActive ? 'text-blue-600' : 'text-gray-400',
-                        )}
-                      />
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">
-                        {rule.name}
-                      </h3>
-                      <span
-                        className={cn(
-                          'text-xs px-2 py-0.5 rounded-full font-medium',
-                          rule.isActive
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-500',
-                        )}
-                      >
-                        {rule.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    {rule.description && (
-                      <p className="text-sm text-gray-500 mb-2">{rule.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>Trigger: {getTriggerLabel(rule.triggerType)}</span>
-                      <span>{rule.conditions?.length || 0} condition(s)</span>
-                      <span>{rule.actions?.length || 0} action(s)</span>
-                      <span>Executed {rule.executionCount} time(s)</span>
-                      {rule.lastExecutedAt && (
-                        <span>
-                          Last: {new Date(rule.lastExecutedAt).toLocaleDateString()}
-                        </span>
+      {/* Rules list */}
+      {rules && rules.length > 0 && (
+        <div className="space-y-3">
+          {rules.map((rule) => (
+            <div
+              key={rule.id}
+              className={cn(
+                'bg-white rounded-xl border border-gray-200 p-4 transition-colors',
+                !rule.isActive && 'opacity-60',
+              )}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap
+                      className={cn(
+                        'h-4 w-4 flex-shrink-0',
+                        rule.isActive ? 'text-blue-600' : 'text-gray-400',
                       )}
-                    </div>
+                    />
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      {rule.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full font-medium',
+                        rule.isActive
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-500',
+                      )}
+                    >
+                      {rule.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title={rule.isActive ? 'Disable' : 'Enable'}
-                      onClick={() => toggleRule.mutate({ id: rule.id })}
-                    >
-                      {rule.isActive ? (
-                        <ToggleRight className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <ToggleLeft className="h-4 w-4 text-gray-400" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Test rule"
-                      onClick={() => {
-                        setShowTestDialog(rule.id)
-                        setTestIssueId('')
-                      }}
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Execution logs"
-                      onClick={() =>
-                        setShowLogs(showLogs === rule.id ? null : rule.id)
-                      }
-                    >
-                      <History className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Edit rule"
-                      onClick={() => openEditEditor(rule)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-gray-400 hover:text-red-600"
-                      title="Delete rule"
-                      onClick={() => setShowDeleteConfirm(rule.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {rule.description && (
+                    <p className="text-sm text-gray-500 mb-2">{rule.description}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>Trigger: {getTriggerLabel(rule.triggerType)}</span>
+                    <span>{rule.conditions?.length || 0} condition(s)</span>
+                    <span>{rule.actions?.length || 0} action(s)</span>
+                    <span>Executed {rule.executionCount} time(s)</span>
+                    {rule.lastExecutedAt && (
+                      <span>
+                        Last: {new Date(rule.lastExecutedAt).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Inline execution logs */}
-                {showLogs === rule.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">
-                      Execution History
-                    </h4>
-                    <ExecutionLog ruleId={rule.id} />
-                  </div>
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title={rule.isActive ? 'Disable' : 'Enable'}
+                    onClick={() => toggleRule.mutate({ id: rule.id })}
+                  >
+                    {rule.isActive ? (
+                      <ToggleRight className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4 text-gray-400" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Test rule"
+                    onClick={() => {
+                      setShowTestDialog(rule.id)
+                      setTestIssueId('')
+                    }}
+                  >
+                    <Play className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Execution logs"
+                    onClick={() =>
+                      setShowLogs(showLogs === rule.id ? null : rule.id)
+                    }
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Edit rule"
+                    onClick={() => openEditEditor(rule)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-gray-400 hover:text-red-600"
+                    title="Delete rule"
+                    onClick={() => setShowDeleteConfirm(rule.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              {/* Inline execution logs */}
+              {showLogs === rule.id && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Execution History
+                  </h4>
+                  <ExecutionLog ruleId={rule.id} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Create/Edit Rule Dialog */}
       <Dialog
@@ -324,7 +312,7 @@ export function ProjectAutomationsPage() {
           onClose={() => setShowDeleteConfirm(null)}
           onConfirm={() => {
             deleteRule.mutate(
-              { id: showDeleteConfirm, projectId: projectKey! },
+              { id: showDeleteConfirm, projectId: projectKey },
               { onSuccess: () => setShowDeleteConfirm(null) },
             )
           }}
@@ -417,6 +405,29 @@ export function ProjectAutomationsPage() {
           </Button>
         </DialogFooter>
       </Dialog>
+    </>
+  )
+}
+
+export function ProjectAutomationsPage() {
+  const { key: projectKey } = useParams<{ key: string }>()
+  const { data: project } = useProject(projectKey!)
+
+  if (!projectKey) return null
+
+  return (
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Automations"
+        breadcrumbs={[
+          { label: 'Projects', href: '/projects' },
+          { label: project?.name || '...', href: `/projects/${projectKey}/board` },
+          { label: 'Automations' },
+        ]}
+      />
+      <div className="p-6">
+        <AutomationsContent projectKey={projectKey} />
+      </div>
     </div>
   )
 }

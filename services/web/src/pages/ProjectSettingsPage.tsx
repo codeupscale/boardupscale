@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Plus, Trash2, Edit2, AlertTriangle, Shield, Globe,
   Settings, Users, GitBranch, SlidersHorizontal, Layers,
-  Tag, Sparkles, Github,
+  Tag, Sparkles, Github, Zap,
 } from 'lucide-react'
+import { AutomationsContent } from '@/pages/ProjectAutomationsPage'
+import { TrashContent } from '@/pages/ProjectTrashPage'
 import { useTranslation } from 'react-i18next'
 import {
   useProject,
@@ -57,6 +59,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: SettingItem[] }> = [
       { id: 'custom-fields', label: 'Custom Fields', icon: SlidersHorizontal },
       { id: 'components', label: 'Components', icon: Layers },
       { id: 'versions', label: 'Versions', icon: Tag },
+      { id: 'automations', label: 'Automations', icon: Zap },
     ],
   },
   {
@@ -189,11 +192,24 @@ export function ProjectSettingsPage() {
             </div>
           ))}
 
-          {/* Danger Zone — at the bottom, separated */}
+          {/* Administration — bottom, separated */}
           <div className="px-2 pt-2 pb-4 mt-auto border-t border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 pb-1 pt-3">
-              Danger
+              Administration
             </p>
+            <button
+              onClick={() => setActiveTab('trash')}
+              aria-current={activeTab === 'trash' ? 'true' : undefined}
+              className={cn(
+                'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
+                activeTab === 'trash'
+                  ? 'bg-blue-50 dark:bg-blue-900/25 text-blue-700 dark:text-blue-300 font-medium'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/70',
+              )}
+            >
+              <Trash2 className="h-4 w-4 flex-shrink-0" />
+              Trash
+            </button>
             <button
               onClick={() => setActiveTab('danger')}
               aria-current={activeTab === 'danger' ? 'true' : undefined}
@@ -398,6 +414,28 @@ export function ProjectSettingsPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Monitor AI feature usage and credits for this project.</p>
               </div>
               <AiUsageDashboard />
+            </div>
+          )}
+
+          {/* Automations */}
+          {activeTab === 'automations' && projectKey && (
+            <div className="max-w-3xl">
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Automations</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Create rules to automate repetitive tasks in this project.</p>
+              </div>
+              <AutomationsContent projectKey={projectKey} />
+            </div>
+          )}
+
+          {/* Trash */}
+          {activeTab === 'trash' && projectKey && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Trash</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Deleted issues are kept here for 30 days before permanent removal.</p>
+              </div>
+              <TrashContent projectKey={projectKey} />
             </div>
           )}
 
