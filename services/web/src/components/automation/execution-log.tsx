@@ -23,7 +23,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <Spinner className="h-6 w-6 text-blue-600" />
+        <Spinner className="h-6 w-6 text-primary" />
       </div>
     )
   }
@@ -67,7 +67,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
                     {log.triggerEvent}
                   </span>
                   {log.issue && (
-                    <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                    <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                       {log.issue.key}
                     </span>
                   )}

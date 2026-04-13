@@ -18,7 +18,7 @@ interface BoardQuickFiltersProps {
 const ISSUE_TYPES = [
   { value: 'epic', label: 'Epic', color: 'bg-purple-100 text-purple-700' },
   { value: 'story', label: 'Story', color: 'bg-green-100 text-green-700' },
-  { value: 'task', label: 'Task', color: 'bg-blue-100 text-blue-700' },
+  { value: 'task', label: 'Task', color: 'bg-primary/10 text-primary' },
   { value: 'bug', label: 'Bug', color: 'bg-red-100 text-red-700' },
 ]
 
@@ -26,7 +26,7 @@ const PRIORITIES = [
   { value: 'critical', label: 'P0 Critical', color: 'bg-red-100 text-red-700' },
   { value: 'high', label: 'P1 High', color: 'bg-orange-100 text-orange-700' },
   { value: 'medium', label: 'P2 Medium', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'low', label: 'P3 Low', color: 'bg-blue-100 text-blue-700' },
+  { value: 'low', label: 'P3 Low', color: 'bg-primary/10 text-primary' },
 ]
 
 const GROUP_BY_OPTIONS: { value: SwimlaneGroupBy; label: string }[] = [
@@ -125,7 +125,7 @@ export function BoardQuickFilters({
           onKeyDown={handleSearchKeyDown}
           onBlur={handleSearchBlur}
           placeholder={t('board.searchIssues', 'Search issues...')}
-          className="pl-8 pr-3 py-1.5 text-sm border border-border bg-card text-foreground rounded-md w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="pl-8 pr-3 py-1.5 text-sm border border-border bg-card text-foreground rounded-md w-48 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
         />
         {searchValue && (
           <button
@@ -149,7 +149,7 @@ export function BoardQuickFilters({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.assigneeId
-              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              ? 'border-primary/50 bg-primary/10 text-primary'
               : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
           )}
         >
@@ -164,7 +164,7 @@ export function BoardQuickFilters({
               onClick={() => setFilter('assigneeId', undefined)}
               className={cn(
                 'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.assigneeId && 'bg-blue-50 text-blue-700',
+                !filters.assigneeId && 'bg-primary/10 text-primary',
               )}
             >
               All assignees
@@ -175,7 +175,7 @@ export function BoardQuickFilters({
                 onClick={() => setFilter('assigneeId', member.userId)}
                 className={cn(
                   'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.assigneeId === member.userId && 'bg-blue-50 text-blue-700',
+                  filters.assigneeId === member.userId && 'bg-primary/10 text-primary',
                 )}
               >
                 <span className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
@@ -195,7 +195,7 @@ export function BoardQuickFilters({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.type
-              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              ? 'border-primary/50 bg-primary/10 text-primary'
               : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
           )}
         >
@@ -210,7 +210,7 @@ export function BoardQuickFilters({
               onClick={() => setFilter('type', undefined)}
               className={cn(
                 'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.type && 'bg-blue-50 text-blue-700',
+                !filters.type && 'bg-primary/10 text-primary',
               )}
             >
               All types
@@ -221,7 +221,7 @@ export function BoardQuickFilters({
                 onClick={() => setFilter('type', type.value)}
                 className={cn(
                   'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.type === type.value && 'bg-blue-50 text-blue-700',
+                  filters.type === type.value && 'bg-primary/10 text-primary',
                 )}
               >
                 <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', type.color)}>
@@ -240,7 +240,7 @@ export function BoardQuickFilters({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
             filters.priority
-              ? 'border-blue-300 bg-blue-50 text-blue-700'
+              ? 'border-primary/50 bg-primary/10 text-primary'
               : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
           )}
         >
@@ -255,7 +255,7 @@ export function BoardQuickFilters({
               onClick={() => setFilter('priority', undefined)}
               className={cn(
                 'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.priority && 'bg-blue-50 text-blue-700',
+                !filters.priority && 'bg-primary/10 text-primary',
               )}
             >
               All priorities
@@ -266,7 +266,7 @@ export function BoardQuickFilters({
                 onClick={() => setFilter('priority', p.value)}
                 className={cn(
                   'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.priority === p.value && 'bg-blue-50 text-blue-700',
+                  filters.priority === p.value && 'bg-primary/10 text-primary',
                 )}
               >
                 <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', p.color)}>
@@ -286,7 +286,7 @@ export function BoardQuickFilters({
             className={cn(
               'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
               filters.sprintId
-                ? 'border-blue-300 bg-blue-50 text-blue-700'
+                ? 'border-primary/50 bg-primary/10 text-primary'
                 : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
             )}
           >
@@ -303,7 +303,7 @@ export function BoardQuickFilters({
                 onClick={() => setFilter('sprintId', undefined)}
                 className={cn(
                   'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                  !filters.sprintId && 'bg-blue-50 text-blue-700',
+                  !filters.sprintId && 'bg-primary/10 text-primary',
                 )}
               >
                 All issues
@@ -312,7 +312,7 @@ export function BoardQuickFilters({
                 onClick={() => setFilter('sprintId', 'backlog')}
                 className={cn(
                   'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                  filters.sprintId === 'backlog' && 'bg-blue-50 text-blue-700',
+                  filters.sprintId === 'backlog' && 'bg-primary/10 text-primary',
                 )}
               >
                 Backlog (no sprint)
@@ -323,7 +323,7 @@ export function BoardQuickFilters({
                   onClick={() => setFilter('sprintId', sprint.id)}
                   className={cn(
                     'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                    filters.sprintId === sprint.id && 'bg-blue-50 text-blue-700',
+                    filters.sprintId === sprint.id && 'bg-primary/10 text-primary',
                   )}
                 >
                   <span>{sprint.name}</span>

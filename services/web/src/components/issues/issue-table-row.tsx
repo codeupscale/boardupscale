@@ -30,8 +30,8 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
       }}
       className={cn(
         'cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
-        'hover:bg-blue-50/50 dark:hover:bg-blue-900/10',
-        selectable && isSelected && 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+        'hover:bg-primary/5',
+        selectable && isSelected && 'bg-primary/10 hover:bg-primary/10',
         className,
       )}
     >
@@ -46,7 +46,7 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
               toggleIssue(issue.id)
             }}
             onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-ring cursor-pointer"
           />
         </td>
       )}

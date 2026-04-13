@@ -17,7 +17,7 @@ export function AiUsageDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     )
   }
@@ -87,7 +87,7 @@ export function AiUsageDashboard() {
           <div
             className={cn(
               'h-2.5 rounded-full transition-all',
-              tier === 'exhausted' ? 'bg-red-500' : tier === 'warning' ? 'bg-amber-500' : 'bg-blue-500',
+              tier === 'exhausted' ? 'bg-red-500' : tier === 'warning' ? 'bg-amber-500' : 'bg-primary',
             )}
             style={{ width: `${Math.min(100, percentUsed)}%` }}
           />
@@ -141,7 +141,7 @@ export function AiUsageDashboard() {
               return (
                 <div key={d.date} className="flex-1 flex flex-col items-center gap-1" title={`${d.date}: ${formatNumber(d.tokens)} tokens`}>
                   <div
-                    className="w-full bg-blue-500 rounded-t min-h-[2px] transition-all"
+                    className="w-full bg-primary rounded-t min-h-[2px] transition-all"
                     style={{ height: `${heightPct}%` }}
                   />
                 </div>
@@ -160,7 +160,7 @@ export function AiUsageDashboard() {
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+    blue: 'bg-primary/10 text-primary',
     green: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
     purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
     amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',

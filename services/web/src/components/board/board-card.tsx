@@ -35,7 +35,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
           className={cn(
             'group relative bg-card rounded-xl border border-gray-200/80 dark:border-gray-700/80',
             'shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer',
-            'hover:-translate-y-0.5 hover:border-blue-300 dark:hover:border-blue-600',
+            'hover:-translate-y-0.5 hover:border-primary/50',
             borderClass,
             snapshot.isDragging && 'opacity-90 rotate-1 shadow-lg',
           )}
@@ -45,7 +45,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="text-[10px] font-mono font-medium text-blue-600 dark:text-blue-400 tracking-wide">
+                <span className="text-[10px] font-mono font-medium text-primary tracking-wide">
                   {issue.key}
                 </span>
               </div>
@@ -63,7 +63,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             )}
 
             {/* Title */}
-            <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-2 leading-snug group-hover:text-primary transition-colors">
               {issue.title}
             </p>
 
@@ -73,7 +73,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
                 {labels.slice(0, 2).map((label) => (
                   <span
                     key={label}
-                    className="text-[10px] px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full font-medium"
+                    className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full font-medium"
                   >
                     {label}
                   </span>

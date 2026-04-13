@@ -221,7 +221,7 @@ export function BoardColumn({
                 'flex-1 flex flex-col gap-2 px-2 py-2 min-h-[180px] overflow-y-auto',
                 'scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent',
                 snapshot.isDraggingOver && !isAtLimit
-                  ? 'bg-blue-50/60 dark:bg-blue-950/30'
+                  ? 'bg-primary/10'
                   : snapshot.isDraggingOver && isAtLimit
                     ? 'bg-red-50/60 dark:bg-red-950/30'
                     : '',

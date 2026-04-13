@@ -122,7 +122,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       <div>
         <SectionHeader />
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="bg-card rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0">
@@ -134,7 +134,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                     href={repoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
+                    className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary flex items-center gap-1"
                   >
                     {connection.repoOwner}/{connection.repoName}
                     <ExternalLink className="h-3.5 w-3.5" />
@@ -218,7 +218,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       <div>
         <SectionHeader />
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-card rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Search header */}
           <div className="p-4 border-b border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                     className={cn(
                       'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
+                        ? 'bg-primary/10'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
                     )}
                   >
@@ -274,7 +274,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                       </Badge>
                     )}
                     {isSelected && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
                     )}
                   </button>
                 )
@@ -310,7 +310,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
     <div>
       <SectionHeader />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-card rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex flex-col items-center text-center gap-4 py-4">
           <div className="h-14 w-14 rounded-2xl bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
             <Github className="h-7 w-7 text-white" />

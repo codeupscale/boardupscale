@@ -65,7 +65,7 @@ export function Logo({ size = 'md', variant = 'full', className }: LogoProps) {
             textSize,
           )}
         >
-          Board<span className="text-blue-600 dark:text-blue-400">upscale</span>
+          Board<span className="text-primary">upscale</span>
         </span>
       )}
     </div>

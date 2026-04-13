@@ -73,7 +73,7 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
                       className={cn(
                         'flex-1 flex flex-col gap-2 p-2 rounded-xl min-h-[80px] transition-colors',
                         snapshot.isDraggingOver && !exceeded
-                          ? 'bg-blue-50 border-2 border-dashed border-blue-300'
+                          ? 'bg-primary/10 border-2 border-dashed border-primary/50'
                           : snapshot.isDraggingOver && exceeded
                             ? 'bg-red-50 border-2 border-dashed border-red-300'
                             : 'bg-gray-100/50',

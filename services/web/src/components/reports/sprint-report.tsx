@@ -35,7 +35,7 @@ export function SprintReport({ data }: SprintReportProps) {
           label="Completion Rate"
           value={`${summary.completionRate}%`}
           icon={<Target className="h-5 w-5 text-white" />}
-          color="bg-blue-500"
+          color="bg-primary"
         />
         <StatCard
           label="Completed Issues"
@@ -74,7 +74,7 @@ export function SprintReport({ data }: SprintReportProps) {
                   </span>
                   <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
                     <div
-                      className="bg-blue-500 h-full rounded-full transition-all"
+                      className="bg-primary h-full rounded-full transition-all"
                       style={{
                         width: `${t.total > 0 ? (t.completed / t.total) * 100 : 0}%`,
                       }}
@@ -195,7 +195,7 @@ function IssueRow({
       </span>
       <span className="text-xs text-gray-500 capitalize">{issue.type}</span>
       {issue.storyPoints != null && (
-        <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
           {issue.storyPoints} SP
         </span>
       )}

@@ -12,7 +12,7 @@ export function Spinner({ className }: SpinnerProps) {
 export function LoadingPage() {
   return (
     <div className="flex items-center justify-center w-full h-full min-h-[400px]">
-      <Spinner className="h-8 w-8 text-blue-600" />
+      <Spinner className="h-8 w-8 text-primary" />
     </div>
   )
 }

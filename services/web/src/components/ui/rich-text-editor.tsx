@@ -470,9 +470,9 @@ export function RichTextEditor({
     <div
       ref={editorContainerRef}
       className={cn(
-        'relative rounded-md border bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-colors',
+        'relative rounded-md border bg-card focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-colors',
         isDragOver
-          ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20'
+          ? 'border-primary ring-2 ring-ring/20'
           : 'border-gray-300 dark:border-gray-600',
         className,
       )}
@@ -643,7 +643,7 @@ export function RichTextEditor({
 
         {/* Upload indicator */}
         {uploading > 0 && (
-          <div className="flex items-center gap-1.5 ml-2 text-xs text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-1.5 ml-2 text-xs text-primary">
             <Loader2 size={12} className="animate-spin" />
             <span>Uploading{uploading > 1 ? ` (${uploading})` : ''}...</span>
           </div>
@@ -659,11 +659,11 @@ export function RichTextEditor({
 
       {/* Drag overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-blue-50/90 dark:bg-blue-950/80 border-2 border-dashed border-blue-400 dark:border-blue-500 pointer-events-none">
-          <div className="flex flex-col items-center gap-2 text-blue-600 dark:text-blue-400">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-primary/10 border-2 border-dashed border-primary pointer-events-none">
+          <div className="flex flex-col items-center gap-2 text-primary">
             <ImagePlus size={28} />
             <span className="text-sm font-medium">Drop files to upload</span>
-            <span className="text-xs text-blue-500/70">Images, videos, documents — max 50 MB</span>
+            <span className="text-xs text-primary/70">Images, videos, documents — max 50 MB</span>
           </div>
         </div>
       )}
@@ -682,8 +682,8 @@ export function RichTextEditor({
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors',
-                idx === mentionPopup.selectedIndex && 'bg-blue-50 dark:bg-blue-900/30',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-primary/10 transition-colors',
+                idx === mentionPopup.selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()

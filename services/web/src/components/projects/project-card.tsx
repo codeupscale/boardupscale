@@ -66,7 +66,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
         onClick={() => navigate(`/projects/${project.key}/board`)}
         className={cn(
           'flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors',
-          'hover:bg-blue-50/50 dark:hover:bg-blue-900/10',
+          'hover:bg-primary/5',
           'border-b border-gray-100 dark:border-gray-800 last:border-0',
         )}
       >
@@ -83,7 +83,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
 
         {/* Name + key */}
         <div className="w-48 flex-shrink-0 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate group-hover:text-primary">
             {project.name}
           </p>
           <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded">
@@ -153,7 +153,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors truncate">
               {project.name}
             </h3>
             <div className="flex items-center gap-2 mt-1 flex-wrap">

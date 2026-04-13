@@ -82,7 +82,7 @@ function CustomFieldInput({
             checked={!!value}
             onChange={(e) => onChange(e.target.checked)}
             disabled={readOnly}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-ring"
           />
           <span className="text-sm text-gray-700">{definition.description || definition.name}</span>
         </label>

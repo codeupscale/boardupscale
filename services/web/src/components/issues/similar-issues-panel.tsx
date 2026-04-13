@@ -64,7 +64,7 @@ function SimilarIssueItem({ item }: { item: SearchResultItem }) {
       className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-amber-100 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-600 transition-colors group"
     >
       <IssueTypeIcon type={item.type as IssueType} />
-      <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium flex-shrink-0">
+      <span className="text-xs font-mono text-primary font-medium flex-shrink-0">
         {item.key}
       </span>
       <span className="text-xs text-foreground truncate flex-1">

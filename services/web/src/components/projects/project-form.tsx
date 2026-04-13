@@ -122,7 +122,7 @@ export function ProjectForm({
                 onClick={() => setValue('templateType', tmpl.value)}
                 className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-colors ${
                   selectedTemplate === tmpl.value
-                    ? 'border-blue-500 bg-blue-50'
+                    ? 'border-primary bg-primary/10'
                     : 'border-gray-200 hover:border-gray-300 bg-white'
                 }`}
               >

@@ -54,7 +54,7 @@ function PageTreeItem({
         className={cn(
           'group flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer text-sm transition-colors select-none',
           isActive
-            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+            ? 'bg-primary/10 text-primary'
             : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
         )}
         style={{ paddingLeft: `${8 + depth * 16}px` }}

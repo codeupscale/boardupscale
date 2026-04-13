@@ -38,7 +38,7 @@ function PrEventItem({ event }: { event: GitHubEvent }) {
               href={event.prUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center gap-1"
+              className="text-sm font-medium text-gray-900 hover:text-primary flex items-center gap-1"
             >
               {event.prTitle || 'Pull Request'}
               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -72,7 +72,7 @@ function CommitEventItem({ event }: { event: GitHubEvent }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {shortSha && (
-            <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+            <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
               {shortSha}
             </span>
           )}

@@ -366,13 +366,13 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           {labels.map((l) => (
             <span
               key={l}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs"
             >
               {l}
               <button
                 type="button"
                 onClick={() => removeLabel(l)}
-                className="hover:text-blue-900"
+                className="hover:text-primary"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -391,7 +391,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               }
             }}
             placeholder={t('issues.addLabelEnter')}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <Button type="button" variant="secondary" size="sm" onClick={addLabel}>
             {t('common.add')}

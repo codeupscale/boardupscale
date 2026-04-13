@@ -22,7 +22,7 @@ const roleKeys: Record<string, string> = {
 const roleColors: Record<string, string> = {
   admin: 'bg-red-100 text-red-700',
   manager: 'bg-purple-100 text-purple-700',
-  member: 'bg-blue-100 text-blue-700',
+  member: 'bg-primary/10 text-primary',
   viewer: 'bg-gray-100 text-gray-600',
 }
 

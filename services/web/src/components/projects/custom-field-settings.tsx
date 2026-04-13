@@ -232,7 +232,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
               type="checkbox"
               checked={isRequired}
               onChange={(e) => setIsRequired(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-ring"
             />
             <span className="text-sm text-gray-700">Required field</span>
           </label>
@@ -272,7 +272,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                     }
                   }}
                   placeholder="Option label..."
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={addOption}>
                   Add

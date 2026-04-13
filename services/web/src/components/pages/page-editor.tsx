@@ -549,8 +549,8 @@ export function PageEditor({
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors',
-                idx === mentionPopup.selectedIndex && 'bg-blue-50 dark:bg-blue-900/20',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
+                idx === mentionPopup.selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()

@@ -37,12 +37,12 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
               if (e.key === 'Enter') handleSave()
               if (e.key === 'Escape') onClose()
             }}
-            className="w-20 px-2 py-1.5 text-sm border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-20 px-2 py-1.5 text-sm border border-border bg-card text-foreground rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
             autoFocus
           />
           <button
             onClick={handleSave}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             {t('common.save', 'Save')}
           </button>

@@ -24,7 +24,7 @@ import { Activity } from '@/types'
 import { cn } from '@/lib/utils'
 
 const FIELD_META: Record<string, { icon: React.ElementType; label: string; iconBg: string; iconColor: string }> = {
-  statusId:     { icon: Layers,    label: 'Status',        iconBg: 'bg-blue-100 dark:bg-blue-900/40',    iconColor: 'text-blue-600 dark:text-blue-400' },
+  statusId:     { icon: Layers,    label: 'Status',        iconBg: 'bg-primary/10',    iconColor: 'text-primary' },
   assigneeId:   { icon: User,      label: 'Assignee',      iconBg: 'bg-green-100 dark:bg-green-900/40',  iconColor: 'text-green-600 dark:text-green-400' },
   priority:     { icon: Flag,      label: 'Priority',      iconBg: 'bg-orange-100 dark:bg-orange-900/40', iconColor: 'text-orange-600 dark:text-orange-400' },
   type:         { icon: Tag,       label: 'Type',          iconBg: 'bg-purple-100 dark:bg-purple-900/40', iconColor: 'text-purple-600 dark:text-purple-400' },
@@ -121,7 +121,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
             )}
             <ArrowRight className="h-3 w-3 text-gray-300 dark:text-gray-600 flex-shrink-0" />
             {activity.newValue ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-300 ring-1 ring-blue-200/60 dark:ring-blue-700/40">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary ring-1 ring-ring/20">
                 {newDisplay}
               </span>
             ) : (

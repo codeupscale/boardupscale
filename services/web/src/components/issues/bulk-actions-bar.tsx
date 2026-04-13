@@ -210,7 +210,7 @@ function PriorityPickerDialog({
     { value: IssuePriority.CRITICAL, label: 'Critical', color: 'bg-red-500' },
     { value: IssuePriority.HIGH, label: 'High', color: 'bg-orange-500' },
     { value: IssuePriority.MEDIUM, label: 'Medium', color: 'bg-yellow-500' },
-    { value: IssuePriority.LOW, label: 'Low', color: 'bg-blue-500' },
+    { value: IssuePriority.LOW, label: 'Low', color: 'bg-primary' },
   ]
 
   if (!open) return null

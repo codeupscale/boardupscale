@@ -36,9 +36,9 @@ function LinkItem({
       </span>
       <Link
         to={`/issues/${link.issue.id}`}
-        className="flex items-center gap-2 min-w-0 flex-1 hover:text-blue-600"
+        className="flex items-center gap-2 min-w-0 flex-1 hover:text-primary"
       >
-        <span className="text-xs font-mono text-blue-600 flex-shrink-0">
+        <span className="text-xs font-mono text-primary flex-shrink-0">
           {link.issue.key}
         </span>
         <span className="text-sm text-gray-700 truncate">{link.issue.title}</span>
@@ -167,7 +167,7 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
                 {t('issues.linkType', 'Link Type')}
               </label>
               <select
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 value={selectedLinkType}
                 onChange={(e) => setSelectedLinkType(e.target.value as IssueLinkType)}
               >
@@ -208,12 +208,12 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
                       <button
                         key={i.id}
                         type="button"
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2 transition-colors ${
-                          selectedIssueId === i.id ? 'bg-blue-50 ring-1 ring-blue-300' : ''
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-primary/10 flex items-center gap-2 transition-colors ${
+                          selectedIssueId === i.id ? 'bg-primary/10 ring-1 ring-primary/50' : ''
                         }`}
                         onClick={() => setSelectedIssueId(i.id)}
                       >
-                        <span className="font-mono text-blue-600 text-xs flex-shrink-0">
+                        <span className="font-mono text-primary text-xs flex-shrink-0">
                           {i.key}
                         </span>
                         <span className="truncate text-gray-700">{i.title}</span>

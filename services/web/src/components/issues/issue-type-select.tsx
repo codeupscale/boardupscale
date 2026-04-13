@@ -87,7 +87,7 @@ export function IssueTypeSelect({
           className={cn(
             'flex items-center gap-2 w-full rounded-lg border border-gray-200 dark:border-gray-600',
             'bg-card text-foreground px-3 py-2 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'focus:outline-none focus:ring-2 focus:ring-ring',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'hover:border-gray-300 dark:hover:border-gray-500 transition-colors',
           )}
@@ -116,7 +116,7 @@ export function IssueTypeSelect({
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer',
                   'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                  value === type && 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                  value === type && 'bg-primary/10 text-primary',
                 )}
                 onClick={() => {
                   onChange(type)

@@ -9,7 +9,7 @@ interface StatusBadgeProps {
 
 const categoryColors: Record<IssueStatusCategory, string> = {
   [IssueStatusCategory.TODO]: 'bg-gray-100 text-gray-700',
-  [IssueStatusCategory.IN_PROGRESS]: 'bg-blue-100 text-blue-700',
+  [IssueStatusCategory.IN_PROGRESS]: 'bg-primary/10 text-primary',
   [IssueStatusCategory.DONE]: 'bg-green-100 text-green-700',
 }
 

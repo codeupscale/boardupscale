@@ -154,7 +154,7 @@ export function MentionTextarea({
         disabled={disabled}
         className={cn(
           'block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+          'focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent',
           'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
           'resize-y min-h-[80px]',
           className,
@@ -170,8 +170,8 @@ export function MentionTextarea({
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors',
-                idx === selectedIndex && 'bg-blue-50 dark:bg-blue-900/30',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
+                idx === selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault() // Prevent textarea blur
