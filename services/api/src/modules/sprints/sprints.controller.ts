@@ -82,12 +82,13 @@ export class SprintsController {
   @Post(':id/complete')
   @RequirePermission('sprint', 'manage')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete a sprint (moves incomplete issues to backlog)' })
+  @ApiOperation({ summary: 'Complete a sprint. Incomplete issues move to backlog or to moveToSprintId if provided.' })
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @Body() body?: { moveToSprintId?: string },
   ) {
-    return this.sprintsService.complete(id, organizationId);
+    return this.sprintsService.complete(id, organizationId, body?.moveToSprintId);
   }
 
   @Delete(':id')

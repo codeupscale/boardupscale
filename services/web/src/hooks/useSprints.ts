@@ -101,11 +101,13 @@ export function useCompleteSprint() {
     mutationFn: async ({
       projectId,
       sprintId,
+      moveToSprintId,
     }: {
       projectId: string
       sprintId: string
+      moveToSprintId?: string | null
     }) => {
-      const { data } = await api.post(`/sprints/${sprintId}/complete`)
+      const { data } = await api.post(`/sprints/${sprintId}/complete`, { moveToSprintId: moveToSprintId ?? undefined })
       return data.data as Sprint
     },
     onSuccess: () => {

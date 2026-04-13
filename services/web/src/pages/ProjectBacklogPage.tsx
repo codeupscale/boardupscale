@@ -229,11 +229,13 @@ function SprintSection({
   const [endDate, setEndDate] = useState('')
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalText, setGoalText] = useState(sprint.goal || '')
+  const [moveToSprintId, setMoveToSprintId] = useState<string>('')
 
   const startSprint = useStartSprint()
   const completeSprint = useCompleteSprint()
   const deleteSprint = useDeleteSprint()
   const updateSprint = useUpdateSprint()
+  const { data: allSprints = [] } = useSprints(projectId)
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const selectAll = useSelectionStore((s) => s.selectAll)
@@ -491,24 +493,87 @@ function SprintSection({
             </DialogContent>
           </Dialog>
 
-          <ConfirmDialog
+          {/* Complete Sprint Dialog */}
+          <Dialog
             open={showConfirm === 'complete'}
             onClose={() => setShowConfirm(null)}
-            onConfirm={() =>
-              completeSprint.mutate(
-                { projectId, sprintId: sprint.id },
-                { onSuccess: () => setShowConfirm(null) },
-              )
-            }
-            title={t('sprints.completeSprint')}
-            description={
-              issues.filter((i) => i.status?.category !== 'done').length > 0
-                ? `${issues.filter((i) => i.status?.category !== 'done').length} issue(s) in ${sprint.name} are not in Done status. All issues and their subtasks must be Done before completing the sprint.`
-                : `Complete ${sprint.name}? All ${issues.length} issues are in Done status.`
-            }
-            confirmLabel={t('sprints.completeSprint')}
-            isLoading={completeSprint.isPending}
-          />
+            className="max-w-md"
+          >
+            <DialogHeader onClose={() => setShowConfirm(null)}>
+              <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+            </DialogHeader>
+            <DialogContent className="space-y-4">
+              {(() => {
+                const doneCount = issues.filter((i) => i.status?.category === 'done').length
+                const incompleteCount = issues.length - doneCount
+                const otherSprints = allSprints.filter(
+                  (s) => s.id !== sprint.id && s.status !== 'completed',
+                )
+                return (
+                  <>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                          <CheckCircle className="h-4 w-4" /> {doneCount} done
+                        </span>
+                        {incompleteCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            · {incompleteCount} incomplete
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {incompleteCount > 0 && (
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                        </label>
+                        <select
+                          value={moveToSprintId}
+                          onChange={(e) => setMoveToSprintId(e.target.value)}
+                          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Backlog</option>
+                          {otherSprints.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}{s.status === 'active' ? ' (active)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {moveToSprintId
+                            ? `Incomplete issues will be moved to the selected sprint.`
+                            : `Incomplete issues will be moved to the backlog.`}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                        {t('common.cancel')}
+                      </Button>
+                      <Button
+                        isLoading={completeSprint.isPending}
+                        onClick={() =>
+                          completeSprint.mutate(
+                            {
+                              projectId,
+                              sprintId: sprint.id,
+                              moveToSprintId: moveToSprintId || null,
+                            },
+                            { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
+                          )
+                        }
+                      >
+                        {t('sprints.completeSprint')}
+                      </Button>
+                    </div>
+                  </>
+                )
+              })()}
+            </DialogContent>
+          </Dialog>
 
           <ConfirmDialog
             open={showConfirm === 'delete'}

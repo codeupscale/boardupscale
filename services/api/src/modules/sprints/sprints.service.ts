@@ -123,7 +123,7 @@ export class SprintsService {
     return saved;
   }
 
-  async complete(id: string, organizationId: string): Promise<Sprint> {
+  async complete(id: string, organizationId: string, moveToSprintId?: string): Promise<Sprint> {
     const sprint = await this.findById(id);
     await this.projectsService.findById(sprint.projectId, organizationId);
 
@@ -131,26 +131,43 @@ export class SprintsService {
       throw new BadRequestException('Only active sprints can be completed');
     }
 
+    // Validate the target sprint if one was provided
+    if (moveToSprintId) {
+      const targetSprint = await this.sprintRepository.findOne({ where: { id: moveToSprintId } });
+      if (!targetSprint) throw new BadRequestException('Target sprint not found');
+      if (targetSprint.projectId !== sprint.projectId) throw new BadRequestException('Target sprint must be in the same project');
+      if (targetSprint.id === id) throw new BadRequestException('Cannot move issues to the sprint being completed');
+      if (targetSprint.status === 'completed') throw new BadRequestException('Cannot move issues to a completed sprint');
+    }
+
     const doneStatuses = await this.issueStatusRepository.find({
       where: { projectId: sprint.projectId, category: 'done' },
     });
     const doneStatusIds = doneStatuses.map((s) => s.id);
 
-    // Move incomplete sprint issues to backlog (remove from sprint)
-    const incompleteIssues = await this.issueRepository
-      .createQueryBuilder('issue')
-      .where('issue.sprint_id = :sprintId', { sprintId: id })
-      .andWhere('issue.deleted_at IS NULL')
-      .andWhere(doneStatusIds.length > 0 ? 'issue.status_id NOT IN (:...doneStatusIds)' : '1=1', { doneStatusIds })
-      .getMany();
+    // Only move incomplete issues when we can reliably identify done vs not-done.
+    // If the project has no done-category statuses configured, leave all issues
+    // linked to the sprint rather than incorrectly moving everything to backlog.
+    let incompleteIssueCount = 0;
+    if (doneStatusIds.length > 0) {
+      const incompleteIssues = await this.issueRepository
+        .createQueryBuilder('issue')
+        .where('issue.sprint_id = :sprintId', { sprintId: id })
+        .andWhere('issue.deleted_at IS NULL')
+        .andWhere('issue.status_id NOT IN (:...doneStatusIds)', { doneStatusIds })
+        .getMany();
 
-    if (incompleteIssues.length > 0) {
-      await this.issueRepository
-        .createQueryBuilder()
-        .update()
-        .set({ sprintId: null })
-        .where('id IN (:...ids)', { ids: incompleteIssues.map((i) => i.id) })
-        .execute();
+      incompleteIssueCount = incompleteIssues.length;
+
+      if (incompleteIssues.length > 0) {
+        await this.issueRepository
+          .createQueryBuilder()
+          .update()
+          // Move to the chosen sprint, or null out to backlog if no target was chosen
+          .set({ sprintId: moveToSprintId ?? null })
+          .where('id IN (:...ids)', { ids: incompleteIssues.map((i) => i.id) })
+          .execute();
+      }
     }
 
     sprint.status = 'completed';
@@ -161,7 +178,7 @@ export class SprintsService {
       organizationId,
       sprint.projectId,
       WebhookEventType.SPRINT_COMPLETED,
-      { sprint: saved, projectId: sprint.projectId, incompleteIssueCount: incompleteIssues.length },
+      { sprint: saved, projectId: sprint.projectId, incompleteIssueCount },
     );
 
     // Trigger automation rules
