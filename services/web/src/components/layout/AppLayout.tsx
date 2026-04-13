@@ -8,7 +8,7 @@ import { useNotificationSocket } from '@/hooks/useNotifications'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
-import { ToastContainer } from '@/components/ui/toast'
+import { Toaster } from '@/components/ui/sonner'
 import { CommandPalette } from './command-palette'
 import { ProjectChat } from '@/components/chat/ProjectChat'
 import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
@@ -65,7 +65,7 @@ export function AppLayout() {
           </ErrorBoundary>
         </main>
       </div>
-      <ToastContainer />
+      <Toaster position="bottom-right" richColors />
       <CommandPalette />
       <ProjectChat />
       <HelpSupportPanel />
