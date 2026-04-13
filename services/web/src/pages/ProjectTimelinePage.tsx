@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   format,
   addDays,
@@ -14,12 +14,14 @@ import { useProject } from '@/hooks/useProjects'
 import { useIssues } from '@/hooks/useIssues'
 import { useSprints } from '@/hooks/useSprints'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 
-const LABEL_W = 240
+const LABEL_W = 260
 
 const ZOOM_CFG = {
   week: { dayPx: 40, days: 28, step: 14 },
@@ -50,7 +52,6 @@ type TypeFilter = (typeof TYPE_OPTIONS)[number]
 
 export function ProjectTimelinePage() {
   const { key: projectKey } = useParams<{ key: string }>()
-  const location = useLocation()
   const navigate = useNavigate()
 
   const [zoom, setZoom] = useState<Zoom>('month')
@@ -115,17 +116,6 @@ export function ProjectTimelinePage() {
 
   if (projectLoading) return <LoadingPage />
 
-  const tabs = [
-    { label: 'Board', href: `/projects/${projectKey}/board` },
-    { label: 'Backlog', href: `/projects/${projectKey}/backlog` },
-    { label: 'Issues', href: `/projects/${projectKey}/issues` },
-    { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
-    { label: 'Timeline', href: `/projects/${projectKey}/timeline` },
-    { label: 'Trash', href: `/projects/${projectKey}/trash` },
-    { label: 'Automations', href: `/projects/${projectKey}/automations` },
-    { label: 'Settings', href: `/projects/${projectKey}/settings` },
-  ]
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -137,26 +127,7 @@ export function ProjectTimelinePage() {
         ]}
       />
 
-      {/* Tab nav */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {tabs.map((tab) => {
-          const isActive = location.pathname === tab.href
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
-              )}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
@@ -193,17 +164,15 @@ export function ProjectTimelinePage() {
           </div>
 
           {/* Type filter */}
-          <select
+          <Select
+            options={TYPE_OPTIONS.map((t) => ({
+              value: t,
+              label: t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1),
+            }))}
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="text-sm border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {TYPE_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </option>
-            ))}
-          </select>
+            className="w-36"
+          />
         </div>
       </div>
 
