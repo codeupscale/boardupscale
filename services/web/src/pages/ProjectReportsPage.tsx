@@ -17,6 +17,7 @@ import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
+import { SprintStatus } from '@/types'
 import { useSprints } from '@/hooks/useSprints'
 import { useProjects } from '@/hooks/useProjects'
 import {
@@ -71,7 +72,7 @@ export function ProjectReportsPage() {
   const [cvrEndDate, setCvrEndDate] = useState('')
   const [cvrInterval, setCvrInterval] = useState<'day' | 'week'>('day')
 
-  const { data: projectsResult } = useProjects()
+  const { data: projectsResult } = useProjects({ limit: 200 })
   const project = projectsResult?.data?.find((p) => p.key === projectKey)
 
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey || '')
@@ -81,7 +82,7 @@ export function ProjectReportsPage() {
     if (selectedSprintId) return selectedSprintId
     if (!sprints || sprints.length === 0) return ''
     // Prefer active sprint, then most recent
-    const active = sprints.find((s) => s.status === 'active')
+    const active = sprints.find((s) => s.status === SprintStatus.ACTIVE)
     return active?.id || sprints[0]?.id || ''
   }, [sprints, selectedSprintId])
 
@@ -91,11 +92,11 @@ export function ProjectReportsPage() {
     activeReport === 'burndown' ? activeSprint : '',
   )
   const velocityQuery = useVelocity(
-    projectKey || '',
-    activeReport === 'velocity' ? 6 : 0,
+    activeReport === 'velocity' ? projectKey || '' : '',
+    6,
   )
   const cfdQuery = useCumulativeFlow(
-    projectKey || '',
+    activeReport === 'cumulative-flow' ? projectKey || '' : '',
     activeReport === 'cumulative-flow' ? cfdStartDate || undefined : undefined,
     activeReport === 'cumulative-flow' ? cfdEndDate || undefined : undefined,
   )
@@ -149,6 +150,7 @@ export function ProjectReportsPage() {
             <button
               key={item.id}
               onClick={() => setActiveReport(item.id)}
+              aria-current={activeReport === item.id ? 'true' : undefined}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full',
                 activeReport === item.id
@@ -177,7 +179,6 @@ export function ProjectReportsPage() {
                     value={activeSprint}
                     onChange={(e) => setSelectedSprintId(e.target.value)}
                     options={sprints.map((s) => ({ value: s.id, label: `${s.name} (${s.status})` }))}
-                    className="w-64"
                   />
                 ) : (
                   <p className="text-sm text-gray-500">No sprints available</p>
