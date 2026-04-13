@@ -50,7 +50,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                     isCompleted
                       ? 'bg-primary text-white'
                       : isActive
-                        ? 'bg-primary text-white ring-4 ring-blue-100 dark:ring-blue-900/40'
+                        ? 'bg-primary text-white ring-4 ring-primary/20'
                         : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground',
                   )}
                 >

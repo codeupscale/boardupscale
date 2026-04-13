@@ -39,7 +39,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                     isCompleted
                       ? 'bg-primary text-white shadow-sm shadow-primary/20'
                       : isActive
-                      ? 'bg-primary text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-primary/20'
+                      ? 'bg-primary text-white ring-4 ring-primary/20 shadow-sm shadow-primary/20'
                       : 'bg-muted text-muted-foreground',
                   )}
                   aria-current={isActive ? 'step' : undefined}

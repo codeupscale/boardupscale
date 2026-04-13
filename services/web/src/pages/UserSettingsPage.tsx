@@ -656,7 +656,7 @@ export function UserSettingsPage() {
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
                     active
                       ? 'bg-primary text-white shadow-md shadow-primary/20/60 dark:shadow-primary/40'
-                      : 'bg-card border border-border hover:border-primary/30 dark:hover:border-blue-700 hover:bg-primary/10 dark:hover:bg-primary/5',
+                      : 'bg-card border border-border hover:border-primary/30 dark:hover:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/5',
                   )}
                 >
                   <div
@@ -686,7 +686,7 @@ export function UserSettingsPage() {
                     <p
                       className={cn(
                         'text-xs truncate',
-                        active ? 'text-blue-100' : 'text-muted-foreground',
+                        active ? 'text-primary-foreground/80' : 'text-muted-foreground',
                       )}
                     >
                       {description}

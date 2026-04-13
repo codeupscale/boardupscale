@@ -137,7 +137,7 @@ export function AuditLogPage() {
                     </div>
                   </td>
                   <td className="px-6 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-blue-800">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
                       {log.action}
                     </span>
                   </td>
