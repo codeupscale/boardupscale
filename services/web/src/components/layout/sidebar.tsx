@@ -151,13 +151,13 @@ export function Sidebar() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150',
                   active
-                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/20 text-blue-700 dark:text-blue-300 shadow-sm'
+                    ? 'plasma-nav-active shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                   !isSidebarOpen && 'justify-center px-2',
                 )}
               >
                 <Icon
-                  className={cn('h-5 w-5 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground')}
+                  className={cn('h-5 w-5 flex-shrink-0', active ? '' : 'text-muted-foreground')}
                 />
                 {isSidebarOpen ? label : <span className="sr-only">{label}</span>}
               </Link>
@@ -191,11 +191,11 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        ? 'plasma-nav-active font-medium'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground')} />
+                    <Icon className={cn('h-4 w-4 flex-shrink-0', active ? '' : 'text-muted-foreground')} />
                     <span className="truncate">{label}</span>
                   </Link>
                 )
@@ -223,14 +223,14 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       active
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        ? 'plasma-nav-active font-medium'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <Icon
                       className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        active ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground',
+                        active ? '' : 'text-muted-foreground',
                       )}
                     />
                     <span className="truncate">{label}</span>
@@ -257,14 +257,14 @@ export function Sidebar() {
                     className={cn(
                       'flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-150',
                       isProjectActive
-                        ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/25 font-medium'
+                        ? 'plasma-nav-active font-medium'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-accent/70 hover:text-gray-900 dark:hover:text-gray-200',
                     )}
                   >
                     <span className={cn(
                       'h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0',
                       isProjectActive
-                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                        ? 'project-badge'
                         : 'bg-muted text-muted-foreground',
                     )}>
                       {project.key.slice(0, 2)}
