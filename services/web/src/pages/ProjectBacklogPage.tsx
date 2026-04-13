@@ -38,6 +38,8 @@ import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -151,15 +153,12 @@ function DraggableIssueRow({
           {/* Status — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
             {statuses && onUpdateIssue ? (
-              <select
+              <Select
                 value={issue.statusId || ''}
                 onChange={(e) => onUpdateIssue(issue.id, { statusId: e.target.value })}
-                className="text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
-              >
-                {statuses.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+                options={statuses.map((s) => ({ value: s.id, label: s.name }))}
+                className="text-xs py-1"
+              />
             ) : (
               <StatusBadge status={issue.status} />
             )}
@@ -168,11 +167,11 @@ function DraggableIssueRow({
           {/* Due Date — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
             {onUpdateIssue ? (
-              <input
-                type="date"
-                value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : ''}
-                onChange={(e) => onUpdateIssue(issue.id, { dueDate: e.target.value || null })}
-                className="text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              <DatePicker
+                value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : undefined}
+                onChange={(date) => onUpdateIssue(issue.id, { dueDate: date ?? null })}
+                placeholder="No date"
+                className="text-xs"
               />
             ) : (
               <span className="text-xs text-gray-500">
@@ -463,17 +462,15 @@ function SprintSection({
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
               </div>
-              <Input
+              <DatePicker
                 label={t('sprints.startDate')}
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={startDate || undefined}
+                onChange={(date) => setStartDate(date ?? '')}
               />
-              <Input
+              <DatePicker
                 label={t('sprints.endDate')}
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                value={endDate || undefined}
+                onChange={(date) => setEndDate(date ?? '')}
               />
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowConfirm(null)}>
@@ -530,18 +527,17 @@ function SprintSection({
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                         </label>
-                        <select
+                        <Select
                           value={moveToSprintId}
                           onChange={(e) => setMoveToSprintId(e.target.value)}
-                          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Backlog</option>
-                          {otherSprints.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}{s.status === 'active' ? ' (active)' : ''}
-                            </option>
-                          ))}
-                        </select>
+                          options={[
+                            { value: '', label: 'Backlog' },
+                            ...otherSprints.map((s) => ({
+                              value: s.id,
+                              label: `${s.name}${s.status === 'active' ? ' (active)' : ''}`,
+                            })),
+                          ]}
+                        />
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                           {moveToSprintId
                             ? `Incomplete issues will be moved to the selected sprint.`

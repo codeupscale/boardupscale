@@ -12,6 +12,7 @@ import { ProjectVersion, VersionProgress } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Textarea } from '@/components/ui/textarea'
 import { LoadingPage } from '@/components/ui/spinner'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
@@ -285,17 +286,15 @@ export function ProjectReleasesPage() {
             onChange={(e) => setDescription(e.target.value)}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
+            <DatePicker
               label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              value={startDate || undefined}
+              onChange={(date) => setStartDate(date ?? '')}
             />
-            <Input
+            <DatePicker
               label="Release Date"
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
+              value={releaseDate || undefined}
+              onChange={(date) => setReleaseDate(date ?? '')}
             />
           </div>
           <div className="flex justify-end gap-2">
