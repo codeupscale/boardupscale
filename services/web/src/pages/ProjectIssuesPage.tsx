@@ -197,9 +197,9 @@ export function ProjectIssuesPage() {
 
       <ProjectTabNav projectKey={projectKey!} />
 
-      <div className="p-6 lg:p-8 space-y-4 max-w-[1400px] mx-auto w-full">
+      <div className="p-6 space-y-4 flex-1 overflow-y-auto">
         {/* Filters card */}
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-4 space-y-3 shadow-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-4 space-y-3 shadow-sm">
           {/* Stats strip */}
           {total > 0 && (
             <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
@@ -365,7 +365,7 @@ export function ProjectIssuesPage() {
         {isLoading ? (
           <LoadingPage />
         ) : issues.length > 0 ? (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">

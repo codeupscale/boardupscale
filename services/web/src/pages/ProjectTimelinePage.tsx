@@ -130,7 +130,7 @@ export function ProjectTimelinePage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
         <Button variant="outline" size="sm" onClick={() => setViewStart((d) => subDays(d, cfg.step))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>

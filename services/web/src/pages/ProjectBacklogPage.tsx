@@ -832,7 +832,7 @@ export function ProjectBacklogPage() {
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           {/* Summary Bar */}
           {activeSprints.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
               <span>
                 {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
