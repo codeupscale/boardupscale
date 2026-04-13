@@ -1,5 +1,5 @@
 // services/web/src/components/ui/date-picker.tsx
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import {
   format,
   parseISO,
@@ -39,12 +39,14 @@ export function DatePicker({
     value ? parseISO(value) : new Date(),
   )
   const containerRef = useRef<HTMLDivElement>(null)
+  const generatedId = useId()
+  const inputId = label ? `datepicker-${generatedId}` : undefined
 
   const selectedDate = value ? parseISO(value) : undefined
 
-  // Sync view month when value changes externally
+  // Sync view month when value changes externally; reset to today when cleared
   useEffect(() => {
-    if (value) setViewDate(parseISO(value))
+    setViewDate(value ? parseISO(value) : new Date())
   }, [value])
 
   // Close on outside click
@@ -56,6 +58,15 @@ export function DatePicker({
     }
     if (open) document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    if (open) document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
   }, [open])
 
   const monthStart = startOfMonth(viewDate)
@@ -73,8 +84,6 @@ export function DatePicker({
     setOpen(false)
   }
 
-  const inputId = label?.toLowerCase().replace(/\s+/g, '-')
-
   return (
     <div ref={containerRef} className={cn('relative', className)}>
       {label && (
@@ -85,35 +94,37 @@ export function DatePicker({
           {label}
         </label>
       )}
-      <button
-        id={inputId}
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setOpen((o) => !o)}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600',
-          'bg-white dark:bg-gray-800 px-3 py-2 text-sm text-left',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-          'disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:text-gray-500 disabled:cursor-not-allowed',
-          !value && 'text-gray-400 dark:text-gray-500',
-          value && 'text-gray-900 dark:text-gray-100',
-        )}
-      >
-        <CalendarDays className="h-4 w-4 flex-shrink-0 text-gray-400" />
-        <span className="flex-1 truncate">
-          {selectedDate ? format(selectedDate, 'MMM d, yyyy') : placeholder}
-        </span>
+      <div className="relative">
+        <button
+          id={inputId}
+          type="button"
+          disabled={disabled}
+          onClick={() => !disabled && setOpen((o) => !o)}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600',
+            'bg-white dark:bg-gray-800 px-3 py-2 text-sm text-left pr-8',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            'disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:text-gray-500 disabled:cursor-not-allowed',
+            !value && 'text-gray-400 dark:text-gray-500',
+            value && 'text-gray-900 dark:text-gray-100',
+          )}
+        >
+          <CalendarDays className="h-4 w-4 flex-shrink-0 text-gray-400" />
+          <span className="flex-1 truncate">
+            {selectedDate ? format(selectedDate, 'MMM d, yyyy') : placeholder}
+          </span>
+        </button>
         {value && (
-          <span
-            role="button"
+          <button
+            type="button"
             aria-label="Clear date"
             onClick={(e) => { e.stopPropagation(); onChange(undefined) }}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded"
           >
             <X className="h-3.5 w-3.5" />
-          </span>
+          </button>
         )}
-      </button>
+      </div>
 
       {open && (
         <div className="absolute z-50 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg dark:shadow-2xl dark:shadow-black/40 p-3 w-64">
