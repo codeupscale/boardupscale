@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/common/page-header'
-import { Tabs, TabContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useTimesheet, useTeamTimesheet } from '@/hooks/useReports'
 import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
@@ -172,57 +172,64 @@ export function TimesheetPage() {
           />
         </div>
 
-        <Tabs tabs={VIEW_TABS} activeTab={activeView} onChange={setActiveView} />
+        <Tabs value={activeView} onValueChange={setActiveView}>
+          <TabsList>
+            {VIEW_TABS.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.icon}
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        {/* Week Navigation */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setWeekOffset((w) => w - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-44 text-center">
-            {weekLabel}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setWeekOffset((w) => w + 1)}
-            disabled={weekOffset >= 0}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {weekOffset !== 0 && (
+          {/* Week Navigation */}
+          <div className="flex items-center gap-3 mt-4">
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setWeekOffset(0)}
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setWeekOffset((w) => w - 1)}
             >
-              This Week
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
-        </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-44 text-center">
+              {weekLabel}
+            </span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setWeekOffset((w) => w + 1)}
+              disabled={weekOffset >= 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {weekOffset !== 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setWeekOffset(0)}
+              >
+                This Week
+              </Button>
+            )}
+          </div>
 
-        <TabContent>
-          {activeView === 'my' && (
+          <TabsContent value="my">
             <MyTimesheetView
               data={timesheetQuery.data}
               isLoading={timesheetQuery.isLoading}
               startDate={startDate}
               endDate={endDate}
             />
-          )}
-          {activeView === 'team' && (
+          </TabsContent>
+          <TabsContent value="team">
             <TeamTimesheetView
               data={teamTimesheetQuery.data}
               isLoading={teamTimesheetQuery.isLoading}
               startDate={startDate}
               endDate={endDate}
             />
-          )}
-        </TabContent>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
