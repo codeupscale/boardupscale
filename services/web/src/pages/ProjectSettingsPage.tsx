@@ -139,6 +139,7 @@ export function ProjectSettingsPage() {
           ]}
           activeTab={activeTab}
           onChange={setActiveTab}
+          className="overflow-x-auto"
         />
 
         <TabContent>
@@ -493,26 +494,26 @@ function MemberRoleList({ projectId }: { projectId: string }) {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{member.role}</Badge>
-            <select
-              className="text-xs border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              value={(member as any).roleId || ''}
-              onChange={(e) => {
-                if (e.target.value) {
-                  assignRole.mutate({
-                    projectId,
-                    memberId: member.id,
-                    roleId: e.target.value,
-                  })
-                }
-              }}
-            >
-              <option value="">Assign role...</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} {r.isSystem ? '(system)' : ''}
-                </option>
-              ))}
-            </select>
+            <div className="w-40">
+              <Select
+                value={(member as any).roleId || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    assignRole.mutate({
+                      projectId,
+                      memberId: member.id,
+                      roleId: e.target.value,
+                    })
+                  }
+                }}
+                placeholder="Assign role..."
+                options={roles.map((r) => ({
+                  value: r.id,
+                  label: `${r.name}${r.isSystem ? ' (system)' : ''}`,
+                }))}
+                className="text-xs"
+              />
+            </div>
           </div>
         </div>
       ))}
