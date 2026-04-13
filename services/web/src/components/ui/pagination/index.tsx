@@ -55,26 +55,26 @@ export function Pagination({
   const pageWindow = getPageWindow(page, totalPages)
 
   const btnBase =
-    'inline-flex items-center justify-center h-8 min-w-[2rem] px-1.5 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-900 disabled:opacity-40 disabled:cursor-not-allowed'
+    'inline-flex items-center justify-center h-8 min-w-[2rem] px-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed'
 
   return (
     <div
       className={cn(
         'flex items-center justify-between gap-4 px-4 py-3',
-        'border-t border-gray-200 dark:border-gray-700',
+        'border-t border-border',
         className,
       )}
       role="navigation"
       aria-label="Pagination"
     >
       {/* Results summary */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 shrink-0">
+      <p className="text-sm text-muted-foreground shrink-0">
         Showing{' '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{from}</span>
+        <span className="font-medium text-foreground">{from}</span>
         {' – '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{to}</span>
+        <span className="font-medium text-foreground">{to}</span>
         {' of '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{total}</span>{' '}
+        <span className="font-medium text-foreground">{total}</span>{' '}
         results
       </p>
 
@@ -84,7 +84,7 @@ export function Pagination({
         <button
           className={cn(
             btnBase,
-            'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+            'text-muted-foreground hover:bg-accent',
           )}
           onClick={() => onPageChange(1)}
           disabled={page === 1}
@@ -98,7 +98,7 @@ export function Pagination({
         <button
           className={cn(
             btnBase,
-            'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+            'text-muted-foreground hover:bg-accent',
           )}
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
@@ -114,7 +114,7 @@ export function Pagination({
             return (
               <span
                 key={`ellipsis-${idx}`}
-                className="inline-flex items-center justify-center h-8 w-8 text-sm text-gray-400 dark:text-gray-500 select-none"
+                className="inline-flex items-center justify-center h-8 w-8 text-sm text-muted-foreground select-none"
                 aria-hidden="true"
               >
                 &hellip;
@@ -127,8 +127,8 @@ export function Pagination({
             <button
               key={item}
               className={cn(btnBase, 'min-w-[2rem]', {
-                'bg-blue-600 text-white shadow-sm hover:bg-blue-700': isActive,
-                'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800':
+                'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90': isActive,
+                'text-foreground hover:bg-accent':
                   !isActive,
               })}
               onClick={() => onPageChange(item)}
@@ -144,7 +144,7 @@ export function Pagination({
         <button
           className={cn(
             btnBase,
-            'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+            'text-muted-foreground hover:bg-accent',
           )}
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
@@ -158,7 +158,7 @@ export function Pagination({
         <button
           className={cn(
             btnBase,
-            'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+            'text-muted-foreground hover:bg-accent',
           )}
           onClick={() => onPageChange(totalPages)}
           disabled={page >= totalPages}
