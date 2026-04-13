@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, Link, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle } from 'lucide-react'
@@ -19,6 +19,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -41,7 +42,6 @@ const COLOR_PRESETS = [
 export function ProjectBoardPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
-  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -426,35 +426,7 @@ export function ProjectBoardPage() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {[
-          { label: t('nav.board'), href: `/projects/${projectKey}/board` },
-          { label: t('nav.backlog'), href: `/projects/${projectKey}/backlog` },
-          { label: t('nav.issues'), href: `/projects/${projectKey}/issues` },
-          { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
-          { label: 'Timeline', href: `/projects/${projectKey}/timeline` },
-          { label: 'Trash', href: `/projects/${projectKey}/trash` },
-          { label: 'Automations', href: `/projects/${projectKey}/automations` },
-          { label: t('nav.settings'), href: `/projects/${projectKey}/settings` },
-        ].map((tab) => {
-          const isActive = location.pathname === tab.href
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600',
-              )}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Quick Filters Bar */}
       <BoardQuickFilters
@@ -794,18 +766,17 @@ export function ProjectBoardPage() {
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
                       </label>
-                      <select
+                      <Select
+                        options={[
+                          { value: '', label: 'Backlog' },
+                          ...otherSprints.map((s) => ({
+                            value: s.id,
+                            label: `${s.name}${s.status === 'active' ? ' (active)' : ''}`,
+                          })),
+                        ]}
                         value={boardMoveToSprintId}
                         onChange={(e) => setBoardMoveToSprintId(e.target.value)}
-                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Backlog</option>
-                        {otherSprints.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}{s.status === 'active' ? ' (active)' : ''}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <p className="text-xs text-gray-400 dark:text-gray-500">
                         {boardMoveToSprintId
                           ? `Incomplete issues will be moved to the selected sprint.`
