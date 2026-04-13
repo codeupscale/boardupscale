@@ -3,6 +3,13 @@ import { CustomFieldDefinition, CustomFieldValue, CustomFieldType } from '@/type
 import { Input } from '@/components/ui/input'
 import { UserSelect } from '@/components/common/user-select'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 
 interface CustomFieldsFormProps {
   definitions: CustomFieldDefinition[]
@@ -83,19 +90,23 @@ function CustomFieldInput({
 
     case 'select':
       return (
-        <select
-          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value || null)}
+        <Select
+          value={value || '__none__'}
+          onValueChange={(v) => onChange(v === '__none__' ? null : v)}
           disabled={readOnly}
         >
-          <option value="">Select...</option>
-          {(definition.options || []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Select...</SelectItem>
+            {(definition.options || []).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
 
     case 'multi_select': {
@@ -136,7 +147,7 @@ function CustomFieldInput({
           </div>
           {!readOnly && (
             <select
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-ring"
               value=""
               onChange={(e) => {
                 if (e.target.value && !selected.includes(e.target.value)) {

@@ -285,20 +285,24 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
                 value={parentSearch}
                 onChange={(e) => setParentSearch(e.target.value)}
                 placeholder="Search by key or title…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-ring mb-1"
               />
-              <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value || undefined)}
+              <Select
+                value={field.value || '__none__'}
+                onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)}
               >
-                <option value="">— No parent —</option>
-                {eligibleParents.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.key}] {p.title}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="— No parent —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— No parent —</SelectItem>
+                  {eligibleParents.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      [{p.key}] {p.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {parentIssues.length > 0 && eligibleParents.length === 0 && parentSearch === '' && (
                 <p className="text-xs text-gray-400 mt-1">
                   No eligible parents for a {watchedType} in this project.
@@ -421,24 +425,28 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               )
             })}
           </div>
-          <select
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value=""
-            onChange={(e) => {
-              if (e.target.value && !selectedComponents.includes(e.target.value)) {
-                setSelectedComponents([...selectedComponents, e.target.value])
+          <Select
+            value="__none__"
+            onValueChange={(v) => {
+              if (v !== '__none__' && !selectedComponents.includes(v)) {
+                setSelectedComponents([...selectedComponents, v])
               }
             }}
           >
-            <option value="">Add component...</option>
-            {components
-              .filter((c) => !selectedComponents.includes(c.id))
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Add component..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Add component...</SelectItem>
+              {components
+                .filter((c) => !selectedComponents.includes(c.id))
+                .map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -468,24 +476,28 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               )
             })}
           </div>
-          <select
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value=""
-            onChange={(e) => {
-              if (e.target.value && !selectedFixVersions.includes(e.target.value)) {
-                setSelectedFixVersions([...selectedFixVersions, e.target.value])
+          <Select
+            value="__none__"
+            onValueChange={(v) => {
+              if (v !== '__none__' && !selectedFixVersions.includes(v)) {
+                setSelectedFixVersions([...selectedFixVersions, v])
               }
             }}
           >
-            <option value="">Add version...</option>
-            {versions
-              .filter((v) => v.status !== 'archived' && !selectedFixVersions.includes(v.id))
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Add version..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Add version...</SelectItem>
+              {versions
+                .filter((v) => v.status !== 'archived' && !selectedFixVersions.includes(v.id))
+                .map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
