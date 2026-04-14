@@ -33,6 +33,7 @@ import {
 import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -237,6 +238,7 @@ function SprintSection({
   onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
 }) {
   const { t } = useTranslation()
+  const { hasPermission } = useHasPermission(projectId)
   const [collapsed, setCollapsed] = useState(false)
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
@@ -333,26 +335,28 @@ function SprintSection({
               className="flex items-center gap-2 flex-shrink-0 ml-2"
               onClick={(e) => e.stopPropagation()}
             >
-              {isPlanned && (
+              {isPlanned && hasPermission('sprint', 'manage') && (
                 <Button size="sm" variant="outline" onClick={() => setShowConfirm('start')}>
                   <Play className="h-3.5 w-3.5" />
                   {t('sprints.startSprint')}
                 </Button>
               )}
-              {isActive && (
+              {isActive && hasPermission('sprint', 'manage') && (
                 <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
                   <CheckCircle className="h-3.5 w-3.5" />
                   {t('sprints.complete')}
                 </Button>
               )}
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => setShowConfirm('delete')}
-                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {hasPermission('sprint', 'delete') && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => setShowConfirm('delete')}
+                  className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -754,6 +758,7 @@ export function ProjectBacklogPage() {
   const [sprintGoal, setSprintGoal] = useState('')
 
   const { data: project } = useProject(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!)
@@ -858,14 +863,18 @@ export function ProjectBacklogPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
-              <Plus className="h-4 w-4" />
-              {t('sprints.createSprint')}
-            </Button>
-            <Button size="sm" onClick={() => setShowCreateIssue(true)}>
-              <Plus className="h-4 w-4" />
-              {t('issues.createIssue')}
-            </Button>
+            {hasPermission('sprint', 'create') && (
+              <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
+                <Plus className="h-4 w-4" />
+                {t('sprints.createSprint')}
+              </Button>
+            )}
+            {hasPermission('issue', 'create') && (
+              <Button size="sm" onClick={() => setShowCreateIssue(true)}>
+                <Plus className="h-4 w-4" />
+                {t('issues.createIssue')}
+              </Button>
+            )}
           </div>
         }
       />

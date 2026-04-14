@@ -17,14 +17,16 @@ import { WebhookEventEmitter } from './webhook-event-emitter.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('webhooks')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class WebhooksController {
   constructor(
@@ -33,6 +35,7 @@ export class WebhooksController {
   ) {}
 
   @Post('projects/:projectId/webhooks')
+  @RequirePermission('webhook', 'create')
   @ApiOperation({ summary: 'Create a webhook for a project' })
   async create(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -61,6 +64,7 @@ export class WebhooksController {
   }
 
   @Put('webhooks/:id')
+  @RequirePermission('webhook', 'update')
   @ApiOperation({ summary: 'Update a webhook' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -71,6 +75,7 @@ export class WebhooksController {
   }
 
   @Delete('webhooks/:id')
+  @RequirePermission('webhook', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a webhook' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
@@ -78,6 +83,7 @@ export class WebhooksController {
   }
 
   @Post('webhooks/:id/test')
+  @RequirePermission('webhook', 'manage')
   @ApiOperation({ summary: 'Send a test payload to a webhook' })
   async test(
     @Param('id', ParseUUIDPipe) id: string,
@@ -135,6 +141,7 @@ export class WebhooksController {
   }
 
   @Post('webhook-deliveries/:id/retry')
+  @RequirePermission('webhook', 'manage')
   @ApiOperation({ summary: 'Retry a failed webhook delivery' })
   async retryDelivery(@Param('id', ParseUUIDPipe) id: string) {
     const delivery = await this.webhooksService.retryDelivery(id);

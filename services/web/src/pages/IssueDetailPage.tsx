@@ -39,6 +39,7 @@ import {
   useSetIssueCustomFields,
 } from '@/hooks/useCustomFields'
 import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -337,6 +338,10 @@ export function IssueDetailPage() {
   const { data: issueVersions } = useIssueVersions(issueId!)
   const setIssueVersions = useSetIssueVersions()
 
+  const { hasPermission } = useHasPermission(issue?.projectId)
+  const canEdit = hasPermission('issue', 'update')
+  const canDelete = hasPermission('issue', 'delete')
+
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
   const updateIssue = useUpdateIssue()
@@ -482,11 +487,11 @@ export function IssueDetailPage() {
               </div>
             ) : (
               <h1
-                className="text-2xl font-bold text-foreground cursor-pointer hover:text-primary dark:hover:text-primary transition-colors leading-tight"
-                onClick={() => {
+                className={`text-2xl font-bold text-foreground leading-tight ${canEdit ? 'cursor-pointer hover:text-primary dark:hover:text-primary transition-colors' : ''}`}
+                onClick={canEdit ? () => {
                   setTitleValue(issue.title)
                   setEditingTitle(true)
-                }}
+                } : undefined}
               >
                 {issue.title}
               </h1>
@@ -751,7 +756,7 @@ export function IssueDetailPage() {
             {/* ── Workflow ── */}
             <IssueSection icon={Workflow} title="Workflow">
               <SidebarField label={t('common.status')}>
-                <Select value={issue.statusId || '__none__'} onValueChange={(v) => {
+                <Select value={issue.statusId || '__none__'} disabled={!canEdit} onValueChange={(v) => {
                   if (v !== '__none__') updateIssue.mutate({ id: issue.id, statusId: v })
                 }}>
                   <SelectTrigger className="w-full text-sm">
@@ -769,7 +774,7 @@ export function IssueDetailPage() {
               </SidebarField>
 
               <SidebarField label={t('common.priority')}>
-                <Select value={issue.priority} onValueChange={(v) => updateIssue.mutate({ id: issue.id, priority: v as IssuePriority })}>
+                <Select value={issue.priority} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, priority: v as IssuePriority })}>
                   <SelectTrigger className="w-full text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -786,9 +791,9 @@ export function IssueDetailPage() {
               <SidebarField label={t('common.type')}>
                 <IssueTypeSelect
                   value={issue.type}
-                  onChange={(val) =>
+                  onChange={canEdit ? (val) =>
                     updateIssue.mutate({ id: issue.id, type: val as IssueType })
-                  }
+                  : undefined}
                 />
               </SidebarField>
             </IssueSection>
@@ -798,9 +803,9 @@ export function IssueDetailPage() {
               <SidebarField label={t('common.assignee')}>
                 <UserSelect
                   value={issue.assigneeId || null}
-                  onChange={(id) =>
+                  onChange={canEdit ? (id) =>
                     updateIssue.mutate({ id: issue.id, assigneeId: id })
-                  }
+                  : undefined}
                 />
               </SidebarField>
 
@@ -817,7 +822,7 @@ export function IssueDetailPage() {
             {/* ── Planning ── */}
             <IssueSection icon={CalendarDays} title="Planning">
               <SidebarField label={t('issues.sprint')}>
-                <Select value={issue.sprintId || '__none__'} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
+                <Select value={issue.sprintId || '__none__'} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
                   <SelectTrigger className="w-full text-sm">
                     <SelectValue placeholder={t('common.noSprint')} />
                   </SelectTrigger>
@@ -1167,15 +1172,17 @@ export function IssueDetailPage() {
             </div>
 
             {/* Delete */}
-            <Button
-              variant="destructive"
-              size="sm"
-              className="w-full rounded-lg"
-              onClick={() => setShowDeleteIssue(true)}
-            >
-              <Trash2 className="h-4 w-4 mr-1.5" />
-              {t('issues.deleteIssue')}
-            </Button>
+            {canDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full rounded-lg"
+                onClick={() => setShowDeleteIssue(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                {t('issues.deleteIssue')}
+              </Button>
+            )}
           </div>
         </div>
       </div>

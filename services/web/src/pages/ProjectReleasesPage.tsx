@@ -8,6 +8,7 @@ import {
   useVersionProgress,
 } from '@/hooks/useVersions'
 import { useProject } from '@/hooks/useProjects'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectVersion, VersionProgress } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
@@ -75,9 +76,11 @@ function VersionProgressBar({ versionId }: { versionId: string }) {
 function VersionCard({
   version,
   projectKey,
+  canRelease = false,
 }: {
   version: ProjectVersion
   projectKey: string
+  canRelease?: boolean
 }) {
   const releaseVersion = useReleaseVersion()
 
@@ -107,7 +110,7 @@ function VersionCard({
             <p className="text-sm text-muted-foreground">{version.description}</p>
           )}
         </div>
-        {version.status === 'unreleased' && (
+        {version.status === 'unreleased' && canRelease && (
           <Button
             size="sm"
             onClick={() =>
@@ -150,6 +153,7 @@ function VersionCard({
 export function ProjectReleasesPage() {
   const { key: projectKey } = useParams<{ key: string }>()
   const { data: project, isLoading: projectLoading } = useProject(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: versions, isLoading: versionsLoading } = useVersions(projectKey!)
   const createVersion = useCreateVersion()
 
@@ -196,10 +200,12 @@ export function ProjectReleasesPage() {
           { label: 'Releases' },
         ]}
         actions={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4" />
-            Create Version
-          </Button>
+          hasPermission('version', 'create') ? (
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" />
+              Create Version
+            </Button>
+          ) : undefined
         }
       />
 
@@ -212,7 +218,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {unreleased.map((v) => (
-                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} canRelease={hasPermission('version', 'manage')} />
               ))}
             </div>
           </div>
@@ -226,7 +232,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {released.map((v) => (
-                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} canRelease={hasPermission('version', 'manage')} />
               ))}
             </div>
           </div>
@@ -240,7 +246,7 @@ export function ProjectReleasesPage() {
             </h2>
             <div className="space-y-3">
               {archived.map((v) => (
-                <VersionCard key={v.id} version={v} projectKey={projectKey!} />
+                <VersionCard key={v.id} version={v} projectKey={projectKey!} canRelease={hasPermission('version', 'manage')} />
               ))}
             </div>
           </div>

@@ -15,17 +15,20 @@ import { ComponentsService } from './components.service';
 import { CreateComponentDto } from './dto/create-component.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('components')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class ComponentsController {
   constructor(private componentsService: ComponentsService) {}
 
   @Post('projects/:projectId/components')
+  @RequirePermission('component', 'create')
   @ApiOperation({ summary: 'Create a component for a project' })
   async create(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -50,6 +53,7 @@ export class ComponentsController {
   }
 
   @Put('components/:id')
+  @RequirePermission('component', 'update')
   @ApiOperation({ summary: 'Update a component' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,6 +64,7 @@ export class ComponentsController {
   }
 
   @Delete('components/:id')
+  @RequirePermission('component', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a component' })
   async delete(@Param('id', ParseUUIDPipe) id: string) {
@@ -76,6 +81,7 @@ export class ComponentsController {
   }
 
   @Put('issues/:issueId/components')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Set components for an issue' })
   async setIssueComponents(
     @Param('issueId', ParseUUIDPipe) issueId: string,

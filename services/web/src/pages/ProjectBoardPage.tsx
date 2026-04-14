@@ -9,6 +9,7 @@ import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
 import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { cn } from '@/lib/utils'
@@ -110,6 +111,7 @@ export function ProjectBoardPage() {
   )
 
   const { data: project } = useProject(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: sprints } = useSprints(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
   const { data: usersResult } = useUsers()
@@ -406,10 +408,12 @@ export function ProjectBoardPage() {
           { label: t('nav.board') },
         ]}
         actions={
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4" />
-            {t('issues.createIssue')}
-          </Button>
+          hasPermission('issue', 'create') ? (
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4" />
+              {t('issues.createIssue')}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -423,14 +427,16 @@ export function ProjectBoardPage() {
               </span>
             )}
           </p>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowCompleteSprint(true)}
-          >
-            <CheckCircle className="h-3.5 w-3.5" />
-            {t('sprints.complete')}
-          </Button>
+          {hasPermission('sprint', 'manage') && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowCompleteSprint(true)}
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              {t('sprints.complete')}
+            </Button>
+          )}
         </div>
       )}
 
@@ -454,10 +460,12 @@ export function ProjectBoardPage() {
             title={t('board.noColumns')}
             description={t('board.noColumnsDesc')}
           />
-          <Button onClick={() => setShowAddColumn(true)}>
-            <Plus className="h-4 w-4" />
-            Add Column
-          </Button>
+          {hasPermission('board', 'manage') && (
+            <Button onClick={() => setShowAddColumn(true)}>
+              <Plus className="h-4 w-4" />
+              Add Column
+            </Button>
+          )}
         </div>
       ) : groupBy !== 'none' ? (
         /* Swimlane View */
@@ -566,6 +574,7 @@ export function ProjectBoardPage() {
                   {provided.placeholder}
 
                   {/* Add Column Button */}
+                  {hasPermission('board', 'manage') && (
                   <button
                     onClick={() => setShowAddColumn(true)}
                     className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
@@ -573,6 +582,7 @@ export function ProjectBoardPage() {
                     <Plus className="h-6 w-6 mb-1" />
                     <span className="text-sm font-medium">Add Column</span>
                   </button>
+                  )}
                 </div>
               </div>
             )}

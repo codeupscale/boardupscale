@@ -23,7 +23,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
@@ -35,6 +35,7 @@ import { PreviewMigrationDto, StartMigrationDto } from './dto/start-migration.dt
 @ApiTags('migration')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin', 'owner')
 @Controller('migration/jira')
 export class MigrationController {
   constructor(
