@@ -7,7 +7,7 @@ import { useBulkRestore, useBulkDelete } from '@/hooks/useBulkOperations'
 import { useSelectionStore } from '@/store/selection.store'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -68,7 +68,7 @@ export function TrashContent({ projectKey }: { projectKey: string }) {
       </div>
 
       {isLoading ? (
-        <LoadingPage />
+        <TableSkeleton rows={6} showFilters={false} />
       ) : issues.length > 0 ? (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">

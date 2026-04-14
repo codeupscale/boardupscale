@@ -5,6 +5,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { PageTree } from '@/components/pages/page-tree'
 import { BookOpen, Plus, FileText } from 'lucide-react'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
@@ -112,20 +113,20 @@ export function ProjectPagesPage() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <FileText size={32} className="text-primary" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            {isLoading
-              ? 'Loading pages...'
-              : pages.length === 0
+          {isLoading ? (
+            <ListSkeleton rows={5} />
+          ) : (
+            <>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {pages.length === 0
                 ? 'Create your first page'
                 : 'Select a page'}
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-sm mb-6">
-            {isLoading
-              ? ''
-              : pages.length === 0
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-sm mb-6">
+              {pages.length === 0
                 ? 'Write specs, runbooks, meeting notes, and RFCs — all in one place alongside your issues.'
                 : 'Click a page in the sidebar to open it, or create a new one.'}
-          </p>
+            </p>
           {canCreatePage && (
             <Button
               onClick={() => handleCreatePage()}
@@ -135,6 +136,8 @@ export function ProjectPagesPage() {
               <Plus size={14} />
               New Page
             </Button>
+          )}
+            </>
           )}
         </div>
       </div>
