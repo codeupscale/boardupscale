@@ -71,7 +71,7 @@ export function useUpdateMemberEmail() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['org-members'] })
-      toast('Email updated')
+      toast('Email updated — invitation sent')
     },
     onError: (err: any) => {
       toast(err?.response?.data?.message || 'Failed to update email', 'error')

@@ -977,7 +977,7 @@ export function TeamPage() {
               <div>
                 <DialogTitle>Add Email Address</DialogTitle>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Set the real email for this Jira-migrated member
+                  Set the real email for this Jira-migrated member. An invitation will be sent.
                 </p>
               </div>
             </div>
