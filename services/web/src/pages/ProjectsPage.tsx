@@ -78,6 +78,7 @@ export function ProjectsPage() {
   const activeProjects = projects.filter((p) => p.status === 'active').length
   const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
+  const canCreateProject = currentUser?.role !== 'member' && currentUser?.role !== 'viewer'
   const createProject = useCreateProject()
 
   const handlePageChange = (newPage: number) => {
@@ -92,10 +93,12 @@ export function ProjectsPage() {
       <PageHeader
         title={t('projects.title')}
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4" />
-            {t('projects.newProject')}
-          </Button>
+          canCreateProject ? (
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" />
+              {t('projects.newProject')}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -202,7 +205,7 @@ export function ProjectsPage() {
                 ? t('projects.tryDifferentSearch')
                 : t('projects.createFirstProject')}
             </p>
-            {!debouncedSearch && (
+            {!debouncedSearch && canCreateProject && (
               <Button onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4" />
                 {t('projects.createProject')}
