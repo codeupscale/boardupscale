@@ -59,6 +59,7 @@
     --border: 260 28% 91%;
     --input: 260 20% 93%;
     --ring: 315 65% 45%;
+    --shimmer-highlight: rgba(255, 255, 255, 0.5);
     --radius: 0.625rem;
     --sidebar: 0 0% 98%;
     --sidebar-foreground: 260 15% 12%;
@@ -89,6 +90,7 @@
     --border: 260 18% 18%;
     --input: 260 18% 14%;
     --ring: 315 60% 55%;
+    --shimmer-highlight: rgba(255, 255, 255, 0.06);
     --sidebar: 260 25% 5%;
     --sidebar-foreground: 260 15% 92%;
     --sidebar-muted: 260 18% 10%;
