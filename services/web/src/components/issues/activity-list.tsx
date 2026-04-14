@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import {
   ChevronDown,
   ArrowRight,
@@ -155,11 +156,7 @@ export function ActivityList({ issueId }: { issueId: string }) {
   const meta = data?.meta
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-10">
-        <div className="animate-spin rounded-full h-5 w-5 border-2 border-border border-t-primary" />
-      </div>
-    )
+    return <ListSkeleton rows={4} />
   }
 
   if (activities.length === 0) {

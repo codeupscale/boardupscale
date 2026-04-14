@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useUiStore } from '@/store/ui.store'
 import { useSearch, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
@@ -182,8 +183,10 @@ export function SearchModal() {
         {/* Results */}
         <div className="max-h-96 overflow-y-auto">
           {isLoading && query.length >= 2 && (
-            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              {t('search.searching')}
+            <div className="space-y-2 p-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-3/4" />
             </div>
           )}
 
