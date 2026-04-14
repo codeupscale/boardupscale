@@ -161,46 +161,60 @@ export class MigrationService {
     const run = await this.findRun(dto.runId, organizationId);
     const credentials = await this.getCredentials(run);
 
-    const results: PreviewResult['projects'] = [];
+    // Fetch all project counts in parallel — uses maxResults=0 so only the
+    // total is returned, no issue data is transferred.  This is orders of
+    // magnitude faster than the previous approach of fetching all issues.
+    const CONCURRENCY = 5; // cap concurrent Jira API calls to avoid rate-limits
+    const projectResults: Array<{ key: string; issueCount: number; sprintCount: number }> = [];
+
+    // Process in batches of CONCURRENCY
+    for (let i = 0; i < dto.projectKeys.length; i += CONCURRENCY) {
+      const batch = dto.projectKeys.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(async (key) => {
+          // Issue count via JQL count-only query (no data transferred)
+          let issueCount = 0;
+          try {
+            issueCount = await this.jiraApiService.countIssuesByJql(
+              credentials,
+              `project = "${key}" ORDER BY created ASC`,
+            );
+          } catch {
+            // keep 0
+          }
+
+          // Sprint count via Agile API
+          let sprintCount = 0;
+          try {
+            const boardsResp = await (this.jiraApiService as any).get(
+              credentials,
+              `/rest/agile/1.0/board?projectKeyOrId=${key}`,
+            ).catch(() => ({ values: [] }));
+            const boardId = boardsResp?.values?.[0]?.id;
+            if (boardId) {
+              const sprintsResp = await (this.jiraApiService as any).get(
+                credentials,
+                `/rest/agile/1.0/board/${boardId}/sprint`,
+              ).catch(() => ({ values: [] }));
+              sprintCount = Array.isArray(sprintsResp?.values) ? sprintsResp.values.length : 0;
+            }
+          } catch {
+            // keep 0
+          }
+
+          return { key, issueCount, sprintCount };
+        }),
+      );
+      projectResults.push(...batchResults);
+    }
+
     let totalIssues = 0;
     let totalSprints = 0;
-
-    for (const key of dto.projectKeys) {
-      // Issue count via JQL
-      let issueCount = 0;
-      try {
-        const page = await this.jiraApiService.fetchIssuesByJql(
-          credentials,
-          `project = "${key}" ORDER BY created ASC`,
-        );
-        issueCount = page.length;
-        totalIssues += issueCount;
-      } catch {
-        // keep 0
-      }
-
-      // Sprint count via Agile API
-      let sprintCount = 0;
-      try {
-        const boardsResp = await (this.jiraApiService as any).get(
-          credentials,
-          `/rest/agile/1.0/board?projectKeyOrId=${key}`,
-        ).catch(() => ({ values: [] }));
-        const boardId = boardsResp?.values?.[0]?.id;
-        if (boardId) {
-          const sprintsResp = await (this.jiraApiService as any).get(
-            credentials,
-            `/rest/agile/1.0/board/${boardId}/sprint`,
-          ).catch(() => ({ values: [] }));
-          sprintCount = Array.isArray(sprintsResp?.values) ? sprintsResp.values.length : 0;
-        }
-        totalSprints += sprintCount;
-      } catch {
-        // keep 0
-      }
-
-      results.push({ key, name: key, issueCount, sprintCount });
-    }
+    const results: PreviewResult['projects'] = projectResults.map((p) => {
+      totalIssues += p.issueCount;
+      totalSprints += p.sprintCount;
+      return { key: p.key, name: p.key, issueCount: p.issueCount, sprintCount: p.sprintCount };
+    });
 
     // Rough estimate: 100 issues/min
     const estimatedMinutes = Math.max(1, Math.ceil(totalIssues / 100));

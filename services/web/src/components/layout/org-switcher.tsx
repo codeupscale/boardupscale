@@ -42,7 +42,7 @@ export function OrgSwitcher() {
   const currentMembership = memberships?.find((m) => m.organizationId === currentOrgId)
     ?? memberships?.find((m) => m.isDefault)
     ?? memberships?.[0]
-  const currentOrgName = currentMembership?.organization?.name ?? 'Organization'
+  const currentOrgName = currentMembership?.organization?.name || 'My Workspace'
 
   // Count distinct orgs — duplicate membership rows must not falsely trigger the dropdown
   const uniqueOrgCount = new Set(memberships?.map((m) => m.organizationId)).size

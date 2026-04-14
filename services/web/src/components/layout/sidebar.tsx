@@ -128,15 +128,24 @@ export function Sidebar() {
         )}
       >
       {/* Logo */}
-      <div className="flex items-center px-3 h-14 flex-shrink-0">
+      <div className={cn(
+        'flex items-center h-14 flex-shrink-0',
+        isSidebarOpen ? 'justify-center' : 'justify-center',
+      )}>
         <Logo
           size="sm"
           variant={isSidebarOpen ? 'full' : 'icon'}
         />
       </div>
 
+      {/* Divider after logo */}
+      <div className="sidebar-divider !mt-0 !mb-0" />
+
       {/* Organization Switcher */}
       <OrgSwitcher />
+
+      {/* Divider after org */}
+      <div className="sidebar-divider !mt-0 !mb-0" />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3">

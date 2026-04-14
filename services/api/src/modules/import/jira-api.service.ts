@@ -238,6 +238,21 @@ export class JiraApiService {
   }
 
   /**
+   * Return only the total count of issues matching a JQL query.
+   * Uses maxResults=0 so Jira returns just the total without any issue data.
+   */
+  async countIssuesByJql(
+    credentials: JiraApiCredentials,
+    jql: string,
+  ): Promise<number> {
+    const encoded = encodeURIComponent(jql);
+    const path = `/rest/api/3/search?jql=${encoded}&maxResults=0&fields=key`;
+
+    const page = await this.get<{ total: number }>(credentials, path);
+    return page.total ?? 0;
+  }
+
+  /**
    * Fetch all issues for a JQL query with full pagination.
    * Uses the search API which returns up to 100 issues per page.
    */

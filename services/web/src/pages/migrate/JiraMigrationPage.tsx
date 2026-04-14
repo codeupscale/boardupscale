@@ -195,7 +195,7 @@ export function JiraMigrationPage() {
       <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/20 dark:shadow-primary/40">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-[#0052CC] mb-4 shadow-lg shadow-[#0052CC]/25 dark:shadow-[#0052CC]/40">
             <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M11.53 2c-.59 0-1.04.46-1.04 1.04v8.49H2.04C1.46 11.53 1 11.99 1 12.57c0 3.54 2.82 6.43 6.43 6.43h4.06v2.96c0 .59.46 1.04 1.04 1.04s1.04-.46 1.04-1.04v-2.96h4.06c3.61 0 6.37-2.89 6.37-6.43 0-.58-.46-1.04-1.04-1.04H13.62V3.04c0-.58-.5-1.04-1.04-1.04H11.53z" />
             </svg>
