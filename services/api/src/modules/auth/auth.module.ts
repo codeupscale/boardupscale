@@ -17,6 +17,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 
 // Conditionally include OAuth strategies only when credentials are configured
 function getOAuthProviders(): any[] {
@@ -45,6 +46,7 @@ function getOAuthProviders(): any[] {
     BullModule.registerQueue({ name: 'email' }),
     UsersModule,
     NotificationsModule,
+    TelemetryModule,
   ],
   controllers: [AuthController],
   providers: [

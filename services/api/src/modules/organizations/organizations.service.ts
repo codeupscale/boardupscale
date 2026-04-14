@@ -17,6 +17,7 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
+import { PosthogService } from '../telemetry/posthog.service';
 
 @Injectable()
 export class OrganizationsService {
@@ -31,6 +32,7 @@ export class OrganizationsService {
     private auditService: AuditService,
     private configService: ConfigService,
     private dataSource: DataSource,
+    private posthogService: PosthogService,
   ) {}
 
   async findById(id: string): Promise<Organization> {
@@ -148,6 +150,13 @@ export class OrganizationsService {
 
     // Generate invitation token and store hash
     await this.generateAndSendInvitation(saved, inviterId, organizationId);
+
+    // PostHog analytics
+    this.posthogService.capture(inviterId, 'organization_member_invited', {
+      organizationId,
+      invitedEmail: dto.email,
+      role: dto.role || 'member',
+    });
 
     return saved;
   }

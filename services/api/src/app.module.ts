@@ -42,6 +42,10 @@ import { PagesModule } from './modules/pages/pages.module';
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { SupportModule } from './modules/support/support.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
+import { MessagingChannel } from './modules/messaging/entities/messaging-channel.entity';
+import { MessagingChannelMember } from './modules/messaging/entities/messaging-channel-member.entity';
+import { MessagingMessage } from './modules/messaging/entities/messaging-message.entity';
 
 import { Organization } from './modules/organizations/entities/organization.entity';
 import { User } from './modules/users/entities/user.entity';
@@ -142,6 +146,9 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
           JiraImportJob,
           JiraMigrationRun,
           OrganizationMember,
+          MessagingChannel,
+          MessagingChannelMember,
+          MessagingMessage,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',
@@ -220,6 +227,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
     SavedViewsModule,
     TelemetryModule,
     SupportModule,
+    MessagingModule,
   ],
   providers: [
     {

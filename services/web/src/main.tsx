@@ -9,6 +9,9 @@ import './i18n'
 import './index.css'
 // Import theme store early so dark class is applied before first paint
 import './store/theme.store'
+// Initialize PostHog analytics (no-op if VITE_POSTHOG_KEY is not set)
+import { initPostHog } from './lib/posthog'
+initPostHog()
 
 const queryClient = new QueryClient({
   defaultOptions: {
