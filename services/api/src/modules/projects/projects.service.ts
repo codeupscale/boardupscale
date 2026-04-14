@@ -19,6 +19,7 @@ import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
+import { PosthogService } from '../telemetry/posthog.service';
 
 @Injectable()
 export class ProjectsService {
@@ -37,6 +38,7 @@ export class ProjectsService {
     private emailService: EmailService,
     private usersService: UsersService,
     private configService: ConfigService,
+    private posthogService: PosthogService,
   ) {}
 
   /**
@@ -131,6 +133,15 @@ export class ProjectsService {
     this.auditService.log(organizationId, userId, 'project.created', 'project', saved.id, {
       name: saved.name,
       key: saved.key,
+    });
+
+    // PostHog analytics
+    this.posthogService.capture(userId, 'project_created', {
+      projectId: saved.id,
+      projectName: saved.name,
+      projectKey: saved.key,
+      projectType: saved.type,
+      organizationId,
     });
 
     return saved;

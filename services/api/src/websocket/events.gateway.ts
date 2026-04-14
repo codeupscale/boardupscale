@@ -198,6 +198,42 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     client.emit('left:project', { projectId: data.projectId });
   }
 
+  // ── Chat Room Management ──
+
+  @SubscribeMessage('join:chat')
+  async handleJoinChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { channelId: string },
+  ) {
+    if (!data?.channelId || !client.data.userId) return;
+    const room = `chat:channel:${data.channelId}`;
+    await client.join(room);
+    client.emit('joined:chat', { channelId: data.channelId });
+  }
+
+  @SubscribeMessage('leave:chat')
+  async handleLeaveChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { channelId: string },
+  ) {
+    if (!data?.channelId) return;
+    const room = `chat:channel:${data.channelId}`;
+    await client.leave(room);
+    client.emit('left:chat', { channelId: data.channelId });
+  }
+
+  @SubscribeMessage('chat:typing')
+  handleChatTyping(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { channelId: string },
+  ) {
+    if (!data?.channelId || !client.data.userId) return;
+    client.to(`chat:channel:${data.channelId}`).emit('chat:typing', {
+      channelId: data.channelId,
+      userId: client.data.userId,
+    });
+  }
+
   // ── Ping/Pong (client keepalive) ──
 
   @SubscribeMessage('ping')

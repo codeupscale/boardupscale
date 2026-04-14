@@ -10,6 +10,7 @@ import { PermissionsModule } from '../permissions/permissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { Organization } from '../organizations/entities/organization.entity';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Organization } from '../organizations/entities/organization.entity';
     NotificationsModule,
     UsersModule,
     ConfigModule,
+    TelemetryModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

@@ -10,6 +10,7 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
+import { PosthogService } from '../telemetry/posthog.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 
@@ -41,6 +42,7 @@ describe('ProjectsService', () => {
         { provide: EmailService, useValue: mockEmailService },
         { provide: UsersService, useValue: mockUsersService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
       ],
     }).compile();
 

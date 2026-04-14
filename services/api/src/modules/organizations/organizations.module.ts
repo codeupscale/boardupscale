@@ -8,12 +8,14 @@ import { OrganizationMember } from './entities/organization-member.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Organization, OrganizationMember, User]),
     NotificationsModule,
     PermissionsModule,
+    TelemetryModule,
   ],
   controllers: [OrganizationsController],
   providers: [OrganizationsService, OrganizationMembersService],

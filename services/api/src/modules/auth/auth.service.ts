@@ -25,6 +25,7 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { RegisterDto } from './dto/register.dto';
 import { AuditService } from '../audit/audit.service';
+import { PosthogService } from '../telemetry/posthog.service';
 
 @Injectable()
 export class AuthService {
@@ -42,6 +43,7 @@ export class AuthService {
     private passwordPolicyService: PasswordPolicyService,
     @InjectQueue('email') private emailQueue: Queue,
     private auditService: AuditService,
+    private posthogService: PosthogService,
   ) {}
 
   // ── Validate User (with account lockout) ──────────────────────────────────
@@ -165,6 +167,19 @@ export class AuthService {
       { email: dto.email, organizationName: dto.organizationName },
       ipAddress,
     );
+
+    // PostHog analytics
+    this.posthogService.identify(user.id, {
+      email: user.email,
+      displayName: user.displayName,
+      organizationId: savedOrg.id,
+      organizationName: savedOrg.name,
+      role: 'owner',
+    });
+    this.posthogService.capture(user.id, 'user_signed_up', {
+      organizationId: savedOrg.id,
+      organizationName: savedOrg.name,
+    });
 
     return { user, ...tokens };
   }

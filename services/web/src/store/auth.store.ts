@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { User } from '@/types'
+import { identifyUser, resetPostHog } from '@/lib/posthog'
 
 interface AuthState {
   user: User | null
@@ -29,11 +30,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ accessToken, refreshToken, isAuthenticated: true })
   },
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    set({ user })
+    if (user) {
+      identifyUser(user.id, {
+        email: user.email,
+        displayName: user.displayName,
+        organizationId: user.organizationId,
+        role: user.role,
+      })
+    }
+  },
 
   logout: () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
+    resetPostHog()
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
   },
 

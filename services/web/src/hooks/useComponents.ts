@@ -36,11 +36,11 @@ export function useCreateComponent() {
       qc.invalidateQueries({
         queryKey: ['components', component.projectId],
       })
-      toast('Component created')
+      toast('Epic created')
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to create component',
+        err?.response?.data?.error?.message || 'Failed to create epic',
         'error',
       ),
   })
@@ -65,11 +65,11 @@ export function useUpdateComponent() {
       qc.invalidateQueries({
         queryKey: ['components', component.projectId],
       })
-      toast('Component updated')
+      toast('Epic updated')
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update component',
+        err?.response?.data?.error?.message || 'Failed to update epic',
         'error',
       ),
   })
@@ -92,11 +92,11 @@ export function useDeleteComponent() {
       qc.invalidateQueries({
         queryKey: ['components', result.projectId],
       })
-      toast('Component deleted')
+      toast('Epic deleted')
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to delete component',
+        err?.response?.data?.error?.message || 'Failed to delete epic',
         'error',
       ),
   })
@@ -130,11 +130,11 @@ export function useSetIssueComponents() {
     },
     onSuccess: (_, { issueId }) => {
       qc.invalidateQueries({ queryKey: ['issue-components', issueId] })
-      toast('Components updated')
+      toast('Epics updated')
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update components',
+        err?.response?.data?.error?.message || 'Failed to update epics',
         'error',
       ),
   })
