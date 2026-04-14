@@ -54,14 +54,14 @@ export function ChatMessageList({ messages, userName, userAvatar }: ChatMessageL
             <div className="absolute -inset-3 bg-indigo-100/40 dark:bg-indigo-900/20 rounded-full blur-xl" />
             <div className="relative">
               <UpsyAvatar size={64} />
-              <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-400 rounded-full border-[2.5px] border-white dark:border-gray-900" />
+              <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-400 rounded-full border-[2.5px] border-background" />
             </div>
           </div>
           <div className="space-y-2">
-            <h4 className="text-[15px] font-semibold text-gray-800 dark:text-gray-100">
+            <h4 className="text-[15px] font-semibold text-foreground">
               Hi{userName ? `, ${userName.split(' ')[0]}` : ''}!
             </h4>
-            <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed max-w-[280px]">
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-[280px]">
               I'm <span className="font-medium text-indigo-500">Upsy</span>, your project assistant. Ask me about sprints, issues, team workload, blockers, or anything about this project.
             </p>
           </div>
@@ -94,14 +94,14 @@ export function ChatMessageList({ messages, userName, userAvatar }: ChatMessageL
               <div className="shrink-0 mt-1">
                 <UpsyAvatar size={28} />
               </div>
-              <div className="bg-gray-50 dark:bg-gray-800/80 rounded-2xl rounded-tl-md px-4 py-3 border border-gray-100 dark:border-gray-700/60">
+              <div className="bg-muted rounded-2xl rounded-tl-md px-4 py-3 border border-border">
                 <div className="flex items-center gap-2.5">
                   <div className="flex gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:0ms]" />
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:150ms]" />
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce [animation-delay:300ms]" />
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     Thinking...
                   </span>
                 </div>
@@ -121,7 +121,7 @@ export function ChatMessageList({ messages, userName, userAvatar }: ChatMessageL
             'absolute bottom-3 left-1/2 -translate-x-1/2 z-10',
             'flex items-center gap-1 px-3 py-1.5 rounded-full',
             'bg-card shadow-lg border border-border',
-            'text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+            'text-xs text-muted-foreground hover:text-foreground',
             'transition-all duration-200 hover:shadow-xl',
           )}
         >

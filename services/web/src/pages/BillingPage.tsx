@@ -109,8 +109,8 @@ function UpgradeCard({
             onClick={() => setCycle('monthly')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'monthly'
-                ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Monthly
@@ -119,8 +119,8 @@ function UpgradeCard({
             onClick={() => setCycle('yearly')}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
               cycle === 'yearly'
-                ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Yearly{' '}

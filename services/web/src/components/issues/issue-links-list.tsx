@@ -8,6 +8,7 @@ import { IssueLink, IssueLinkType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { StatusBadge } from '@/components/issues/status-badge'
 
 const LINK_TYPES: { value: IssueLinkType; label: string }[] = [
@@ -30,8 +31,8 @@ function LinkItem({
   isDeleting: boolean
 }) {
   return (
-    <div className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-gray-50 group">
-      <span className="text-xs text-gray-500 w-28 flex-shrink-0 truncate" title={link.label}>
+    <div className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-accent group">
+      <span className="text-xs text-muted-foreground w-28 flex-shrink-0 truncate" title={link.label}>
         {link.label}
       </span>
       <Link
@@ -41,11 +42,11 @@ function LinkItem({
         <span className="text-xs font-mono text-primary flex-shrink-0">
           {link.issue.key}
         </span>
-        <span className="text-sm text-gray-700 truncate">{link.issue.title}</span>
+        <span className="text-sm text-foreground/80 truncate">{link.issue.title}</span>
       </Link>
       {link.issue.status && <StatusBadge status={link.issue.status} />}
       <button
-        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 flex-shrink-0 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 flex-shrink-0 transition-opacity"
         onClick={() => onDelete(link.id)}
         disabled={isDeleting}
       >
@@ -110,11 +111,11 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+        <h3 className="text-sm font-semibold text-foreground/80 flex items-center gap-1.5">
           <Link2 className="h-4 w-4" />
           {t('issues.linkedIssues', 'Linked Issues')}
           {allLinks.length > 0 && (
-            <span className="text-xs font-normal text-gray-500">({allLinks.length})</span>
+            <span className="text-xs font-normal text-muted-foreground">({allLinks.length})</span>
           )}
         </h3>
         <Button size="sm" variant="outline" onClick={() => setShowAddDialog(true)}>
@@ -124,7 +125,7 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
       </div>
 
       {allLinks.length === 0 ? (
-        <p className="text-sm text-gray-500">{t('issues.noLinks', 'No linked issues.')}</p>
+        <p className="text-sm text-muted-foreground">{t('issues.noLinks', 'No linked issues.')}</p>
       ) : (
         <div className="space-y-3">
           {Object.entries(grouped).map(([label, links]) => (
@@ -163,25 +164,26 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
           <div className="space-y-4">
             {/* Link type selector */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 {t('issues.linkType', 'Link Type')}
               </label>
-              <select
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={selectedLinkType}
-                onChange={(e) => setSelectedLinkType(e.target.value as IssueLinkType)}
-              >
-                {LINK_TYPES.map((lt) => (
-                  <option key={lt.value} value={lt.value}>
-                    {lt.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedLinkType} onValueChange={(v) => setSelectedLinkType(v as IssueLinkType)}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LINK_TYPES.map((lt) => (
+                    <SelectItem key={lt.value} value={lt.value}>
+                      {lt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Issue search */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                 {t('issues.searchIssues', 'Search Issues')}
               </label>
               <Input
@@ -196,9 +198,9 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
 
             {/* Search results */}
             {searchTerm.length > 0 && (
-              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
                 {issueList.length === 0 ? (
-                  <p className="p-3 text-sm text-gray-500 text-center">
+                  <p className="p-3 text-sm text-muted-foreground text-center">
                     {t('common.noResults', 'No results found')}
                   </p>
                 ) : (
@@ -216,7 +218,7 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
                         <span className="font-mono text-primary text-xs flex-shrink-0">
                           {i.key}
                         </span>
-                        <span className="truncate text-gray-700">{i.title}</span>
+                        <span className="truncate text-foreground/80">{i.title}</span>
                       </button>
                     ))
                 )}

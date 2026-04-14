@@ -395,7 +395,7 @@ export function WebhooksPage() {
                 <div
                   className={cn(
                     'h-2.5 w-2.5 rounded-full flex-shrink-0',
-                    webhook.isActive ? 'bg-green-500' : 'bg-gray-300',
+                    webhook.isActive ? 'bg-green-500' : 'bg-muted-foreground/40',
                   )}
                   title={webhook.isActive ? 'Active' : 'Inactive'}
                 />

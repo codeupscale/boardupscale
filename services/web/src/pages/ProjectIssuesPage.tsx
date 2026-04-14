@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -322,7 +322,7 @@ export function ProjectIssuesPage() {
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border cursor-pointer transition-colors ${
                   activeViewId === view.id
                     ? 'bg-primary/10 border-primary/50 text-primary dark:bg-primary/10 dark:border-primary dark:text-primary'
-                    : 'bg-gray-50 border-border text-muted-foreground hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600'
+                    : 'bg-muted border-border text-muted-foreground hover:border-border'
                 }`}
               >
                 <button onClick={() => applyView(view)} className="max-w-32 truncate">
@@ -349,7 +349,7 @@ export function ProjectIssuesPage() {
             {hasActiveFilters && !showSaveViewInput && (
               <button
                 onClick={() => setShowSaveViewInput(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-gray-300 text-muted-foreground hover:border-primary hover:text-primary dark:border-gray-600 dark:text-gray-400 dark:hover:border-primary dark:hover:text-primary transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <BookmarkPlus className="h-3 w-3" />
                 Save view
@@ -397,7 +397,7 @@ export function ProjectIssuesPage() {
           <div className="rounded-xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">
+                <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm">
                   <th className="px-4 py-2.5 w-10">
                     <input
                       type="checkbox"
@@ -458,27 +458,29 @@ export function ProjectIssuesPage() {
           <DialogHeader>
             <DialogTitle>{t('issues.createIssue')}</DialogTitle>
           </DialogHeader>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={(issuesData?.data || []).map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={users || []}
-            onSubmit={(values) =>
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                { onSuccess: () => setShowCreate(false) },
-              )
-            }
-            onCancel={() => setShowCreate(false)}
-            isLoading={createIssue.isPending}
-          />
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={(issuesData?.data || []).map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={users || []}
+              onSubmit={(values) =>
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  { onSuccess: () => setShowCreate(false) },
+                )
+              }
+              onCancel={() => setShowCreate(false)}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

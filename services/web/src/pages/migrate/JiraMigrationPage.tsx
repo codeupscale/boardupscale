@@ -37,9 +37,9 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-all flex-shrink-0',
                     isCompleted
-                      ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                      ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                       : isActive
-                      ? 'bg-primary text-white ring-4 ring-primary/20 shadow-sm shadow-primary/20'
+                      ? 'bg-primary text-primary-foreground ring-4 ring-primary/20 shadow-sm shadow-primary/20'
                       : 'bg-muted text-muted-foreground',
                   )}
                   aria-current={isActive ? 'step' : undefined}
@@ -52,7 +52,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                     isActive
                       ? 'text-primary'
                       : isCompleted
-                      ? 'text-gray-700 dark:text-gray-200'
+                      ? 'text-foreground/80'
                       : 'text-muted-foreground',
                   )}
                 >
@@ -60,7 +60,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                 </span>
               </div>
               {idx < steps.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mx-1" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 mx-1" />
               )}
             </li>
           )

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Input } from '@/components/ui/input'
 
 interface WipLimitSettingsProps {
   currentLimit: number
@@ -24,11 +25,11 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
         <div className="text-xs font-semibold text-foreground mb-2">
           {t('board.wipLimit', 'WIP Limit')}
         </div>
-        <p className="text-xs text-gray-500 mb-2">
+        <p className="text-xs text-muted-foreground mb-2">
           {t('board.wipLimitDesc', 'Set to 0 for no limit. Issues beyond the limit will trigger a warning.')}
         </p>
         <div className="flex items-center gap-2">
-          <input
+          <Input
             type="number"
             min="0"
             value={value}
@@ -37,7 +38,7 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
               if (e.key === 'Enter') handleSave()
               if (e.key === 'Escape') onClose()
             }}
-            className="w-20 px-2 py-1.5 text-sm border border-border bg-card text-foreground rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
+            className="w-20"
             autoFocus
           />
           <button
@@ -48,7 +49,7 @@ export function WipLimitSettings({ currentLimit, onSave, onClose }: WipLimitSett
           </button>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 border border-border rounded-md hover:bg-accent transition-colors"
+            className="px-3 py-1.5 text-sm text-muted-foreground border border-border rounded-md hover:bg-accent transition-colors"
           >
             {t('common.cancel', 'Cancel')}
           </button>

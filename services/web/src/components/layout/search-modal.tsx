@@ -63,7 +63,7 @@ function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] 
           <span className="text-muted-foreground flex-shrink-0 font-medium">
             {FIELD_LABELS[hl.field] || hl.field}:
           </span>
-          <span className="text-gray-600 dark:text-gray-400 line-clamp-1">
+          <span className="text-muted-foreground line-clamp-1">
             <HighlightedText html={hl.snippets[0]} />
           </span>
         </div>
@@ -147,7 +147,7 @@ export function SearchModal() {
       <div className="relative w-full max-w-xl bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+          <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -163,18 +163,18 @@ export function SearchModal() {
             aria-autocomplete="list"
             role="combobox"
             aria-expanded={items.length > 0}
-            className="flex-1 text-sm text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none bg-transparent"
+            className="flex-1 text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
               aria-label="Clear search"
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-muted-foreground hover:text-foreground/80"
             >
               <X className="h-4 w-4" />
             </button>
           )}
-          <kbd className="text-xs text-muted-foreground border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 font-mono">
+          <kbd className="text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 font-mono">
             ESC
           </kbd>
         </div>
@@ -182,25 +182,25 @@ export function SearchModal() {
         {/* Results */}
         <div className="max-h-96 overflow-y-auto">
           {isLoading && query.length >= 2 && (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-500">
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
               {t('search.searching')}
             </div>
           )}
 
           {!isLoading && query.length >= 2 && items.length === 0 && (
-            <div className="py-8 text-center text-sm text-gray-500">
+            <div className="py-8 text-center text-sm text-muted-foreground">
               {t('search.noResultsFor', { query })}
             </div>
           )}
 
           {items.length > 0 && (
             <div>
-              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   {t('search.issues')}
                 </span>
                 {searchSource === 'elasticsearch' && (
-                  <span className="text-[10px] text-gray-300 dark:text-gray-600 font-mono">ES</span>
+                  <span className="text-[10px] text-muted-foreground/50 font-mono">ES</span>
                 )}
               </div>
               <div id="search-results-listbox" role="listbox" aria-label="Search results">
@@ -221,7 +221,7 @@ export function SearchModal() {
                       <span className="text-xs font-mono text-primary flex-shrink-0">{item.key}</span>
                       <span className="text-sm text-foreground truncate">{item.title}</span>
                       {item.projectName && (
-                        <span className="ml-auto text-[10px] text-gray-500 flex-shrink-0">
+                        <span className="ml-auto text-[10px] text-muted-foreground flex-shrink-0">
                           {item.projectName}
                         </span>
                       )}
@@ -234,7 +234,7 @@ export function SearchModal() {
           )}
 
           {!query && (
-            <div className="py-8 text-center text-sm text-gray-400">
+            <div className="py-8 text-center text-sm text-muted-foreground">
               {t('search.startTyping')}
             </div>
           )}

@@ -118,10 +118,10 @@ export function SamlConfigForm() {
   if (isLoading) {
     return (
       <div className="space-y-4 max-w-lg animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/3" />
-        <div className="h-10 bg-gray-200 rounded" />
-        <div className="h-10 bg-gray-200 rounded" />
-        <div className="h-24 bg-gray-200 rounded" />
+        <div className="h-6 bg-muted rounded w-1/3" />
+        <div className="h-10 bg-muted rounded" />
+        <div className="h-10 bg-muted rounded" />
+        <div className="h-24 bg-muted rounded" />
       </div>
     )
   }
@@ -129,11 +129,11 @@ export function SamlConfigForm() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
           SAML Single Sign-On (SSO)
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Configure SAML 2.0 SSO to allow members to sign in using your organization's identity provider
           (Okta, Azure AD, OneLogin, etc.).
         </p>
@@ -144,23 +144,23 @@ export function SamlConfigForm() {
         className={`flex items-center gap-3 p-4 rounded-lg border ${
           isConfigured
             ? 'bg-green-50 border-green-200'
-            : 'bg-gray-50 border-gray-200'
+            : 'bg-muted border-border'
         }`}
       >
         {isConfigured ? (
           <CheckCircle className="h-5 w-5 text-green-600" />
         ) : (
-          <Info className="h-5 w-5 text-gray-400" />
+          <Info className="h-5 w-5 text-muted-foreground" />
         )}
         <div>
           <p
             className={`text-sm font-medium ${
-              isConfigured ? 'text-green-700' : 'text-gray-700'
+              isConfigured ? 'text-green-700' : 'text-foreground/80'
             }`}
           >
             {isConfigured ? 'SAML SSO is configured' : 'SAML SSO is not configured'}
           </p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {isConfigured
               ? 'Members can sign in using your identity provider.'
               : 'Set up the fields below to enable SSO for your organization.'}

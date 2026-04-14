@@ -39,7 +39,7 @@ function StatPill({
         'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all duration-200',
         active
           ? 'border-primary/50 dark:border-primary bg-primary/10 shadow-sm'
-          : 'border-border/60 bg-card/50 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm',
+          : 'border-border/60 bg-card/50 hover:border-border hover:shadow-sm',
       )}
     >
       <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', color)}>
@@ -154,7 +154,7 @@ export function MyIssuesPage() {
           <div className="rounded-2xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80">
+                <tr className="border-b border-border bg-muted/80">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-32">Key</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-40">{t('nav.projects', 'Project')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('common.title')}</th>
@@ -174,20 +174,20 @@ export function MyIssuesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-border dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/30">
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/50">
                 <span className="text-sm text-muted-foreground">
                   {t('common.pageOf', { page, totalPages, total })}
                 </span>
                 <div className="flex gap-2">
                   <button
-                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-foreground transition-colors"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-muted disabled:opacity-40 text-foreground transition-colors"
                     disabled={page === 1}
                     onClick={() => setPage((p) => p - 1)}
                   >
                     {t('common.previous')}
                   </button>
                   <button
-                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 text-foreground transition-colors"
+                    className="px-3.5 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-muted disabled:opacity-40 text-foreground transition-colors"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >

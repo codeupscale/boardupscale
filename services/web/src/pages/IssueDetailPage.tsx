@@ -12,6 +12,11 @@ import {
   MessageSquare,
   History,
   ListTree,
+  Users,
+  Workflow,
+  CalendarDays,
+  Tag,
+  Package,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -50,6 +55,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
@@ -115,7 +121,7 @@ function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
             <span className="font-mono text-xs font-medium">{ancestor.key}</span>
             <span className="truncate max-w-[180px]">{ancestor.title}</span>
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-600 flex-shrink-0" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         </span>
       ))}
     </div>
@@ -144,7 +150,7 @@ function CommentItem({
   return (
     <div className="flex gap-3 group">
       <Avatar user={comment.author} size="sm" />
-      <div className="flex-1 min-w-0 rounded-xl bg-card/60 border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
+      <div className="flex-1 min-w-0 rounded-xl bg-card/60 border border-border p-3 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-sm font-semibold text-foreground">
             {comment.author?.displayName || 'Unknown'}
@@ -230,10 +236,35 @@ function CommentItem({
 function SidebarField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+      <label className="block text-[11px] font-semibold text-muted-foreground/80 uppercase tracking-widest mb-1.5">
         {label}
       </label>
       {children}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Issue Panel Section                                                       */
+/* -------------------------------------------------------------------------- */
+function IssueSection({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="issue-panel-section">
+      <div className="issue-panel-section-header">
+        <Icon className="h-3 w-3 opacity-80 flex-shrink-0" />
+        {title}
+      </div>
+      <div className="issue-panel-section-body">
+        {children}
+      </div>
     </div>
   )
 }
@@ -377,9 +408,6 @@ export function IssueDetailPage() {
   // Can this issue have children?
   const childConfig = CHILD_TYPE_MAP[issue.type]
 
-  // Select style shared across sidebar
-  const selectClasses =
-    'w-full rounded-lg border border-border/60 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors'
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -388,7 +416,7 @@ export function IssueDetailPage() {
         <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">
           {t('nav.projects')}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
         {issue.projectId && (
           <>
             <Link
@@ -397,7 +425,7 @@ export function IssueDetailPage() {
             >
               {t('nav.board')}
             </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
           </>
         )}
 
@@ -425,11 +453,11 @@ export function IssueDetailPage() {
             </div>
             {editingTitle ? (
               <div className="flex gap-2">
-                <input
+                <Input
                   autoFocus
                   value={titleValue}
                   onChange={(e) => setTitleValue(e.target.value)}
-                  className="flex-1 text-2xl font-bold text-foreground bg-card border border-primary/50 dark:border-primary rounded-xl px-4 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 transition-shadow"
+                  className="flex-1 text-2xl font-bold border-primary/50 dark:border-primary rounded-xl px-4 py-2"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       updateIssue.mutate({ id: issue.id, title: titleValue })
@@ -466,7 +494,7 @@ export function IssueDetailPage() {
           </div>
 
           {/* Description */}
-          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+          <div className="rounded-2xl bg-card/60 border border-border p-5 shadow-sm">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               {t('common.description')}
             </h3>
@@ -517,7 +545,7 @@ export function IssueDetailPage() {
           <AiSummaryPanel issueId={issue.id} />
 
           {/* Linked Issues */}
-          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+          <div className="rounded-2xl bg-card/60 border border-border p-5 shadow-sm">
             <IssueLinksList issueId={issue.id} projectId={issue.projectId} />
           </div>
 
@@ -533,7 +561,7 @@ export function IssueDetailPage() {
 
           {/* Child Issues */}
           {childConfig && (
-            <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+            <div className="rounded-2xl bg-card/60 border border-border p-5 shadow-sm">
               <SectionHeader
                 icon={ListTree}
                 title="Child Issues"
@@ -572,12 +600,12 @@ export function IssueDetailPage() {
           )}
 
           {/* Attachments */}
-          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 p-5 shadow-sm">
+          <div className="rounded-2xl bg-card/60 border border-border p-5 shadow-sm">
             <AttachmentPanel issueId={issue.id} />
           </div>
 
           {/* Activity Panel — Tabbed: Comments | History | All */}
-          <div className="rounded-2xl bg-card/60 border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
+          <div className="rounded-2xl bg-card/60 border border-border shadow-sm overflow-hidden">
             {/* Tab bar */}
             <div className="flex items-center gap-0 border-b border-border">
               {([
@@ -594,7 +622,7 @@ export function IssueDetailPage() {
                       'relative px-5 py-3.5 text-sm font-medium transition-colors',
                       isActive
                         ? 'text-primary'
-                        : 'text-muted-foreground hover:text-gray-900 dark:hover:text-gray-200',
+                        : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {label}
@@ -670,7 +698,7 @@ export function IssueDetailPage() {
                   ))}
                   {activityTab === 'comments' && (!comments || comments.length === 0) && (
                     <div className="text-center py-8">
-                      <MessageSquare className="h-8 w-8 text-gray-200 dark:text-gray-700 mx-auto mb-2" />
+                      <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">{t('issues.noComments')}</p>
                     </div>
                   )}
@@ -718,434 +746,422 @@ export function IssueDetailPage() {
         {/* ================================================================ */}
         {/*  Sidebar                                                          */}
         {/* ================================================================ */}
-        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto bg-card/50">
-          <div className="p-5 space-y-5">
-            {/* Status */}
-            <SidebarField label={t('common.status')}>
-              <select
-                className={selectClasses}
-                value={issue.statusId || ''}
-                onChange={(e) => {
-                  const val = e.target.value
-                  if (val) {
-                    updateIssue.mutate({ id: issue.id, statusId: val })
-                  }
-                }}
-              >
-                <option value="">{t('common.noStatus')}</option>
-                {board?.statuses?.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </SidebarField>
-
-            {/* Priority */}
-            <SidebarField label={t('common.priority')}>
-              <select
-                className={selectClasses}
-                value={issue.priority}
-                onChange={(e) =>
-                  updateIssue.mutate({ id: issue.id, priority: e.target.value as IssuePriority })
-                }
-              >
-                {Object.values(IssuePriority).map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </SidebarField>
-
-            {/* Type */}
-            <SidebarField label={t('common.type')}>
-              <IssueTypeSelect
-                value={issue.type}
-                onChange={(val) =>
-                  updateIssue.mutate({ id: issue.id, type: val as IssueType })
-                }
-              />
-            </SidebarField>
-
-            {/* Assignee */}
-            <SidebarField label={t('common.assignee')}>
-              <UserSelect
-                value={issue.assigneeId || null}
-                onChange={(id) =>
-                  updateIssue.mutate({ id: issue.id, assigneeId: id })
-                }
-              />
-            </SidebarField>
-
-            {/* Reporter */}
-            <SidebarField label={t('common.reporter')}>
-              <div className="flex items-center gap-2.5 py-1">
-                <Avatar user={issue.reporter} size="xs" />
-                <span className="text-sm text-foreground">
-                  {issue.reporter?.displayName || 'Unknown'}
-                </span>
-              </div>
-            </SidebarField>
-
-            {/* Sprint */}
-            <SidebarField label={t('issues.sprint')}>
-              <select
-                className={selectClasses}
-                value={issue.sprintId || ''}
-                onChange={(e) =>
-                  updateIssue.mutate({ id: issue.id, sprintId: e.target.value || null })
-                }
-              >
-                <option value="">{t('common.noSprint')}</option>
-                {sprints
-                  ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
-                    </option>
-                  ))}
-              </select>
-            </SidebarField>
-
-            {/* Parent Issue — only shown for types that support a parent */}
-            {VALID_PARENT_TYPES[issue.type.toLowerCase()] && (
-              <SidebarField label="Parent Issue">
-                <input
-                  type="text"
-                  value={parentSearch}
-                  onChange={(e) => setParentSearch(e.target.value)}
-                  placeholder="Search by key or title…"
-                  className="w-full rounded-md border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors mb-1"
-                />
-                <select
-                  className={selectClasses}
-                  value={issue.parentId || ''}
-                  onChange={(e) =>
-                    updateIssue.mutate({ id: issue.id, parentId: e.target.value || null })
-                  }
-                >
-                  <option value="">— No parent —</option>
-                  {eligibleParents.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      [{p.key}] {p.title}
-                    </option>
-                  ))}
-                </select>
+        <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
+          <div className="p-4 space-y-3">
+            {/* ── Workflow ── */}
+            <IssueSection icon={Workflow} title="Workflow">
+              <SidebarField label={t('common.status')}>
+                <Select value={issue.statusId || '__none__'} onValueChange={(v) => {
+                  if (v !== '__none__') updateIssue.mutate({ id: issue.id, statusId: v })
+                }}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder={t('common.noStatus')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{t('common.noStatus')}</SelectItem>
+                    {board?.statuses?.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </SidebarField>
-            )}
 
-            <div className="border-t border-border" />
+              <SidebarField label={t('common.priority')}>
+                <Select value={issue.priority} onValueChange={(v) => updateIssue.mutate({ id: issue.id, priority: v as IssuePriority })}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(IssuePriority).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </SidebarField>
 
-            {/* Due Date */}
-            <SidebarField label={t('issues.dueDate')}>
-              <Input
-                type="date"
-                value={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
-                onChange={(e) =>
-                  updateIssue.mutate({ id: issue.id, dueDate: e.target.value || null })
-                }
-                className="dark:bg-gray-800 dark:border-gray-700/60"
-              />
-            </SidebarField>
-
-            {/* Story Points */}
-            <SidebarField label={t('issues.storyPoints')}>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={issue.storyPoints ?? ''}
-                onChange={(e) =>
-                  updateIssue.mutate({
-                    id: issue.id,
-                    storyPoints: e.target.value ? parseInt(e.target.value) : null,
-                  })
-                }
-                className="dark:bg-gray-800 dark:border-gray-700/60"
-              />
-            </SidebarField>
-
-            {/* Time Estimate */}
-            <SidebarField label={t('issues.timeEstimate')}>
-              <Input
-                type="number"
-                min="0"
-                placeholder="minutes"
-                value={issue.timeEstimate ?? ''}
-                onChange={(e) =>
-                  updateIssue.mutate({
-                    id: issue.id,
-                    timeEstimate: e.target.value ? parseInt(e.target.value) : null,
-                  })
-                }
-                className="dark:bg-gray-800 dark:border-gray-700/60"
-              />
-              {issue.timeSpent > 0 && (
-                <p className="text-xs text-muted-foreground mt-1.5">
-                  {issue.timeEstimate
-                    ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
-                    : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
-                </p>
-              )}
-            </SidebarField>
-
-            <div className="border-t border-border" />
-
-            {/* Labels */}
-            <SidebarField label={t('issues.labels')}>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {issueLabels.map((l) => (
-                  <span
-                    key={l}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium"
-                  >
-                    {l}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLabel(l)}
-                      className="hover:text-primary/80 dark:hover:text-primary transition-colors"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={labelInput}
-                  onChange={(e) => setLabelInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleAddLabel()
-                    }
-                  }}
-                  placeholder={t('issues.addLabel')}
-                  className="flex-1 rounded-lg border border-border/60 bg-card text-foreground px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary transition-colors"
+              <SidebarField label={t('common.type')}>
+                <IssueTypeSelect
+                  value={issue.type}
+                  onChange={(val) =>
+                    updateIssue.mutate({ id: issue.id, type: val as IssueType })
+                  }
                 />
-                <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel} className="rounded-lg">
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </SidebarField>
+              </SidebarField>
+            </IssueSection>
 
-            {/* Components */}
-            {projectComponents && projectComponents.length > 0 && (
-              <SidebarField label="Components">
+            {/* ── People ── */}
+            <IssueSection icon={Users} title="People">
+              <SidebarField label={t('common.assignee')}>
+                <UserSelect
+                  value={issue.assigneeId || null}
+                  onChange={(id) =>
+                    updateIssue.mutate({ id: issue.id, assigneeId: id })
+                  }
+                />
+              </SidebarField>
+
+              <SidebarField label={t('common.reporter')}>
+                <div className="flex items-center gap-2.5 py-1">
+                  <Avatar user={issue.reporter} size="xs" />
+                  <span className="text-sm text-foreground">
+                    {issue.reporter?.displayName || 'Unknown'}
+                  </span>
+                </div>
+              </SidebarField>
+            </IssueSection>
+
+            {/* ── Planning ── */}
+            <IssueSection icon={CalendarDays} title="Planning">
+              <SidebarField label={t('issues.sprint')}>
+                <Select value={issue.sprintId || '__none__'} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder={t('common.noSprint')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{t('common.noSprint')}</SelectItem>
+                    {sprints
+                      ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </SidebarField>
+
+              {VALID_PARENT_TYPES[issue.type.toLowerCase()] && (
+                <SidebarField label="Parent Issue">
+                  <Input
+                    type="text"
+                    value={parentSearch}
+                    onChange={(e) => setParentSearch(e.target.value)}
+                    placeholder="Search by key or title…"
+                    className="text-xs mb-1"
+                  />
+                  <Select value={issue.parentId || '__none__'} onValueChange={(v) => updateIssue.mutate({ id: issue.id, parentId: v === '__none__' ? null : v })}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="— No parent —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— No parent —</SelectItem>
+                      {eligibleParents.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          [{p.key}] {p.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
+              )}
+
+              <SidebarField label={t('issues.dueDate')}>
+                <Input
+                  type="date"
+                  value={issue.dueDate ? issue.dueDate.slice(0, 10) : ''}
+                  onChange={(e) =>
+                    updateIssue.mutate({ id: issue.id, dueDate: e.target.value || null })
+                  }
+                  className=""
+                />
+              </SidebarField>
+
+              <SidebarField label={t('issues.storyPoints')}>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={issue.storyPoints ?? ''}
+                  onChange={(e) =>
+                    updateIssue.mutate({
+                      id: issue.id,
+                      storyPoints: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  className=""
+                />
+              </SidebarField>
+
+              <SidebarField label={t('issues.timeEstimate')}>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="minutes"
+                  value={issue.timeEstimate ?? ''}
+                  onChange={(e) =>
+                    updateIssue.mutate({
+                      id: issue.id,
+                      timeEstimate: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  className=""
+                />
+                {issue.timeSpent > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {issue.timeEstimate
+                      ? t('issues.loggedOf', { logged: formatDuration(issue.timeSpent), estimate: formatDuration(issue.timeEstimate) })
+                      : t('issues.logged', { logged: formatDuration(issue.timeSpent) })}
+                  </p>
+                )}
+              </SidebarField>
+            </IssueSection>
+
+            {/* ── Labels & Components ── */}
+            <IssueSection icon={Tag} title="Labels & Tags">
+              <SidebarField label={t('issues.labels')}>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {(issueComponents || []).map((c) => (
+                  {issueLabels.map((l) => (
                     <span
-                      key={c.id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
+                      key={l}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs font-medium"
                     >
-                      {c.name}
+                      {l}
                       <button
                         type="button"
-                        onClick={() =>
-                          setIssueComponents.mutate({
-                            issueId: issue.id,
-                            componentIds: (issueComponents || [])
-                              .filter((ic) => ic.id !== c.id)
-                              .map((ic) => ic.id),
-                          })
-                        }
-                        className="hover:text-purple-900 dark:hover:text-purple-100 transition-colors"
+                        onClick={() => handleRemoveLabel(l)}
+                        className="hover:text-primary/80 dark:hover:text-primary transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </span>
                   ))}
                 </div>
-                <select
-                  className={selectClasses}
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const current = (issueComponents || []).map((c) => c.id)
-                      if (!current.includes(e.target.value)) {
-                        setIssueComponents.mutate({
-                          issueId: issue.id,
-                          componentIds: [...current, e.target.value],
-                        })
+                <div className="flex gap-1.5">
+                  <Input
+                    type="text"
+                    value={labelInput}
+                    onChange={(e) => setLabelInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddLabel()
                       }
-                    }
-                  }}
-                >
-                  <option value="">Add component...</option>
-                  {projectComponents
-                    ?.filter((c) => !(issueComponents || []).find((ic) => ic.id === c.id))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
+                    }}
+                    placeholder={t('issues.addLabel')}
+                    className="flex-1 text-xs"
+                  />
+                  <Button type="button" variant="secondary" size="sm" onClick={handleAddLabel} className="rounded-lg">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </SidebarField>
+
+              {projectComponents && projectComponents.length > 0 && (
+                <SidebarField label="Components">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(issueComponents || []).map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
+                      >
                         {c.name}
-                      </option>
-                    ))}
-                </select>
-              </SidebarField>
-            )}
-
-            {/* Fix Version */}
-            {projectVersions && projectVersions.length > 0 && (
-              <SidebarField label="Fix Version">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {(issueVersions || [])
-                    .filter((iv) => iv.relationType === 'fix')
-                    .map((iv) => (
-                      <span
-                        key={iv.versionId}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium"
-                      >
-                        {iv.version?.name || iv.versionId}
                         <button
                           type="button"
-                          onClick={() => {
-                            const current = (issueVersions || [])
-                              .filter((v) => v.relationType === 'fix' && v.versionId !== iv.versionId)
-                              .map((v) => v.versionId)
-                            setIssueVersions.mutate({
+                          onClick={() =>
+                            setIssueComponents.mutate({
                               issueId: issue.id,
-                              versionIds: current,
-                              relationType: 'fix',
+                              componentIds: (issueComponents || [])
+                                .filter((ic) => ic.id !== c.id)
+                                .map((ic) => ic.id),
                             })
-                          }}
-                          className="hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                          }
+                          className="hover:text-purple-900 dark:hover:text-purple-100 transition-colors"
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </span>
                     ))}
-                </div>
-                <select
-                  className={selectClasses}
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const current = (issueVersions || [])
-                        .filter((v) => v.relationType === 'fix')
-                        .map((v) => v.versionId)
-                      if (!current.includes(e.target.value)) {
-                        setIssueVersions.mutate({
-                          issueId: issue.id,
-                          versionIds: [...current, e.target.value],
-                          relationType: 'fix',
-                        })
-                      }
+                  </div>
+                  <Select key={`comp-${(issueComponents || []).length}`} onValueChange={(v) => {
+                    const current = (issueComponents || []).map((c) => c.id)
+                    if (!current.includes(v)) {
+                      setIssueComponents.mutate({
+                        issueId: issue.id,
+                        componentIds: [...current, v],
+                      })
                     }
-                  }}
-                >
-                  <option value="">Add fix version...</option>
-                  {projectVersions
-                    ?.filter(
-                      (v) =>
-                        !(issueVersions || []).find(
-                          (iv) => iv.versionId === v.id && iv.relationType === 'fix',
-                        ),
-                    )
-                    .map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                </select>
-              </SidebarField>
-            )}
+                  }}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Add component..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectComponents
+                        ?.filter((c) => !(issueComponents || []).find((ic) => ic.id === c.id))
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
+              )}
+            </IssueSection>
 
-            {/* Affects Version */}
+            {/* ── Releases ── (only shown when project has versions) */}
             {projectVersions && projectVersions.length > 0 && (
-              <SidebarField label="Affects Version">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {(issueVersions || [])
-                    .filter((iv) => iv.relationType === 'affects')
-                    .map((iv) => (
-                      <span
-                        key={iv.versionId}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs font-medium"
-                      >
-                        {iv.version?.name || iv.versionId}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const current = (issueVersions || [])
-                              .filter(
-                                (v) => v.relationType === 'affects' && v.versionId !== iv.versionId,
-                              )
-                              .map((v) => v.versionId)
-                            setIssueVersions.mutate({
-                              issueId: issue.id,
-                              versionIds: current,
-                              relationType: 'affects',
-                            })
-                          }}
-                          className="hover:text-orange-900 dark:hover:text-orange-100 transition-colors"
+              <IssueSection icon={Package} title="Releases">
+                <SidebarField label="Fix Version">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(issueVersions || [])
+                      .filter((iv) => iv.relationType === 'fix')
+                      .map((iv) => (
+                        <span
+                          key={iv.versionId}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                </div>
-                <select
-                  className={selectClasses}
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const current = (issueVersions || [])
-                        .filter((v) => v.relationType === 'affects')
-                        .map((v) => v.versionId)
-                      if (!current.includes(e.target.value)) {
-                        setIssueVersions.mutate({
-                          issueId: issue.id,
-                          versionIds: [...current, e.target.value],
-                          relationType: 'affects',
-                        })
-                      }
+                          {iv.version?.name || iv.versionId}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = (issueVersions || [])
+                                .filter((v) => v.relationType === 'fix' && v.versionId !== iv.versionId)
+                                .map((v) => v.versionId)
+                              setIssueVersions.mutate({
+                                issueId: issue.id,
+                                versionIds: current,
+                                relationType: 'fix',
+                              })
+                            }}
+                            className="hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                  <Select key={`fix-${(issueVersions || []).filter((v) => v.relationType === 'fix').length}`} onValueChange={(v) => {
+                    const current = (issueVersions || [])
+                      .filter((iv) => iv.relationType === 'fix')
+                      .map((iv) => iv.versionId)
+                    if (!current.includes(v)) {
+                      setIssueVersions.mutate({
+                        issueId: issue.id,
+                        versionIds: [...current, v],
+                        relationType: 'fix',
+                      })
                     }
-                  }}
-                >
-                  <option value="">Add affects version...</option>
-                  {projectVersions
-                    ?.filter(
-                      (v) =>
-                        !(issueVersions || []).find(
-                          (iv) => iv.versionId === v.id && iv.relationType === 'affects',
-                        ),
-                    )
-                    .map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                </select>
-              </SidebarField>
+                  }}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Add fix version..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectVersions
+                        ?.filter(
+                          (v) =>
+                            !(issueVersions || []).find(
+                              (iv) => iv.versionId === v.id && iv.relationType === 'fix',
+                            ),
+                        )
+                        .map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
+
+                <SidebarField label="Affects Version">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {(issueVersions || [])
+                      .filter((iv) => iv.relationType === 'affects')
+                      .map((iv) => (
+                        <span
+                          key={iv.versionId}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs font-medium"
+                        >
+                          {iv.version?.name || iv.versionId}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = (issueVersions || [])
+                                .filter(
+                                  (v) => v.relationType === 'affects' && v.versionId !== iv.versionId,
+                                )
+                                .map((v) => v.versionId)
+                              setIssueVersions.mutate({
+                                issueId: issue.id,
+                                versionIds: current,
+                                relationType: 'affects',
+                              })
+                            }}
+                            className="hover:text-orange-900 dark:hover:text-orange-100 transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                  <Select key={`affects-${(issueVersions || []).filter((v) => v.relationType === 'affects').length}`} onValueChange={(v) => {
+                    const current = (issueVersions || [])
+                      .filter((iv) => iv.relationType === 'affects')
+                      .map((iv) => iv.versionId)
+                    if (!current.includes(v)) {
+                      setIssueVersions.mutate({
+                        issueId: issue.id,
+                        versionIds: [...current, v],
+                        relationType: 'affects',
+                      })
+                    }
+                  }}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder="Add affects version..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projectVersions
+                        ?.filter(
+                          (v) =>
+                            !(issueVersions || []).find(
+                              (iv) => iv.versionId === v.id && iv.relationType === 'affects',
+                            ),
+                        )
+                        .map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
+              </IssueSection>
             )}
 
-            {/* Custom Fields */}
+            {/* ── Custom Fields ── */}
             {customFieldDefs && customFieldDefs.length > 0 && (
-              <div className="pt-3 border-t border-border">
-                <CustomFieldsForm
-                  definitions={customFieldDefs}
-                  values={customFieldValues || []}
-                  onChange={(fieldId, value) => {
-                    setCustomFields.mutate({
-                      issueId: issue.id,
-                      values: [{ fieldId, value }],
-                    })
-                  }}
-                />
+              <div className="issue-panel-section">
+                <div className="issue-panel-section-header">
+                  <svg className="h-3 w-3 opacity-80" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="1" width="14" height="14" rx="2"/><path d="M5 8h6M8 5v6"/></svg>
+                  Custom Fields
+                </div>
+                <div className="issue-panel-section-body">
+                  <CustomFieldsForm
+                    definitions={customFieldDefs}
+                    values={customFieldValues || []}
+                    onChange={(fieldId, value) => {
+                      setCustomFields.mutate({
+                        issueId: issue.id,
+                        values: [{ fieldId, value }],
+                      })
+                    }}
+                  />
+                </div>
               </div>
             )}
 
-            <div className="border-t border-border" />
-
-            {/* Watchers */}
+            {/* ── Watchers ── */}
             <WatchButton issueId={issue.id} />
 
-            {/* Metadata */}
-            <div className="pt-3 border-t border-border space-y-1.5">
-              <p className="text-xs text-muted-foreground">
+            {/* ── Metadata ── */}
+            <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5 space-y-1">
+              <p className="text-[11px] text-muted-foreground">
                 {t('issues.created', { time: formatRelativeTime(issue.createdAt) })}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[11px] text-muted-foreground">
                 {t('issues.updated', { time: formatRelativeTime(issue.updatedAt) })}
               </p>
             </div>

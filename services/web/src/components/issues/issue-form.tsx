@@ -184,7 +184,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-foreground/80 mb-1">
           {t('common.description')}
         </label>
         <RichTextEditor
@@ -259,7 +259,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         control={control}
         render={({ field }) => (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.assignee')}</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">{t('common.assignee')}</label>
             <UserSelect
               value={field.value || null}
               onChange={(id) => field.onChange(id)}
@@ -277,15 +277,15 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           control={control}
           render={({ field }) => (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Parent Issue
               </label>
-              <input
+              <Input
                 type="text"
                 value={parentSearch}
                 onChange={(e) => setParentSearch(e.target.value)}
                 placeholder="Search by key or title…"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-ring mb-1"
+                className="mb-1"
               />
               <Select
                 value={field.value || '__none__'}
@@ -304,7 +304,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
                 </SelectContent>
               </Select>
               {parentIssues.length > 0 && eligibleParents.length === 0 && parentSearch === '' && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   No eligible parents for a {watchedType} in this project.
                 </p>
               )}
@@ -361,7 +361,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
 
       {/* Labels */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('issues.labels')}</label>
+        <label className="block text-sm font-medium text-foreground/80 mb-1">{t('issues.labels')}</label>
         <div className="flex flex-wrap gap-2 mb-2">
           {labels.map((l) => (
             <span
@@ -380,7 +380,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           ))}
         </div>
         <div className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={labelInput}
             onChange={(e) => setLabelInput(e.target.value)}
@@ -391,7 +391,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               }
             }}
             placeholder={t('issues.addLabelEnter')}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1"
           />
           <Button type="button" variant="secondary" size="sm" onClick={addLabel}>
             {t('common.add')}
@@ -402,7 +402,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       {/* Components */}
       {components.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Components</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">Components</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {selectedComponents.map((cId) => {
               const comp = components.find((c) => c.id === cId)
@@ -453,7 +453,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       {/* Fix Version */}
       {versions.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fix Version</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">Fix Version</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {selectedFixVersions.map((vId) => {
               const ver = versions.find((v) => v.id === vId)
@@ -504,7 +504,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       {/* Custom Fields */}
       {customFieldDefs.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-2">Custom Fields</label>
           <CustomFieldsForm
             definitions={customFieldDefs}
             values={Object.entries(customFieldValues).map(([fieldId, value]) => ({

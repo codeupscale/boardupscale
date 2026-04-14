@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { ProjectType } from '@/types'
 
 const LIMIT = 12
@@ -125,16 +126,12 @@ export function ProjectsPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <input
+            <Input
               type="search"
               placeholder={t('projects.searchProjects')}
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className={cn(
-                'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border',
-                'bg-card text-foreground placeholder:text-muted-foreground',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent transition-colors',
-              )}
+              className="pl-9 pr-3 py-2 text-sm"
               aria-label="Search projects"
             />
           </div>
@@ -151,8 +148,8 @@ export function ProjectsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                 viewMode === 'grid'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground dark:hover:text-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:text-foreground',
               )}
               aria-pressed={viewMode === 'grid'}
               title="Grid view"
@@ -166,8 +163,8 @@ export function ProjectsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                 viewMode === 'list'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground dark:hover:text-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:text-foreground',
               )}
               aria-pressed={viewMode === 'list'
               }

@@ -71,7 +71,7 @@ function SimilarIssueItem({ item }: { item: SearchResultItem }) {
         {item.title}
       </span>
       {item.statusName && (
-        <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-muted-foreground rounded flex-shrink-0">
+        <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded flex-shrink-0">
           {item.statusName}
         </span>
       )}

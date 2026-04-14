@@ -129,20 +129,20 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Custom Fields</h2>
+        <h2 className="text-base font-semibold text-foreground">Custom Fields</h2>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Add Field
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="bg-card rounded-xl border border-border divide-y divide-border">
         {definitions?.map((def) => (
           <div key={def.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{def.name}</p>
-                <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full">
+                <p className="text-sm font-medium text-foreground">{def.name}</p>
+                <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-full">
                   {def.fieldType.replace('_', ' ')}
                 </span>
                 {def.isRequired && (
@@ -152,9 +152,9 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                 )}
               </div>
               {def.description && (
-                <p className="text-xs text-gray-500 mt-0.5">{def.description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
               )}
-              <p className="text-xs text-gray-500 font-mono mt-0.5">key: {def.fieldKey}</p>
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">key: {def.fieldKey}</p>
             </div>
             <Button
               variant="ghost"
@@ -166,7 +166,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-gray-400 hover:text-red-600"
+              className="text-muted-foreground hover:text-red-600"
               onClick={() => setDeleteTarget(def)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -174,7 +174,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
           </div>
         ))}
         {(!definitions || definitions.length === 0) && (
-          <div className="py-8 text-center text-sm text-gray-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             No custom fields configured. Add fields to track additional information on issues.
           </div>
         )}
@@ -232,15 +232,15 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
               type="checkbox"
               checked={isRequired}
               onChange={(e) => setIsRequired(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-ring"
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
-            <span className="text-sm text-gray-700">Required field</span>
+            <span className="text-sm text-foreground/80">Required field</span>
           </label>
 
           {/* Options for select types */}
           {needsOptions && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Options</label>
+              <label className="block text-sm font-medium text-foreground/80 mb-2">Options</label>
               <div className="space-y-1.5 mb-2">
                 {options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -249,11 +249,11 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                       style={{ backgroundColor: opt.color || '#6b7280' }}
                     />
                     <span className="text-sm flex-1">{opt.label}</span>
-                    <span className="text-xs text-gray-500 font-mono">{opt.value}</span>
+                    <span className="text-xs text-muted-foreground font-mono">{opt.value}</span>
                     <button
                       type="button"
                       onClick={() => removeOption(i)}
-                      className="text-gray-400 hover:text-red-500 text-sm"
+                      className="text-muted-foreground hover:text-red-500 text-sm"
                     >
                       &times;
                     </button>
@@ -261,7 +261,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                 ))}
               </div>
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={newOptionLabel}
                   onChange={(e) => setNewOptionLabel(e.target.value)}
@@ -272,7 +272,7 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
                     }
                   }}
                   placeholder="Option label..."
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex-1"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={addOption}>
                   Add

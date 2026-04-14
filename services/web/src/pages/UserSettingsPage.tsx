@@ -85,7 +85,7 @@ function getRoleBadge(role: string) {
     default:
       return {
         label: 'Member',
-        cls: 'bg-muted text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-border dark:border-gray-600',
+        cls: 'bg-muted text-foreground/80 border border-border',
         Icon: User2,
       }
   }
@@ -389,7 +389,7 @@ function SecurityTab() {
               'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0',
               is2FAEnabled
                 ? 'bg-green-100 dark:bg-green-900/40'
-                : 'bg-gray-200 dark:bg-gray-700',
+                : 'bg-muted',
             )}
           >
             {is2FAEnabled ? (
@@ -423,12 +423,12 @@ function SecurityTab() {
             <p className="text-sm font-semibold text-foreground">
               Scan this QR code with your authenticator app
             </p>
-            <div className="flex justify-center p-4 bg-card rounded-lg border border-gray-100 dark:border-gray-600">
+            <div className="flex justify-center p-4 bg-card rounded-lg border border-border">
               <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-44 h-44" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1.5">Or enter this secret manually:</p>
-              <code className="block text-xs bg-gray-50 dark:bg-gray-900 px-3 py-2.5 rounded-lg border border-border font-mono break-all select-all text-foreground">
+              <code className="block text-xs bg-muted px-3 py-2.5 rounded-lg border border-border font-mono break-all select-all text-foreground">
                 {setupData.secret}
               </code>
             </div>
@@ -598,7 +598,7 @@ export function UserSettingsPage() {
         {/* Profile identity card — overlaps banner */}
         <div className="relative px-6 -mt-12 mb-5">
           <div className="bg-card rounded-2xl shadow-sm border border-border px-6 py-4 flex items-center gap-5">
-            <div className="ring-4 ring-white dark:ring-gray-900 rounded-2xl shadow-md flex-shrink-0">
+            <div className="ring-4 ring-card rounded-2xl shadow-md flex-shrink-0">
               <Avatar
                 src={me?.avatarUrl}
                 name={me?.displayName || 'User'}
@@ -630,7 +630,7 @@ export function UserSettingsPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Timezone</p>
               </div>
-              <div className="w-px h-8 bg-gray-200 dark:bg-gray-700" />
+              <div className="w-px h-8 bg-border" />
               <div>
                 <p className="text-sm font-semibold text-foreground uppercase">
                   {me?.language || 'EN'}
@@ -655,7 +655,7 @@ export function UserSettingsPage() {
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
                     active
-                      ? 'bg-primary text-white shadow-md shadow-primary/20/60 dark:shadow-primary/40'
+                      ? 'plasma-nav-active shadow-md'
                       : 'bg-card border border-border hover:border-primary/30 dark:hover:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/5',
                   )}
                 >
@@ -670,7 +670,7 @@ export function UserSettingsPage() {
                     <Icon
                       className={cn(
                         'h-4 w-4',
-                        active ? 'text-white' : 'text-muted-foreground',
+                        active ? '' : 'text-muted-foreground',
                       )}
                     />
                   </div>
@@ -678,7 +678,7 @@ export function UserSettingsPage() {
                     <p
                       className={cn(
                         'text-sm font-medium truncate',
-                        active ? 'text-white' : 'text-foreground',
+                        active ? '' : 'text-foreground',
                       )}
                     >
                       {label}
@@ -686,7 +686,7 @@ export function UserSettingsPage() {
                     <p
                       className={cn(
                         'text-xs truncate',
-                        active ? 'text-primary-foreground/80' : 'text-muted-foreground',
+                        active ? 'opacity-80' : 'text-muted-foreground',
                       )}
                     >
                       {description}

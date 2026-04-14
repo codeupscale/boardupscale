@@ -19,9 +19,9 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
       <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="h-4 w-4 text-purple-500" />
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Sprint Intelligence</h3>
+          <h3 className="text-sm font-semibold text-foreground">Sprint Intelligence</h3>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">No active sprint. Start a sprint to see AI insights.</p>
+        <p className="text-xs text-muted-foreground">No active sprint. Start a sprint to see AI insights.</p>
       </div>
     )
   }
@@ -47,8 +47,8 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-500" />
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Sprint Intelligence</h3>
-        <span className="text-[10px] text-gray-400 ml-auto">{insights.sprintName}</span>
+        <h3 className="text-sm font-semibold text-foreground">Sprint Intelligence</h3>
+        <span className="text-[10px] text-muted-foreground ml-auto">{insights.sprintName}</span>
       </div>
 
       {/* Completion Gauge */}
@@ -56,7 +56,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
         <div className="relative w-14 h-14">
           <svg className="w-14 h-14 -rotate-90" viewBox="0 0 36 36">
             <path
-              className="text-gray-200 dark:text-gray-700"
+              className="text-muted"
               strokeDasharray="100, 100"
               d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831 15.9155 15.9155 0 0 1 0 -31.831"
               fill="none"
@@ -73,7 +73,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
               strokeLinecap="round"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-gray-300">
+          <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-foreground/80">
             {completionPrediction.percentage}%
           </span>
         </div>
@@ -88,7 +88,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
               {completionPrediction.onTrack ? 'On Track' : 'At Risk'}
             </span>
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-[10px] text-muted-foreground mt-0.5">
             {completionPrediction.percentage}% complete
           </p>
         </div>
@@ -98,24 +98,24 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
       {workloadBalance.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-1.5 mb-2">
-            <Users className="h-3 w-3 text-gray-400" />
-            <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">
+            <Users className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
               Workload
             </span>
           </div>
           <div className="space-y-1.5">
             {workloadBalance.slice(0, 5).map((w) => (
               <div key={w.userId} className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-600 dark:text-gray-400 w-20 truncate">
+                <span className="text-[10px] text-muted-foreground w-20 truncate">
                   {w.displayName}
                 </span>
-                <div className="flex-1 h-2.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all bg-purple-400 dark:bg-purple-500"
                     style={{ width: `${(w.assignedPoints / maxPoints) * 100}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 w-8 text-right">
+                <span className="text-[10px] text-muted-foreground w-8 text-right">
                   {w.assignedPoints} SP
                 </span>
               </div>
@@ -135,7 +135,7 @@ export function SprintIntelligenceWidget({ sprintId, className }: SprintIntellig
           </div>
           <ul className="space-y-1">
             {suggestions.map((s, idx) => (
-              <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
+              <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
                 <span className="text-purple-400 mt-0.5 flex-shrink-0">•</span>
                 <span>{s}</span>
               </li>

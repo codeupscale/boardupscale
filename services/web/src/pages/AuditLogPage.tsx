@@ -5,6 +5,7 @@ import { useAuditLogs } from '@/hooks/useAuditLogs'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { formatRelativeTime } from '@/lib/utils'
 import { LoadingPage } from '@/components/ui/spinner'
 
@@ -46,16 +47,17 @@ export function AuditLogPage() {
           <label className="block text-xs font-medium text-muted-foreground mb-1">
             {t('audit.entityType')}
           </label>
-          <select
-            className="rounded-lg border border-border dark:border-gray-600 bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={entityType}
-            onChange={(e) => { setEntityType(e.target.value); setPage(1) }}
-          >
-            <option value="">{t('audit.allTypes')}</option>
-            <option value="user">User</option>
-            <option value="project">Project</option>
-            <option value="issue">Issue</option>
-          </select>
+          <Select value={entityType || '__all__'} onValueChange={(v) => { setEntityType(v === '__all__' ? '' : v); setPage(1) }}>
+            <SelectTrigger className="w-[150px] text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('audit.allTypes')}</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="project">Project</SelectItem>
+              <SelectItem value="issue">Issue</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">

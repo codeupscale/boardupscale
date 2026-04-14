@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 interface ConfigureStepProps {
@@ -53,7 +54,7 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
         onClick={() => onChange(!checked)}
         className={cn(
           'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2',
-          checked ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700',
+          checked ? 'bg-primary' : 'bg-muted',
         )}
       >
         <span
@@ -109,21 +110,19 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                 <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
-                <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
-                <select
-                  value={statusMapping[row.jira] ?? row.default}
-                  onChange={(e) =>
-                    setStatusMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
-                  }
-                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Map ${row.jira} to`}
-                >
-                  {BOARDUPSCALE_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-muted-foreground text-sm flex-shrink-0">maps to</span>
+                <Select value={statusMapping[row.jira] ?? row.default} onValueChange={(v) => setStatusMapping((prev) => ({ ...prev, [row.jira]: v }))}>
+                  <SelectTrigger className="flex-1 text-sm" aria-label={`Map ${row.jira} to`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOARDUPSCALE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>
@@ -171,21 +170,19 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
                 <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
-                <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
-                <select
-                  value={roleMapping[row.jira] ?? row.default}
-                  onChange={(e) =>
-                    setRoleMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
-                  }
-                  className="flex-1 text-sm bg-card border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Map ${row.jira} role to`}
-                >
-                  {BOARDUPSCALE_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-muted-foreground text-sm flex-shrink-0">maps to</span>
+                <Select value={roleMapping[row.jira] ?? row.default} onValueChange={(v) => setRoleMapping((prev) => ({ ...prev, [row.jira]: v }))}>
+                  <SelectTrigger className="flex-1 text-sm" aria-label={`Map ${row.jira} role to`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOARDUPSCALE_ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>

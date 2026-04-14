@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import {
   useUploadJiraFile,
   useImportPreview,
@@ -48,10 +49,10 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'flex items-center justify-center h-8 w-8 rounded-full text-sm font-semibold transition-colors',
                     isCompleted
-                      ? 'bg-primary text-white'
+                      ? 'bg-primary text-primary-foreground'
                       : isActive
-                        ? 'bg-primary text-white ring-4 ring-primary/20'
-                        : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground',
+                        ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                        : 'bg-muted text-muted-foreground',
                   )}
                 >
                   {isCompleted ? (
@@ -74,7 +75,7 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                 </span>
               </div>
               {idx < STEP_LABELS.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 mx-1" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60 mx-1" />
               )}
             </li>
           )
@@ -390,23 +391,22 @@ function UserMappingRow({
             Auto-matched
           </span>
         ) : (
-          <select
-            value={selectedUserId}
-            onChange={(e) => onChange(e.target.value)}
-            className={cn(
-              'w-full text-sm rounded-md border px-2 py-1.5 bg-card',
-              'border-border text-foreground',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary',
+          <Select value={selectedUserId || '__unassigned__'} onValueChange={(v) => onChange(v === '__unassigned__' ? '' : v)}>
+            <SelectTrigger className={cn(
+              'w-full text-sm',
               !jiraUser.matched && !selectedUserId && 'border-yellow-400 dark:border-yellow-600',
-            )}
-          >
-            <option value="">-- Unassigned --</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName} ({u.email})
-              </option>
-            ))}
-          </select>
+            )}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__unassigned__">-- Unassigned --</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.displayName} ({u.email})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </td>
     </tr>
@@ -460,7 +460,7 @@ function ImportStep({
 
       {/* Progress bar */}
       <div className="space-y-3">
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+        <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500 ease-out',

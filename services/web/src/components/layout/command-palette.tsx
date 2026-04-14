@@ -492,13 +492,13 @@ export function CommandPalette() {
             onKeyDown={handleKeyDown}
             spellCheck={false}
             autoComplete="off"
-            className="flex-1 text-[14px] text-foreground placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none bg-transparent"
+            className="flex-1 text-[14px] text-foreground placeholder:text-muted-foreground outline-none bg-transparent"
           />
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {query && (
               <button
                 onClick={() => { setQuery(''); inputRef.current?.focus() }}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground/80 px-1.5 py-0.5 rounded hover:bg-accent transition-colors"
               >
                 Clear
               </button>

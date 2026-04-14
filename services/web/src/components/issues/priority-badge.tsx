@@ -32,8 +32,8 @@ const iconConfig = {
   },
   [IssuePriority.NONE]: {
     icon: DashIcon,
-    color: 'text-gray-400',
-    bg: 'bg-gray-50',
+    color: 'text-muted-foreground',
+    bg: 'bg-muted',
   },
 }
 

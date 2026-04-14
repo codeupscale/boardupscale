@@ -18,22 +18,22 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, breadcrumbs, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between px-6 py-4 border-b border-border bg-card', className)}>
+    <div className={cn('flex items-center justify-between px-6 py-4 border-b border-border bg-card/80 backdrop-blur-sm', className)}>
       <div>
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1 mb-1">
             {breadcrumbs.map((crumb, i) => (
               <div key={i} className="flex items-center gap-1">
-                {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-400" />}
+                {i > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
                 {crumb.href ? (
                   <Link
                     to={crumb.href}
-                    className="text-xs text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    className="text-xs text-muted-foreground hover:text-foreground/80 transition-colors"
                   >
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span className="text-xs text-gray-500">{crumb.label}</span>
+                  <span className="text-xs text-muted-foreground">{crumb.label}</span>
                 )}
               </div>
             ))}

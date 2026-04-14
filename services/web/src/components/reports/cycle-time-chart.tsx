@@ -30,10 +30,10 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
       <Card>
         <CardHeader>
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-base font-semibold text-foreground">
               Cycle Time Distribution
             </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               Average cycle time: {data.average} days
             </p>
           </div>
@@ -42,27 +42,29 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.distribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
                   label={{
                     value: 'Issues',
                     angle: -90,
                     position: 'insideLeft',
-                    style: { fontSize: 12, fill: '#6b7280' },
+                    style: { fontSize: 12, fill: 'hsl(var(--muted-foreground))' },
                   }}
                 />
                 <Tooltip
                   contentStyle={{
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--tooltip-border)',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-fg)',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
                   formatter={(value: number) => [value, 'Issues']}
@@ -82,41 +84,43 @@ export function CycleTimeChart({ data }: CycleTimeChartProps) {
       {/* By type breakdown */}
       <Card>
         <CardHeader>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-base font-semibold text-foreground">
             Cycle Time by Issue Type
           </h3>
         </CardHeader>
         <CardContent>
           {data.byType.length === 0 ? (
-            <div className="py-8 text-center text-gray-500 text-sm">
+            <div className="py-8 text-center text-muted-foreground text-sm">
               No completed issues to analyze
             </div>
           ) : (
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.byType}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="type"
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     tickLine={false}
                     tickFormatter={capitalize}
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     tickLine={false}
                     axisLine={false}
                     label={{
                       value: 'Avg Days',
                       angle: -90,
                       position: 'insideLeft',
-                      style: { fontSize: 12, fill: '#6b7280' },
+                      style: { fontSize: 12, fill: 'hsl(var(--muted-foreground))' },
                     }}
                   />
                   <Tooltip
                     contentStyle={{
                       borderRadius: 8,
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--tooltip-border)',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-fg)',
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     }}
                     formatter={(value: number, _name: string, props: any) => [

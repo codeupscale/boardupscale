@@ -15,6 +15,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import {
   usePreviewMigration,
@@ -91,11 +92,11 @@ function FilterPill({
   const active = value === current
   const colorMap = {
     blue: active
-      ? 'bg-primary text-white shadow-sm shadow-primary/20 dark:shadow-primary/40'
-      : 'bg-muted text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700',
+      ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20 dark:shadow-primary/40'
+      : 'bg-muted text-muted-foreground hover:bg-accent',
     violet: active
       ? 'bg-violet-600 text-white shadow-sm shadow-violet-200 dark:shadow-violet-900/40'
-      : 'bg-muted text-muted-foreground hover:bg-gray-200 dark:hover:bg-gray-700',
+      : 'bg-muted text-muted-foreground hover:bg-accent',
   }
   return (
     <button
@@ -106,7 +107,7 @@ function FilterPill({
       )}
     >
       {label}
-      <span className={cn('rounded-md px-1.5 py-0.5 text-xs font-bold', active ? 'bg-white/25' : 'bg-gray-200 dark:bg-gray-700 text-muted-foreground')}>
+      <span className={cn('rounded-md px-1.5 py-0.5 text-xs font-bold', active ? 'bg-white/25' : 'bg-muted text-muted-foreground')}>
         {count}
       </span>
     </button>
@@ -136,7 +137,7 @@ function ProjectCard({
         'flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-150 group border',
         isSelected
           ? 'bg-primary/10 border-primary/30 shadow-sm'
-          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-primary/20 hover:bg-primary/5 dark:hover:bg-primary/5',
+          : 'bg-card/60 border-border hover:border-primary/20 hover:bg-primary/5 dark:hover:bg-primary/5',
       )}
     >
       {/* Gradient key badge */}
@@ -162,13 +163,13 @@ function ProjectCard({
       {/* Stats */}
       <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <FileText className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
+          <FileText className="h-3.5 w-3.5 text-muted-foreground/60" />
           <span className="font-medium text-muted-foreground">{project.issueCount.toLocaleString()}</span>
           <span>issues</span>
         </span>
         {project.sprintCount > 0 && (
           <span className="flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600" />
+            <Layers className="h-3.5 w-3.5 text-muted-foreground/60" />
             <span className="font-medium text-muted-foreground">{project.sprintCount}</span>
             <span>sprints</span>
           </span>
@@ -180,7 +181,7 @@ function ProjectCard({
         {isSelected ? (
           <CheckSquare className="h-5 w-5 text-primary" />
         ) : (
-          <Square className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
+          <Square className="h-5 w-5 text-muted-foreground/60 group-hover:text-muted-foreground" />
         )}
       </div>
     </div>
@@ -210,7 +211,7 @@ function MemberCard({
         'flex items-center gap-3 px-3.5 py-3 rounded-xl cursor-pointer transition-all duration-150 group border',
         isSelected
           ? 'bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800 shadow-sm'
-          : 'bg-card/60 border-gray-100 dark:border-gray-700 hover:border-violet-100 hover:bg-violet-50/40 dark:hover:bg-violet-950/10',
+          : 'bg-card/60 border-border hover:border-violet-100 hover:bg-violet-50/40 dark:hover:bg-violet-950/10',
       )}
     >
       {/* Avatar */}
@@ -219,7 +220,7 @@ function MemberCard({
           <img
             src={member.avatarUrl}
             alt={member.displayName}
-            className="h-9 w-9 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+            className="h-9 w-9 rounded-full object-cover ring-2 ring-card"
             onError={(e) => {
               const el = e.target as HTMLImageElement
               el.style.display = 'none'
@@ -230,7 +231,7 @@ function MemberCard({
         ) : null}
         <div
           className={cn(
-            'h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br ring-2 ring-white dark:ring-gray-800',
+            'h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br ring-2 ring-card',
             gradient,
             member.avatarUrl ? 'hidden' : 'flex',
           )}
@@ -257,7 +258,7 @@ function MemberCard({
         {isSelected ? (
           <CheckSquare className="h-4 w-4 text-violet-600 dark:text-violet-400" />
         ) : (
-          <Square className="h-4 w-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500" />
+          <Square className="h-4 w-4 text-muted-foreground/60 group-hover:text-muted-foreground" />
         )}
       </div>
     </div>
@@ -270,15 +271,15 @@ function ProjectSkeleton() {
   return (
     <div className="space-y-2.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-muted animate-pulse border border-gray-100 dark:border-gray-700">
-          <div className="h-11 w-11 rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+        <div key={i} className="flex items-center gap-4 px-4 py-3.5 rounded-xl bg-muted animate-pulse border border-border">
+          <div className="h-11 w-11 rounded-xl bg-muted flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-3.5 bg-gray-200 dark:bg-gray-700 rounded-md w-36" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-md w-16" />
+            <div className="h-3.5 bg-muted rounded-md w-36" />
+            <div className="h-3 bg-muted rounded-md w-16" />
           </div>
           <div className="flex gap-4">
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20" />
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16" />
+            <div className="h-3 bg-muted rounded w-20" />
+            <div className="h-3 bg-muted rounded w-16" />
           </div>
         </div>
       ))}
@@ -290,11 +291,11 @@ function MemberSkeleton() {
   return (
     <div className="space-y-2">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-muted animate-pulse border border-gray-100 dark:border-gray-700">
-          <div className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+        <div key={i} className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-muted animate-pulse border border-border">
+          <div className="h-9 w-9 rounded-full bg-muted flex-shrink-0" />
           <div className="flex-1 space-y-1.5">
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-md w-28" />
-            <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-md w-36" />
+            <div className="h-3 bg-muted rounded-md w-28" />
+            <div className="h-2.5 bg-muted rounded-md w-36" />
           </div>
         </div>
       ))}
@@ -476,12 +477,12 @@ export function PreviewStep({
           <div className="px-4 pt-3.5 pb-2 space-y-2.5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search projects by name or key..."
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus:border-primary text-foreground placeholder:text-muted-foreground transition-all"
+                className="pl-9 pr-8 py-2.5 text-sm bg-muted rounded-xl"
               />
               {projectSearch && (
                 <button
@@ -509,7 +510,7 @@ export function PreviewStep({
 
             {!isLoading && filteredProjects.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <FolderOpen className="h-10 w-10 text-gray-200 dark:text-gray-700 mb-3" />
+                <FolderOpen className="h-10 w-10 text-muted-foreground/40 mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">
                   {projectSearch || projectFilter !== 'all'
                     ? 'No projects match your filters.'
@@ -573,12 +574,12 @@ export function PreviewStep({
             <div className="px-4 pt-3.5 pb-2 space-y-2.5">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
+                <Input
                   type="text"
                   placeholder="Search by name or email..."
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2.5 text-sm bg-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/40 dark:focus:ring-violet-600/40 focus:border-violet-400 text-foreground placeholder:text-muted-foreground transition-all"
+                  className="pl-9 pr-8 py-2.5 text-sm bg-muted rounded-xl"
                 />
                 {memberSearch && (
                   <button
@@ -606,7 +607,7 @@ export function PreviewStep({
 
               {!membersQuery.isLoading && filteredMembers.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-10 w-10 text-gray-200 dark:text-gray-700 mb-3" />
+                  <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">
                     {memberSearch || memberFilter !== 'all'
                       ? 'No members match your filters.'
@@ -635,7 +636,7 @@ export function PreviewStep({
           </div>
         ) : (
           /* Placeholder when no connectionId */
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-gray-50/50 dark:bg-gray-900/30 p-12 text-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/50 p-12 text-center">
             <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-4">
               <Users className="h-6 w-6 text-muted-foreground" />
             </div>
@@ -688,7 +689,7 @@ export function PreviewStep({
         <Button
           onClick={handleContinue}
           disabled={selectedKeys.size === 0 || isLoading}
-          className="bg-primary hover:bg-primary/90 text-white px-8 gap-2 shadow-sm shadow-primary/20 dark:shadow-primary/40"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 gap-2 shadow-sm shadow-primary/20 dark:shadow-primary/40"
         >
           {isLoading ? (
             <>

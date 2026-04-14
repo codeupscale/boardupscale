@@ -78,10 +78,10 @@ const ROLE_CONFIG = [
     description: 'Access and collaborate on assigned projects',
     icon: User2,
     iconColor: 'text-muted-foreground',
-    selectedBg: 'bg-gray-50 dark:bg-gray-700/50 border-gray-400 dark:border-gray-500',
+    selectedBg: 'bg-muted border-muted-foreground',
     defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-muted dark:bg-gray-700 text-foreground border border-border dark:border-gray-600',
+      'bg-muted text-foreground border border-border',
   },
 ] as const
 
@@ -159,13 +159,13 @@ function RoleCard({
       className={cn(
         'w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all duration-150',
         selected ? config.selectedBg : config.defaultBg,
-        'hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+        'hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2 focus:ring-offset-background',
       )}
     >
       <div
         className={cn(
           'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center',
-          selected ? 'bg-card/60' : 'bg-gray-50 dark:bg-gray-700',
+          selected ? 'bg-card/60' : 'bg-muted',
         )}
       >
         <Icon className={cn('h-4 w-4', config.iconColor)} />
@@ -247,7 +247,7 @@ function Pagination({
               className={cn(
                 'h-8 w-8 rounded-md text-sm font-medium transition-colors',
                 p === page
-                  ? 'bg-primary text-white shadow-sm'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-accent',
               )}
             >
@@ -487,12 +487,12 @@ export function TeamPage() {
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search by name or email…"
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg border border-border bg-card text-sm text-foreground placeholder-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
+                className="pl-9 pr-3"
               />
             </div>
             <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
@@ -503,8 +503,8 @@ export function TeamPage() {
                   className={cn(
                     'px-3 h-7 rounded-md text-xs font-medium transition-all',
                     roleFilter === r
-                      ? 'bg-white dark:bg-gray-700 text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground dark:hover:text-gray-200',
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}
@@ -528,7 +528,7 @@ export function TeamPage() {
           ) : (
             <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-gray-50/60 dark:bg-gray-800/40">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-muted/60">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Member
                 </span>
@@ -554,7 +554,7 @@ export function TeamPage() {
                   <div
                     key={member.id}
                     className={cn(
-                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40 group',
+                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-accent/50 group',
                       idx < pagedMembers.length - 1
                         ? 'border-b border-border'
                         : '',
@@ -638,7 +638,7 @@ export function TeamPage() {
                             </button>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-400 dark:text-gray-600 px-2">—</span>
+                          <span className="text-xs text-muted-foreground px-2">—</span>
                         )}
                       </div>
                     ) : null}

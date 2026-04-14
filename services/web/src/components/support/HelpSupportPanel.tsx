@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { HelpCircle, X, MessageSquare, BookOpen, Bug, Send, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/store/auth.store'
 import { toast } from '@/store/ui.store'
 import api from '@/lib/api'
@@ -70,7 +71,7 @@ export function HelpSupportPanel() {
           'fixed z-50 flex items-center justify-center rounded-full transition-all duration-300',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
           'h-11 w-11 bg-card border border-border',
-          'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+          'text-muted-foreground hover:bg-accent',
           'shadow-md hover:shadow-lg',
           // Position above the AI chat button (bottom-5 = 1.25rem, h-14 = 3.5rem, gap ~0.75rem → ~5.5rem from bottom)
           'bottom-[5.5rem] right-5',
@@ -106,14 +107,14 @@ export function HelpSupportPanel() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <HelpCircle className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+            <span className="font-semibold text-sm text-foreground">
               Help &amp; Support
             </span>
           </div>
           <button
             onClick={handleClose}
             aria-label="Close Help & Support"
-            className="rounded p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -126,8 +127,8 @@ export function HelpSupportPanel() {
             onClick={(e) => e.preventDefault()}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-1 justify-center',
-              'text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800',
-              'hover:bg-gray-100 dark:hover:bg-gray-700 border border-border',
+              'text-muted-foreground bg-muted',
+              'hover:bg-accent border border-border',
               'transition-colors cursor-not-allowed opacity-60',
             )}
             title="Documentation coming soon"
@@ -140,8 +141,8 @@ export function HelpSupportPanel() {
             onClick={(e) => e.preventDefault()}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-1 justify-center',
-              'text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800',
-              'hover:bg-gray-100 dark:hover:bg-gray-700 border border-border',
+              'text-muted-foreground bg-muted',
+              'hover:bg-accent border border-border',
               'transition-colors cursor-not-allowed opacity-60',
             )}
             title="Bug reporting coming soon"
@@ -155,7 +156,7 @@ export function HelpSupportPanel() {
         <div className="px-4 pb-1">
           <div className="flex items-center gap-2">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
               <MessageSquare className="h-3 w-3" />
               Contact Support
             </span>
@@ -168,33 +169,25 @@ export function HelpSupportPanel() {
           {/* Pre-filled user info */}
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={user?.displayName ?? ''}
                 readOnly
-                className={cn(
-                  'w-full rounded-md border border-border px-2.5 py-1.5 text-xs',
-                  'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
-                  'cursor-not-allowed',
-                )}
+                className="text-xs bg-muted text-muted-foreground cursor-not-allowed"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Email
               </label>
-              <input
+              <Input
                 type="email"
                 value={user?.email ?? ''}
                 readOnly
-                className={cn(
-                  'w-full rounded-md border border-border px-2.5 py-1.5 text-xs',
-                  'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
-                  'cursor-not-allowed',
-                )}
+                className="text-xs bg-muted text-muted-foreground cursor-not-allowed"
               />
             </div>
           </div>
@@ -202,11 +195,11 @@ export function HelpSupportPanel() {
           <div>
             <label
               htmlFor="support-subject"
-              className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
+              className="block text-xs font-medium text-muted-foreground mb-1"
             >
               Subject <span className="text-red-500">*</span>
             </label>
-            <input
+            <Input
               id="support-subject"
               type="text"
               value={subject}
@@ -215,20 +208,14 @@ export function HelpSupportPanel() {
               minLength={5}
               maxLength={200}
               placeholder="Brief description of your issue"
-              className={cn(
-                'w-full rounded-md border border-border px-2.5 py-1.5 text-xs',
-                'bg-card text-foreground',
-                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-                'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
-                'transition-colors',
-              )}
+              className="text-xs"
             />
           </div>
 
           <div>
             <label
               htmlFor="support-message"
-              className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1"
+              className="block text-xs font-medium text-muted-foreground mb-1"
             >
               Message <span className="text-red-500">*</span>
             </label>
@@ -244,7 +231,7 @@ export function HelpSupportPanel() {
               className={cn(
                 'w-full rounded-md border border-border px-2.5 py-1.5 text-xs',
                 'bg-card text-foreground',
-                'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                'placeholder:text-muted-foreground',
                 'focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent',
                 'resize-none transition-colors',
               )}

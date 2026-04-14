@@ -50,7 +50,7 @@ export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps)
   }
 
   return (
-    <div className="shrink-0 border-t border-gray-100 dark:border-gray-800">
+    <div className="shrink-0 border-t border-border">
       {/* Suggestion chips */}
       {showSuggestions && (
         <div className="px-4 pt-3 pb-1">
@@ -62,9 +62,9 @@ export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps)
                 disabled={isDisabled || isStreaming}
                 className={cn(
                   'flex items-center gap-2 text-[11px] px-3 py-2 rounded-xl text-left transition-all duration-150',
-                  'bg-gray-50 dark:bg-gray-800/60',
-                  'border border-gray-150 dark:border-gray-700/80',
-                  'text-gray-600 dark:text-gray-400',
+                  'bg-muted',
+                  'border border-border',
+                  'text-muted-foreground',
                   'hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 hover:shadow-sm',
                   'dark:hover:bg-indigo-900/20 dark:hover:border-indigo-700 dark:hover:text-indigo-300',
                   'disabled:opacity-40 disabled:pointer-events-none',
@@ -92,10 +92,10 @@ export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps)
             rows={1}
             className={cn(
               'flex-1 resize-none rounded-xl',
-              'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700',
+              'bg-muted border border-border',
               'pl-4 pr-4 py-2.5 text-[13px]',
-              'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-              'text-gray-800 dark:text-gray-100',
+              'placeholder:text-muted-foreground',
+              'text-foreground',
               'focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400',
               'focus:bg-card',
               'disabled:opacity-40',
@@ -123,14 +123,14 @@ export function ChatInput({ onSend, showSuggestions, disabled }: ChatInputProps)
                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-150',
                 canSend
                   ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600',
+                  : 'bg-muted text-muted-foreground/60',
               )}
             >
               <ArrowUp className="h-4 w-4" />
             </button>
           )}
         </div>
-        <p className="text-[10px] text-gray-400/70 dark:text-gray-600 text-center mt-2 select-none">
+        <p className="text-[10px] text-muted-foreground text-center mt-2 select-none">
           Upsy can make mistakes. Verify important info.
         </p>
       </div>

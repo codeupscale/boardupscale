@@ -14,7 +14,7 @@ export function RichTextDisplay({ content, className }: RichTextDisplayProps) {
 
   return (
     <div
-      className={cn('rich-text-content text-gray-700 dark:text-gray-300', className)}
+      className={cn('rich-text-content text-foreground/80', className)}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   )

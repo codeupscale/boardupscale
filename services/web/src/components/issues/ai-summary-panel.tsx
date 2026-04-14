@@ -116,7 +116,7 @@ function SummarySection({
       </h4>
       <ul className="space-y-0.5">
         {items.map((item, idx) => (
-          <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
+          <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
             <span className="text-purple-400 mt-0.5">•</span>
             <span>{item}</span>
           </li>

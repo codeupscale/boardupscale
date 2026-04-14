@@ -38,14 +38,14 @@ function getFileIcon(mimeType: string) {
   if (isPdf(mimeType)) return <FileText className="h-5 w-5 text-red-500" />
   if (isSpreadsheet(mimeType)) return <FileSpreadsheet className="h-5 w-5 text-green-500" />
   if (isCode(mimeType)) return <FileCode className="h-5 w-5 text-amber-500" />
-  return <File className="h-5 w-5 text-gray-400" />
+  return <File className="h-5 w-5 text-muted-foreground" />
 }
 
 function getFileColor(mimeType: string): string {
   if (isImage(mimeType)) return 'bg-primary/10 border-primary/20'
   if (isVideo(mimeType)) return 'bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/40'
   if (isPdf(mimeType)) return 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/40'
-  return 'bg-muted/50 border-gray-100 dark:border-gray-700/50'
+  return 'bg-muted/50 border-border'
 }
 
 // ── Lightbox ─────────────────────────────────────
@@ -180,11 +180,11 @@ function FileCard({
           <span>{formatFileSize(Number(attachment.fileSize))}</span>
           {attachment.uploader && (
             <>
-              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <span className="text-muted-foreground">·</span>
               <span>{attachment.uploader.displayName}</span>
             </>
           )}
-          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span className="text-muted-foreground">·</span>
           <span>{new Date(attachment.createdAt).toLocaleDateString()}</span>
         </div>
       </div>
@@ -193,7 +193,7 @@ function FileCard({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Open in new tab"
         >
           <Maximize2 className="h-3.5 w-3.5" />
@@ -201,7 +201,7 @@ function FileCard({
         <a
           href={url}
           download={attachment.fileName}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Download"
         >
           <Download className="h-3.5 w-3.5" />
@@ -209,7 +209,7 @@ function FileCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
           title="Delete"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -262,7 +262,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
           <Paperclip className="h-4 w-4" />
           Attachments
           {totalCount > 0 && (
-            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-muted text-xs font-medium text-gray-600 dark:text-gray-400">
+            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-muted text-xs font-medium text-muted-foreground">
               {totalCount}
             </span>
           )}
@@ -300,7 +300,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
           'border-2 border-dashed rounded-xl p-5 text-center transition-all duration-200',
           isDragOver
             ? 'border-primary bg-primary/10 scale-[1.01]'
-            : 'border-border hover:border-gray-300 dark:hover:border-gray-600',
+            : 'border-border hover:border-border',
         )}
       >
         {uploadAttachment.isPending ? (

@@ -59,7 +59,7 @@ export function AppLayout() {
         className="flex-1 flex flex-col min-w-0 transition-all duration-200"
       >
         <Topbar />
-        <main id="main-content" className="flex-1 overflow-auto">
+        <main id="main-content" className="flex-1 overflow-auto plasma-main-content">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>

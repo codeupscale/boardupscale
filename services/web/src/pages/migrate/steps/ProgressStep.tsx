@@ -301,7 +301,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
             return (
               <div key={phase.id} className={cn(
                 'px-4 py-3 transition-colors',
-                isRunning ? phase.bgColor : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/30',
+                isRunning ? phase.bgColor : 'hover:bg-accent/30',
               )}>
                 <div className="flex items-center gap-3">
                   {/* Status icon */}
@@ -316,7 +316,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                     ) : isRunning ? (
                       <Loader2 className={cn('h-4 w-4 animate-spin', phase.color)} />
                     ) : (
-                      <Icon className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+                      <Icon className="h-4 w-4 text-muted-foreground/60" />
                     )}
                   </div>
 
@@ -351,7 +351,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                           </span>
                         )}
                         {isPending && (
-                          <span className="text-xs text-gray-300 dark:text-gray-600">Pending</span>
+                          <span className="text-xs text-muted-foreground/60">Pending</span>
                         )}
                       </div>
                     </div>
@@ -417,12 +417,12 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-foreground">Activity Log</h3>
         </div>
-        <div className="p-3 h-36 overflow-y-auto bg-gray-950 dark:bg-gray-950 font-mono text-xs space-y-1 rounded-b-xl">
+        <div className="p-3 h-36 overflow-y-auto bg-foreground/95 font-mono text-xs space-y-1 rounded-b-xl">
           {activityLog.length === 0 ? (
             <p className="text-muted-foreground">Waiting for activity...</p>
           ) : activityLog.map((entry, i) => (
             <div key={i} className="flex gap-2">
-              <span className="text-gray-600 flex-shrink-0">{entry.time}</span>
+              <span className="text-muted-foreground flex-shrink-0">{entry.time}</span>
               <span className={cn(
                 entry.message.startsWith('Migration completed') ? 'text-green-400'
                   : entry.message.startsWith('Migration failed') ? 'text-red-400'

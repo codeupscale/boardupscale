@@ -149,7 +149,7 @@ export function PageDetailPage() {
       {/* ── Sidebar ── */}
       <div className="w-60 flex-shrink-0 border-r border-border flex flex-col bg-card">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
             <BookOpen size={15} />
             Pages
           </div>
@@ -184,7 +184,7 @@ export function PageDetailPage() {
           <nav className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
             <Link
               to={`/projects/${key}/pages`}
-              className="hover:text-foreground dark:hover:text-gray-200 transition-colors flex-shrink-0"
+              className="hover:text-foreground dark:hover:text-foreground transition-colors flex-shrink-0"
             >
               Pages
             </Link>
@@ -193,7 +193,7 @@ export function PageDetailPage() {
                 <ChevronRight size={10} className="flex-shrink-0" />
                 <Link
                   to={`/projects/${key}/pages/${a.id}`}
-                  className="hover:text-foreground dark:hover:text-gray-200 transition-colors truncate max-w-[120px]"
+                  className="hover:text-foreground dark:hover:text-foreground transition-colors truncate max-w-[120px]"
                 >
                   {a.title}
                 </Link>
@@ -201,7 +201,7 @@ export function PageDetailPage() {
             ))}
             <span className="flex items-center gap-1 min-w-0">
               <ChevronRight size={10} className="flex-shrink-0" />
-              <span className="text-gray-700 dark:text-gray-200 font-medium truncate max-w-[160px]">
+              <span className="text-foreground/80 font-medium truncate max-w-[160px]">
                 {title || 'Untitled'}
               </span>
             </span>
@@ -290,7 +290,7 @@ export function PageDetailPage() {
                           key={emoji}
                           type="button"
                           className={cn(
-                            'text-xl p-1 rounded hover:bg-muted dark:hover:bg-gray-700 transition-colors',
+                            'text-xl p-1 rounded hover:bg-muted transition-colors',
                             page.icon === emoji && 'bg-primary/10',
                           )}
                           onClick={() => handleIconSelect(emoji)}
@@ -316,7 +316,7 @@ export function PageDetailPage() {
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 placeholder="Untitled"
-                className="w-full text-3xl font-bold text-foreground bg-transparent border-none outline-none placeholder-gray-300 dark:placeholder-gray-600 resize-none"
+                className="w-full text-3xl font-bold text-foreground bg-transparent border-none outline-none placeholder-muted-foreground/60 resize-none"
               />
             </div>
 

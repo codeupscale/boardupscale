@@ -52,7 +52,7 @@ export function BulkMoveDialog({
           <DialogTitle>Move Issues</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Move {issueIds.length} issue{issueIds.length !== 1 ? 's' : ''} to another project.
             Issues will be re-keyed and assigned the default status of the target project.
           </p>

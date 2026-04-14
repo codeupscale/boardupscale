@@ -149,7 +149,7 @@ export function ProjectReportsPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — report list */}
-        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
+        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card/50 backdrop-blur-sm overflow-y-auto">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-4 pt-4 pb-2">
             Reports
           </p>
@@ -161,7 +161,7 @@ export function ProjectReportsPage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 text-sm transition-colors text-left w-full',
                 activeReport === item.id
-                  ? 'bg-primary/10 text-primary font-medium'
+                  ? 'plasma-settings-active'
                   : 'text-muted-foreground hover:bg-accent/70',
               )}
             >
@@ -172,7 +172,7 @@ export function ProjectReportsPage() {
         </div>
 
         {/* Right panel — chart */}
-        <div className="flex-1 overflow-auto p-6 bg-card">
+        <div className="flex-1 overflow-auto p-6">
           {/* Controls row */}
           <div className="flex items-end gap-4 mb-6">
             {/* Sprint selector for burndown, burnup, and sprint report */}

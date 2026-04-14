@@ -111,7 +111,7 @@ export function ProjectForm({
       {/* Template Selection - only show for new projects */}
       {!project && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground/80 mb-2">
             {t('projects.template')}
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -123,13 +123,13 @@ export function ProjectForm({
                 className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-colors ${
                   selectedTemplate === tmpl.value
                     ? 'border-primary bg-primary/10'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                    : 'border-border hover:border-border/80 bg-card'
                 }`}
               >
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-foreground">
                   {tmpl.label}
                 </span>
-                <span className="text-xs text-gray-500 mt-0.5">
+                <span className="text-xs text-muted-foreground mt-0.5">
                   {tmpl.description}
                 </span>
               </button>

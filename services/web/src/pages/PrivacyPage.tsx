@@ -57,7 +57,7 @@ export function PrivacyPage() {
                     <a
                       key={s.id}
                       href={`#${s.id}`}
-                      className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-colors"
+                      className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                       {s.label}
                     </a>
@@ -70,7 +70,7 @@ export function PrivacyPage() {
             <main className="min-w-0">
               {/* Title block */}
               <div className="mb-10">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
+                <h1 className="text-3xl font-bold text-foreground">
                   Privacy Policy
                 </h1>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -363,8 +363,8 @@ function Section({
 }) {
   return (
     <section id={id} className="scroll-mt-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50 mb-4">{title}</h2>
-      <div className="text-foreground leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-gray-800 [&_strong]:dark:text-gray-200 [&_code]:bg-muted [&_code]:dark:bg-gray-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
+      <h2 className="text-xl font-semibold text-foreground mb-4">{title}</h2>
+      <div className="text-foreground leading-relaxed space-y-3 [&_ul]:mt-2 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_strong]:text-foreground [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono">
         {children}
       </div>
     </section>

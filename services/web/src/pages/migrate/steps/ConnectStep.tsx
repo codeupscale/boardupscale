@@ -156,7 +156,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
           <button
             type="button"
             onClick={() => setManualOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-gray-900 dark:hover:text-gray-200 transition-colors w-full"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
             aria-expanded={manualOpen}
           >
             {manualOpen ? (

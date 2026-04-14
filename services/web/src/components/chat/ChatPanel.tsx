@@ -131,20 +131,20 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-50/60 to-violet-50/40 dark:from-indigo-950/30 dark:to-violet-950/20 rounded-t-2xl">
+      <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-gradient-to-r from-indigo-50/60 to-violet-50/40 dark:from-indigo-950/30 dark:to-violet-950/20 rounded-t-2xl">
         <div className="flex items-center gap-2.5">
           <div className="relative">
             <UpsyAvatarSmall />
-            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-400 border-[2px] border-white dark:border-gray-900" />
+            <span className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-400 border-[2px] border-background" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-none">
+              <h3 className="text-sm font-semibold text-foreground leading-none">
                 Upsy
               </h3>
               <Sparkles className="h-3 w-3 text-indigo-400" />
             </div>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               {status?.provider ? `${status.provider} · ` : ''}AI Assistant
             </p>
           </div>
@@ -152,7 +152,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         <div className="flex items-center gap-0.5">
           <button
             onClick={handleNewConversation}
-            className="p-1.5 rounded-lg hover:bg-accent text-gray-400 hover:text-primary transition-colors"
+            className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
             aria-label="New conversation"
             title="New conversation"
           >
@@ -164,7 +164,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
               'p-1.5 rounded-lg transition-colors',
               showHistory
                 ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                : 'hover:bg-accent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+                : 'hover:bg-accent text-muted-foreground hover:text-foreground',
             )}
             aria-label="Conversation history"
             title="History"
@@ -173,7 +173,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-accent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close"
           >
             <X className="h-3.5 w-3.5" />

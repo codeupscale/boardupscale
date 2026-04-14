@@ -50,7 +50,7 @@ const TYPE_BADGE: Record<string, string> = {
   story: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary',
   task: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   bug: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  subtask: 'bg-muted text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  subtask: 'bg-muted text-muted-foreground',
 }
 
 const TYPE_OPTIONS = ['all', 'epic', 'story', 'task', 'bug', 'subtask'] as const
@@ -136,7 +136,7 @@ export function ProjectTimelinePage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card flex-shrink-0">
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
         <Button variant="outline" size="sm" onClick={() => setViewStart((d) => subDays(d, cfg.step))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -160,8 +160,8 @@ export function ProjectTimelinePage() {
                 className={cn(
                   'px-3 py-1.5 font-medium transition-colors',
                   zoom === z
-                    ? 'bg-primary text-white'
-                    : 'bg-card text-muted-foreground hover:bg-gray-50 dark:hover:bg-gray-700',
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:bg-muted',
                 )}
               >
                 {z.charAt(0).toUpperCase() + z.slice(1)}
@@ -203,7 +203,7 @@ export function ProjectTimelinePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto bg-card">
+        <div className="flex-1 overflow-auto">
           <div style={{ minWidth: LABEL_W + totalWidth }}>
             {/* STICKY HEADER */}
             <div
@@ -262,7 +262,7 @@ export function ProjectTimelinePage() {
                       className={cn(
                         'flex items-center justify-center text-[10px] border-r border-border flex-shrink-0',
                         isWeekend(day)
-                          ? 'bg-muted dark:bg-gray-700/50 text-muted-foreground'
+                          ? 'bg-muted text-muted-foreground'
                           : 'bg-card text-muted-foreground',
                         i === todayOffset && 'font-bold text-primary',
                       )}

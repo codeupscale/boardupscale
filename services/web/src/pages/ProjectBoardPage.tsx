@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { BoardColumn } from '@/components/board/board-column'
 import { BoardQuickFilters } from '@/components/board/board-filters'
 import { BoardSwimlane, groupIssuesBySwimlane } from '@/components/board/board-swimlane'
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { PageHeader } from '@/components/common/page-header'
@@ -566,7 +566,7 @@ export function ProjectBoardPage() {
                   {/* Add Column Button */}
                   <button
                     onClick={() => setShowAddColumn(true)}
-                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-primary dark:hover:border-primary hover:text-primary dark:hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all"
+                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
                   >
                     <Plus className="h-6 w-6 mb-1" />
                     <span className="text-sm font-medium">Add Column</span>
@@ -587,36 +587,38 @@ export function ProjectBoardPage() {
           <DialogHeader>
             <DialogTitle>{t('issues.createIssue')}</DialogTitle>
           </DialogHeader>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={allIssues.map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={orgUsers || []}
-            defaultValues={{ statusId: createStatusId }}
-            onSubmit={(values) => {
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                {
-                  onSuccess: () => {
-                    setShowCreateDialog(false)
-                    setCreateStatusId(undefined)
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={allIssues.map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={orgUsers || []}
+              defaultValues={{ statusId: createStatusId }}
+              onSubmit={(values) => {
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    onSuccess: () => {
+                      setShowCreateDialog(false)
+                      setCreateStatusId(undefined)
+                    },
                   },
-                },
-              )
-            }}
-            onCancel={() => {
-              setShowCreateDialog(false)
-              setCreateStatusId(undefined)
-            }}
-            isLoading={createIssue.isPending}
-          />
+                )
+              }}
+              onCancel={() => {
+                setShowCreateDialog(false)
+                setCreateStatusId(undefined)
+              }}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
 

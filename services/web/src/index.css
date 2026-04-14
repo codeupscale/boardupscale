@@ -1,50 +1,101 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-muted: hsl(var(--sidebar-muted));
+  --color-sidebar-muted-foreground: hsl(var(--sidebar-muted-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 260 15% 12%;
+    /* Background: subtle lavender-tinted off-white — echoes the purple brand
+       while keeping readability. Cards (pure white) pop off this with depth. */
+    --background: 260 35% 97%;
+    --foreground: 260 20% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 260 15% 12%;
+    --card-foreground: 260 20% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 260 15% 12%;
+    --popover-foreground: 260 20% 11%;
     --primary: 315 65% 28%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 260 20% 95%;
-    --secondary-foreground: 260 15% 20%;
-    --muted: 260 15% 95%;
-    --muted-foreground: 260 10% 45%;
-    --accent: 260 20% 94%;
-    --accent-foreground: 260 15% 20%;
+    --secondary: 260 25% 94%;
+    --secondary-foreground: 260 20% 18%;
+    --muted: 260 25% 94%;
+    --muted-foreground: 260 12% 46%;
+    --accent: 260 25% 93%;
+    --accent-foreground: 260 20% 18%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 260 20% 88%;
-    --input: 260 15% 92%;
+    --border: 260 28% 91%;
+    --input: 260 20% 93%;
     --ring: 315 65% 45%;
-    --radius: 0.5rem;
+    --radius: 0.625rem;
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 260 15% 12%;
+    --sidebar-muted: 260 15% 95%;
+    --sidebar-muted-foreground: 260 10% 45%;
+    --sidebar-accent: 260 20% 94%;
+    --sidebar-accent-foreground: 260 15% 20%;
+    --sidebar-border: 260 20% 88%;
   }
 
   .dark {
-    --background: 240 35% 5%;
+    --background: 260 30% 4%;
     --foreground: 260 15% 92%;
-    --card: 260 30% 8%;
+    --card: 260 25% 7%;
     --card-foreground: 260 15% 92%;
-    --popover: 260 30% 8%;
+    --popover: 260 25% 8%;
     --popover-foreground: 260 15% 92%;
     --primary: 0 0% 100%;
     --primary-foreground: 315 50% 20%;
-    --secondary: 260 25% 14%;
+    --secondary: 260 22% 12%;
     --secondary-foreground: 260 15% 75%;
-    --muted: 260 20% 11%;
-    --muted-foreground: 260 10% 52%;
-    --accent: 260 25% 15%;
+    --muted: 260 18% 10%;
+    --muted-foreground: 260 10% 55%;
+    --accent: 260 22% 13%;
     --accent-foreground: 260 15% 85%;
     --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 260 20% 22%;
-    --input: 260 20% 16%;
+    --border: 260 18% 18%;
+    --input: 260 18% 14%;
     --ring: 315 60% 55%;
+    --sidebar: 260 25% 5%;
+    --sidebar-foreground: 260 15% 92%;
+    --sidebar-muted: 260 18% 10%;
+    --sidebar-muted-foreground: 260 10% 52%;
+    --sidebar-accent: 260 22% 13%;
+    --sidebar-accent-foreground: 260 15% 85%;
+    --sidebar-border: 260 18% 16%;
   }
 }
 
@@ -153,6 +204,225 @@ body {
   margin: 0;
 }
 
+/* ── Light mode premium sidebar ── */
+:root .plasma-sidebar {
+  background: linear-gradient(
+    175deg,
+    oklch(0.965 0.032 308) 0%,
+    oklch(0.948 0.045 292) 40%,
+    oklch(0.955 0.035 318) 100%
+  );
+  border-right: 1px solid oklch(0.89 0.048 300 / 0.8) !important;
+}
+.dark .plasma-sidebar {
+  background: linear-gradient(
+    175deg,
+    oklch(0.10 0.045 310) 0%,
+    oklch(0.085 0.055 288) 48%,
+    oklch(0.095 0.040 318) 100%
+  );
+  border-right: 1px solid oklch(0.20 0.06 300 / 0.6) !important;
+}
+
+/* Subtle inner glow at top of sidebar */
+.plasma-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: radial-gradient(ellipse 80% 120% at 50% -30%, oklch(0.88 0.08 310 / 0.35) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .plasma-sidebar::after {
+  background: radial-gradient(ellipse 80% 120% at 50% -30%, oklch(0.30 0.18 310 / 0.25) 0%, transparent 70%);
+}
+.plasma-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Sidebar section label with plasma dot ── */
+.sidebar-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: oklch(0.38 0.18 308);
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+.sidebar-section-label::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, oklch(0.45 0.24 308), oklch(0.52 0.28 340));
+  box-shadow: 0 0 6px oklch(0.50 0.26 316 / 0.40);
+  flex-shrink: 0;
+}
+.dark .sidebar-section-label {
+  color: oklch(0.62 0.16 310);
+}
+.dark .sidebar-section-label::before {
+  background: linear-gradient(135deg, oklch(0.60 0.22 305), oklch(0.68 0.26 335));
+  box-shadow: 0 0 8px oklch(0.65 0.24 316 / 0.30);
+}
+
+/* ── Sidebar section divider ── */
+.sidebar-divider {
+  height: 1px;
+  margin: 12px 16px;
+  background: linear-gradient(90deg, transparent 0%, oklch(0.82 0.06 310 / 0.5) 30%, oklch(0.82 0.06 310 / 0.5) 70%, transparent 100%);
+}
+.dark .sidebar-divider {
+  background: linear-gradient(90deg, transparent 0%, oklch(0.25 0.08 310 / 0.5) 30%, oklch(0.25 0.08 310 / 0.5) 70%, transparent 100%);
+}
+
+/* ── Sidebar nav item hover glow ── */
+:root .sidebar-nav-hover:hover:not(.plasma-nav-active) {
+  background: linear-gradient(90deg, oklch(0.94 0.035 310 / 0.7) 0%, oklch(0.95 0.02 290 / 0.4) 100%);
+  color: oklch(0.22 0.10 310);
+}
+.dark .sidebar-nav-hover:hover:not(.plasma-nav-active) {
+  background: linear-gradient(90deg, oklch(0.16 0.06 310 / 0.5) 0%, oklch(0.14 0.04 290 / 0.3) 100%);
+  color: oklch(0.85 0.08 310);
+}
+
+/* ── Sidebar project badge ── */
+.sidebar-project-badge {
+  background: linear-gradient(135deg, oklch(0.92 0.05 310) 0%, oklch(0.90 0.06 290) 100%);
+  color: oklch(0.38 0.18 308);
+  font-weight: 800;
+  border: 1px solid oklch(0.86 0.06 300 / 0.6);
+}
+.dark .sidebar-project-badge {
+  background: linear-gradient(135deg, oklch(0.18 0.06 310) 0%, oklch(0.16 0.07 290) 100%);
+  color: oklch(0.72 0.16 310);
+  border-color: oklch(0.28 0.08 300 / 0.5);
+}
+
+/* ── Sidebar user card ── */
+.sidebar-user-card {
+  background: linear-gradient(135deg, oklch(0.96 0.028 305 / 0.6) 0%, oklch(0.97 0.015 285 / 0.4) 100%);
+  border-top: 1px solid oklch(0.90 0.04 300 / 0.5);
+}
+.dark .sidebar-user-card {
+  background: linear-gradient(135deg, oklch(0.12 0.04 310 / 0.5) 0%, oklch(0.11 0.03 290 / 0.4) 100%);
+  border-top-color: oklch(0.22 0.06 300 / 0.4);
+}
+
+/* ── Issue detail panel section groups ── */
+.issue-panel-section {
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  overflow: hidden;
+}
+.issue-panel-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, oklch(0.955 0.030 310 / 0.7) 0%, oklch(0.965 0.018 285 / 0.5) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  color: oklch(0.38 0.17 308);
+}
+.dark .issue-panel-section-header {
+  background: linear-gradient(90deg, oklch(0.14 0.06 310 / 0.6) 0%, oklch(0.12 0.04 285 / 0.4) 100%);
+  color: oklch(0.62 0.15 310);
+  border-bottom-color: oklch(0.22 0.06 300 / 0.5);
+}
+.issue-panel-section-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: hsl(var(--card));
+}
+.dark .issue-panel-section-body {
+  background: hsl(var(--card));
+}
+
+/* ── Logo "upscale" gradient text ── */
+.logo-upscale-text {
+  background: linear-gradient(135deg, oklch(0.45 0.25 308) 0%, oklch(0.52 0.28 340) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.dark .logo-upscale-text {
+  background: linear-gradient(135deg, oklch(0.72 0.22 300) 0%, oklch(0.65 0.28 335) 60%, oklch(0.68 0.24 358) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Stat card left-border accents ── */
+.stat-accent-amber  { border-left: 3px solid #fbbf24; }
+.stat-accent-violet { border-left: 3px solid #a78bfa; }
+.stat-accent-emerald{ border-left: 3px solid #34d399; }
+
+/* ── Light mode card shadow — white cards lift off the tinted background ── */
+:root .card-elevated {
+  box-shadow:
+    0 1px 3px oklch(0.55 0.10 280 / 0.08),
+    0 4px 12px oklch(0.55 0.10 280 / 0.06);
+}
+:root .card-elevated:hover {
+  box-shadow:
+    0 2px 6px oklch(0.55 0.10 280 / 0.10),
+    0 8px 24px oklch(0.55 0.10 280 / 0.09);
+  transform: translateY(-1px);
+}
+.dark .card-elevated {
+  box-shadow: none;
+}
+.dark .card-elevated:hover {
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+/* ── Light mode card hover glow ── */
+.plasma-card-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.plasma-card-hover:hover {
+  box-shadow: 0 0 0 1px oklch(0.80 0.08 315 / 0.15), 0 4px 16px oklch(0.80 0.12 310 / 0.08);
+  border-color: oklch(0.80 0.08 315 / 0.25);
+}
+.dark .plasma-card-hover:hover {
+  box-shadow: 0 0 0 1px oklch(0.45 0.18 315 / 0.20), 0 4px 16px oklch(0.35 0.20 310 / 0.12);
+  border-color: oklch(0.45 0.18 315 / 0.30);
+}
+
+/* ── Settings/project sidebar active item ── */
+.plasma-settings-active {
+  background: linear-gradient(135deg, oklch(0.94 0.04 315 / 0.6) 0%, oklch(0.95 0.03 280 / 0.5) 100%);
+  color: oklch(0.30 0.18 315);
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+.plasma-settings-active svg {
+  color: oklch(0.45 0.20 315);
+}
+.dark .plasma-settings-active {
+  background: linear-gradient(135deg, oklch(0.22 0.10 315 / 0.5) 0%, oklch(0.25 0.12 280 / 0.4) 100%);
+  color: oklch(0.85 0.12 315);
+}
+.dark .plasma-settings-active svg {
+  color: oklch(0.75 0.16 315);
+}
+
 /* CSS custom properties for recharts dark mode */
 :root {
   --tooltip-bg: #fff;
@@ -161,9 +431,9 @@ body {
 }
 
 .dark {
-  --tooltip-bg: #1e293b;
-  --tooltip-fg: #e2e8f0;
-  --tooltip-border: #334155;
+  --tooltip-bg: oklch(0.16 0.03 280);
+  --tooltip-fg: oklch(0.90 0.02 260);
+  --tooltip-border: oklch(0.25 0.04 280);
 }
 
 /* Smooth theme transitions */
@@ -202,25 +472,222 @@ html.theme-transition *::after {
   background: #6b7280;
 }
 
-/* Dark mode plasma background blobs */
-.dark body::before {
+/* ── Main content gradient backgrounds ── */
+.plasma-main-content {
+  position: relative;
+}
+.plasma-main-content::before {
   content: '';
   position: fixed;
-  inset: 0;
-  z-index: -1;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
   pointer-events: none;
+  /* Light mode: warm lavender plasma wash — visible but never distracting */
   background:
-    radial-gradient(ellipse 420px 420px at 0% 100%,   oklch(0.45 0.28 310 / 0.45) 0%, transparent 70%),
-    radial-gradient(ellipse 360px 360px at 100% 100%, oklch(0.55 0.22 350 / 0.35) 0%, transparent 70%),
-    radial-gradient(ellipse 230px 230px at 82% 4%,    oklch(0.50 0.20 290 / 0.12) 0%, transparent 70%);
-  filter: blur(50px);
+    radial-gradient(ellipse 65% 55% at 0% 0%,      oklch(0.88 0.10 310 / 0.55) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 60% at 100% 100%,   oklch(0.86 0.12 280 / 0.40) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 45% at 78% 5%,      oklch(0.90 0.08 350 / 0.28) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 85%,     oklch(0.89 0.09 300 / 0.22) 0%, transparent 70%);
+  filter: blur(72px);
+}
+.dark .plasma-main-content::before {
+  /* Dark mode: rich immersive plasma gradient */
+  background:
+    /* top-left: large violet orb */
+    radial-gradient(ellipse 60% 50% at 0% 0%,       oklch(0.22 0.22 300 / 0.60) 0%, transparent 70%),
+    /* left edge: purple wash */
+    radial-gradient(ellipse 40% 70% at 0% 50%,      oklch(0.18 0.16 310 / 0.40) 0%, transparent 65%),
+    /* bottom-left: hot magenta */
+    radial-gradient(ellipse 50% 45% at 5% 100%,     oklch(0.28 0.28 320 / 0.50) 0%, transparent 65%),
+    /* bottom-right: rose glow */
+    radial-gradient(ellipse 45% 40% at 95% 95%,     oklch(0.25 0.22 350 / 0.35) 0%, transparent 65%),
+    /* top-right: indigo accent */
+    radial-gradient(ellipse 35% 30% at 90% 5%,      oklch(0.20 0.16 280 / 0.30) 0%, transparent 65%),
+    /* center: soft violet fill */
+    radial-gradient(ellipse 70% 60% at 50% 40%,     oklch(0.14 0.10 305 / 0.20) 0%, transparent 70%);
+  filter: blur(70px);
+}
+/* Content sits above the gradient layer */
+.plasma-main-content > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Dark mode select option styling */
 .dark select option {
-  background-color: #1f2937;
-  color: #e5e7eb;
+  background-color: oklch(0.16 0.04 280);
+  color: oklch(0.90 0.02 260);
 }
+
+/* ── Dark mode glass card enhancement ── */
+.dark .glass-card {
+  background: oklch(0.14 0.03 280 / 0.60);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border-color: oklch(0.30 0.06 280 / 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════
+   GAMING LOGIN PAGE
+   ═══════════════════════════════════════════════════════ */
+
+.login-gaming-bg {
+  background: oklch(0.04 0.025 280);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated atmospheric orbs */
+@keyframes loginOrb1 {
+  0%   { transform: translate(0, 0) scale(1);    opacity: 0.55; }
+  33%  { transform: translate(50px, -70px) scale(1.18); opacity: 0.65; }
+  66%  { transform: translate(-35px, 45px) scale(0.88); opacity: 0.50; }
+  100% { transform: translate(0, 0) scale(1);    opacity: 0.55; }
+}
+@keyframes loginOrb2 {
+  0%   { transform: translate(0, 0) scale(1);    opacity: 0.45; }
+  40%  { transform: translate(-55px, 35px) scale(1.22); opacity: 0.55; }
+  80%  { transform: translate(40px, -50px) scale(0.84); opacity: 0.40; }
+  100% { transform: translate(0, 0) scale(1);    opacity: 0.45; }
+}
+@keyframes loginOrb3 {
+  0%   { transform: translate(-50%, -50%) scale(1);    opacity: 0.30; }
+  50%  { transform: translate(-50%, -50%) scale(1.15); opacity: 0.40; }
+  100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.30; }
+}
+
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.login-orb-1 {
+  width: 700px; height: 700px;
+  top: -250px; left: -150px;
+  background: radial-gradient(circle, oklch(0.35 0.28 308 / 0.72) 0%, transparent 70%);
+  animation: loginOrb1 13s ease-in-out infinite;
+}
+.login-orb-2 {
+  width: 550px; height: 550px;
+  bottom: -180px; right: -120px;
+  background: radial-gradient(circle, oklch(0.30 0.30 278 / 0.62) 0%, transparent 70%);
+  animation: loginOrb2 16s ease-in-out infinite;
+}
+.login-orb-3 {
+  width: 450px; height: 450px;
+  top: 50%; left: 50%;
+  background: radial-gradient(circle, oklch(0.27 0.24 348 / 0.30) 0%, transparent 70%);
+  animation: loginOrb3 20s ease-in-out infinite;
+}
+.login-orb-4 {
+  width: 500px; height: 500px;
+  top: -120px; right: -80px;
+  background: radial-gradient(circle, oklch(0.32 0.26 304 / 0.50) 0%, transparent 70%);
+  animation: loginOrb2 14s ease-in-out infinite reverse;
+}
+
+/* Left brand panel divider */
+.login-panel-left {
+  border-right: 1px solid oklch(0.45 0.18 310 / 0.12);
+}
+
+/* Subtle grid overlay for left panel */
+.login-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none;
+}
+
+/* Glass morphism card for the form */
+.login-glass-card {
+  background: oklch(0.09 0.04 280 / 0.78);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid oklch(0.50 0.16 310 / 0.22);
+  box-shadow:
+    0 0 0 1px oklch(0.45 0.18 315 / 0.08),
+    0 12px 48px oklch(0.10 0.08 280 / 0.65),
+    inset 0 1px 0 oklch(1 0 0 / 0.07);
+}
+
+/* Gradient hero text */
+.text-gradient-plasma {
+  background: linear-gradient(
+    135deg,
+    oklch(0.78 0.20 300) 0%,
+    oklch(0.70 0.28 330) 50%,
+    oklch(0.72 0.22 0)   100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* OAuth buttons */
+.oauth-btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 14px;
+  border-radius: 0.625rem;
+  border: 1px solid oklch(0.70 0 0 / 0.30);
+  background: oklch(0.97 0 0);
+  color: oklch(0.18 0 0);
+  font-size: 0.8125rem; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.oauth-btn-google:hover {
+  background: oklch(0.93 0 0);
+  box-shadow: 0 2px 14px oklch(0 0 0 / 0.22);
+}
+
+.oauth-btn-github {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 14px;
+  border-radius: 0.625rem;
+  border: 1px solid oklch(0.38 0.02 280 / 0.60);
+  background: oklch(0.14 0.02 280);
+  color: oklch(0.92 0 0);
+  font-size: 0.8125rem; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.oauth-btn-github:hover {
+  background: oklch(0.20 0.03 280);
+  border-color: oklch(0.50 0.14 305 / 0.55);
+  box-shadow: 0 2px 14px oklch(0.25 0.16 310 / 0.32);
+}
+
+/* Login "or" divider */
+.login-divider {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 0.75rem;
+  color: oklch(0.52 0.05 280);
+  white-space: nowrap;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: oklch(0.32 0.06 280 / 0.45);
+}
+
+/* Feature bullet glow dots */
+.login-dot-violet { background-color: #a78bfa; box-shadow: 0 0 6px #a78bfa88; }
+.login-dot-pink   { background-color: #f472b6; box-shadow: 0 0 6px #f472b688; }
+.login-dot-indigo { background-color: #818cf8; box-shadow: 0 0 6px #818cf888; }
+.login-dot-emerald{ background-color: #34d399; box-shadow: 0 0 6px #34d39988; }
 
 /* Accessibility: reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { BoardFilters, ProjectMember, Sprint, SwimlaneGroupBy } from '@/types'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface BoardQuickFiltersProps {
   filters: BoardFilters
@@ -48,7 +50,6 @@ export function BoardQuickFilters({
 }: BoardQuickFiltersProps) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState(filters.search || '')
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
 
   const activeFilterCount = useMemo(() => {
     let count = 0
@@ -104,28 +105,23 @@ export function BoardQuickFilters({
       const next = { ...filters, [key]: value }
       if (!value) delete next[key]
       onFiltersChange(next)
-      setOpenDropdown(null)
     },
     [filters, onFiltersChange],
   )
-
-  const toggleDropdown = useCallback((name: string) => {
-    setOpenDropdown((prev) => (prev === name ? null : name))
-  }, [])
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-6 py-3 bg-card border-b border-border">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-        <input
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
           type="text"
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           onKeyDown={handleSearchKeyDown}
           onBlur={handleSearchBlur}
           placeholder={t('board.searchIssues', 'Search issues...')}
-          className="pl-8 pr-3 py-1.5 text-sm border border-border bg-card text-foreground rounded-md w-48 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent"
+          className="pl-8 pr-3 py-1.5 text-sm w-48 h-auto"
         />
         {searchValue && (
           <button
@@ -133,259 +129,134 @@ export function BoardQuickFilters({
               setSearchValue('')
               onFiltersChange({ ...filters, search: undefined })
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
 
-      <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
+      <div className="h-5 w-px bg-border" />
 
       {/* Assignee Filter */}
-      <div className="relative">
-        <button
-          onClick={() => toggleDropdown('assignee')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
-            filters.assigneeId
-              ? 'border-primary/50 bg-primary/10 text-primary'
-              : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
-          )}
-        >
+      <Select value={filters.assigneeId || '__all__'} onValueChange={(v) => setFilter('assigneeId', v === '__all__' ? undefined : v)}>
+        <SelectTrigger className={cn(
+          'w-auto gap-1.5 text-sm',
+          filters.assigneeId
+            ? 'border-primary/50 bg-primary/10 text-primary'
+            : 'text-muted-foreground',
+        )}>
           <Users className="h-3.5 w-3.5" />
-          {filters.assigneeId
-            ? members.find((m) => m.userId === filters.assigneeId)?.user?.displayName || 'Assignee'
-            : t('board.assignee', 'Assignee')}
-        </button>
-        {openDropdown === 'assignee' && (
-          <DropdownPanel onClose={() => setOpenDropdown(null)}>
-            <button
-              onClick={() => setFilter('assigneeId', undefined)}
-              className={cn(
-                'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.assigneeId && 'bg-primary/10 text-primary',
-              )}
-            >
-              All assignees
-            </button>
-            {members.map((member) => (
-              <button
-                key={member.userId}
-                onClick={() => setFilter('assigneeId', member.userId)}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.assigneeId === member.userId && 'bg-primary/10 text-primary',
-                )}
-              >
-                <span className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
-                  {member.user?.displayName?.[0]?.toUpperCase() || '?'}
-                </span>
-                {member.user?.displayName || member.userId}
-              </button>
-            ))}
-          </DropdownPanel>
-        )}
-      </div>
+          <SelectValue placeholder={t('board.assignee', 'Assignee')} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">All assignees</SelectItem>
+          {members.map((member) => (
+            <SelectItem key={member.userId} value={member.userId}>
+              {member.user?.displayName || member.userId}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Type Filter */}
-      <div className="relative">
-        <button
-          onClick={() => toggleDropdown('type')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
-            filters.type
-              ? 'border-primary/50 bg-primary/10 text-primary'
-              : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
-          )}
-        >
+      <Select value={filters.type || '__all__'} onValueChange={(v) => setFilter('type', v === '__all__' ? undefined : v)}>
+        <SelectTrigger className={cn(
+          'w-auto gap-1.5 text-sm',
+          filters.type
+            ? 'border-primary/50 bg-primary/10 text-primary'
+            : 'text-muted-foreground',
+        )}>
           <Bug className="h-3.5 w-3.5" />
-          {filters.type
-            ? ISSUE_TYPES.find((t) => t.value === filters.type)?.label || 'Type'
-            : t('board.type', 'Type')}
-        </button>
-        {openDropdown === 'type' && (
-          <DropdownPanel onClose={() => setOpenDropdown(null)}>
-            <button
-              onClick={() => setFilter('type', undefined)}
-              className={cn(
-                'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.type && 'bg-primary/10 text-primary',
-              )}
-            >
-              All types
-            </button>
-            {ISSUE_TYPES.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setFilter('type', type.value)}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.type === type.value && 'bg-primary/10 text-primary',
-                )}
-              >
-                <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', type.color)}>
-                  {type.label}
-                </span>
-              </button>
-            ))}
-          </DropdownPanel>
-        )}
-      </div>
+          <SelectValue placeholder={t('board.type', 'Type')} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">All types</SelectItem>
+          {ISSUE_TYPES.map((type) => (
+            <SelectItem key={type.value} value={type.value}>
+              {type.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Priority Filter */}
-      <div className="relative">
-        <button
-          onClick={() => toggleDropdown('priority')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
-            filters.priority
-              ? 'border-primary/50 bg-primary/10 text-primary'
-              : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
-          )}
-        >
+      <Select value={filters.priority || '__all__'} onValueChange={(v) => setFilter('priority', v === '__all__' ? undefined : v)}>
+        <SelectTrigger className={cn(
+          'w-auto gap-1.5 text-sm',
+          filters.priority
+            ? 'border-primary/50 bg-primary/10 text-primary'
+            : 'text-muted-foreground',
+        )}>
           <AlertTriangle className="h-3.5 w-3.5" />
-          {filters.priority
-            ? PRIORITIES.find((p) => p.value === filters.priority)?.label || 'Priority'
-            : t('board.priority', 'Priority')}
-        </button>
-        {openDropdown === 'priority' && (
-          <DropdownPanel onClose={() => setOpenDropdown(null)}>
-            <button
-              onClick={() => setFilter('priority', undefined)}
-              className={cn(
-                'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                !filters.priority && 'bg-primary/10 text-primary',
-              )}
-            >
-              All priorities
-            </button>
-            {PRIORITIES.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setFilter('priority', p.value)}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                  filters.priority === p.value && 'bg-primary/10 text-primary',
-                )}
-              >
-                <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium', p.color)}>
-                  {p.label}
-                </span>
-              </button>
-            ))}
-          </DropdownPanel>
-        )}
-      </div>
+          <SelectValue placeholder={t('board.priority', 'Priority')} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">All priorities</SelectItem>
+          {PRIORITIES.map((p) => (
+            <SelectItem key={p.value} value={p.value}>
+              {p.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Sprint Filter */}
       {sprints && sprints.length > 0 && (
-        <div className="relative">
-          <button
-            onClick={() => toggleDropdown('sprint')}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
-              filters.sprintId
-                ? 'border-primary/50 bg-primary/10 text-primary'
-                : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
-            )}
-          >
+        <Select value={filters.sprintId || '__all__'} onValueChange={(v) => setFilter('sprintId', v === '__all__' ? undefined : v)}>
+          <SelectTrigger className={cn(
+            'w-auto gap-1.5 text-sm',
+            filters.sprintId
+              ? 'border-primary/50 bg-primary/10 text-primary'
+              : 'text-muted-foreground',
+          )}>
             <Layers className="h-3.5 w-3.5" />
-            {filters.sprintId
-              ? filters.sprintId === 'backlog'
-                ? 'Backlog'
-                : sprints.find((s) => s.id === filters.sprintId)?.name || 'Sprint'
-              : t('board.sprint', 'Sprint')}
-          </button>
-          {openDropdown === 'sprint' && (
-            <DropdownPanel onClose={() => setOpenDropdown(null)}>
-              <button
-                onClick={() => setFilter('sprintId', undefined)}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                  !filters.sprintId && 'bg-primary/10 text-primary',
-                )}
-              >
-                All issues
-              </button>
-              <button
-                onClick={() => setFilter('sprintId', 'backlog')}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                  filters.sprintId === 'backlog' && 'bg-primary/10 text-primary',
-                )}
-              >
-                Backlog (no sprint)
-              </button>
-              {sprints.map((sprint) => (
-                <button
-                  key={sprint.id}
-                  onClick={() => setFilter('sprintId', sprint.id)}
-                  className={cn(
-                    'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2',
-                    filters.sprintId === sprint.id && 'bg-primary/10 text-primary',
-                  )}
-                >
-                  <span>{sprint.name}</span>
-                  {sprint.status === 'active' && (
-                    <Badge variant="success" className="text-[10px]">Active</Badge>
-                  )}
-                </button>
-              ))}
-            </DropdownPanel>
-          )}
-        </div>
+            <SelectValue placeholder={t('board.sprint', 'Sprint')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All issues</SelectItem>
+            <SelectItem value="backlog">Backlog (no sprint)</SelectItem>
+            {sprints.map((sprint) => (
+              <SelectItem key={sprint.id} value={sprint.id}>
+                {sprint.name}{sprint.status === 'active' ? ' (active)' : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
 
-      <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
+      <div className="h-5 w-px bg-border" />
 
       {/* Group By */}
-      <div className="relative">
-        <button
-          onClick={() => toggleDropdown('groupBy')}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md border transition-colors',
-            groupBy !== 'none'
-              ? 'border-purple-300 bg-purple-50 text-purple-700'
-              : 'border-border text-gray-600 dark:text-gray-400 hover:bg-accent',
-          )}
-        >
+      <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as SwimlaneGroupBy)}>
+        <SelectTrigger className={cn(
+          'w-auto gap-1.5 text-sm',
+          groupBy !== 'none'
+            ? 'border-purple-300 bg-purple-50 text-purple-700'
+            : 'text-muted-foreground',
+        )}>
           <Filter className="h-3.5 w-3.5" />
-          {groupBy !== 'none'
-            ? `Group: ${GROUP_BY_OPTIONS.find((o) => o.value === groupBy)?.label}`
-            : t('board.groupBy', 'Group by')}
-        </button>
-        {openDropdown === 'groupBy' && (
-          <DropdownPanel onClose={() => setOpenDropdown(null)}>
-            {GROUP_BY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => {
-                  onGroupByChange(option.value)
-                  setOpenDropdown(null)
-                }}
-                className={cn(
-                  'w-full text-left px-3 py-2 text-sm text-foreground hover:bg-accent',
-                  groupBy === option.value && 'bg-purple-50 text-purple-700',
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </DropdownPanel>
-        )}
-      </div>
+          <SelectValue placeholder={t('board.groupBy', 'Group by')} />
+        </SelectTrigger>
+        <SelectContent>
+          {GROUP_BY_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Active filter count + clear */}
       {activeFilterCount > 0 && (
         <>
-          <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
+          <div className="h-5 w-px bg-border" />
           <Badge variant="primary" className="text-xs">
             {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
           </Badge>
           <button
             onClick={clearAllFilters}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-600 transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600 transition-colors"
           >
             <X className="h-3 w-3" />
             Clear all
@@ -393,24 +264,5 @@ export function BoardQuickFilters({
         </>
       )}
     </div>
-  )
-}
-
-/** A simple dropdown panel that closes on outside click */
-function DropdownPanel({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode
-  onClose: () => void
-}) {
-  return (
-    <>
-      {/* Invisible backdrop */}
-      <div className="fixed inset-0 z-10" onClick={onClose} />
-      <div className="absolute top-full left-0 mt-1 z-20 bg-card border border-border rounded-lg shadow-lg dark:shadow-black/40 py-1 min-w-[200px] max-h-64 overflow-y-auto">
-        {children}
-      </div>
-    </>
   )
 }

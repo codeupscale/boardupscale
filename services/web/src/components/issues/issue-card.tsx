@@ -44,7 +44,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
           {issue.assignee ? (
             <Avatar user={issue.assignee} size="xs" />
           ) : (
-            <div className="h-6 w-6 rounded-full bg-gray-100 border-2 border-dashed border-gray-300" />
+            <div className="h-6 w-6 rounded-full bg-muted border-2 border-dashed border-border" />
           )}
         </div>
       </div>

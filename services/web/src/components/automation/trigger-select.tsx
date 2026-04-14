@@ -49,7 +49,7 @@ export function TriggerSelect({ value, onChange }: TriggerSelectProps) {
         </SelectContent>
       </Select>
       {value && (
-        <p className="mt-1.5 text-xs text-gray-500">
+        <p className="mt-1.5 text-xs text-muted-foreground">
           {TRIGGER_DESCRIPTIONS[value]}
         </p>
       )}

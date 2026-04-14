@@ -73,7 +73,7 @@ export function TrashContent({ projectKey }: { projectKey: string }) {
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700 bg-muted">
+              <tr className="border-b border-border bg-muted">
                 <th className="px-4 py-2.5 w-10">
                   <input
                     type="checkbox"

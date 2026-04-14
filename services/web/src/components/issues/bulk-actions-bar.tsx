@@ -52,18 +52,18 @@ export function BulkActionsBar({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-popover text-popover-foreground border border-border rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4">
         <span className="text-sm font-medium whitespace-nowrap">
           {count} issue{count !== 1 ? 's' : ''} selected
         </span>
 
-        <div className="h-5 w-px bg-gray-700" />
+        <div className="h-5 w-px bg-border" />
 
         <div className="flex items-center gap-1.5">
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowAssign(true)}
           >
             <UserPlus className="h-4 w-4" />
@@ -73,7 +73,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowStatus(true)}
           >
             <Signal className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowPriority(true)}
           >
             <Zap className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowSprint(true)}
           >
             <ArrowRightLeft className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowMove(true)}
           >
             <FolderInput className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-400 hover:text-red-300 hover:bg-gray-800"
+            className="text-red-400 hover:text-red-300 hover:bg-accent"
             onClick={() => setShowDelete(true)}
           >
             <Trash2 className="h-4 w-4" />
@@ -121,11 +121,11 @@ export function BulkActionsBar({
           </Button>
         </div>
 
-        <div className="h-5 w-px bg-gray-700" />
+        <div className="h-5 w-px bg-border" />
 
         <button
           onClick={clearSelection}
-          className="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-4 w-4" />
         </button>

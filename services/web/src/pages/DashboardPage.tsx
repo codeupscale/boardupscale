@@ -35,29 +35,37 @@ import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intellig
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-/* ── Stat Card — matches ProjectsPage pattern ────────────────────── */
+/* ── Stat Card ────────────────────────────────────────────────────── */
 
 function StatCard({
   icon,
   label,
   value,
   color,
+  accentBorder,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   color: string
+  accentBorder?: string
 }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
-      <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-foreground">
-          {value}
-        </p>
-        <p className="text-sm text-muted-foreground">{label}</p>
+    <div
+      className={cn(
+        'bg-card rounded-xl border border-border p-5 relative overflow-hidden',
+        'card-elevated plasma-card-hover cursor-default',
+        accentBorder,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-3xl font-bold text-foreground tracking-tight leading-none">{value}</p>
+          <p className="text-sm text-muted-foreground mt-2">{label}</p>
+        </div>
+        <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5', color)}>
+          {icon}
+        </div>
       </div>
     </div>
   )
@@ -87,7 +95,7 @@ function MiniBurndownWidget({
   const remaining = data.actual.length > 0 ? data.actual[data.actual.length - 1] : data.totalPoints
 
   return (
-    <div className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground truncate">{projectName}</p>
@@ -161,7 +169,7 @@ function VelocityWidget({
   }))
 
   return (
-    <div className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground truncate">{projectName}</p>
@@ -225,7 +233,7 @@ function WorkloadSummaryWidget({
   ).length
 
   return (
-    <div className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center gap-2.5 mb-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20">
           <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -320,33 +328,36 @@ export function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<AlertCircle className="h-5 w-5 text-amber-600" />}
+            icon={<AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
             label={t('dashboard.openIssues')}
             value={stats.open}
             color="bg-amber-50 dark:bg-amber-900/20"
+            accentBorder="stat-accent-amber"
           />
           <StatCard
-            icon={<Clock className="h-5 w-5 text-primary" />}
+            icon={<Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
             label={t('dashboard.inProgress')}
             value={stats.inProgress}
-            color="bg-primary/10"
+            color="bg-violet-50 dark:bg-violet-900/20"
+            accentBorder="stat-accent-violet"
           />
           <StatCard
-            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
             label={t('dashboard.completedAllTime')}
             value={stats.done}
             color="bg-emerald-50 dark:bg-emerald-900/20"
+            accentBorder="stat-accent-emerald"
           />
         </div>
 
         {/* Report Widgets */}
         {firstProject && (
           <>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
+                <BarChart3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Insights</h2>
+              <h2 className="text-sm font-semibold text-foreground tracking-wide">Insights</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {activeSprint && (
@@ -371,7 +382,7 @@ export function DashboardPage() {
         )}
 
         {/* My Issues */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -426,11 +437,11 @@ export function DashboardPage() {
         {/* Recent Projects */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-900/20">
+                <FolderOpen className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </div>
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">{t('dashboard.recentProjects')}</h2>
+              <h2 className="text-sm font-semibold text-foreground tracking-wide">{t('dashboard.recentProjects')}</h2>
             </div>
             <Link
               to="/projects"

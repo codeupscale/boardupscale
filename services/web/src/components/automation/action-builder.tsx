@@ -73,18 +73,18 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-foreground/80">
         Then do this...
       </label>
 
       {actions.length === 0 && (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-muted-foreground italic">
           Add at least one action.
         </p>
       )}
 
       {actions.map((action, index) => (
-        <div key={index} className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div key={index} className="bg-muted rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <Select
@@ -104,7 +104,7 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-gray-400 hover:text-red-600"
+              className="text-muted-foreground hover:text-red-600"
               onClick={() => removeAction(index)}
             >
               <X className="h-4 w-4" />

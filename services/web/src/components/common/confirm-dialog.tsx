@@ -38,7 +38,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {description && (
-          <p className="text-sm text-gray-600">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

@@ -33,7 +33,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
 
   if (logs.length === 0) {
     return (
-      <div className="py-8 text-center text-sm text-gray-500">
+      <div className="py-8 text-center text-sm text-muted-foreground">
         No execution logs yet.
       </div>
     )
@@ -49,21 +49,21 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
         return (
           <div
             key={log.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 overflow-hidden"
+            className="border border-border rounded-lg bg-card overflow-hidden"
           >
             <button
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
               onClick={() => setExpandedId(isExpanded ? null : log.id)}
             >
               {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               )}
               <StatusIcon className={cn('h-4 w-4 flex-shrink-0', statusInfo.color)} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {log.triggerEvent}
                   </span>
                   {log.issue && (
@@ -73,20 +73,20 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
                   )}
                 </div>
               </div>
-              <span className="text-xs text-gray-500 flex-shrink-0">
+              <span className="text-xs text-muted-foreground flex-shrink-0">
                 {new Date(log.executedAt).toLocaleString()}
               </span>
             </button>
 
             {isExpanded && (
-              <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
+              <div className="border-t border-border px-4 py-3 bg-muted">
                 {log.errorMessage && (
-                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                  <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
                     {log.errorMessage}
                   </div>
                 )}
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Actions Executed
                   </p>
                   {(log.actionsExecuted || []).map((action: any, i: number) => (
@@ -99,7 +99,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
                       ) : (
                         <XCircle className="h-3.5 w-3.5 text-red-500" />
                       )}
-                      <span className="text-gray-700">{action.type}</span>
+                      <span className="text-foreground/80">{action.type}</span>
                       {action.error && (
                         <span className="text-xs text-red-500">({action.error})</span>
                       )}
@@ -115,7 +115,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
       {/* Pagination */}
       {meta && meta.totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             Page {meta.page} of {meta.totalPages} ({meta.total} total)
           </span>
           <div className="flex gap-2">

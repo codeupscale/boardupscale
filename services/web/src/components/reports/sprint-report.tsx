@@ -15,13 +15,13 @@ export function SprintReport({ data }: SprintReportProps) {
       {/* Sprint info */}
       <Card>
         <CardHeader>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-base font-semibold text-foreground">
             {sprint.name}
           </h3>
           {sprint.goal && (
-            <p className="text-sm text-gray-500 mt-1">{sprint.goal}</p>
+            <p className="text-sm text-muted-foreground mt-1">{sprint.goal}</p>
           )}
-          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
             {sprint.startDate && <span>Started: {sprint.startDate}</span>}
             {sprint.endDate && <span>Ended: {sprint.endDate}</span>}
             <span className="capitalize">Status: {sprint.status}</span>
@@ -61,7 +61,7 @@ export function SprintReport({ data }: SprintReportProps) {
       {byType.length > 0 && (
         <Card>
           <CardHeader>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Breakdown by Type
             </h3>
           </CardHeader>
@@ -69,10 +69,10 @@ export function SprintReport({ data }: SprintReportProps) {
             <div className="space-y-2">
               {byType.map((t) => (
                 <div key={t.type} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700 w-20 capitalize">
+                  <span className="text-sm font-medium text-foreground/80 w-20 capitalize">
                     {t.type}
                   </span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                  <div className="flex-1 bg-muted rounded-full h-5 overflow-hidden">
                     <div
                       className="bg-primary h-full rounded-full transition-all"
                       style={{
@@ -80,7 +80,7 @@ export function SprintReport({ data }: SprintReportProps) {
                       }}
                     />
                   </div>
-                  <span className="text-sm text-gray-500 w-16 text-right">
+                  <span className="text-sm text-muted-foreground w-16 text-right">
                     {t.completed}/{t.total}
                   </span>
                 </div>
@@ -95,14 +95,14 @@ export function SprintReport({ data }: SprintReportProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Completed Issues ({completedIssues.length})
             </h3>
           </div>
         </CardHeader>
         <CardContent>
           {completedIssues.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4 text-center">
+            <p className="text-sm text-muted-foreground py-4 text-center">
               No completed issues
             </p>
           ) : (
@@ -120,14 +120,14 @@ export function SprintReport({ data }: SprintReportProps) {
         <CardHeader>
           <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Incomplete Issues ({incompleteIssues.length})
             </h3>
           </div>
         </CardHeader>
         <CardContent>
           {incompleteIssues.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4 text-center">
+            <p className="text-sm text-muted-foreground py-4 text-center">
               All issues completed!
             </p>
           ) : (
@@ -163,8 +163,8 @@ function StatCard({
           {icon}
         </div>
         <div>
-          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{value}</p>
-          <p className="text-xs text-gray-500">{label}</p>
+          <p className="text-lg font-bold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>
     </Card>
@@ -187,23 +187,23 @@ function IssueRow({
   return (
     <Link
       to={`/issues/${issue.id}`}
-      className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+      className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
     >
-      <span className="text-xs font-mono text-gray-500 w-20">{issue.key}</span>
-      <span className="text-sm text-gray-900 dark:text-gray-100 flex-1 truncate">
+      <span className="text-xs font-mono text-muted-foreground w-20">{issue.key}</span>
+      <span className="text-sm text-foreground flex-1 truncate">
         {issue.title}
       </span>
-      <span className="text-xs text-gray-500 capitalize">{issue.type}</span>
+      <span className="text-xs text-muted-foreground capitalize">{issue.type}</span>
       {issue.storyPoints != null && (
         <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
           {issue.storyPoints} SP
         </span>
       )}
       {issue.assignee && (
-        <span className="text-xs text-gray-500">{issue.assignee.displayName}</span>
+        <span className="text-xs text-muted-foreground">{issue.assignee.displayName}</span>
       )}
       {issue.status && (
-        <span className="text-xs text-gray-500">{issue.status.name}</span>
+        <span className="text-xs text-muted-foreground">{issue.status.name}</span>
       )}
     </Link>
   )

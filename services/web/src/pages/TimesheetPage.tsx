@@ -321,7 +321,7 @@ function MyTimesheetView({
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted">
                 Total
               </th>
             </tr>
@@ -347,7 +347,7 @@ function MyTimesheetView({
                       key={i}
                       className={cn(
                         'px-3 py-2.5 text-center text-sm',
-                        m > 0 ? 'text-foreground font-medium' : 'text-gray-300 dark:text-gray-600',
+                        m > 0 ? 'text-foreground font-medium' : 'text-muted-foreground/60',
                       )}
                     >
                       {formatMinutes(m)}
@@ -373,7 +373,7 @@ function MyTimesheetView({
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>
@@ -446,7 +446,7 @@ function TeamTimesheetView({
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted">
                 Total
               </th>
             </tr>
@@ -480,7 +480,7 @@ function TeamTimesheetView({
                     key={i}
                     className={cn(
                       'px-3 py-2.5 text-center text-sm',
-                      m > 0 ? 'text-foreground font-medium' : 'text-gray-300 dark:text-gray-600',
+                      m > 0 ? 'text-foreground font-medium' : 'text-muted-foreground/60',
                     )}
                   >
                     {formatMinutes(m)}
@@ -505,7 +505,7 @@ function TeamTimesheetView({
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>

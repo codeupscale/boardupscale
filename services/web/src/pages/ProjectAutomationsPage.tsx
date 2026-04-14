@@ -155,7 +155,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                     <Zap
                       className={cn(
                         'h-4 w-4 flex-shrink-0',
-                        rule.isActive ? 'text-primary' : 'text-gray-400',
+                        rule.isActive ? 'text-primary' : 'text-muted-foreground',
                       )}
                     />
                     <h3 className="text-sm font-semibold text-foreground truncate">

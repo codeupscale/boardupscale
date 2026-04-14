@@ -174,7 +174,7 @@ export function ProjectSettingsPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card overflow-y-auto">
+        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card/50 backdrop-blur-sm overflow-y-auto">
           {SETTINGS_GROUPS.map((group) => (
             <div key={group.label} className="px-2 pt-4 pb-2">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 pb-1">
@@ -188,7 +188,7 @@ export function ProjectSettingsPage() {
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                     activeTab === item.id
-                      ? 'bg-primary/10 text-primary font-medium'
+                      ? 'plasma-settings-active'
                       : 'text-muted-foreground hover:bg-accent/70',
                   )}
                 >
@@ -210,7 +210,7 @@ export function ProjectSettingsPage() {
               className={cn(
                 'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full mb-0.5',
                 activeTab === 'trash'
-                  ? 'bg-primary/10 text-primary font-medium'
+                  ? 'plasma-settings-active'
                   : 'text-muted-foreground hover:bg-accent/70',
               )}
             >
@@ -223,8 +223,8 @@ export function ProjectSettingsPage() {
               className={cn(
                 'flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-colors text-left w-full',
                 activeTab === 'danger'
-                  ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 font-medium'
-                  : 'text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20',
+                  ? 'bg-destructive/10 text-destructive font-medium'
+                  : 'text-destructive hover:bg-destructive/10',
               )}
             >
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
@@ -234,7 +234,7 @@ export function ProjectSettingsPage() {
         </div>
 
         {/* Content panel */}
-        <div className="flex-1 overflow-auto p-6 bg-card">
+        <div className="flex-1 overflow-auto p-6">
 
           {/* General */}
           {activeTab === 'general' && project && (
@@ -354,7 +354,7 @@ export function ProjectSettingsPage() {
               </div>
               <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-muted dark:bg-gray-700 flex items-center justify-center">
+                  <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
@@ -567,7 +567,7 @@ export function ProjectSettingsPage() {
                     style={{ backgroundColor: c }}
                     className={cn(
                       'h-7 w-7 rounded-full transition-transform',
-                      statusColor === c && 'ring-2 ring-offset-2 ring-gray-400 scale-110',
+                      statusColor === c && 'ring-2 ring-offset-2 ring-border scale-110',
                     )}
                     onClick={() => setStatusColor(c)}
                   />

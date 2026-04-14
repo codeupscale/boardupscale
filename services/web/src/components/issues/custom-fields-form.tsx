@@ -82,9 +82,9 @@ function CustomFieldInput({
             checked={!!value}
             onChange={(e) => onChange(e.target.checked)}
             disabled={readOnly}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-ring"
+            className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
           />
-          <span className="text-sm text-gray-700">{definition.description || definition.name}</span>
+          <span className="text-sm text-foreground/80">{definition.description || definition.name}</span>
         </label>
       )
 
@@ -145,25 +145,25 @@ function CustomFieldInput({
               )
             })}
           </div>
-          {!readOnly && (
-            <select
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:ring-1 focus-visible:ring-ring"
-              value=""
-              onChange={(e) => {
-                if (e.target.value && !selected.includes(e.target.value)) {
-                  onChange([...selected, e.target.value])
-                }
-              }}
-            >
-              <option value="">Add option...</option>
-              {(definition.options || [])
-                .filter((o) => !selected.includes(o.value))
-                .map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-            </select>
+          {!readOnly && (definition.options || []).filter((o) => !selected.includes(o.value)).length > 0 && (
+            <Select key={selected.length} onValueChange={(val) => {
+              if (val && !selected.includes(val)) {
+                onChange([...selected, val])
+              }
+            }}>
+              <SelectTrigger className="w-full text-sm">
+                <SelectValue placeholder="Add option..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(definition.options || [])
+                  .filter((o) => !selected.includes(o.value))
+                  .map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
       )
@@ -206,7 +206,7 @@ export function CustomFieldsForm({
     <div className="space-y-3">
       {definitions.map((def) => (
         <div key={def.id}>
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
             {def.name}
             {def.isRequired && <span className="text-red-500 ml-0.5">*</span>}
           </label>

@@ -16,7 +16,7 @@ const priorityBorderClass: Record<IssuePriority, string> = {
   [IssuePriority.HIGH]: 'border-l-[3px] border-l-orange-400',
   [IssuePriority.MEDIUM]: 'border-l-[3px] border-l-yellow-400',
   [IssuePriority.LOW]: 'border-l-[3px] border-l-blue-400',
-  [IssuePriority.NONE]: 'border-l-[3px] border-l-gray-200 dark:border-l-gray-700',
+  [IssuePriority.NONE]: 'border-l-[3px] border-l-border',
 }
 
 export function BoardCard({ issue, index }: BoardCardProps) {
@@ -33,7 +33,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
           {...provided.dragHandleProps}
           onClick={() => navigate(`/issues/${issue.id}`)}
           className={cn(
-            'group relative bg-card rounded-xl border border-gray-200/80 dark:border-gray-700/80',
+            'group relative bg-card rounded-xl border border-border/80',
             'shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer',
             'hover:-translate-y-0.5 hover:border-primary/50',
             borderClass,
@@ -63,7 +63,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             )}
 
             {/* Title */}
-            <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mb-2 leading-snug group-hover:text-primary transition-colors">
+            <p className="text-sm font-medium text-foreground line-clamp-2 mb-2 leading-snug group-hover:text-primary transition-colors">
               {issue.title}
             </p>
 

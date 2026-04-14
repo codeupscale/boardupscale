@@ -46,19 +46,19 @@ export function BulkAssignDialog({ open, onClose, users, issueIds }: BulkAssignD
             {filteredUsers.map((user) => (
               <button
                 key={user.id}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm hover:bg-accent transition-colors text-left"
                 onClick={() => handleSelect(user.id)}
                 disabled={bulkUpdate.isPending}
               >
                 <Avatar user={user} size="xs" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user.displayName}</p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{user.displayName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
               </button>
             ))}
             {filteredUsers.length === 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">No users found</p>
+              <p className="text-sm text-muted-foreground text-center py-4">No users found</p>
             )}
           </div>
         </div>

@@ -38,7 +38,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from '@/components/ui/dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { cn } from '@/lib/utils'
@@ -59,16 +59,16 @@ const HEAT_BG: Record<HeatLevel, string> = {
   0: '',
   1: 'bg-primary/15',
   2: 'bg-blue-300 dark:bg-blue-700',
-  3: 'bg-primary dark:bg-primary',
-  4: 'bg-blue-700 dark:bg-primary',
+  3: 'bg-blue-600 dark:bg-blue-600',
+  4: 'bg-blue-800 dark:bg-blue-500',
 }
 
 const HEAT_TEXT: Record<HeatLevel, string> = {
   0: 'text-muted-foreground',
   1: 'text-primary',
-  2: 'text-blue-900 dark:text-white',
+  2: 'text-blue-900 dark:text-blue-100',
   3: 'text-white',
-  4: 'text-white',
+  4: 'text-white dark:text-blue-950',
 }
 
 // ─── Priority helpers ──────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ const CHIP_COLOR: Record<string, string> = {
   critical: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
   high:     'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
   medium:   'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary',
-  low:      'bg-muted text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  low:      'bg-muted text-muted-foreground',
 }
 
 function IssueChip({ issue, projectKey }: { issue: Issue; projectKey: string }) {
@@ -134,7 +134,7 @@ function IssuePanelCard({ issue, projectKey }: { issue: Issue; projectKey: strin
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {issue.status && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted dark:bg-gray-700 text-foreground font-medium">
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-foreground font-medium">
                 {issue.status.name}
               </span>
             )}
@@ -233,7 +233,7 @@ export function ProjectCalendarPage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-card">
+      <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -313,12 +313,12 @@ export function ProjectCalendarPage() {
       {/* Body: calendar + optional side panel */}
       <div className="flex flex-1 overflow-hidden">
         {/* Calendar area */}
-        <div className="flex-1 overflow-auto p-4 bg-card">
+        <div className="flex-1 overflow-auto p-4">
           {issuesLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">Loading issues…</div>
           ) : (
             <>
-              <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-border">
+              <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
                 {/* Day headers */}
                 {DAY_HEADERS.map((d) => (
                   <div
@@ -331,7 +331,7 @@ export function ProjectCalendarPage() {
 
                 {/* Leading empty cells */}
                 {Array.from({ length: calendarDays.firstDayOffset }).map((_, i) => (
-                  <div key={`empty-${i}`} className="bg-gray-50 dark:bg-gray-900 min-h-[80px]" />
+                  <div key={`empty-${i}`} className="bg-muted min-h-[80px]" />
                 ))}
 
                 {/* Day cells */}
@@ -353,7 +353,7 @@ export function ProjectCalendarPage() {
                         HEAT_BG[level] || 'bg-card',
                         isSelected && 'ring-2 ring-inset ring-ring z-10',
                         !isSelected && count > 0 && 'hover:brightness-95 dark:hover:brightness-110',
-                        !isSelected && count === 0 && 'hover:bg-gray-50 dark:hover:bg-gray-750',
+                        !isSelected && count === 0 && 'hover:bg-muted',
                       )}
                     >
                       {/* Date number */}
@@ -361,7 +361,7 @@ export function ProjectCalendarPage() {
                         className={cn(
                           'text-xs font-semibold self-end leading-none mb-0.5',
                           isToday(day)
-                            ? 'bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[11px]'
+                            ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[11px]'
                             : count > 0 ? HEAT_TEXT[level] : 'text-muted-foreground',
                         )}
                       >
@@ -388,7 +388,7 @@ export function ProjectCalendarPage() {
                 <span className="text-xs text-muted-foreground">Issues due:</span>
                 <div className="flex items-center gap-1.5">
                   {[
-                    { label: '0', bg: 'bg-gray-200 dark:bg-gray-700' },
+                    { label: '0', bg: 'bg-border' },
                     { label: '1', bg: 'bg-primary/15' },
                     { label: '2–3', bg: 'bg-blue-300 dark:bg-blue-700' },
                     { label: '4–6', bg: 'bg-primary dark:bg-primary' },
@@ -407,7 +407,7 @@ export function ProjectCalendarPage() {
 
         {/* Side panel — shown when a day is selected */}
         {selectedDay && (
-          <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col overflow-hidden">
+          <div className="w-72 shrink-0 border-l border-border bg-card/60 backdrop-blur-sm flex flex-col overflow-hidden">
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <div>
@@ -422,7 +422,7 @@ export function ProjectCalendarPage() {
               </div>
               <button
                 onClick={() => setSelectedDay(null)}
-                className="text-gray-400 hover:text-foreground dark:hover:text-foreground transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -432,7 +432,7 @@ export function ProjectCalendarPage() {
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {selectedDayIssues.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 text-center">
-                  <CalendarDays className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+                  <CalendarDays className="h-8 w-8 text-muted-foreground/60 mb-2" />
                   <p className="text-sm text-muted-foreground">No issues due on this day</p>
                 </div>
               ) : (
@@ -450,20 +450,22 @@ export function ProjectCalendarPage() {
           <DialogHeader>
             <DialogTitle>Create Issue</DialogTitle>
           </DialogHeader>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            users={orgUsers || []}
-            onSubmit={(values) =>
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                { onSuccess: () => setShowCreate(false) },
-              )
-            }
-            onCancel={() => setShowCreate(false)}
-            isLoading={createIssue.isPending}
-          />
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              users={orgUsers || []}
+              onSubmit={(values) =>
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  { onSuccess: () => setShowCreate(false) },
+                )
+              }
+              onCancel={() => setShowCreate(false)}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

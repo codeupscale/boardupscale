@@ -53,6 +53,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogContent,
+  DialogBody,
 } from '@/components/ui/dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -109,7 +110,7 @@ function DraggableIssueRow({
             className="px-1 py-3 w-8"
             {...provided.dragHandleProps}
           >
-            <GripVertical className="h-4 w-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+            <GripVertical className="h-4 w-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
           </td>
 
           {/* Checkbox */}
@@ -198,18 +199,18 @@ function DraggableIssueRow({
             {issue.assignee ? (
               <Avatar user={issue.assignee} size="xs" />
             ) : (
-              <div className="h-6 w-6 rounded-full bg-muted dark:bg-gray-700 border border-dashed border-border" />
+              <div className="h-6 w-6 rounded-full bg-muted border border-dashed border-border" />
             )}
           </td>
 
           {/* Story Points */}
           <td className="px-3 py-3 w-14 text-center">
             {issue.storyPoints != null ? (
-              <span className="text-xs font-medium text-foreground bg-muted dark:bg-gray-700 rounded-full px-2 py-0.5">
+              <span className="text-xs font-medium text-foreground bg-muted rounded-full px-2 py-0.5">
                 {issue.storyPoints}
               </span>
             ) : (
-              <span className="text-xs text-gray-300 dark:text-gray-600">--</span>
+              <span className="text-xs text-muted-foreground/60">--</span>
             )}
           </td>
         </tr>
@@ -292,7 +293,7 @@ function SprintSection({
               'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
               isActive
                 ? 'bg-primary/10 border-b border-primary/20 dark:border-primary/30'
-                : 'bg-muted/50 border-b border-gray-100 dark:border-gray-700',
+                : 'bg-muted/50 border-b border-border',
             )}
             onClick={() => setCollapsed((c) => !c)}
           >
@@ -314,7 +315,7 @@ function SprintSection({
 
               {/* Story Points Summary */}
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted dark:bg-gray-700 rounded-full text-xs font-medium text-foreground flex-shrink-0">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-xs font-medium text-foreground flex-shrink-0">
                   <Target className="h-3 w-3" />
                   {completedPoints}/{totalPoints} SP
                 </span>
@@ -355,7 +356,7 @@ function SprintSection({
 
           {/* Sprint Goal */}
           {!collapsed && (sprint.goal || editingGoal) && (
-            <div className="px-4 py-2 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-2 bg-muted/50 border-b border-border">
               {editingGoal ? (
                 <div className="flex items-start gap-2">
                   <Textarea
@@ -401,7 +402,7 @@ function SprintSection({
                     <span className="font-medium text-muted-foreground">Goal:</span>{' '}
                     {sprint.goal}
                   </p>
-                  <Pencil className="h-3 w-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                  <Pencil className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
                 </div>
               )}
             </div>
@@ -409,7 +410,7 @@ function SprintSection({
 
           {/* Add goal button when no goal exists */}
           {!collapsed && !sprint.goal && !editingGoal && (
-            <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-1.5 border-b border-border">
               <button
                 onClick={() => setEditingGoal(true)}
                 className="text-xs text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors flex items-center gap-1"
@@ -651,7 +652,7 @@ function BacklogSection({
               : 'border-border',
           )}
         >
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-foreground">
                 {t('sprints.backlog')}
@@ -660,7 +661,7 @@ function BacklogSection({
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted dark:bg-gray-700 rounded-full text-xs font-medium text-foreground">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-xs font-medium text-foreground">
                   <Target className="h-3 w-3" />
                   {totalPoints} SP
                 </span>
@@ -856,11 +857,11 @@ export function ProjectBacklogPage() {
               <span>
                 {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-muted-foreground/60">•</span>
               <span>{allIssues.length} total issues</span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-muted-foreground/60">•</span>
               <span>{backlogIssues.length} in backlog</span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-muted-foreground/60">•</span>
               <span className="text-primary font-medium">
                 Drag issues between sprints to plan
               </span>
@@ -960,27 +961,29 @@ export function ProjectBacklogPage() {
           <DialogHeader>
             <DialogTitle>{t('issues.createIssue')}</DialogTitle>
           </DialogHeader>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={allIssues.map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={users || []}
-            onSubmit={(values) =>
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                { onSuccess: () => setShowCreateIssue(false) },
-              )
-            }
-            onCancel={() => setShowCreateIssue(false)}
-            isLoading={createIssue.isPending}
-          />
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={allIssues.map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={users || []}
+              onSubmit={(values) =>
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  { onSuccess: () => setShowCreateIssue(false) },
+                )
+              }
+              onCancel={() => setShowCreateIssue(false)}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

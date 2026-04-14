@@ -56,12 +56,12 @@ export function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-foreground/80">
         If these conditions are met...
       </label>
 
       {conditions.length === 0 && (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-muted-foreground italic">
           No conditions -- rule will always execute when triggered.
         </p>
       )}
@@ -123,7 +123,7 @@ export function ConditionBuilder({ conditions, onChange }: ConditionBuilderProps
           <Button
             variant="ghost"
             size="icon-sm"
-            className="text-gray-400 hover:text-red-600 mt-1"
+            className="text-muted-foreground hover:text-red-600 mt-1"
             onClick={() => removeCondition(index)}
           >
             <X className="h-4 w-4" />

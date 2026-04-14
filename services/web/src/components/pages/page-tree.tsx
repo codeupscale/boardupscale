@@ -55,7 +55,7 @@ function PageTreeItem({
           'group flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer text-sm transition-colors select-none',
           isActive
             ? 'bg-primary/10 text-primary'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
+            : 'hover:bg-accent text-foreground/80',
         )}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => navigate(`/projects/${projectKey}/pages/${node.id}`)}
@@ -64,7 +64,7 @@ function PageTreeItem({
         <button
           type="button"
           className={cn(
-            'flex-shrink-0 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors',
+            'flex-shrink-0 p-0.5 rounded hover:bg-accent transition-colors',
             !hasChildren && 'invisible',
           )}
           onClick={(e) => {
@@ -80,7 +80,7 @@ function PageTreeItem({
 
         {/* Icon + title */}
         <span className="flex-shrink-0 text-base leading-none">
-          {node.icon ? node.icon : <FileText size={14} className="text-gray-400" />}
+          {node.icon ? node.icon : <FileText size={14} className="text-muted-foreground" />}
         </span>
         <span className="flex-1 truncate">{node.title || 'Untitled'}</span>
 
@@ -89,7 +89,7 @@ function PageTreeItem({
           <button
             type="button"
             title="Add sub-page"
-            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
+            className="p-0.5 rounded hover:bg-accent text-muted-foreground"
             onClick={(e) => {
               e.stopPropagation()
               onCreateChild(node.id)
@@ -103,7 +103,7 @@ function PageTreeItem({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
+                  className="p-0.5 rounded hover:bg-accent text-muted-foreground"
                 >
                   <MoreHorizontal size={12} />
                 </button>
@@ -167,7 +167,7 @@ export function PageTree({
     return (
       <div className="p-3 space-y-1">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-7 bg-gray-100 dark:bg-gray-700 rounded animate-pulse" />
+          <div key={i} className="h-7 bg-muted rounded animate-pulse" />
         ))}
       </div>
     )
@@ -176,7 +176,7 @@ export function PageTree({
   return (
     <div className="py-1">
       {pages.length === 0 ? (
-        <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 italic">
+        <div className="px-4 py-3 text-xs text-muted-foreground italic">
           No pages yet
         </div>
       ) : (
@@ -197,7 +197,7 @@ export function PageTree({
       <button
         type="button"
         onClick={() => onCreatePage()}
-        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors mt-1"
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors mt-1"
       >
         <Plus size={12} />
         Add page

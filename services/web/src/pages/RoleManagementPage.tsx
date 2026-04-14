@@ -442,7 +442,7 @@ function PermissionsGrid({
                   if (!permId) {
                     return (
                       <td key={action} className="text-center py-2.5 px-2">
-                        <span className="text-gray-200 dark:text-gray-700">--</span>
+                        <span className="text-muted-foreground/60">--</span>
                       </td>
                     )
                   }
