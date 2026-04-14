@@ -64,7 +64,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: SettingItem[] }> = [
       { id: 'general', label: 'General', icon: Settings },
       { id: 'workflow', label: 'Workflow', icon: GitBranch },
       { id: 'custom-fields', label: 'Custom Fields', icon: SlidersHorizontal },
-      { id: 'components', label: 'Components', icon: Layers },
+      { id: 'components', label: 'Epics', icon: Layers },
       { id: 'versions', label: 'Versions', icon: Tag },
       { id: 'automations', label: 'Automations', icon: Zap },
     ],
@@ -384,7 +384,7 @@ export function ProjectSettingsPage() {
           {activeTab === 'components' && (
             <div className="max-w-2xl">
               <div className="mb-6">
-                <h2 className="text-base font-semibold text-foreground">Components</h2>
+                <h2 className="text-base font-semibold text-foreground">Epics</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Organize issues by functional areas of your project.</p>
               </div>
               <ComponentList projectId={projectKey!} />

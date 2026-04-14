@@ -75,10 +75,10 @@ export function ComponentList({ projectId }: ComponentListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-foreground">Components</h2>
+        <h2 className="text-base font-semibold text-foreground">Epics</h2>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4" />
-          Add Component
+          Add Epic
         </Button>
       </div>
 
@@ -120,7 +120,7 @@ export function ComponentList({ projectId }: ComponentListProps) {
         ))}
         {(!components || components.length === 0) && (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No components configured.
+            No epics configured.
           </div>
         )}
       </div>
@@ -132,7 +132,7 @@ export function ComponentList({ projectId }: ComponentListProps) {
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Component' : 'Add Component'}</DialogTitle>
+            <DialogTitle>{editing ? 'Edit Epic' : 'Add Epic'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -143,7 +143,7 @@ export function ComponentList({ projectId }: ComponentListProps) {
             />
             <Textarea
               label="Description (optional)"
-              placeholder="What is this component responsible for?"
+              placeholder="What is this epic responsible for?"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -182,8 +182,8 @@ export function ComponentList({ projectId }: ComponentListProps) {
             )
           }
         }}
-        title="Delete Component"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? Issues using this component will be unlinked.`}
+        title="Delete Epic"
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? Issues using this epic will be unlinked.`}
         confirmLabel="Delete"
         destructive
         isLoading={deleteComponent.isPending}

@@ -12,6 +12,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { CommandPalette } from './command-palette'
 import { ProjectChat } from '@/components/chat/ProjectChat'
 import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
+import { MessagingToggleButton } from '@/components/messaging/MessagingToggleButton'
+import { MessagingPanel } from '@/components/messaging/MessagingPanel'
 
 export function AppLayout() {
   const { initialize, isAuthenticated, setUser } = useAuthStore()
@@ -69,6 +71,8 @@ export function AppLayout() {
       <CommandPalette />
       <ProjectChat />
       <HelpSupportPanel />
+      <MessagingToggleButton />
+      <MessagingPanel />
     </div>
   )
 }

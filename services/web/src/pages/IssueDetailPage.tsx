@@ -951,7 +951,7 @@ export function IssueDetailPage() {
               </SidebarField>
 
               {projectComponents && projectComponents.length > 0 && (
-                <SidebarField label="Components">
+                <SidebarField label="Epics">
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {(issueComponents || []).map((c) => (
                       <span
