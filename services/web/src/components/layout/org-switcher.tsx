@@ -38,8 +38,15 @@ export function OrgSwitcher() {
   const switchOrg = useSwitchOrg()
 
   const currentOrgId = user?.organizationId
+  // Fall back to the default membership (or first) when user hasn't loaded yet
   const currentMembership = memberships?.find((m) => m.organizationId === currentOrgId)
+    ?? memberships?.find((m) => m.isDefault)
+    ?? memberships?.[0]
   const currentOrgName = currentMembership?.organization?.name ?? 'Organization'
+
+  // Count distinct orgs — duplicate membership rows must not falsely trigger the dropdown
+  const uniqueOrgCount = new Set(memberships?.map((m) => m.organizationId)).size
+  const hasMultipleOrgs = uniqueOrgCount > 1
 
   if (isLoading) {
     return (
@@ -52,6 +59,30 @@ export function OrgSwitcher() {
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         {isSidebarOpen && (
           <span className="text-xs text-muted-foreground">Loading...</span>
+        )}
+      </div>
+    )
+  }
+
+  // Single org — static display, no dropdown
+  if (!hasMultipleOrgs) {
+    return (
+      <div
+        className={cn(
+          'flex items-center gap-2.5 px-3 py-2.5 mx-2 mt-2',
+          !isSidebarOpen && 'justify-center px-2 mx-0',
+        )}
+      >
+        <span className={cn(
+          'h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
+          getOrgGradient(currentOrgName),
+        )}>
+          {currentOrgName.charAt(0).toUpperCase()}
+        </span>
+        {isSidebarOpen && (
+          <span className="flex-1 text-left font-semibold text-foreground truncate">
+            {currentOrgName}
+          </span>
         )}
       </div>
     )
