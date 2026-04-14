@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Textarea } from '@/components/ui/textarea'
-import { LoadingPage } from '@/components/ui/spinner'
+import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -163,7 +163,7 @@ export function ProjectReleasesPage() {
   const [startDate, setStartDate] = useState('')
   const [releaseDate, setReleaseDate] = useState('')
 
-  if (projectLoading || versionsLoading) return <LoadingPage />
+  if (projectLoading || versionsLoading) return <div className="p-6"><CardGridSkeleton stats={0} cards={4} columns={2} /></div>
 
   const unreleased = versions?.filter((v) => v.status === 'unreleased') || []
   const released = versions?.filter((v) => v.status === 'released') || []

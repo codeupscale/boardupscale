@@ -30,7 +30,7 @@ import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { CalendarSkeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectTrigger,
@@ -217,7 +217,7 @@ export function ProjectCalendarPage() {
     return issuesByDate.get(key) ?? []
   }, [selectedDay, issuesByDate])
 
-  if (projectLoading) return <LoadingPage />
+  if (projectLoading) return <CalendarSkeleton />
 
   return (
     <div className="flex flex-col h-full">

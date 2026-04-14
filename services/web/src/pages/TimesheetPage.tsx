@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Download, ChevronLeft, ChevronRight, Clock, Users, Timer, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/common/page-header'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -248,7 +248,7 @@ function MyTimesheetView({
   startDate,
   endDate,
 }: MyTimesheetViewProps) {
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TableSkeleton rows={7} showFilters={false} />
   if (!data || !data.days || data.days.length === 0) {
     return (
       <EmptyState
@@ -397,7 +397,7 @@ function TeamTimesheetView({
   startDate,
   endDate,
 }: TeamTimesheetViewProps) {
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TableSkeleton rows={7} showFilters={false} />
   if (!data || !data.members || data.members.length === 0) {
     return (
       <EmptyState
