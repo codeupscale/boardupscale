@@ -13,7 +13,7 @@ import {
 import { useSubscription, useUsage, usePlans, useCheckout, useBillingPortal } from '@/hooks/useBilling'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
+import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { toast } from '@/store/ui.store'
 
 function UsageBar({
@@ -227,17 +227,7 @@ export function BillingPage() {
   const isLoading = subLoading || usageLoading
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col h-full">
-        <PageHeader
-          title="Billing & Subscription"
-          breadcrumbs={[{ label: 'Settings', href: '/settings' }, { label: 'Billing' }]}
-        />
-        <div className="flex items-center justify-center flex-1">
-          <Spinner className="h-8 w-8 text-primary" />
-        </div>
-      </div>
-    )
+    return <SettingsSkeleton showNav={false} fields={3} />
   }
 
   const plan = subscription?.plan

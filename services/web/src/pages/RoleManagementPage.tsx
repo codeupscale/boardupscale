@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { LoadingPage } from '@/components/ui/spinner'
+import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
@@ -181,7 +181,7 @@ export function RoleManagementPage() {
     return map
   }, [permissions])
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SettingsSkeleton showNav={false} fields={6} />
 
   return (
     <div className="flex flex-col h-full">

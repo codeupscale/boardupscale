@@ -24,7 +24,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { LoadingPage } from '@/components/ui/spinner'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { TriggerSelect, TRIGGER_OPTIONS } from '@/components/automation/trigger-select'
 import { ConditionBuilder } from '@/components/automation/condition-builder'
@@ -107,7 +107,7 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
     testRule.mutate({ ruleId: showTestDialog, issueId: testIssueId })
   }
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <div className="p-6"><ListSkeleton /></div>
 
   return (
     <>

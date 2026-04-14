@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Avatar } from '@/components/ui/avatar'
-import { LoadingPage } from '@/components/ui/spinner'
+import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
 import { PageHeader } from '@/components/common/page-header'
 import { toast } from '@/store/ui.store'
@@ -135,7 +135,7 @@ function ProfileTab() {
 
   const avatarUrl = watch('avatarUrl')
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SettingsSkeleton showNav={false} fields={5} />
 
   const handleProfileSubmit = (data: ProfileValues) => {
     if (data.language && data.language !== i18n.language) {
@@ -573,7 +573,7 @@ export function UserSettingsPage() {
       : []),
   ]
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SettingsSkeleton />
 
   const roleBadge = getRoleBadge(me?.role || 'member')
   const RoleIcon = roleBadge.Icon

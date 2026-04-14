@@ -34,7 +34,7 @@ import { User, UserRole } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TeamSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
@@ -400,7 +400,7 @@ export function TeamPage() {
     )
   }
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TeamSkeleton />
 
   return (
     <div className="flex flex-col h-full">
