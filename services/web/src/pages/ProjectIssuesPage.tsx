@@ -21,7 +21,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
 import {
@@ -392,8 +392,9 @@ export function ProjectIssuesPage() {
 
         {/* Table */}
         {isLoading ? (
-          <LoadingPage />
+          <TableSkeleton />
         ) : issues.length > 0 ? (
+          <ContentFade>
           <div className="rounded-xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
@@ -435,6 +436,7 @@ export function ProjectIssuesPage() {
               onPageChange={setPage}
             />
           </div>
+          </ContentFade>
         ) : (
           <EmptyState
             title={t('issues.noIssues')}

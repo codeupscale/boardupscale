@@ -26,7 +26,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { useVelocity, useSprintBurndown } from '@/hooks/useReports'
 import { useSprints } from '@/hooks/useSprints'
 import { IssueStatusCategory } from '@/types'
-import { LoadingPage } from '@/components/ui/spinner'
+import { CardGridSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { ProjectCard } from '@/components/projects/project-card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -315,7 +315,9 @@ export function DashboardPage() {
     return t('dashboard.goodEvening')
   }, [t])
 
-  if (issuesLoading && projectsLoading) return <LoadingPage />
+  if (issuesLoading && projectsLoading) return (
+    <div className="p-6"><CardGridSkeleton stats={3} cards={6} /></div>
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -452,13 +454,15 @@ export function DashboardPage() {
             </Link>
           </div>
           {projectsLoading ? (
-            <LoadingPage />
+            <CardGridSkeleton stats={0} cards={6} />
           ) : projects && projects.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects.slice(0, 6).map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            <ContentFade>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projects.slice(0, 6).map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            </ContentFade>
           ) : (
             <EmptyState title={t('dashboard.noProjectsYet')} description={t('dashboard.createFirstProject')} />
           )}
