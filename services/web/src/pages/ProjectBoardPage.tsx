@@ -30,7 +30,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { LoadingPage } from '@/components/ui/spinner'
+import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
 import { toast } from '@/store/ui.store'
@@ -393,8 +393,6 @@ export function ProjectBoardPage() {
     )
   }
 
-  if (isLoading) return <LoadingPage />
-
   const activeSprints = sprints?.filter((s) => s.status === 'active') || []
   const deleteColumn = board?.statuses.find((c) => c.id === deleteColumnId)
 
@@ -454,7 +452,7 @@ export function ProjectBoardPage() {
       />
 
       {/* Board */}
-      {!board || board.statuses.length === 0 ? (
+      {isLoading ? <KanbanSkeleton /> : !board || board.statuses.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <EmptyState
             title={t('board.noColumns')}
@@ -469,7 +467,7 @@ export function ProjectBoardPage() {
         </div>
       ) : groupBy !== 'none' ? (
         /* Swimlane View */
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <ContentFade><DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-auto">
             {/* Column Headers (sticky) */}
             <div className="flex gap-4 px-6 pt-4 pb-2 bg-card border-b border-border sticky top-0 z-10">
@@ -530,10 +528,10 @@ export function ProjectBoardPage() {
               </div>
             )}
           </div>
-        </DragDropContext>
+        </DragDropContext></ContentFade>
       ) : (
         /* Standard Board View */
-        <DragDropContext onDragEnd={handleDragEnd}>
+        <ContentFade><DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
             {(provided) => (
               <div
@@ -587,7 +585,7 @@ export function ProjectBoardPage() {
               </div>
             )}
           </Droppable>
-        </DragDropContext>
+        </DragDropContext></ContentFade>
       )}
 
       {/* Create Issue Dialog */}

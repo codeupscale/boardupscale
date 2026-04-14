@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { LoadingPage } from '@/components/ui/spinner'
+import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { MemberList } from '@/components/projects/member-list'
@@ -116,7 +116,7 @@ export function ProjectSettingsPage() {
   const updateStatus = useUpdateStatus()
   const deleteStatus = useDeleteStatus()
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SettingsSkeleton />
 
   const handleOpenEditStatus = (status: any) => {
     setEditStatus(status)

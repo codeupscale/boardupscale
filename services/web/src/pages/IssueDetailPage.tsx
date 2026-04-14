@@ -50,7 +50,7 @@ import {
   Comment,
   Issue,
 } from '@/types'
-import { LoadingPage } from '@/components/ui/spinner'
+import { DetailSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -395,7 +395,7 @@ export function IssueDetailPage() {
   // Derive labels directly from issue data (no disconnected local state)
   const issueLabels = issue?.labels || []
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <DetailSkeleton />
   if (!issue) return <div className="p-6 text-muted-foreground">{t('issues.issueNotFound')}</div>
 
   const handleAddLabel = () => {
@@ -415,7 +415,7 @@ export function IssueDetailPage() {
 
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <ContentFade><div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
       <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap">
         <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">
@@ -1331,6 +1331,6 @@ export function IssueDetailPage() {
         destructive
         isLoading={deleteIssue.isPending}
       />
-    </div>
+    </div></ContentFade>
   )
 }

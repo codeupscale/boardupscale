@@ -47,7 +47,7 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
@@ -850,8 +850,6 @@ export function ProjectBacklogPage() {
     [projectKey, qc, moveIssue],
   )
 
-  if (sprintsLoading || issuesLoading) return <LoadingPage />
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -881,6 +879,7 @@ export function ProjectBacklogPage() {
 
       <ProjectTabNav projectKey={projectKey!} />
 
+      {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade>
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
@@ -931,6 +930,7 @@ export function ProjectBacklogPage() {
         sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
         projectId={projectKey}
       />
+      </ContentFade>}
 
       {/* Create Sprint Dialog */}
       <Dialog
