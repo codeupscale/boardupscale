@@ -564,7 +564,7 @@ export function UserSettingsPage() {
   const { data: me, isLoading } = useMe()
   const [activeTab, setActiveTab] = useState('profile')
 
-  const isOrgAdmin = me?.role === UserRole.ADMIN || (me?.role as string) === 'owner'
+  const isOrgAdmin = me?.role === UserRole.ADMIN || me?.role === UserRole.OWNER
 
   const navItems = [
     ...NAV_ITEMS,

@@ -78,7 +78,7 @@ export function ProjectsPage() {
   const activeProjects = projects.filter((p) => p.status === 'active').length
   const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
-  const canCreateProject = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER || currentUser?.role === 'owner'
+  const canCreateProject = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER
   const createProject = useCreateProject()
 
   const handlePageChange = (newPage: number) => {

@@ -311,9 +311,7 @@ export function TeamPage() {
   // ── Pagination ────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState(1)
 
-  // Fix: 'owner' is NOT in UserRole enum, so compare as string
-  const myRole = (me?.role as string) ?? ''
-  const isAdmin = myRole === 'owner' || myRole === 'admin' || me?.role === UserRole.ADMIN
+  const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
 
   const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members])
   const pendingMembers = useMemo(() => members.filter((m) => !m.isActive), [members])
@@ -339,7 +337,7 @@ export function TeamPage() {
   )
 
   const adminCount = activeMembers.filter(
-    (m) => (m.role as string) === 'admin' || (m.role as string) === 'owner',
+    (m) => m.role === UserRole.ADMIN || m.role === UserRole.OWNER,
   ).length
 
   const handleSearch = (v: string) => { setSearch(v); setActivePage(1) }

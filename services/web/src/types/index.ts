@@ -42,6 +42,7 @@ export enum ProjectTemplate {
 export type TemplateCategory = 'all' | 'software' | 'marketing' | 'sales' | 'hr' | 'operations'
 
 export enum UserRole {
+  OWNER = 'owner',
   ADMIN = 'admin',
   MANAGER = 'manager',
   MEMBER = 'member',

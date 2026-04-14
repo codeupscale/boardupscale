@@ -67,7 +67,12 @@ export class SeedData1741651200001 implements MigrationInterface {
         ('page',         'update', 'Edit pages'),
         ('page',         'delete', 'Delete pages'),
         -- Organization
-        ('organization', 'manage', 'Manage organization settings and billing')
+        ('organization', 'manage', 'Manage organization settings and billing'),
+        -- AI
+        ('ai',           'read',   'View AI feature settings and history'),
+        ('ai',           'use',    'Use AI-powered features like suggestions and search'),
+        ('ai',           'chat',   'Use AI chat assistant'),
+        ('ai',           'admin',  'Manage AI configuration and models')
       ON CONFLICT ("resource", "action") DO NOTHING
     `);
 
@@ -108,6 +113,7 @@ export class SeedData1741651200001 implements MigrationInterface {
          AND r.is_system IS TRUE
          AND r.organization_id IS NULL
          AND NOT (p.resource = 'organization' AND p.action = 'manage')
+         AND NOT (p.resource = 'ai' AND p.action = 'admin')
       ON CONFLICT DO NOTHING
     `);
 
@@ -129,6 +135,7 @@ export class SeedData1741651200001 implements MigrationInterface {
             OR (p.resource = 'worklog'  AND p.action IN ('create', 'read', 'update'))
             OR (p.resource = 'page'     AND p.action IN ('create', 'read', 'update'))
             OR (p.resource = 'member'   AND p.action = 'read')
+            OR (p.resource = 'ai'       AND p.action IN ('read', 'use', 'chat'))
          )
       ON CONFLICT DO NOTHING
     `);
@@ -191,7 +198,7 @@ export class SeedData1741651200001 implements MigrationInterface {
       DELETE FROM "permissions"
        WHERE "resource" IN (
          'project', 'issue', 'board', 'sprint', 'comment',
-         'worklog', 'member', 'page', 'organization'
+         'worklog', 'member', 'page', 'organization', 'ai'
        )
     `);
   }

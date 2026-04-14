@@ -168,6 +168,38 @@ export class PermissionsService {
   }
 
   /**
+   * Check an org-level permission when no project context exists (e.g. project
+   * creation).  Maps the user's org role string to the corresponding system role
+   * and checks the permission matrix.
+   */
+  async checkOrgLevelPermission(
+    orgRole: string,
+    resource: string,
+    action: string,
+  ): Promise<boolean> {
+    // Admin and owner always have full access
+    if (orgRole === 'admin' || orgRole === 'owner') return true;
+
+    const systemRoleName = this.mapLegacyRole(orgRole);
+    if (!systemRoleName) return false;
+
+    const systemRole = await this.roleRepo.findOne({
+      where: {
+        name: systemRoleName,
+        isSystem: true,
+        organizationId: IsNull(),
+      },
+      relations: ['permissions'],
+    });
+
+    if (!systemRole) return false;
+
+    return systemRole.permissions.some(
+      (p) => p.resource === resource && p.action === action,
+    );
+  }
+
+  /**
    * Core permission check: does the user have a specific resource+action
    * within a given project?
    *
