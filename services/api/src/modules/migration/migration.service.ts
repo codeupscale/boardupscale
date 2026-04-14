@@ -161,6 +161,13 @@ export class MigrationService {
     const run = await this.findRun(dto.runId, organizationId);
     const credentials = await this.getCredentials(run);
 
+    // Fetch the full project list from Jira so we can return actual names
+    const jiraProjects = await this.jiraApiService.listProjects(credentials).catch(() => []);
+    const projectNameMap = new Map<string, string>();
+    for (const p of jiraProjects) {
+      projectNameMap.set(p.key, p.name);
+    }
+
     // Fetch all project counts in parallel — uses maxResults=0 so only the
     // total is returned, no issue data is transferred.  This is orders of
     // magnitude faster than the previous approach of fetching all issues.
@@ -213,7 +220,8 @@ export class MigrationService {
     const results: PreviewResult['projects'] = projectResults.map((p) => {
       totalIssues += p.issueCount;
       totalSprints += p.sprintCount;
-      return { key: p.key, name: p.key, issueCount: p.issueCount, sprintCount: p.sprintCount };
+      const name: string = projectNameMap.get(p.key) ?? p.key;
+      return { key: p.key, name, issueCount: p.issueCount, sprintCount: p.sprintCount };
     });
 
     // Rough estimate: 100 issues/min
@@ -249,12 +257,19 @@ export class MigrationService {
       throw new BadRequestException('Migration is already in progress');
     }
 
-    // Populate the run with selected projects and config
-    const selectedProjects = dto.projectKeys.map((key) => ({
-      key,
-      name: key,
-      issueCount: 0,
-    }));
+    // Use full project objects from the frontend when available (includes actual
+    // project names from Jira), otherwise fall back to key-only for backwards compat.
+    const selectedProjects = dto.selectedProjects?.length
+      ? dto.selectedProjects.map((p) => ({
+          key: p.key,
+          name: p.name || p.key,
+          issueCount: p.issueCount ?? 0,
+        }))
+      : dto.projectKeys.map((key) => ({
+          key,
+          name: key,
+          issueCount: 0,
+        }));
 
     await this.runRepository.update(run.id, {
       selectedProjects,

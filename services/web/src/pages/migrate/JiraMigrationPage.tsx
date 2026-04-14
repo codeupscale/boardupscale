@@ -160,6 +160,12 @@ export function JiraMigrationPage() {
     const payload: StartMigrationPayload = {
       runId: connectResult.runId,
       projectKeys: selectedKeys,
+      selectedProjects: selectedProjects.map((p) => ({
+        key: p.key,
+        name: p.name,
+        issueCount: p.issueCount,
+        sprintCount: p.sprintCount,
+      })),
       selectedMemberIds,
       statusMapping: config.statusMapping,
       roleMapping: config.roleMapping,

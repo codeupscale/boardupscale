@@ -1,12 +1,16 @@
 import {
   IsArray,
   IsBoolean,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class MigrationOptionsDto {
@@ -26,6 +30,29 @@ export class MigrationOptionsDto {
   inviteMembers?: boolean = true;
 }
 
+export class SelectedProjectDto {
+  @ApiProperty({ example: 'PROJ' })
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @ApiProperty({ example: 'My Project' })
+  @IsString()
+  name: string;
+
+  @ApiPropertyOptional({ example: 42 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  issueCount?: number;
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  sprintCount?: number;
+}
+
 export class StartMigrationDto {
   @ApiProperty({ description: 'Migration run ID returned by POST /connect' })
   @IsUUID()
@@ -36,6 +63,16 @@ export class StartMigrationDto {
   @IsString({ each: true })
   @IsNotEmpty({ each: true })
   projectKeys: string[];
+
+  @ApiPropertyOptional({
+    description: 'Full project objects with key, name, and counts. When provided, used instead of projectKeys for storing project metadata.',
+    type: [SelectedProjectDto],
+  })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SelectedProjectDto)
+  @IsOptional()
+  selectedProjects?: SelectedProjectDto[];
 
   @ApiPropertyOptional({
     description: 'Jira accountIds to import as members. Empty array = import all members.',

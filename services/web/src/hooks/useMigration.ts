@@ -54,6 +54,8 @@ export interface JiraMember {
 export interface StartMigrationPayload {
   runId: string
   projectKeys: string[]
+  /** Full project objects with key, name, and counts — sent so backend can store actual names. */
+  selectedProjects?: Array<{ key: string; name: string; issueCount?: number; sprintCount?: number }>
   /** Jira accountIds to import. Undefined/omitted = import all, [] = import none, [...ids] = specific selection. */
   selectedMemberIds?: string[]
   statusMapping?: Record<string, string>
