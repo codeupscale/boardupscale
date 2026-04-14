@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrganizationsService } from './organizations.service';
@@ -19,6 +20,7 @@ describe('OrganizationsService', () => {
   const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
   const mockAuditService = { log: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
+  const mockDataSource = { transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })) };
 
   beforeEach(async () => {
     orgRepo = createMockRepository();
@@ -34,6 +36,7 @@ describe('OrganizationsService', () => {
         { provide: EmailService, useValue: mockEmailService },
         { provide: AuditService, useValue: mockAuditService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
