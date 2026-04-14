@@ -5,9 +5,10 @@ import { BillingService } from './billing.service';
 import { BillingPlan } from './entities/billing-plan.entity';
 import { Subscription } from './entities/subscription.entity';
 import { User } from '../users/entities/user.entity';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([BillingPlan, Subscription, User])],
+  imports: [TypeOrmModule.forFeature([BillingPlan, Subscription, User]), PermissionsModule],
   controllers: [BillingController],
   providers: [BillingService],
   exports: [BillingService],

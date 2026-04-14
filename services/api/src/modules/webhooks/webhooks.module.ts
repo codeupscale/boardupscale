@@ -6,6 +6,7 @@ import { WebhooksService } from './webhooks.service';
 import { WebhookEventEmitter } from './webhook-event-emitter.service';
 import { Webhook } from './entities/webhook.entity';
 import { WebhookDelivery } from './entities/webhook-delivery.entity';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { WebhookDelivery } from './entities/webhook-delivery.entity';
     BullModule.registerQueue({
       name: 'webhooks',
     }),
+    PermissionsModule,
   ],
   controllers: [WebhooksController],
   providers: [WebhooksService, WebhookEventEmitter],

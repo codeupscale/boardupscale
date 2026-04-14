@@ -10,6 +10,7 @@ import { Issue } from '../issues/entities/issue.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       name: 'automation',
     }),
     NotificationsModule,
+    PermissionsModule,
   ],
   controllers: [AutomationController],
   providers: [AutomationService, AutomationEngineService],
