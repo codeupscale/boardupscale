@@ -22,6 +22,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { AuditService } from '../audit/audit.service';
+import { PosthogService } from '../telemetry/posthog.service';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../test/mock-factories';
 
@@ -90,6 +91,7 @@ describe('AuthService', () => {
         { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
         { provide: getQueueToken('email'), useValue: emailQueue },
         { provide: AuditService, useValue: { log: jest.fn() } },
+        { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
       ],
     }).compile();
 
