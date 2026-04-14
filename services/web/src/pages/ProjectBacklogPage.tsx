@@ -438,9 +438,9 @@ function SprintSection({
               {issues.length > 0 ? (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="w-8" />
-                      <th className="px-2 py-2 w-8">
+                    <tr className="border-b border-border/50">
+                      <th className="w-8 py-1" />
+                      <th className="px-2 py-1 w-8">
                         <input
                           type="checkbox"
                           checked={allSelected}
@@ -706,9 +706,9 @@ function BacklogSection({
             {issues.length > 0 ? (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="w-8" />
-                    <th className="px-2 py-2 w-8">
+                  <tr className="border-b border-border/50">
+                    <th className="w-8 py-1" />
+                    <th className="px-2 py-1 w-8">
                       <input
                         type="checkbox"
                         checked={allBacklogSelected}
