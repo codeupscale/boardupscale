@@ -20,6 +20,7 @@ import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 /** Issue types that may serve as a parent, indexed by the prospective child's type. */
@@ -336,10 +337,17 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <Input
-          label={t('issues.dueDate')}
-          type="date"
-          {...register('dueDate')}
+        <Controller
+          name="dueDate"
+          control={control}
+          render={({ field }) => (
+            <DatePicker
+              label={t('issues.dueDate')}
+              value={field.value || undefined}
+              onChange={(date) => field.onChange(date || '')}
+              placeholder="Pick a date"
+            />
+          )}
         />
         <Input
           label={t('issues.storyPoints')}

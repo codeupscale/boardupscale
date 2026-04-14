@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoard, useReorderIssues, useUpdateStatus, useCreateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
-import { useSprints, useCompleteSprint } from '@/hooks/useSprints'
+import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
@@ -69,6 +69,7 @@ export function ProjectBoardPage() {
   const [deleteColumnId, setDeleteColumnId] = useState<string | null>(null)
   const [showCompleteSprint, setShowCompleteSprint] = useState(false)
   const [boardMoveToSprintId, setBoardMoveToSprintId] = useState('')
+  const [boardNewSprintName, setBoardNewSprintName] = useState('')
 
   // Load-more state: extra issues appended per column beyond the first page
   const [extraIssues, setExtraIssues] = useState<Record<string, Issue[]>>({})
@@ -119,6 +120,7 @@ export function ProjectBoardPage() {
   const createStatus = useCreateStatus()
   const deleteStatus = useDeleteStatus()
   const completeSprint = useCompleteSprint()
+  const createSprintMutation = useCreateSprint()
 
   // Auto-apply active sprint filter on first load if no sprintId is in the URL
   useEffect(() => {
@@ -787,13 +789,14 @@ export function ProjectBoardPage() {
                         </label>
                         <Select
                           value={boardMoveToSprintId || '__backlog__'}
-                          onValueChange={(v) => setBoardMoveToSprintId(v === '__backlog__' ? '' : v)}
+                          onValueChange={(v) => { setBoardMoveToSprintId(v === '__backlog__' ? '' : v); if (v !== '__new__') setBoardNewSprintName('') }}
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__backlog__">Backlog</SelectItem>
+                            <SelectItem value="__new__">+ Create new sprint</SelectItem>
                             {otherSprints.map((s) => (
                               <SelectItem key={s.id} value={s.id}>
                                 {s.name}{s.status === 'active' ? ' (active)' : ''}
@@ -801,30 +804,51 @@ export function ProjectBoardPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {boardMoveToSprintId === '__new__' && (
+                          <Input
+                            placeholder="New sprint name"
+                            value={boardNewSprintName}
+                            onChange={(e) => setBoardNewSprintName(e.target.value)}
+                            autoFocus
+                          />
+                        )}
                         <p className="text-xs text-muted-foreground">
-                          {boardMoveToSprintId
-                            ? `Incomplete issues will be moved to the selected sprint.`
-                            : `Incomplete issues will be moved to the backlog.`}
+                          {boardMoveToSprintId === '__new__'
+                            ? 'A new sprint will be created and incomplete issues moved to it.'
+                            : boardMoveToSprintId
+                              ? `Incomplete issues will be moved to the selected sprint.`
+                              : `Incomplete issues will be moved to the backlog.`}
                         </p>
                       </div>
                     )}
 
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
+                      <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId(''); setBoardNewSprintName('') }}>
                         {t('common.cancel')}
                       </Button>
                       <Button
-                        isLoading={completeSprint.isPending}
-                        onClick={() =>
+                        isLoading={completeSprint.isPending || createSprintMutation.isPending}
+                        disabled={boardMoveToSprintId === '__new__' && !boardNewSprintName.trim()}
+                        onClick={async () => {
+                          let targetSprintId: string | null = boardMoveToSprintId || null
+                          if (boardMoveToSprintId === '__new__' && boardNewSprintName.trim()) {
+                            try {
+                              const created = await createSprintMutation.mutateAsync({
+                                projectId: project?.id || projectKey!,
+                                name: boardNewSprintName.trim(),
+                              })
+                              targetSprintId = created.id
+                            } catch { return }
+                          }
                           completeSprint.mutate(
                             {
                               projectId: project?.id || projectKey!,
                               sprintId: activeSprints[0].id,
-                              moveToSprintId: boardMoveToSprintId || null,
+                              moveToSprintId: targetSprintId,
                             },
-                            { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
+                            { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId(''); setBoardNewSprintName('') } },
                           )
-                        }
+                        }}
                       >
                         {t('sprints.completeSprint')}
                       </Button>
