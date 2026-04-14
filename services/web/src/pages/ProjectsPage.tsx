@@ -13,7 +13,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
-import { ProjectType } from '@/types'
+import { ProjectType, UserRole } from '@/types'
 
 const LIMIT = 12
 
@@ -78,7 +78,7 @@ export function ProjectsPage() {
   const activeProjects = projects.filter((p) => p.status === 'active').length
   const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
-  const canCreateProject = currentUser?.role !== 'member' && currentUser?.role !== 'viewer'
+  const canCreateProject = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER || currentUser?.role === 'owner'
   const createProject = useCreateProject()
 
   const handlePageChange = (newPage: number) => {
