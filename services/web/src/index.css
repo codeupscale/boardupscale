@@ -559,6 +559,15 @@ html.theme-transition *::after {
   100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.30; }
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .login-orb {
   position: absolute;
   border-radius: 50%;
