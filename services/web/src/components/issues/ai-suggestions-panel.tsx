@@ -90,7 +90,7 @@ export function AiSuggestionsPanel({
                   className="flex items-center gap-2 w-full px-2 py-1 rounded text-left hover:bg-purple-100 dark:hover:bg-purple-800/30 transition-colors"
                 >
                   <User className="h-3 w-3 text-purple-400" />
-                  <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">
+                  <span className="text-xs text-foreground font-medium">
                     {a.displayName}
                   </span>
                   <span className="text-[10px] text-purple-500 dark:text-purple-400 ml-auto">
@@ -120,7 +120,7 @@ function SuggestionRow({
       <span className="text-[10px] uppercase tracking-wider text-purple-500 dark:text-purple-400 font-medium w-16 flex-shrink-0">
         {label}
       </span>
-      <span className="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate">
+      <span className="text-xs text-foreground flex-1 truncate">
         {value}
       </span>
       <button

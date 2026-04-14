@@ -57,3 +57,8 @@ Thumbs.db
 .claude/
 temp_auto_push.bat
 temp_interactive_push.bat
+
+# Git worktrees
+.worktrees/
+.superpowers
+.docs/superpowers

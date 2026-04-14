@@ -44,7 +44,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { DropdownMenu, DropdownItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
@@ -58,7 +57,7 @@ const ROLE_CONFIG = [
     icon: Crown,
     iconColor: 'text-purple-500',
     selectedBg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
       'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
   },
@@ -67,22 +66,22 @@ const ROLE_CONFIG = [
     label: 'Admin',
     description: 'Manage members, projects, and organization settings',
     icon: Shield,
-    iconColor: 'text-blue-500',
-    selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    iconColor: 'text-primary',
+    selectedBg: 'bg-primary/10 border-primary dark:border-primary',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+      'bg-primary/15 text-primary border border-primary/30 dark:border-primary/40',
   },
   {
     value: 'member',
     label: 'Member',
     description: 'Access and collaborate on assigned projects',
     icon: User2,
-    iconColor: 'text-gray-500 dark:text-gray-400',
-    selectedBg: 'bg-gray-50 dark:bg-gray-700/50 border-gray-400 dark:border-gray-500',
-    defaultBg: 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+    iconColor: 'text-muted-foreground',
+    selectedBg: 'bg-muted border-muted-foreground',
+    defaultBg: 'bg-card/50 border-border',
     badgeCls:
-      'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
+      'bg-muted text-foreground border border-border',
   },
 ] as const
 
@@ -160,25 +159,25 @@ function RoleCard({
       className={cn(
         'w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all duration-150',
         selected ? config.selectedBg : config.defaultBg,
-        'hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900',
+        'hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2 focus:ring-offset-background',
       )}
     >
       <div
         className={cn(
           'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center',
-          selected ? 'bg-white dark:bg-gray-900/60' : 'bg-gray-50 dark:bg-gray-700',
+          selected ? 'bg-card/60' : 'bg-muted',
         )}
       >
         <Icon className={cn('h-4 w-4', config.iconColor)} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className="text-sm font-semibold text-foreground">
             {config.label}
           </span>
-          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />}
+          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {config.description}
         </p>
       </div>
@@ -219,13 +218,13 @@ function Pagination({
 
   return (
     <div className="flex items-center justify-between px-1 mt-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Showing{' '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
+        <span className="font-medium text-foreground">
           {from}–{to}
         </span>{' '}
         of{' '}
-        <span className="font-medium text-gray-700 dark:text-gray-300">{total}</span> members
+        <span className="font-medium text-foreground">{total}</span> members
       </p>
       <div className="flex items-center gap-1">
         <Button
@@ -238,7 +237,7 @@ function Pagination({
         </Button>
         {pages.map((p, i) =>
           p === '…' ? (
-            <span key={`ellipsis-${i}`} className="w-8 text-center text-sm text-gray-400">
+            <span key={`ellipsis-${i}`} className="w-8 text-center text-sm text-muted-foreground">
               …
             </span>
           ) : (
@@ -248,8 +247,8 @@ function Pagination({
               className={cn(
                 'h-8 w-8 rounded-md text-sm font-medium transition-colors',
                 p === page
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent',
               )}
             >
               {p}
@@ -430,8 +429,8 @@ export function TeamPage() {
           {[
             {
               icon: Users,
-              iconBg: 'bg-blue-50 dark:bg-blue-900/20',
-              iconColor: 'text-blue-600 dark:text-blue-400',
+              iconBg: 'bg-primary/10',
+              iconColor: 'text-primary',
               label: 'Total Members',
               value: activeMembers.length,
             },
@@ -452,14 +451,14 @@ export function TeamPage() {
           ].map(({ icon: Icon, iconBg, iconColor, label, value }) => (
             <div
               key={label}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 p-4 flex items-center gap-4"
+              className="bg-card rounded-xl border border-border/60 p-4 flex items-center gap-4"
             >
               <div className={cn('h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0', iconBg)}>
                 <Icon className={cn('h-5 w-5', iconColor)} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
               </div>
             </div>
           ))}
@@ -469,10 +468,10 @@ export function TeamPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-base font-semibold text-foreground">
                 Active Members
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {activeMembers.length} people with access to this organization
               </p>
             </div>
@@ -487,16 +486,16 @@ export function TeamPage() {
           {/* Search + Filter */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search by name or email…"
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full pl-9 pr-3 h-9 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-9 pr-3"
               />
             </div>
-            <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
               {['all', 'owner', 'admin', 'member'].map((r) => (
                 <button
                   key={r}
@@ -504,8 +503,8 @@ export function TeamPage() {
                   className={cn(
                     'px-3 h-7 rounded-md text-xs font-medium transition-all',
                     roleFilter === r
-                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}
@@ -515,7 +514,7 @@ export function TeamPage() {
           </div>
 
           {filteredActive.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 py-16">
+            <div className="bg-card rounded-xl border border-border/60 py-16">
               <EmptyState
                 icon={<Users className="h-10 w-10" />}
                 title={search || roleFilter !== 'all' ? 'No results found' : 'No active members'}
@@ -527,20 +526,20 @@ export function TeamPage() {
               />
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-muted/60">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Member
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Role
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Status
                 </span>
                 {isAdmin && (
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Actions
                   </span>
                 )}
@@ -555,9 +554,9 @@ export function TeamPage() {
                   <div
                     key={member.id}
                     className={cn(
-                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40 group',
+                      'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-accent/50 group',
                       idx < pagedMembers.length - 1
-                        ? 'border-b border-gray-100 dark:border-gray-800'
+                        ? 'border-b border-border'
                         : '',
                     )}
                   >
@@ -566,11 +565,11 @@ export function TeamPage() {
                       <MemberAvatar member={member} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                          <span className="text-sm font-medium text-foreground truncate">
                             {member.displayName}
                           </span>
                           {isMe && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">
                               You
                             </span>
                           )}
@@ -581,7 +580,7 @@ export function TeamPage() {
                             Migrated (no email)
                           </span>
                         ) : (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {member.email}
                           </p>
                         )}
@@ -599,7 +598,7 @@ export function TeamPage() {
                     {/* Status */}
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Active</span>
+                      <span className="text-xs text-muted-foreground">Active</span>
                     </div>
 
                     {/* Actions — always visible, not hidden behind ... */}
@@ -619,27 +618,27 @@ export function TeamPage() {
                             <button
                               onClick={() => openEditDialog(member)}
                               title="Edit member info"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => openRoleDialog(member)}
                               title="Change role"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                             >
                               <ShieldCheck className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => setDeactivateTarget(member)}
                               title="Remove member"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
                               <UserX className="h-3.5 w-3.5" />
                             </button>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-400 dark:text-gray-600 px-2">—</span>
+                          <span className="text-xs text-muted-foreground px-2">—</span>
                         )}
                       </div>
                     ) : null}
@@ -662,29 +661,29 @@ export function TeamPage() {
         {pendingMembers.length > 0 && (
           <section>
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-base font-semibold text-foreground">
                 Pending Invitations
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {pendingMembers.length} invitation{pendingMembers.length !== 1 ? 's' : ''} awaiting
                 acceptance
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700/60 overflow-hidden">
+            <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-amber-50/60 dark:bg-amber-900/10">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-amber-50/60 dark:bg-amber-900/10">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Invited Email
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Role
                 </span>
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Status
                 </span>
                 {isAdmin && (
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Actions
                   </span>
                 )}
@@ -699,7 +698,7 @@ export function TeamPage() {
                     className={cn(
                       'grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-amber-50/40 dark:hover:bg-amber-900/5',
                       idx < pendingMembers.length - 1
-                        ? 'border-b border-gray-100 dark:border-gray-800'
+                        ? 'border-b border-border'
                         : '',
                     )}
                   >
@@ -709,10 +708,10 @@ export function TeamPage() {
                         <Mail className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {member.email}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {member.displayName !== member.email ? member.displayName : 'No display name set'}
                         </p>
                       </div>
@@ -737,14 +736,14 @@ export function TeamPage() {
                         <button
                           onClick={() => resendInvitation.mutate(member.id)}
                           title="Resend invitation"
-                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors"
                         >
                           <RefreshCw className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setRevokeTarget(member)}
                           title="Revoke invitation"
-                          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -759,14 +758,14 @@ export function TeamPage() {
 
         {/* ── Empty invite CTA ───────────────────────────────────────────── */}
         {pendingMembers.length === 0 && activeMembers.length === 0 && isAdmin && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl border border-blue-100 dark:border-blue-800/40 p-8 text-center">
-            <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
-              <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="bg-primary/5 rounded-xl border border-primary/20 p-8 text-center">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+              <UserPlus className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
               Build your team
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Invite your colleagues to collaborate on projects
             </p>
             <Button size="sm" onClick={() => setShowInviteDialog(true)}>
@@ -780,241 +779,249 @@ export function TeamPage() {
       {/* ────────────────────────── Dialogs ─────────────────────────────────── */}
 
       {/* Invite Member */}
-      <Dialog open={showInviteDialog} onClose={() => setShowInviteDialog(false)}>
-        <DialogHeader onClose={() => setShowInviteDialog(false)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <UserPlus className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      <Dialog open={showInviteDialog} onOpenChange={(o) => !o && setShowInviteDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <UserPlus className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <DialogTitle>Invite Team Member</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  They'll receive an email with a link to join
+                </p>
+              </div>
             </div>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Email address"
+                type="email"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+              />
+              <Input
+                label="Display name (optional)"
+                placeholder="Jane Doe"
+                value={inviteDisplayName}
+                onChange={(e) => setInviteDisplayName(e.target.value)}
+              />
+            </div>
+
             <div>
-              <DialogTitle>Invite Team Member</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                They'll receive an email with a link to join
-              </p>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Role
+              </label>
+              <div className="space-y-2">
+                {ROLE_CONFIG.map((conf) => (
+                  <RoleCard
+                    key={conf.value}
+                    config={conf}
+                    selected={inviteRole === conf.value}
+                    onClick={() => setInviteRole(conf.value as RoleValue)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </DialogHeader>
 
-        <DialogContent className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Email address"
-              type="email"
-              placeholder="colleague@company.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-            />
-            <Input
-              label="Display name (optional)"
-              placeholder="Jane Doe"
-              value={inviteDisplayName}
-              onChange={(e) => setInviteDisplayName(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Role
-            </label>
-            <div className="space-y-2">
-              {ROLE_CONFIG.map((conf) => (
-                <RoleCard
-                  key={conf.value}
-                  config={conf}
-                  selected={inviteRole === conf.value}
-                  onClick={() => setInviteRole(conf.value as RoleValue)}
-                />
-              ))}
-            </div>
-          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInvite}
+              disabled={!inviteEmail.trim()}
+              isLoading={inviteMember.isPending}
+            >
+              <Mail className="h-4 w-4" />
+              Send Invitation
+            </Button>
+          </DialogFooter>
         </DialogContent>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleInvite}
-            disabled={!inviteEmail.trim()}
-            isLoading={inviteMember.isPending}
-          >
-            <Mail className="h-4 w-4" />
-            Send Invitation
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Edit Member Info */}
-      <Dialog open={!!editTarget} onClose={() => setEditTarget(null)}>
-        <DialogHeader onClose={() => setEditTarget(null)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center flex-shrink-0">
-              <Pencil className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </div>
-            <div>
-              <DialogTitle>Edit Member</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Update this member's display info
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <DialogContent className="space-y-4">
-          {editTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={editTarget} size={10} />
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-muted border border-border flex items-center justify-center flex-shrink-0">
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {editTarget.displayName}
+                <DialogTitle>Edit Member</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Update this member's display info
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{editTarget.email}</p>
               </div>
             </div>
-          )}
-          <Input
-            label="Display name"
-            placeholder="Jane Doe"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-          />
-          <Input
-            label="Avatar URL (optional)"
-            placeholder="https://example.com/avatar.png"
-            value={editAvatar}
-            onChange={(e) => setEditAvatar(e.target.value)}
-          />
-          {editAvatar && (
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <img
-                src={editAvatar}
-                alt="Preview"
-                className="h-8 w-8 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
-              Avatar preview
-            </div>
-          )}
-        </DialogContent>
+          </DialogHeader>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditTarget(null)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEditSave}
-            disabled={!editName.trim()}
-            isLoading={updateMember.isPending}
-          >
-            Save Changes
-          </Button>
-        </DialogFooter>
+          <div className="space-y-4">
+            {editTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
+                <MemberAvatar member={editTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {editTarget.displayName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{editTarget.email}</p>
+                </div>
+              </div>
+            )}
+            <Input
+              label="Display name"
+              placeholder="Jane Doe"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
+            <Input
+              label="Avatar URL (optional)"
+              placeholder="https://example.com/avatar.png"
+              value={editAvatar}
+              onChange={(e) => setEditAvatar(e.target.value)}
+            />
+            {editAvatar && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <img
+                  src={editAvatar}
+                  alt="Preview"
+                  className="h-8 w-8 rounded-full object-cover border border-border"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+                Avatar preview
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={!editName.trim()}
+              isLoading={updateMember.isPending}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Change Role */}
-      <Dialog open={showRoleDialog} onClose={() => setShowRoleDialog(false)}>
-        <DialogHeader onClose={() => setShowRoleDialog(false)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+      <Dialog open={showRoleDialog} onOpenChange={(o) => !o && setShowRoleDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <DialogTitle>Change Role</DialogTitle>
             </div>
-            <DialogTitle>Change Role</DialogTitle>
-          </div>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          {roleTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={roleTarget} size={10} />
-              <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {roleTarget.displayName}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{roleTarget.email}</p>
+          </DialogHeader>
+          <div className="space-y-4">
+            {roleTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
+                <MemberAvatar member={roleTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {roleTarget.displayName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{roleTarget.email}</p>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                New role
+              </label>
+              <div className="space-y-2">
+                {ROLE_CONFIG.map((conf) => (
+                  <RoleCard
+                    key={conf.value}
+                    config={conf}
+                    selected={newRole === conf.value}
+                    onClick={() => setNewRole(conf.value as RoleValue)}
+                  />
+                ))}
               </div>
             </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              New role
-            </label>
-            <div className="space-y-2">
-              {ROLE_CONFIG.map((conf) => (
-                <RoleCard
-                  key={conf.value}
-                  config={conf}
-                  selected={newRole === conf.value}
-                  onClick={() => setNewRole(conf.value as RoleValue)}
-                />
-              ))}
-            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRoleChange} isLoading={updateRole.isPending}>
+              <ShieldCheck className="h-4 w-4" />
+              Update Role
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleRoleChange} isLoading={updateRole.isPending}>
-            <ShieldCheck className="h-4 w-4" />
-            Update Role
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Add Email for Migrated Member */}
-      <Dialog open={!!emailTarget} onClose={() => setEmailTarget(null)}>
-        <DialogHeader onClose={() => setEmailTarget(null)}>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <DialogTitle>Add Email Address</DialogTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Set the real email for this Jira-migrated member
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <DialogContent className="space-y-4">
-          {emailTarget && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-              <MemberAvatar member={emailTarget} size={10} />
+      <Dialog open={!!emailTarget} onOpenChange={(o) => !o && setEmailTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  {emailTarget.displayName}
+                <DialogTitle>Add Email Address</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Set the real email for this Jira-migrated member
                 </p>
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
-                  <AtSign className="h-3 w-3" />
-                  Migrated (no email)
-                </span>
               </div>
             </div>
-          )}
-          <Input
-            label="Real email address"
-            type="email"
-            placeholder="colleague@company.com"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
-          />
-        </DialogContent>
+          </DialogHeader>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEmailTarget(null)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleEmailSave}
-            disabled={!newEmail.trim()}
-            isLoading={updateMemberEmail.isPending}
-          >
-            <AtSign className="h-4 w-4" />
-            Save Email
-          </Button>
-        </DialogFooter>
+          <div className="space-y-4">
+            {emailTarget && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/60 border border-border">
+                <MemberAvatar member={emailTarget} size={10} />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {emailTarget.displayName}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                    <AtSign className="h-3 w-3" />
+                    Migrated (no email)
+                  </span>
+                </div>
+              </div>
+            )}
+            <Input
+              label="Real email address"
+              type="email"
+              placeholder="colleague@company.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleEmailSave()}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEmailSave}
+              disabled={!newEmail.trim()}
+              isLoading={updateMemberEmail.isPending}
+            >
+              <AtSign className="h-4 w-4" />
+              Save Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Deactivate / Remove */}

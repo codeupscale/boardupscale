@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { Zap, CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, Mail } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { Spinner } from '@/components/ui/spinner'
 import api from '@/lib/api'
 
@@ -8,9 +9,7 @@ export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token')
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
-    'loading'
-  )
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [countdown, setCountdown] = useState(3)
   const calledRef = useRef(false)
@@ -21,27 +20,23 @@ export function VerifyEmailPage() {
       setErrorMessage('Missing verification token.')
       return
     }
-
-    // Prevent double-call in React strict mode (dev) which would
-    // consume the token on the first call and fail on the second.
+    // Prevent double-call in React strict mode
     if (calledRef.current) return
     calledRef.current = true
 
     api
       .get(`/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then(() => {
-        setStatus('success')
-      })
+      .then(() => setStatus('success'))
       .catch((err: any) => {
         setStatus('error')
         setErrorMessage(
           err?.response?.data?.message ||
-            'Verification failed. The token may be invalid or expired.'
+            'Verification failed. The token may be invalid or expired.',
         )
       })
   }, [token])
 
-  // Auto-redirect to login after successful verification
+  // Auto-redirect after success
   useEffect(() => {
     if (status !== 'success') return
     const timer = setInterval(() => {
@@ -58,64 +53,74 @@ export function VerifyEmailPage() {
   }, [status, navigate])
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
-            <Zap className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">Email Verification</p>
+    <div className="dark login-gaming-bg min-h-screen flex items-center justify-center p-6 overflow-hidden">
+      <div className="login-orb login-orb-1" />
+      <div className="login-orb login-orb-2" />
+      <div className="login-orb login-orb-3" />
+
+      <div className="relative z-10 w-full max-w-[420px]">
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" />
         </div>
 
-        {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
+        <div className="login-glass-card rounded-2xl p-8 text-center">
+          {/* Loading */}
           {status === 'loading' && (
-            <div className="py-8">
-              <Spinner className="h-8 w-8 mx-auto mb-4 text-blue-600" />
-              <p className="text-sm text-gray-600">
-                Verifying your email address...
-              </p>
+            <div className="py-6">
+              <div
+                className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
+                style={{
+                  background: 'linear-gradient(135deg, oklch(0.22 0.18 308) 0%, oklch(0.35 0.22 340) 100%)',
+                  boxShadow: '0 0 24px oklch(0.40 0.20 315 / 0.40)',
+                }}
+              >
+                <Mail className="h-8 w-8 text-white/80" />
+              </div>
+              <Spinner className="h-7 w-7 mx-auto mb-4 text-violet-400" />
+              <h2 className="text-xl font-bold text-white mb-2">Verifying your email</h2>
+              <p className="text-sm text-white/45">Just a moment…</p>
             </div>
           )}
 
+          {/* Success */}
           {status === 'success' && (
-            <div className="py-4">
-              <div className="flex items-center justify-center h-12 w-12 bg-green-100 rounded-full mx-auto mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="py-2">
+              <div
+                className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 28px #10b98155' }}
+              >
+                <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Email verified
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Your email address has been verified successfully. You can now
-                use all features of Boardupscale.
+              <h2 className="text-xl font-bold text-white mb-3">Email verified!</h2>
+              <p className="text-sm text-white/50 leading-relaxed mb-2">
+                Your email has been verified. You now have full access to Boardupscale.
               </p>
-              <p className="text-xs text-gray-500 mb-4">
-                Redirecting to login in {countdown} second{countdown !== 1 ? 's' : ''}...
+              <p className="text-xs text-white/30 mb-7">
+                Redirecting to login in {countdown} second{countdown !== 1 ? 's' : ''}…
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="plasma-btn inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold w-full transition-all"
               >
                 Go to login
               </Link>
             </div>
           )}
 
+          {/* Error */}
           {status === 'error' && (
-            <div className="py-4">
-              <div className="flex items-center justify-center h-12 w-12 bg-red-100 rounded-full mx-auto mb-4">
-                <XCircle className="h-6 w-6 text-red-600" />
+            <div className="py-2">
+              <div
+                className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
+                style={{ background: 'linear-gradient(135deg, #ef444430 0%, #dc262630 100%)', border: '1px solid #ef444435' }}
+              >
+                <XCircle className="h-8 w-8 text-red-400" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Verification failed
-              </h2>
-              <p className="text-sm text-gray-600 mb-6">{errorMessage}</p>
+              <h2 className="text-xl font-bold text-white mb-3">Verification failed</h2>
+              <p className="text-sm text-white/50 leading-relaxed mb-7">{errorMessage}</p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center gap-2 w-full px-6 py-2.5 rounded-lg border border-white/12 text-sm font-medium text-white/60 hover:text-white/80 hover:border-white/20 bg-white/5 hover:bg-white/8 transition-all"
               >
                 Go to login
               </Link>

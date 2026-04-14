@@ -7,7 +7,14 @@ import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
@@ -177,7 +184,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-foreground/80 mb-1">
           {t('common.description')}
         </label>
         <RichTextEditor
@@ -206,17 +213,21 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="priority"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('common.priority')}
-              options={[
-                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-                { value: IssuePriority.HIGH, label: t('priorities.high') },
-                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-                { value: IssuePriority.LOW, label: t('priorities.low') },
-                { value: IssuePriority.NONE, label: t('priorities.none') },
-              ]}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('common.priority')}</Label>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={IssuePriority.CRITICAL}>{t('priorities.critical')}</SelectItem>
+                  <SelectItem value={IssuePriority.HIGH}>{t('priorities.high')}</SelectItem>
+                  <SelectItem value={IssuePriority.MEDIUM}>{t('priorities.medium')}</SelectItem>
+                  <SelectItem value={IssuePriority.LOW}>{t('priorities.low')}</SelectItem>
+                  <SelectItem value={IssuePriority.NONE}>{t('priorities.none')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       </div>
@@ -226,12 +237,19 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="statusId"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('common.status')}
-              placeholder={t('common.status') + '...'}
-              options={statuses.map((s) => ({ value: s.id, label: s.name }))}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('common.status')}</Label>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('common.status') + '...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       )}
@@ -241,7 +259,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         control={control}
         render={({ field }) => (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.assignee')}</label>
+            <label className="block text-sm font-medium text-foreground/80 mb-1">{t('common.assignee')}</label>
             <UserSelect
               value={field.value || null}
               onChange={(id) => field.onChange(id)}
@@ -259,30 +277,34 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           control={control}
           render={({ field }) => (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Parent Issue
               </label>
-              <input
+              <Input
                 type="text"
                 value={parentSearch}
                 onChange={(e) => setParentSearch(e.target.value)}
                 placeholder="Search by key or title…"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
+                className="mb-1"
               />
-              <select
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value || undefined)}
+              <Select
+                value={field.value || '__none__'}
+                onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)}
               >
-                <option value="">— No parent —</option>
-                {eligibleParents.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.key}] {p.title}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="— No parent —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— No parent —</SelectItem>
+                  {eligibleParents.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      [{p.key}] {p.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {parentIssues.length > 0 && eligibleParents.length === 0 && parentSearch === '' && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   No eligible parents for a {watchedType} in this project.
                 </p>
               )}
@@ -296,12 +318,19 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           name="sprintId"
           control={control}
           render={({ field }) => (
-            <Select
-              label={t('issues.sprint')}
-              placeholder={t('common.noSprint')}
-              options={sprints.map((s) => ({ value: s.id, label: s.name }))}
-              {...field}
-            />
+            <div className="w-full">
+              <Label className="mb-1">{t('issues.sprint')}</Label>
+              <Select value={field.value || ''} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('common.noSprint')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sprints.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         />
       )}
@@ -332,18 +361,18 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
 
       {/* Labels */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('issues.labels')}</label>
+        <label className="block text-sm font-medium text-foreground/80 mb-1">{t('issues.labels')}</label>
         <div className="flex flex-wrap gap-2 mb-2">
           {labels.map((l) => (
             <span
               key={l}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-xs"
             >
               {l}
               <button
                 type="button"
                 onClick={() => removeLabel(l)}
-                className="hover:text-blue-900"
+                className="hover:text-primary"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -351,7 +380,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           ))}
         </div>
         <div className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={labelInput}
             onChange={(e) => setLabelInput(e.target.value)}
@@ -362,7 +391,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               }
             }}
             placeholder={t('issues.addLabelEnter')}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1"
           />
           <Button type="button" variant="secondary" size="sm" onClick={addLabel}>
             {t('common.add')}
@@ -373,7 +402,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       {/* Components */}
       {components.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Components</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">Components</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {selectedComponents.map((cId) => {
               const comp = components.find((c) => c.id === cId)
@@ -396,31 +425,35 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               )
             })}
           </div>
-          <select
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value=""
-            onChange={(e) => {
-              if (e.target.value && !selectedComponents.includes(e.target.value)) {
-                setSelectedComponents([...selectedComponents, e.target.value])
+          <Select
+            value="__none__"
+            onValueChange={(v) => {
+              if (v !== '__none__' && !selectedComponents.includes(v)) {
+                setSelectedComponents([...selectedComponents, v])
               }
             }}
           >
-            <option value="">Add component...</option>
-            {components
-              .filter((c) => !selectedComponents.includes(c.id))
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Add component..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Add component...</SelectItem>
+              {components
+                .filter((c) => !selectedComponents.includes(c.id))
+                .map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
       {/* Fix Version */}
       {versions.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fix Version</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-1">Fix Version</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {selectedFixVersions.map((vId) => {
               const ver = versions.find((v) => v.id === vId)
@@ -443,31 +476,35 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               )
             })}
           </div>
-          <select
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value=""
-            onChange={(e) => {
-              if (e.target.value && !selectedFixVersions.includes(e.target.value)) {
-                setSelectedFixVersions([...selectedFixVersions, e.target.value])
+          <Select
+            value="__none__"
+            onValueChange={(v) => {
+              if (v !== '__none__' && !selectedFixVersions.includes(v)) {
+                setSelectedFixVersions([...selectedFixVersions, v])
               }
             }}
           >
-            <option value="">Add version...</option>
-            {versions
-              .filter((v) => v.status !== 'archived' && !selectedFixVersions.includes(v.id))
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Add version..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Add version...</SelectItem>
+              {versions
+                .filter((v) => v.status !== 'archived' && !selectedFixVersions.includes(v.id))
+                .map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
       {/* Custom Fields */}
       {customFieldDefs.length > 0 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Custom Fields</label>
+          <label className="block text-sm font-medium text-foreground/80 mb-2">Custom Fields</label>
           <CustomFieldsForm
             definitions={customFieldDefs}
             values={Object.entries(customFieldValues).map(([fieldId, value]) => ({

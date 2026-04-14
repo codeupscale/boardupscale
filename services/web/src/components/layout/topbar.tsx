@@ -7,7 +7,14 @@ import { useThemeStore } from '@/store/theme.store'
 import { useUnreadCount } from '@/hooks/useNotifications'
 import { useLogout } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownItem, DropdownSeparator, DropdownLabel } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 const SUPPORTED_LANGUAGES = [
@@ -31,13 +38,13 @@ export function Topbar() {
   const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <header className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
           onClick={toggleSidebar}
           aria-label="Toggle menu"
-          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -49,128 +56,121 @@ export function Topbar() {
         <button
           onClick={() => setSearchOpen(true)}
           aria-label="Search (Cmd+K)"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 rounded-xl transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted/80 hover:bg-accent rounded-xl transition-colors border border-transparent hover:border-border"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">{t('common.search')}</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md font-mono text-gray-400 dark:text-gray-500">
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-background border border-border rounded-md font-mono text-muted-foreground">
             ⌘K
           </kbd>
         </button>
 
         {/* Theme Switcher */}
-        <DropdownMenu
-          trigger={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               aria-label="Switch theme"
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
             >
               {(() => {
                 const Icon = themeIcon
                 return <Icon className="h-5 w-5" />
               })()}
             </button>
-          }
-        >
-          <DropdownLabel>Theme</DropdownLabel>
-          <DropdownItem
-            icon={<Sun className="h-4 w-4" />}
-            onClick={() => setTheme('light')}
-          >
-            <span className={cn('text-sm', theme === 'light' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              Light
-            </span>
-          </DropdownItem>
-          <DropdownItem
-            icon={<Moon className="h-4 w-4" />}
-            onClick={() => setTheme('dark')}
-          >
-            <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              Dark
-            </span>
-          </DropdownItem>
-          <DropdownItem
-            icon={<Monitor className="h-4 w-4" />}
-            onClick={() => setTheme('system')}
-          >
-            <span className={cn('text-sm', theme === 'system' && 'font-semibold text-blue-600 dark:text-blue-400')}>
-              System
-            </span>
-          </DropdownItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Theme</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setTheme('light')}>
+              <Sun className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'light' && 'font-semibold text-primary')}>
+                Light
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('dark')}>
+              <Moon className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'dark' && 'font-semibold text-primary')}>
+                Dark
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme('system')}>
+              <Monitor className="h-4 w-4" />
+              <span className={cn('text-sm', theme === 'system' && 'font-semibold text-primary')}>
+                System
+              </span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Language Switcher */}
-        <DropdownMenu
-          trigger={
-            <button className="flex items-center gap-1 p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1 p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors">
               <Globe className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">{i18n.language.slice(0, 2)}</span>
             </button>
-          }
-        >
-          {SUPPORTED_LANGUAGES.map((lang) => (
-            <DropdownItem
-              key={lang.code}
-              onClick={() => i18n.changeLanguage(lang.code)}
-            >
-              <span className={cn(
-                'text-sm',
-                i18n.language.startsWith(lang.code) && 'font-semibold text-blue-600 dark:text-blue-400',
-              )}>
-                {lang.label}
-              </span>
-            </DropdownItem>
-          ))}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => i18n.changeLanguage(lang.code)}
+              >
+                <span className={cn(
+                  'text-sm',
+                  i18n.language.startsWith(lang.code) && 'font-semibold text-primary',
+                )}>
+                  {lang.label}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
         </DropdownMenu>
 
         {/* Notifications */}
         <Link
           to="/notifications"
           aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
-          className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="relative p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-white dark:ring-gray-900">
+            <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-background">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </Link>
 
         {/* User dropdown */}
-        <DropdownMenu
-          trigger={
-            <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button aria-label="User menu" className="flex items-center gap-2 rounded-xl p-1 hover:bg-accent transition-colors ml-1">
               <Avatar user={user || undefined} size="sm" />
             </button>
-          }
-        >
-          {user && (
-            <div className="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.displayName}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
-            </div>
-          )}
-          <DropdownItem
-            icon={<User className="h-4 w-4" />}
-            onClick={() => navigate('/settings')}
-          >
-            {t('nav.profile')}
-          </DropdownItem>
-          <DropdownItem
-            icon={<Settings className="h-4 w-4" />}
-            onClick={() => navigate('/settings')}
-          >
-            {t('nav.settings')}
-          </DropdownItem>
-          <DropdownSeparator />
-          <DropdownItem
-            icon={<LogOut className="h-4 w-4" />}
-            destructive
-            onClick={() => logout.mutate()}
-          >
-            {t('auth.logOut')}
-          </DropdownItem>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {user && (
+              <div className="px-3 py-2.5 border-b border-border">
+                <p className="text-sm font-semibold text-foreground">{user.displayName}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+              </div>
+            )}
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <User className="h-4 w-4" />
+              {t('nav.profile')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <Settings className="h-4 w-4" />
+              {t('nav.settings')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+              onClick={() => logout.mutate()}
+            >
+              <LogOut className="h-4 w-4" />
+              {t('auth.logOut')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>

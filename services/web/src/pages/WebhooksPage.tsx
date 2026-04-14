@@ -91,13 +91,13 @@ function DeliveryHistory({
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Delivery History</h2>
-          <p className="text-sm text-gray-500">{webhook.name}</p>
+          <h2 className="text-base font-semibold text-foreground">Delivery History</h2>
+          <p className="text-sm text-muted-foreground">{webhook.name}</p>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-gray-500">Loading deliveries...</div>
+        <div className="py-12 text-center text-sm text-muted-foreground">Loading deliveries...</div>
       ) : !data?.items?.length ? (
         <EmptyState
           icon={<Send className="h-8 w-8" />}
@@ -105,24 +105,24 @@ function DeliveryHistory({
           description="Webhook deliveries will appear here once events are triggered."
         />
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <div className="bg-card rounded-xl border border-border divide-y divide-border">
           {data.items.map((delivery: WebhookDelivery) => (
             <div key={delivery.id}>
               <button
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent transition-colors"
                 onClick={() =>
                   setExpandedId(expandedId === delivery.id ? null : delivery.id)
                 }
               >
                 <DeliveryStatusBadge status={delivery.status} />
-                <span className="text-xs font-mono text-gray-600 dark:text-gray-400 flex-shrink-0">
+                <span className="text-xs font-mono text-muted-foreground flex-shrink-0">
                   {delivery.eventType}
                 </span>
-                <span className="flex-1 text-xs text-gray-500 truncate">
+                <span className="flex-1 text-xs text-muted-foreground truncate">
                   {delivery.responseStatus ? `HTTP ${delivery.responseStatus}` : 'No response'}
                 </span>
-                <span className="text-xs text-gray-500">{formatDuration(delivery.durationMs)}</span>
-                <span className="text-xs text-gray-500">{formatDate(delivery.createdAt)}</span>
+                <span className="text-xs text-muted-foreground">{formatDuration(delivery.durationMs)}</span>
+                <span className="text-xs text-muted-foreground">{formatDate(delivery.createdAt)}</span>
                 {delivery.status === 'failed' && (
                   <Button
                     variant="ghost"
@@ -142,21 +142,21 @@ function DeliveryHistory({
               </button>
               {expandedId === delivery.id && (
                 <div className="px-4 pb-3 space-y-2">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Request Payload</p>
-                    <pre className="text-xs text-gray-700 dark:text-gray-300 overflow-auto max-h-40">
+                  <div className="bg-muted rounded-lg p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Request Payload</p>
+                    <pre className="text-xs text-foreground overflow-auto max-h-40">
                       {JSON.stringify(delivery.payload, null, 2)}
                     </pre>
                   </div>
                   {delivery.responseBody && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Response Body</p>
-                      <pre className="text-xs text-gray-700 dark:text-gray-300 overflow-auto max-h-40">
+                    <div className="bg-muted rounded-lg p-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Response Body</p>
+                      <pre className="text-xs text-foreground overflow-auto max-h-40">
                         {delivery.responseBody}
                       </pre>
                     </div>
                   )}
-                  <div className="flex gap-4 text-xs text-gray-500">
+                  <div className="flex gap-4 text-xs text-muted-foreground">
                     <span>Attempt: {delivery.attempt}</span>
                     {delivery.nextRetryAt && (
                       <span>Next retry: {formatDate(delivery.nextRetryAt)}</span>
@@ -171,7 +171,7 @@ function DeliveryHistory({
 
       {data && data.meta.totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Page {data.meta.page} of {data.meta.totalPages} ({data.meta.total} total)
           </p>
           <div className="flex gap-2">
@@ -367,8 +367,8 @@ export function WebhooksPage() {
       <div className="p-6 max-w-4xl">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Webhooks</h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <h2 className="text-base font-semibold text-foreground">Webhooks</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Receive HTTP callbacks when events happen in this project.
             </p>
           </div>
@@ -386,7 +386,7 @@ export function WebhooksPage() {
             action={{ label: 'Add Webhook', onClick: openCreate }}
           />
         ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+          <div className="bg-card rounded-xl border border-border divide-y divide-border">
             {webhooks.map((webhook) => (
               <div
                 key={webhook.id}
@@ -395,20 +395,20 @@ export function WebhooksPage() {
                 <div
                   className={cn(
                     'h-2.5 w-2.5 rounded-full flex-shrink-0',
-                    webhook.isActive ? 'bg-green-500' : 'bg-gray-300',
+                    webhook.isActive ? 'bg-green-500' : 'bg-muted-foreground/40',
                   )}
                   title={webhook.isActive ? 'Active' : 'Inactive'}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {webhook.name}
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {webhook.events.length} event{webhook.events.length !== 1 ? 's' : ''}
                     </Badge>
                   </div>
-                  <p className="text-xs text-gray-500 truncate mt-0.5">{webhook.url}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{webhook.url}</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
@@ -450,7 +450,7 @@ export function WebhooksPage() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="text-gray-400 hover:text-red-600"
+                    className="text-muted-foreground hover:text-red-600"
                     onClick={() => setDeleteTarget(webhook)}
                     title="Delete"
                   >
@@ -466,23 +466,20 @@ export function WebhooksPage() {
       {/* Create/Edit Dialog */}
       <Dialog
         open={showForm}
-        onClose={() => {
-          setShowForm(false)
-          resetForm()
-        }}
-        className="max-w-lg"
-      >
-        <DialogHeader
-          onClose={() => {
+        onOpenChange={(o) => {
+          if (!o) {
             setShowForm(false)
             resetForm()
-          }}
-        >
-          <DialogTitle>
-            {editingWebhook ? 'Edit Webhook' : 'Create Webhook'}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingWebhook ? 'Edit Webhook' : 'Create Webhook'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
           <Input
             label="Name"
             placeholder="e.g. CI/CD Pipeline"
@@ -505,7 +502,7 @@ export function WebhooksPage() {
             />
             <button
               type="button"
-              className="absolute right-2 top-8 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-8 text-muted-foreground hover:text-foreground"
               onClick={() => setShowSecret(!showSecret)}
             >
               {showSecret ? (
@@ -518,18 +515,18 @@ export function WebhooksPage() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">Events</label>
+              <label className="block text-sm font-medium text-foreground">Events</label>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-primary hover:underline"
                   onClick={selectAllEvents}
                 >
                   Select all
                 </button>
                 <button
                   type="button"
-                  className="text-xs text-gray-500 hover:underline"
+                  className="text-xs text-muted-foreground hover:underline"
                   onClick={deselectAllEvents}
                 >
                   Clear
@@ -539,7 +536,7 @@ export function WebhooksPage() {
             <div className="space-y-3">
               {eventCategories.map((category) => (
                 <div key={category.label}>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
                     {category.label}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -551,8 +548,8 @@ export function WebhooksPage() {
                         className={cn(
                           'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
                           selectedEvents.includes(event)
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+                            ? 'bg-primary/10 text-primary border-primary/30'
+                            : 'bg-card text-muted-foreground border-border hover:border-border/80',
                         )}
                       >
                         {event}
@@ -581,6 +578,7 @@ export function WebhooksPage() {
             >
               {editingWebhook ? 'Save' : 'Create'}
             </Button>
+          </div>
           </div>
         </DialogContent>
       </Dialog>

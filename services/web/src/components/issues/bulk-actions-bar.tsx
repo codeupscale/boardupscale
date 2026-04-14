@@ -52,18 +52,18 @@ export function BulkActionsBar({
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-popover text-popover-foreground border border-border rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4 animate-in slide-in-from-bottom-4">
         <span className="text-sm font-medium whitespace-nowrap">
           {count} issue{count !== 1 ? 's' : ''} selected
         </span>
 
-        <div className="h-5 w-px bg-gray-700" />
+        <div className="h-5 w-px bg-border" />
 
         <div className="flex items-center gap-1.5">
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowAssign(true)}
           >
             <UserPlus className="h-4 w-4" />
@@ -73,7 +73,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowStatus(true)}
           >
             <Signal className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowPriority(true)}
           >
             <Zap className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowSprint(true)}
           >
             <ArrowRightLeft className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-gray-300 hover:text-white hover:bg-gray-800"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={() => setShowMove(true)}
           >
             <FolderInput className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function BulkActionsBar({
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-400 hover:text-red-300 hover:bg-gray-800"
+            className="text-red-400 hover:text-red-300 hover:bg-accent"
             onClick={() => setShowDelete(true)}
           >
             <Trash2 className="h-4 w-4" />
@@ -121,11 +121,11 @@ export function BulkActionsBar({
           </Button>
         </div>
 
-        <div className="h-5 w-px bg-gray-700" />
+        <div className="h-5 w-px bg-border" />
 
         <button
           onClick={clearSelection}
-          className="p-1 rounded hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
@@ -210,7 +210,7 @@ function PriorityPickerDialog({
     { value: IssuePriority.CRITICAL, label: 'Critical', color: 'bg-red-500' },
     { value: IssuePriority.HIGH, label: 'High', color: 'bg-orange-500' },
     { value: IssuePriority.MEDIUM, label: 'Medium', color: 'bg-yellow-500' },
-    { value: IssuePriority.LOW, label: 'Low', color: 'bg-blue-500' },
+    { value: IssuePriority.LOW, label: 'Low', color: 'bg-primary' },
   ]
 
   if (!open) return null
@@ -218,15 +218,15 @@ function PriorityPickerDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Set Priority</h3>
+      <div className="relative bg-card rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Set Priority</h3>
         </div>
         <div className="p-2">
           {priorities.map((p) => (
             <button
               key={p.value}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors text-left"
               onClick={() =>
                 bulkUpdate.mutate(
                   { issueIds, priority: p.value },
@@ -263,13 +263,13 @@ function SprintPickerDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Move to Sprint</h3>
+      <div className="relative bg-card rounded-xl shadow-xl dark:shadow-black/40 w-full max-w-xs mx-4">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Move to Sprint</h3>
         </div>
         <div className="p-2 max-h-64 overflow-y-auto">
           <button
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left italic"
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent transition-colors text-left italic"
             onClick={() =>
               bulkUpdate.mutate(
                 { issueIds, sprintId: null },
@@ -283,7 +283,7 @@ function SprintPickerDialog({
           {sprints.map((sprint) => (
             <button
               key={sprint.id}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors text-left"
               onClick={() =>
                 bulkUpdate.mutate(
                   { issueIds, sprintId: sprint.id },

@@ -166,8 +166,8 @@ function ToolbarButton({
         onClick()
       }}
       className={cn(
-        'p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors',
-        active && 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+        'p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors',
+        active && 'bg-accent text-foreground',
       )}
     >
       {children}
@@ -431,7 +431,7 @@ export function PageEditor({
   return (
     <div ref={editorContainerRef} className={cn('relative', className)}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-md sticky top-0 z-10">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted rounded-t-md sticky top-0 z-10">
         <ToolbarButton title="Bold (Ctrl+B)" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold size={iconSize} />
         </ToolbarButton>
@@ -445,7 +445,7 @@ export function PageEditor({
           <Strikethrough size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton title="Heading 1" active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
           <Heading1 size={iconSize} />
@@ -457,7 +457,7 @@ export function PageEditor({
           <Heading3 size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton title="Bullet List" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List size={iconSize} />
@@ -478,7 +478,7 @@ export function PageEditor({
           <Code size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton title="Table" active={editor.isActive('table')} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
           <TableIcon size={iconSize} />
@@ -506,10 +506,10 @@ export function PageEditor({
       {/* Slash command menu */}
       {slashMenu.visible && slashItems.length > 0 && (
         <div
-          className="absolute z-50 w-64 max-h-72 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg"
+          className="absolute z-50 w-64 max-h-72 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
           style={{ top: slashMenu.position.top, left: slashMenu.position.left }}
         >
-          <div className="px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+          <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border">
             Insert block
           </div>
           {slashItems.map((item, idx) => (
@@ -517,8 +517,8 @@ export function PageEditor({
               key={item.title}
               type="button"
               className={cn(
-                'flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
-                idx === slashMenu.selectedIndex && 'bg-gray-50 dark:bg-gray-700',
+                'flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors',
+                idx === slashMenu.selectedIndex && 'bg-accent',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()
@@ -528,10 +528,10 @@ export function PageEditor({
               }}
               onMouseEnter={() => setSlashMenu((prev) => ({ ...prev, selectedIndex: idx }))}
             >
-              <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">{item.icon}</span>
+              <span className="text-muted-foreground flex-shrink-0">{item.icon}</span>
               <div>
-                <div className="font-medium text-gray-900 dark:text-gray-100">{item.title}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{item.description}</div>
+                <div className="font-medium text-foreground">{item.title}</div>
+                <div className="text-xs text-muted-foreground">{item.description}</div>
               </div>
             </button>
           ))}
@@ -541,7 +541,7 @@ export function PageEditor({
       {/* Mention popup */}
       {mentionPopup.visible && mentionPopup.users.length > 0 && (
         <div
-          className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg"
+          className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
           style={{ top: mentionPopup.position.top, left: mentionPopup.position.left }}
         >
           {mentionPopup.users.map((user, idx) => (
@@ -549,8 +549,8 @@ export function PageEditor({
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors',
-                idx === mentionPopup.selectedIndex && 'bg-blue-50 dark:bg-blue-900/20',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
+                idx === mentionPopup.selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()
@@ -563,8 +563,8 @@ export function PageEditor({
             >
               <Avatar user={user} size="xs" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.displayName}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</div>
+                <div className="font-medium text-foreground truncate">{user.displayName}</div>
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
               </div>
             </button>
           ))}

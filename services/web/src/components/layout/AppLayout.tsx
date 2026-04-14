@@ -8,7 +8,7 @@ import { useNotificationSocket } from '@/hooks/useNotifications'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
-import { ToastContainer } from '@/components/ui/toast'
+import { Toaster } from '@/components/ui/sonner'
 import { CommandPalette } from './command-palette'
 import { ProjectChat } from '@/components/chat/ProjectChat'
 import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
@@ -47,10 +47,10 @@ export function AppLayout() {
   if (!isAuthenticated) return null
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white dark:focus:bg-gray-900 focus:text-blue-600 focus:rounded focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-background focus:text-primary focus:rounded focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
       >
         Skip to main content
       </a>
@@ -59,13 +59,13 @@ export function AppLayout() {
         className="flex-1 flex flex-col min-w-0 transition-all duration-200"
       >
         <Topbar />
-        <main id="main-content" className="flex-1 overflow-auto">
+        <main id="main-content" className="flex-1 overflow-auto plasma-main-content">
           <ErrorBoundary>
             <Outlet />
           </ErrorBoundary>
         </main>
       </div>
-      <ToastContainer />
+      <Toaster position="bottom-right" richColors />
       <CommandPalette />
       <ProjectChat />
       <HelpSupportPanel />

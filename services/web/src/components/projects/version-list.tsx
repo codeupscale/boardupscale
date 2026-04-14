@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { formatDate } from '@/lib/utils'
 
@@ -23,7 +23,7 @@ interface VersionListProps {
 const statusStyles: Record<string, string> = {
   unreleased: 'bg-amber-100 text-amber-700',
   released: 'bg-green-100 text-green-700',
-  archived: 'bg-gray-100 text-gray-500',
+  archived: 'bg-muted text-muted-foreground',
 }
 
 export function VersionList({ projectId }: VersionListProps) {
@@ -88,19 +88,19 @@ export function VersionList({ projectId }: VersionListProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-gray-900">Versions</h2>
+        <h2 className="text-base font-semibold text-foreground">Versions</h2>
         <Button size="sm" onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Add Version
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+      <div className="bg-card rounded-xl border border-border divide-y divide-border">
         {versions?.map((version) => (
           <div key={version.id} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{version.name}</p>
+                <p className="text-sm font-medium text-foreground">{version.name}</p>
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     statusStyles[version.status] || statusStyles.unreleased
@@ -110,18 +110,18 @@ export function VersionList({ projectId }: VersionListProps) {
                 </span>
               </div>
               {version.description && (
-                <p className="text-xs text-gray-500 truncate mt-0.5">
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {version.description}
                 </p>
               )}
               <div className="flex gap-3 mt-1">
                 {version.startDate && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     Start: {formatDate(version.startDate)}
                   </span>
                 )}
                 {version.releaseDate && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     Release: {formatDate(version.releaseDate)}
                   </span>
                 )}
@@ -150,7 +150,7 @@ export function VersionList({ projectId }: VersionListProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-gray-400 hover:text-red-600"
+              className="text-muted-foreground hover:text-red-600"
               onClick={() => setDeleteTarget(version)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -158,7 +158,7 @@ export function VersionList({ projectId }: VersionListProps) {
           </div>
         ))}
         {(!versions || versions.length === 0) && (
-          <div className="py-8 text-center text-sm text-gray-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             No versions configured.
           </div>
         )}
@@ -167,51 +167,52 @@ export function VersionList({ projectId }: VersionListProps) {
       {/* Add/Edit Dialog */}
       <Dialog
         open={showDialog}
-        onClose={() => setShowDialog(false)}
-        className="max-w-sm"
+        onOpenChange={(isOpen) => !isOpen && setShowDialog(false)}
       >
-        <DialogHeader onClose={() => setShowDialog(false)}>
-          <DialogTitle>{editing ? 'Edit Version' : 'Add Version'}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-4">
-          <Input
-            label="Version Name"
-            placeholder="e.g. v1.0.0"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Textarea
-            label="Description (optional)"
-            placeholder="Describe this version..."
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div className="grid grid-cols-2 gap-4">
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Version' : 'Add Version'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <Input
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              label="Version Name"
+              placeholder="e.g. v1.0.0"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-            <Input
-              label="Release Date"
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
+            <Textarea
+              label="Description (optional)"
+              placeholder="Describe this version..."
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!name.trim()}
-              isLoading={createVersion.isPending || updateVersion.isPending}
-              onClick={handleSubmit}
-            >
-              {editing ? 'Save' : 'Add'}
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Start Date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <Input
+                label="Release Date"
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!name.trim()}
+                isLoading={createVersion.isPending || updateVersion.isPending}
+                onClick={handleSubmit}
+              >
+                {editing ? 'Save' : 'Add'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

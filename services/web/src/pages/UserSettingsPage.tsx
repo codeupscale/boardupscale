@@ -1,6 +1,6 @@
 import { UserRole } from '@/types'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -22,7 +22,14 @@ import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
 import { useMe, useSetup2FA, useConfirm2FA, useDisable2FA, useRegenerateBackupCodes } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Avatar } from '@/components/ui/avatar'
 import { LoadingPage } from '@/components/ui/spinner'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
@@ -72,13 +79,13 @@ function getRoleBadge(role: string) {
     case 'admin':
       return {
         label: 'Admin',
-        cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+        cls: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary border border-primary/30 dark:border-primary/40',
         Icon: Shield,
       }
     default:
       return {
         label: 'Member',
-        cls: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600',
+        cls: 'bg-muted text-foreground/80 border border-border',
         Icon: User2,
       }
   }
@@ -88,9 +95,9 @@ function getRoleBadge(role: string) {
 
 function SectionHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div className="mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+    <div className="mb-6 pb-4 border-b border-border">
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
     </div>
   )
 }
@@ -113,6 +120,7 @@ function ProfileTab() {
   const {
     register,
     handleSubmit,
+    control,
     watch,
     formState: { errors, isDirty },
   } = useForm<ProfileValues>({
@@ -141,10 +149,10 @@ function ProfileTab() {
       <SectionHeader title="Profile" description="Update your avatar, display name, and regional preferences" />
       <form onSubmit={handleSubmit(handleProfileSubmit)} className="space-y-5 max-w-lg">
         {/* Avatar row */}
-        <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl border border-border">
           <Avatar src={avatarUrl || me?.avatarUrl} name={me?.displayName || 'User'} size="lg" />
           <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Avatar URL</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Avatar URL</p>
             <Input
               placeholder="https://example.com/avatar.jpg"
               error={errors.avatarUrl?.message}
@@ -161,23 +169,51 @@ function ProfileTab() {
         />
 
         <div className="grid grid-cols-2 gap-4">
-          <Select
-            label={t('settings.timezone')}
-            options={timezoneOptions}
-            {...register('timezone')}
+          <Controller
+            name="timezone"
+            control={control}
+            render={({ field }) => (
+              <div className="w-full">
+                <Label className="mb-1">{t('settings.timezone')}</Label>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timezoneOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           />
-          <Select
-            label={t('settings.language')}
-            options={languageOptions}
-            {...register('language')}
+          <Controller
+            name="language"
+            control={control}
+            render={({ field }) => (
+              <div className="w-full">
+                <Label className="mb-1">{t('settings.language')}</Label>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           />
         </div>
 
         {/* Email (read-only) */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('settings.emailAddress')}</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-white">{me?.email}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('settings.emailCannotChange')}</p>
+        <div className="p-4 bg-muted/50 rounded-xl border border-border">
+          <p className="text-xs font-medium text-muted-foreground mb-1">{t('settings.emailAddress')}</p>
+          <p className="text-sm font-semibold text-foreground">{me?.email}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('settings.emailCannotChange')}</p>
         </div>
 
         <Button type="submit" isLoading={updateProfile.isPending} disabled={!isDirty}>
@@ -227,7 +263,7 @@ function AccountTab() {
           <button
             type="button"
             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
             tabIndex={-1}
           >
             {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -243,7 +279,7 @@ function AccountTab() {
           <button
             type="button"
             onClick={() => setShowNewPassword(!showNewPassword)}
-            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
             tabIndex={-1}
           >
             {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -259,7 +295,7 @@ function AccountTab() {
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
             tabIndex={-1}
           >
             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -345,7 +381,7 @@ function SecurityTab() {
             'flex items-start gap-4 p-4 rounded-xl border',
             is2FAEnabled
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
-              : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+              : 'bg-muted/50 border-border',
           )}
         >
           <div
@@ -353,20 +389,20 @@ function SecurityTab() {
               'h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0',
               is2FAEnabled
                 ? 'bg-green-100 dark:bg-green-900/40'
-                : 'bg-gray-200 dark:bg-gray-700',
+                : 'bg-muted',
             )}
           >
             {is2FAEnabled ? (
               <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
             ) : (
-              <ShieldOff className="h-5 w-5 text-gray-400" />
+              <ShieldOff className="h-5 w-5 text-muted-foreground" />
             )}
           </div>
           <div className="flex-1">
-            <p className={cn('text-sm font-semibold', is2FAEnabled ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300')}>
+            <p className={cn('text-sm font-semibold', is2FAEnabled ? 'text-green-700 dark:text-green-300' : 'text-foreground')}>
               {is2FAEnabled ? 'Two-factor authentication is enabled' : 'Two-factor authentication is disabled'}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {is2FAEnabled
                 ? 'Your account is protected. Use your authenticator app when signing in.'
                 : 'Add an extra layer of security using a TOTP authenticator app.'}
@@ -383,16 +419,16 @@ function SecurityTab() {
 
         {/* QR Code setup */}
         {setupData && (
-          <div className="space-y-4 p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
-            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="space-y-4 p-5 bg-card border border-border rounded-xl">
+            <p className="text-sm font-semibold text-foreground">
               Scan this QR code with your authenticator app
             </p>
-            <div className="flex justify-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-600">
+            <div className="flex justify-center p-4 bg-card rounded-lg border border-border">
               <img src={setupData.qrCodeUrl} alt="2FA QR Code" className="w-44 h-44" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Or enter this secret manually:</p>
-              <code className="block text-xs bg-gray-50 dark:bg-gray-900 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 font-mono break-all select-all text-gray-700 dark:text-gray-300">
+              <p className="text-xs text-muted-foreground mb-1.5">Or enter this secret manually:</p>
+              <code className="block text-xs bg-muted px-3 py-2.5 rounded-lg border border-border font-mono break-all select-all text-foreground">
                 {setupData.secret}
               </code>
             </div>
@@ -427,7 +463,7 @@ function SecurityTab() {
               {backupCodes.map((code, i) => (
                 <code
                   key={i}
-                  className="text-sm bg-white dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-700 font-mono text-center text-gray-800 dark:text-gray-200"
+                  className="text-sm bg-card px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-700 font-mono text-center text-foreground"
                 >
                   {code}
                 </code>
@@ -489,8 +525,8 @@ function SecurityTab() {
             )}
 
             {showRegenConfirm && (
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Confirm your password to regenerate backup codes</p>
+              <div className="p-4 bg-muted border border-border rounded-xl space-y-3">
+                <p className="text-sm font-semibold text-foreground">Confirm your password to regenerate backup codes</p>
                 <Input
                   type="password"
                   placeholder="Your password"
@@ -549,7 +585,7 @@ export function UserSettingsPage() {
         breadcrumbs={[{ label: 'Settings', href: '/settings' }, { label: 'Account' }]}
       />
 
-      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-auto bg-background">
         {/* Full-width gradient hero banner */}
         <div className="h-32 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/5" />
@@ -561,8 +597,8 @@ export function UserSettingsPage() {
 
         {/* Profile identity card — overlaps banner */}
         <div className="relative px-6 -mt-12 mb-5">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center gap-5">
-            <div className="ring-4 ring-white dark:ring-gray-900 rounded-2xl shadow-md flex-shrink-0">
+          <div className="bg-card rounded-2xl shadow-sm border border-border px-6 py-4 flex items-center gap-5">
+            <div className="ring-4 ring-card rounded-2xl shadow-md flex-shrink-0">
               <Avatar
                 src={me?.avatarUrl}
                 name={me?.displayName || 'User'}
@@ -572,7 +608,7 @@ export function UserSettingsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                <h2 className="text-lg font-bold text-foreground truncate">
                   {me?.displayName || 'User'}
                 </h2>
                 <span
@@ -585,21 +621,21 @@ export function UserSettingsPage() {
                   {roleBadge.label}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 truncate">{me?.email}</p>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">{me?.email}</p>
             </div>
             <div className="hidden sm:flex items-center gap-6 text-center">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <p className="text-sm font-semibold text-foreground">
                   {me?.timezone?.split('/')[1]?.replace('_', ' ') || me?.timezone || 'UTC'}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Timezone</p>
+                <p className="text-xs text-muted-foreground">Timezone</p>
               </div>
-              <div className="w-px h-8 bg-gray-200 dark:bg-gray-700" />
+              <div className="w-px h-8 bg-border" />
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
+                <p className="text-sm font-semibold text-foreground uppercase">
                   {me?.language || 'EN'}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">Language</p>
+                <p className="text-xs text-muted-foreground">Language</p>
               </div>
             </div>
           </div>
@@ -619,8 +655,8 @@ export function UserSettingsPage() {
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
                     active
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-200/60 dark:shadow-blue-900/40'
-                      : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/10',
+                      ? 'plasma-nav-active shadow-md'
+                      : 'bg-card border border-border hover:border-primary/30 dark:hover:border-primary/30 hover:bg-primary/10 dark:hover:bg-primary/5',
                   )}
                 >
                   <div
@@ -628,13 +664,13 @@ export function UserSettingsPage() {
                       'h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
                       active
                         ? 'bg-white/20'
-                        : 'bg-gray-100 dark:bg-gray-800',
+                        : 'bg-muted',
                     )}
                   >
                     <Icon
                       className={cn(
                         'h-4 w-4',
-                        active ? 'text-white' : 'text-gray-500 dark:text-gray-400',
+                        active ? '' : 'text-muted-foreground',
                       )}
                     />
                   </div>
@@ -642,7 +678,7 @@ export function UserSettingsPage() {
                     <p
                       className={cn(
                         'text-sm font-medium truncate',
-                        active ? 'text-white' : 'text-gray-700 dark:text-gray-300',
+                        active ? '' : 'text-foreground',
                       )}
                     >
                       {label}
@@ -650,7 +686,7 @@ export function UserSettingsPage() {
                     <p
                       className={cn(
                         'text-xs truncate',
-                        active ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500',
+                        active ? 'opacity-80' : 'text-muted-foreground',
                       )}
                     >
                       {description}
@@ -662,7 +698,7 @@ export function UserSettingsPage() {
           </nav>
 
           {/* Right content card */}
-          <div className="flex-1 min-w-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <div className="flex-1 min-w-0 bg-card rounded-2xl border border-border shadow-sm p-6">
             {activeTab === 'profile' && <ProfileTab />}
             {activeTab === 'account' && <AccountTab />}
             {activeTab === 'security' && <SecurityTab />}

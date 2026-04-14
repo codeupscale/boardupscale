@@ -30,7 +30,7 @@ export function getPriorityColor(priority: IssuePriority): string {
     [IssuePriority.HIGH]: 'text-orange-600 bg-orange-50',
     [IssuePriority.MEDIUM]: 'text-yellow-600 bg-yellow-50',
     [IssuePriority.LOW]: 'text-blue-600 bg-blue-50',
-    [IssuePriority.NONE]: 'text-gray-400 bg-gray-50',
+    [IssuePriority.NONE]: 'text-muted-foreground bg-muted',
   }
   return map[priority] || map[IssuePriority.NONE]
 }

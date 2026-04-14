@@ -88,12 +88,12 @@ function BreakdownPie({
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        <p className="text-sm text-gray-500">{total} total issues</p>
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{total} total issues</p>
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <div className="h-56 flex items-center justify-center text-gray-500 text-sm">
+          <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">
             No data
           </div>
         ) : (
@@ -124,7 +124,9 @@ function BreakdownPie({
                 <Tooltip
                   contentStyle={{
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--tooltip-border)',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-fg)',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
                   formatter={(value: number) => [value, 'Issues']}

@@ -29,8 +29,8 @@ function PrStatusBadge({ eventType }: { eventType: GitHubEvent['eventType'] }) {
 
 function PrEventItem({ event }: { event: GitHubEvent }) {
   return (
-    <div className="flex items-start gap-2.5 py-2 px-2 rounded-md hover:bg-gray-50 group">
-      <GitPullRequest className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+    <div className="flex items-start gap-2.5 py-2 px-2 rounded-md hover:bg-accent group">
+      <GitPullRequest className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {event.prUrl ? (
@@ -38,22 +38,22 @@ function PrEventItem({ event }: { event: GitHubEvent }) {
               href={event.prUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-gray-900 hover:text-blue-600 flex items-center gap-1"
+              className="text-sm font-medium text-foreground hover:text-primary flex items-center gap-1"
             >
               {event.prTitle || 'Pull Request'}
               <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </a>
           ) : (
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-foreground">
               {event.prTitle || 'Pull Request'}
             </span>
           )}
           {event.prNumber && (
-            <span className="text-xs font-mono text-gray-500">#{event.prNumber}</span>
+            <span className="text-xs font-mono text-muted-foreground">#{event.prNumber}</span>
           )}
           <PrStatusBadge eventType={event.eventType} />
         </div>
-        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
           {event.author && <span>{event.author}</span>}
           {event.author && <span>&middot;</span>}
           <span>{formatRelativeTime(event.createdAt)}</span>
@@ -67,23 +67,23 @@ function CommitEventItem({ event }: { event: GitHubEvent }) {
   const shortSha = event.commitSha ? event.commitSha.slice(0, 7) : null
 
   return (
-    <div className="flex items-start gap-2.5 py-2 px-2 rounded-md hover:bg-gray-50">
-      <GitCommit className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+    <div className="flex items-start gap-2.5 py-2 px-2 rounded-md hover:bg-accent">
+      <GitCommit className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {shortSha && (
-            <span className="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+            <span className="text-xs font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">
               {shortSha}
             </span>
           )}
           {event.branchName && (
-            <span className="flex items-center gap-1 text-xs text-gray-500">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <GitBranch className="h-3 w-3" />
               {event.branchName}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
           {event.author && <span>{event.author}</span>}
           {event.author && <span>&middot;</span>}
           <span>{formatRelativeTime(event.createdAt)}</span>
@@ -115,23 +115,23 @@ export function GitHubEventsList({ issueId, projectId }: GitHubEventsListProps) 
         className="w-full flex items-center gap-1.5 mb-2 group text-left"
       >
         {isOpen ? (
-          <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         )}
-        <Github className="h-4 w-4 text-gray-700 flex-shrink-0" />
-        <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
+        <Github className="h-4 w-4 text-foreground/80 flex-shrink-0" />
+        <span className="text-sm font-semibold text-foreground/80 group-hover:text-foreground">
           GitHub Activity
         </span>
         {sortedEvents.length > 0 && (
-          <span className="text-xs font-normal text-gray-500">({sortedEvents.length})</span>
+          <span className="text-xs font-normal text-muted-foreground">({sortedEvents.length})</span>
         )}
       </button>
 
       {isOpen && (
         <>
           {sortedEvents.length === 0 ? (
-            <p className="text-sm text-gray-500 pl-5">No GitHub activity linked to this issue.</p>
+            <p className="text-sm text-muted-foreground pl-5">No GitHub activity linked to this issue.</p>
           ) : (
             <div className="space-y-0.5 pl-1">
               {sortedEvents.map((event) =>

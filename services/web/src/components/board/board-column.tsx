@@ -14,7 +14,13 @@ import { useScrollPagination } from '@/hooks/useScrollPagination'
 import { useTranslation } from 'react-i18next'
 import { BoardColumn as BoardColumnType, Issue } from '@/types'
 import { cn } from '@/lib/utils'
-import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { BoardCard } from './board-card'
 import { WipLimitSettings } from './wip-limit-settings'
 
@@ -68,7 +74,7 @@ export function BoardColumn({
   )
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-[280px] flex-shrink-0 bg-gray-50/80 dark:bg-gray-800/50 rounded-xl border border-gray-200/60 dark:border-gray-700/40 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 w-[280px] flex-shrink-0 bg-muted/80 rounded-xl border border-border/60 shadow-sm overflow-hidden">
       {/* Colored top accent bar */}
       <div
         className="h-1 flex-shrink-0"
@@ -79,7 +85,7 @@ export function BoardColumn({
       <div
         className={cn(
           'flex items-center justify-between px-3 py-2.5 flex-shrink-0',
-          'bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800',
+          'bg-card/80 backdrop-blur-sm border-b border-border',
           isOverLimit && 'border-b-red-200 dark:border-b-red-800',
           isAtLimit && !isOverLimit && 'border-b-amber-200 dark:border-b-amber-800',
         )}
@@ -88,7 +94,7 @@ export function BoardColumn({
           {dragHandleProps && (
             <div
               {...dragHandleProps}
-              className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0"
+              className="text-muted-foreground/60 hover:text-muted-foreground cursor-grab active:cursor-grabbing flex-shrink-0"
             >
               <GripVertical className="h-4 w-4" />
             </div>
@@ -97,7 +103,7 @@ export function BoardColumn({
             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: column.color ?? '#6b7280' }}
           />
-          <span className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+          <span className="font-semibold text-sm text-foreground truncate">
             {column.name}
           </span>
           <span
@@ -107,7 +113,7 @@ export function BoardColumn({
                 ? 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/40'
                 : isAtLimit
                   ? 'text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/40'
-                  : 'text-gray-500 bg-gray-100 dark:text-gray-400 dark:bg-gray-800',
+                  : 'text-muted-foreground bg-muted',
             )}
           >
             {wipLimit > 0 ? `${issueCount}/${wipLimit}` : totalCount > issueCount ? `${issueCount} / ${totalCount}` : issueCount}
@@ -117,43 +123,46 @@ export function BoardColumn({
           )}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <DropdownMenu
-            trigger={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
-                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 title={t('board.columnSettings', 'Column settings')}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
-            }
-          >
-            {onEditColumn && (
-              <DropdownItem icon={<Pencil className="h-4 w-4" />} onClick={() => onEditColumn(column.id)}>
-                Edit column
-              </DropdownItem>
-            )}
-            {onUpdateWipLimit && (
-              <DropdownItem icon={<Gauge className="h-4 w-4" />} onClick={() => setShowWipSettings(true)}>
-                WIP limit{wipLimit > 0 ? ` (${wipLimit})` : ''}
-              </DropdownItem>
-            )}
-            {onDeleteColumn && (
-              <>
-                <DropdownSeparator />
-                <DropdownItem
-                  icon={<Trash2 className="h-4 w-4" />}
-                  destructive
-                  onClick={() => onDeleteColumn(column.id)}
-                >
-                  Delete column
-                </DropdownItem>
-              </>
-            )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onEditColumn && (
+                <DropdownMenuItem onClick={() => onEditColumn(column.id)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit column
+                </DropdownMenuItem>
+              )}
+              {onUpdateWipLimit && (
+                <DropdownMenuItem onClick={() => setShowWipSettings(true)}>
+                  <Gauge className="h-4 w-4" />
+                  WIP limit{wipLimit > 0 ? ` (${wipLimit})` : ''}
+                </DropdownMenuItem>
+              )}
+              {onDeleteColumn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    onClick={() => onDeleteColumn(column.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete column
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
           </DropdownMenu>
           {onAddIssue && (
             <button
               onClick={() => onAddIssue(column.id)}
-              className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title={t('issues.addIssue')}
             >
               <Plus className="h-4 w-4" />
@@ -164,18 +173,18 @@ export function BoardColumn({
 
       {/* WIP Limit Progress Bar */}
       {wipLimit > 0 && (
-        <div className="px-3 py-2 bg-white/60 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1.5">
+        <div className="px-3 py-2 bg-card/60 border-b border-border flex-shrink-0">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1.5">
             <span className="font-medium">WIP</span>
             <span className={cn('font-semibold', isOverLimit && 'text-red-500')}>
               {issueCount}/{wipLimit}
             </span>
           </div>
-          <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div className="h-1 bg-muted rounded-full overflow-hidden">
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-300',
-                isOverLimit ? 'bg-red-500' : isAtLimit ? 'bg-amber-500' : 'bg-blue-500',
+                isOverLimit ? 'bg-red-500' : isAtLimit ? 'bg-amber-500' : 'bg-primary',
               )}
               style={{ width: `${wipPercent}%` }}
             />
@@ -210,9 +219,9 @@ export function BoardColumn({
               {...provided.droppableProps}
               className={cn(
                 'flex-1 flex flex-col gap-2 px-2 py-2 min-h-[180px] overflow-y-auto',
-                'scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700 scrollbar-track-transparent',
+                'scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent',
                 snapshot.isDraggingOver && !isAtLimit
-                  ? 'bg-blue-50/60 dark:bg-blue-950/30'
+                  ? 'bg-primary/10'
                   : snapshot.isDraggingOver && isAtLimit
                     ? 'bg-red-50/60 dark:bg-red-950/30'
                     : '',
@@ -230,7 +239,7 @@ export function BoardColumn({
                     className="w-8 h-8 rounded-full opacity-20 flex-shrink-0"
                     style={{ backgroundColor: column.color ?? '#6b7280' }}
                   />
-                  <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
+                  <p className="text-xs text-muted-foreground text-center">
                     {t('issues.noIssuesBoard')}
                   </p>
                 </div>
@@ -244,7 +253,7 @@ export function BoardColumn({
               {/* Loading indicator while fetching next page */}
               {isLoadingMore && (
                 <div className="flex items-center justify-center py-3 flex-shrink-0">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-600" />
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </div>

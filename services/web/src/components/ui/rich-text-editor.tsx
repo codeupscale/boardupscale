@@ -78,8 +78,8 @@ function ToolbarButton({
         if (!disabled) onClick()
       }}
       className={cn(
-        'p-1.5 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors',
-        active && 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100',
+        'p-1.5 rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors',
+        active && 'bg-muted text-foreground',
         disabled && 'opacity-40 pointer-events-none',
       )}
     >
@@ -470,10 +470,10 @@ export function RichTextEditor({
     <div
       ref={editorContainerRef}
       className={cn(
-        'relative rounded-md border bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-colors',
+        'relative rounded-md border bg-card focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-colors',
         isDragOver
-          ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20'
-          : 'border-gray-300 dark:border-gray-600',
+          ? 'border-primary ring-2 ring-ring/20'
+          : 'border-input',
         className,
       )}
       onDragOver={handleContainerDragOver}
@@ -498,7 +498,7 @@ export function RichTextEditor({
       />
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 rounded-t-md">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted rounded-t-md">
         <ToolbarButton
           title="Bold (Ctrl+B)"
           active={editor.isActive('bold')}
@@ -531,7 +531,7 @@ export function RichTextEditor({
           <Strikethrough size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton
           title="Heading"
@@ -549,7 +549,7 @@ export function RichTextEditor({
           <Code size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton
           title="Bullet List"
@@ -583,7 +583,7 @@ export function RichTextEditor({
           <Minus size={iconSize} />
         </ToolbarButton>
 
-        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
 
         <ToolbarButton
           title="Insert Image"
@@ -614,7 +614,7 @@ export function RichTextEditor({
         {/* Image size controls — visible when image is selected */}
         {editor.isActive('image') && (
           <>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
+            <div className="w-px h-4 bg-border mx-1" />
             {[
               { label: 'S', width: '200', title: 'Small (200px)' },
               { label: 'M', width: '400', title: 'Medium (400px)' },
@@ -633,7 +633,7 @@ export function RichTextEditor({
                     editor.chain().focus().updateAttributes('image', { width: null, height: null }).run()
                   }
                 }}
-                className="px-1.5 py-0.5 rounded text-[10px] font-bold text-gray-500 dark:text-gray-400 hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300 transition-colors"
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 {label}
               </button>
@@ -643,7 +643,7 @@ export function RichTextEditor({
 
         {/* Upload indicator */}
         {uploading > 0 && (
-          <div className="flex items-center gap-1.5 ml-2 text-xs text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-1.5 ml-2 text-xs text-primary">
             <Loader2 size={12} className="animate-spin" />
             <span>Uploading{uploading > 1 ? ` (${uploading})` : ''}...</span>
           </div>
@@ -659,11 +659,11 @@ export function RichTextEditor({
 
       {/* Drag overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-blue-50/90 dark:bg-blue-950/80 border-2 border-dashed border-blue-400 dark:border-blue-500 pointer-events-none">
-          <div className="flex flex-col items-center gap-2 text-blue-600 dark:text-blue-400">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-primary/10 border-2 border-dashed border-primary pointer-events-none">
+          <div className="flex flex-col items-center gap-2 text-primary">
             <ImagePlus size={28} />
             <span className="text-sm font-medium">Drop files to upload</span>
-            <span className="text-xs text-blue-500/70">Images, videos, documents — max 50 MB</span>
+            <span className="text-xs text-primary/70">Images, videos, documents — max 50 MB</span>
           </div>
         </div>
       )}
@@ -671,7 +671,7 @@ export function RichTextEditor({
       {/* Mention popup */}
       {mentionPopup.visible && mentionPopup.users.length > 0 && (
         <div
-          className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg dark:shadow-black/40"
+          className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
           style={{
             top: mentionPopup.position.top,
             left: mentionPopup.position.left,
@@ -682,8 +682,8 @@ export function RichTextEditor({
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors',
-                idx === mentionPopup.selectedIndex && 'bg-blue-50 dark:bg-blue-900/30',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-primary/10 transition-colors',
+                idx === mentionPopup.selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault()
@@ -698,10 +698,10 @@ export function RichTextEditor({
             >
               <Avatar user={user} size="xs" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                <div className="font-medium text-foreground truncate">
                   {user.displayName}
                 </div>
-                <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
               </div>
             </button>
           ))}

@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Zap, ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, LockKeyhole, Eye, EyeOff } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
@@ -18,7 +19,7 @@ const schema = z
       .regex(/[0-9]/, 'Must contain at least 1 number')
       .regex(
         /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/,
-        'Must contain at least 1 special character'
+        'Must contain at least 1 special character',
       ),
     confirmPassword: z.string(),
   })
@@ -29,18 +30,21 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+const ICON_STYLE = {
+  background: 'linear-gradient(135deg, oklch(0.25 0.20 308) 0%, oklch(0.38 0.24 340) 100%)',
+  boxShadow: '0 0 18px oklch(0.40 0.22 315 / 0.40)',
+}
+
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   })
 
@@ -49,14 +53,10 @@ export function ResetPasswordPage() {
       setError('Missing reset token. Please use the link from your email.')
       return
     }
-
     setIsSubmitting(true)
     setError(null)
     try {
-      await api.post('/auth/reset-password', {
-        token,
-        newPassword: values.newPassword,
-      })
+      await api.post('/auth/reset-password', { token, newPassword: values.newPassword })
       setIsSuccess(true)
     } catch (err: any) {
       const message =
@@ -69,26 +69,32 @@ export function ResetPasswordPage() {
     }
   }
 
+  /* ── Invalid/missing token ── */
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm">
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
-              <Zap className="h-7 w-7 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Boardupscale</h1>
+      <div className="dark login-gaming-bg min-h-screen flex items-center justify-center p-6 overflow-hidden">
+        <div className="login-orb login-orb-1" />
+        <div className="login-orb login-orb-2" />
+        <div className="relative z-10 w-full max-w-[420px]">
+          <div className="flex justify-center mb-8">
+            <Logo size="lg" />
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center">
-            <p className="text-sm text-red-600 mb-4">
-              Invalid or missing reset token. Please request a new password
-              reset link.
+          <div className="login-glass-card rounded-2xl p-8 text-center">
+            <div
+              className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
+              style={{ background: 'linear-gradient(135deg, #ef444455 0%, #dc262655 100%)', border: '1px solid #ef444440' }}
+            >
+              <LockKeyhole className="h-8 w-8 text-red-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Invalid reset link</h2>
+            <p className="text-sm text-white/50 mb-6">
+              This link is invalid or has expired. Please request a new password reset.
             </p>
             <Link
               to="/forgot-password"
-              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-4 w-4" />
               Request new link
             </Link>
           </div>
@@ -98,77 +104,96 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
-            <Zap className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Boardupscale</h1>
-          <p className="text-sm text-gray-500 mt-1">Set your new password</p>
+    <div className="dark login-gaming-bg min-h-screen flex items-center justify-center p-6 overflow-hidden">
+      <div className="login-orb login-orb-1" />
+      <div className="login-orb login-orb-2" />
+      <div className="login-orb login-orb-3" />
+
+      <div className="relative z-10 w-full max-w-[420px]">
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" />
         </div>
 
-        {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="login-glass-card rounded-2xl p-8">
           {isSuccess ? (
-            <div className="text-center">
-              <div className="flex items-center justify-center h-12 w-12 bg-green-100 rounded-full mx-auto mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+            /* ── Success ── */
+            <div className="text-center py-2">
+              <div
+                className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
+                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 28px #10b98155' }}
+              >
+                <CheckCircle2 className="h-8 w-8 text-white" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Password reset successful
-              </h2>
-              <p className="text-sm text-gray-600 mb-6">
-                Your password has been updated. You can now log in with your new
-                password.
+              <h2 className="text-xl font-bold text-white mb-3">Password updated</h2>
+              <p className="text-sm text-white/50 leading-relaxed mb-8">
+                Your password has been reset. You can now sign in with your new password.
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="plasma-btn inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all"
               >
-                <ArrowLeft className="h-4 w-4" />
                 Go to login
               </Link>
             </div>
           ) : (
+            /* ── Form ── */
             <>
-              <p className="text-sm text-gray-600 mb-5">
-                Your new password must be at least 8 characters and contain
-                uppercase, lowercase, number, and special character.
-              </p>
+              <div className="flex items-center gap-4 mb-7">
+                <div className="flex items-center justify-center h-11 w-11 rounded-xl flex-shrink-0" style={ICON_STYLE}>
+                  <LockKeyhole className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">Set new password</h1>
+                  <p className="text-white/42 text-sm mt-0.5">Must include upper, lower, number & symbol</p>
+                </div>
+              </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <Input
-                  label="New Password"
-                  type="password"
-                  placeholder="Enter new password"
-                  autoComplete="new-password"
-                  error={errors.newPassword?.message}
-                  {...register('newPassword')}
-                />
+                <div className="relative">
+                  <Input
+                    label="New Password"
+                    type={showNew ? 'text' : 'password'}
+                    placeholder="Enter new password"
+                    autoComplete="new-password"
+                    error={errors.newPassword?.message}
+                    {...register('newPassword')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute right-3 top-[34px] text-white/35 hover:text-white/70 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
 
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  placeholder="Repeat new password"
-                  autoComplete="new-password"
-                  error={errors.confirmPassword?.message}
-                  {...register('confirmPassword')}
-                />
+                <div className="relative">
+                  <Input
+                    label="Confirm Password"
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Repeat new password"
+                    autoComplete="new-password"
+                    error={errors.confirmPassword?.message}
+                    {...register('confirmPassword')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-[34px] text-white/35 hover:text-white/70 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                    <p className="text-sm text-red-600">{error}</p>
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+                    <p className="text-sm text-red-400">{error}</p>
                   </div>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  isLoading={isSubmitting}
-                >
+                <Button type="submit" className="w-full plasma-btn" size="lg" isLoading={isSubmitting}>
                   Reset password
                 </Button>
               </form>

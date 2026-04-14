@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MessageSquare, Trash2, Plus, Search } from 'lucide-react'
 import { useChatStore } from '@/store/chat.store'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import type { ChatConversation } from '@/types'
 
 interface ChatConversationListProps {
@@ -40,9 +41,9 @@ export function ChatConversationList({
     : conversations
 
   return (
-    <div className="border-b border-gray-100 dark:border-gray-800 max-h-56 overflow-y-auto shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
+    <div className="border-b border-border max-h-56 overflow-y-auto shrink-0 bg-muted">
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           History
         </span>
         <button
@@ -57,19 +58,19 @@ export function ChatConversationList({
 
       <div className="px-3 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-          <input
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full pl-7 pr-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+            className="pl-7 pr-2 py-1.5 text-xs h-auto"
           />
         </div>
       </div>
 
       {filtered.length === 0 && (
-        <p className="px-3 pb-3 text-[10px] text-gray-400 dark:text-gray-500 text-center">
+        <p className="px-3 pb-3 text-[10px] text-muted-foreground text-center">
           {searchQuery ? 'No matches found' : 'No conversations yet'}
         </p>
       )}
@@ -81,18 +82,18 @@ export function ChatConversationList({
               'flex items-center gap-2 px-2.5 py-2 cursor-pointer rounded-lg group transition-all duration-100',
               activeConversationId === conv.id
                 ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200/50 dark:border-indigo-800/50'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 border border-transparent',
+                : 'hover:bg-accent border border-transparent',
             )}
             onClick={() => onSelect(conv.id)}
           >
             <MessageSquare className={cn(
               'h-3.5 w-3.5 shrink-0',
-              activeConversationId === conv.id ? 'text-indigo-500' : 'text-gray-400',
+              activeConversationId === conv.id ? 'text-indigo-500' : 'text-muted-foreground',
             )} />
             <div className="flex-1 min-w-0">
-              <p className="text-xs truncate text-gray-700 dark:text-gray-300 font-medium">{conv.title}</p>
+              <p className="text-xs truncate text-foreground/80 font-medium">{conv.title}</p>
             </div>
-            <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
+            <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
               {timeAgo(conv.lastMessageAt || conv.createdAt)}
             </span>
             <button
@@ -100,7 +101,7 @@ export function ChatConversationList({
                 e.stopPropagation()
                 onDelete(conv.id)
               }}
-              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all"
+              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-red-500 transition-all"
               aria-label="Delete"
             >
               <Trash2 className="h-3 w-3" />

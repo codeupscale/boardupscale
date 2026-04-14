@@ -27,13 +27,13 @@ const iconConfig = {
   },
   [IssuePriority.LOW]: {
     icon: ArrowDown,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
+    color: 'text-primary',
+    bg: 'bg-primary/10',
   },
   [IssuePriority.NONE]: {
     icon: DashIcon,
-    color: 'text-gray-400',
-    bg: 'bg-gray-50',
+    color: 'text-muted-foreground',
+    bg: 'bg-muted',
   },
 }
 

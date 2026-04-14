@@ -1,38 +1,35 @@
 import { HTMLAttributes } from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { IssueStatusCategory, IssuePriority } from '@/types'
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?:
-    | 'default'
-    | 'primary'
-    | 'success'
-    | 'warning'
-    | 'danger'
-    | 'secondary'
-    | 'outline'
-}
+export const badgeVariants = cva(
+  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors',
+  {
+    variants: {
+      variant: {
+        default: 'bg-secondary text-secondary-foreground',
+        primary: 'bg-primary/10 text-primary',
+        success: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+        warning: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
+        danger: 'bg-destructive/10 text-destructive',
+        secondary: 'bg-secondary text-secondary-foreground',
+        outline: 'border border-border text-foreground bg-background',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  },
+)
 
-export function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {
-  const variants = {
-    default: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-    primary: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-    success: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-    warning: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
-    danger: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-    secondary: 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
-    outline: 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900',
-  }
+export interface BadgeProps
+  extends HTMLAttributes<HTMLSpanElement>,
+    VariantProps<typeof badgeVariants> {}
 
+export function Badge({ className, variant, children, ...props }: BadgeProps) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-        variants[variant],
-        className,
-      )}
-      {...props}
-    >
+    <span className={cn(badgeVariants({ variant }), className)} {...props}>
       {children}
     </span>
   )

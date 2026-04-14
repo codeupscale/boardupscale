@@ -33,19 +33,19 @@ function isCode(mime: string) {
 }
 
 function getFileIcon(mimeType: string) {
-  if (isImage(mimeType)) return <ImageIcon className="h-5 w-5 text-blue-500" />
+  if (isImage(mimeType)) return <ImageIcon className="h-5 w-5 text-primary" />
   if (isVideo(mimeType)) return <Film className="h-5 w-5 text-purple-500" />
   if (isPdf(mimeType)) return <FileText className="h-5 w-5 text-red-500" />
   if (isSpreadsheet(mimeType)) return <FileSpreadsheet className="h-5 w-5 text-green-500" />
   if (isCode(mimeType)) return <FileCode className="h-5 w-5 text-amber-500" />
-  return <File className="h-5 w-5 text-gray-400" />
+  return <File className="h-5 w-5 text-muted-foreground" />
 }
 
 function getFileColor(mimeType: string): string {
-  if (isImage(mimeType)) return 'bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/40'
+  if (isImage(mimeType)) return 'bg-primary/10 border-primary/20'
   if (isVideo(mimeType)) return 'bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/40'
   if (isPdf(mimeType)) return 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/40'
-  return 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700/50'
+  return 'bg-muted/50 border-border'
 }
 
 // ── Lightbox ─────────────────────────────────────
@@ -105,7 +105,7 @@ function ImageThumbnail({ attachment, onClick }: { attachment: Attachment; onCli
   const url = getFileViewUrl(attachment.id)
   return (
     <div
-      className="relative group cursor-pointer rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 aspect-square"
+      className="relative group cursor-pointer rounded-lg overflow-hidden border border-border bg-muted aspect-square"
       onClick={onClick}
     >
       <img
@@ -173,18 +173,18 @@ function FileCard({
         {getFileIcon(attachment.mimeType)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+        <p className="text-sm font-medium text-foreground truncate">
           {attachment.fileName}
         </p>
-        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
           <span>{formatFileSize(Number(attachment.fileSize))}</span>
           {attachment.uploader && (
             <>
-              <span className="text-gray-300 dark:text-gray-600">·</span>
+              <span className="text-muted-foreground">·</span>
               <span>{attachment.uploader.displayName}</span>
             </>
           )}
-          <span className="text-gray-300 dark:text-gray-600">·</span>
+          <span className="text-muted-foreground">·</span>
           <span>{new Date(attachment.createdAt).toLocaleDateString()}</span>
         </div>
       </div>
@@ -193,7 +193,7 @@ function FileCard({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Open in new tab"
         >
           <Maximize2 className="h-3.5 w-3.5" />
@@ -201,7 +201,7 @@ function FileCard({
         <a
           href={url}
           download={attachment.fileName}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
           title="Download"
         >
           <Download className="h-3.5 w-3.5" />
@@ -209,7 +209,7 @@ function FileCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
           title="Delete"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -258,11 +258,11 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Paperclip className="h-4 w-4" />
           Attachments
           {totalCount > 0 && (
-            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400">
+            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-muted text-xs font-medium text-muted-foreground">
               {totalCount}
             </span>
           )}
@@ -299,27 +299,27 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
         className={cn(
           'border-2 border-dashed rounded-xl p-5 text-center transition-all duration-200',
           isDragOver
-            ? 'border-blue-400 bg-blue-50/80 dark:border-blue-500 dark:bg-blue-950/30 scale-[1.01]'
-            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600',
+            ? 'border-primary bg-primary/10 scale-[1.01]'
+            : 'border-border hover:border-border',
         )}
       >
         {uploadAttachment.isPending ? (
           <div className="flex items-center justify-center gap-2">
-            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Uploading...</p>
+            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-primary font-medium">Uploading...</p>
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Drop files here or{' '}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                className="text-primary hover:underline font-medium"
               >
                 browse
               </button>
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Images, videos, documents — max 50 MB per file
             </p>
           </>
@@ -327,13 +327,13 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
       </div>
 
       {isLoading && (
-        <div className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Loading attachments...</div>
+        <div className="text-sm text-muted-foreground text-center py-6">Loading attachments...</div>
       )}
 
       {/* Image Grid */}
       {images.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <ImageIcon className="h-3.5 w-3.5" />
             Images ({images.length})
           </h4>
@@ -364,7 +364,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
       {/* Video List */}
       {videos.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Film className="h-3.5 w-3.5" />
             Videos ({videos.length})
           </h4>
@@ -395,7 +395,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
       {/* Other Files */}
       {others.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <File className="h-3.5 w-3.5" />
             Documents ({others.length})
           </h4>

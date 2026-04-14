@@ -1,4 +1,5 @@
-import { ReactNode, useState } from 'react'
+import { ReactNode } from 'react'
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { cn } from '@/lib/utils'
 
 interface TooltipProps {
@@ -9,33 +10,25 @@ interface TooltipProps {
 }
 
 export function Tooltip({ children, content, side = 'top', className }: TooltipProps) {
-  const [visible, setVisible] = useState(false)
-
-  const positions = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
-  }
+  if (!content) return <>{children}</>
 
   return (
-    <div
-      className="relative inline-flex"
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-    >
-      {children}
-      {visible && content && (
-        <div
+    <TooltipPrimitive.Provider delayDuration={300}>
+      <TooltipPrimitive.Root>
+        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Content
+          side={side}
           className={cn(
-            'absolute z-50 px-2.5 py-1.5 text-xs font-medium text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded-md whitespace-nowrap shadow-lg pointer-events-none',
-            positions[side],
+            'z-50 overflow-hidden rounded-md bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md',
+            'animate-in fade-in-0 zoom-in-95',
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
             className,
           )}
         >
           {content}
-        </div>
-      )}
-    </div>
+          <TooltipPrimitive.Arrow className="fill-popover" />
+        </TooltipPrimitive.Content>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   )
 }

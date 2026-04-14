@@ -11,12 +11,25 @@ import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
 import { IssueType, IssuePriority } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
@@ -164,24 +177,24 @@ export function ProjectIssuesPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExport('csv')}
-              disabled={exporting}
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleExport('json')}
-              disabled={exporting}
-            >
-              <Download className="h-4 w-4" />
-              Export JSON
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={exporting}>
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('json')}>
+                  <Download className="h-4 w-4" />
+                  Export JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4" />
               {t('issues.createIssue')}
@@ -190,12 +203,14 @@ export function ProjectIssuesPage() {
         }
       />
 
-      <div className="p-6 lg:p-8 space-y-4 max-w-[1400px] mx-auto w-full">
+      <ProjectTabNav projectKey={projectKey!} />
+
+      <div className="p-6 space-y-4 flex-1 overflow-y-auto">
         {/* Filters card */}
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 p-4 space-y-3 shadow-sm">
+        <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 shadow-sm">
           {/* Stats strip */}
           {total > 0 && (
-            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
+            <p className="text-sm font-bold text-foreground">
               {total} issue{total !== 1 ? 's' : ''}
             </p>
           )}
@@ -212,62 +227,83 @@ export function ProjectIssuesPage() {
             </div>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allTypes') },
-                { value: IssueType.EPIC, label: t('issues.epic') },
-                { value: IssueType.STORY, label: t('issues.story') },
-                { value: IssueType.TASK, label: t('issues.task') },
-                { value: IssueType.BUG, label: t('issues.bug') },
-                { value: IssueType.SUBTASK, label: t('issues.subtask') },
-              ]}
-              value={filterType}
-              onChange={(e) => { setFilterType(e.target.value); setPage(1) }}
-              className="w-36"
-            />
+              value={filterType || '__all__'}
+              onValueChange={(v) => { setFilterType(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allTypes')}</SelectItem>
+                <SelectItem value={IssueType.EPIC}>{t('issues.epic')}</SelectItem>
+                <SelectItem value={IssueType.STORY}>{t('issues.story')}</SelectItem>
+                <SelectItem value={IssueType.TASK}>{t('issues.task')}</SelectItem>
+                <SelectItem value={IssueType.BUG}>{t('issues.bug')}</SelectItem>
+                <SelectItem value={IssueType.SUBTASK}>{t('issues.subtask')}</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allPriorities') },
-                { value: IssuePriority.CRITICAL, label: t('priorities.critical') },
-                { value: IssuePriority.HIGH, label: t('priorities.high') },
-                { value: IssuePriority.MEDIUM, label: t('priorities.medium') },
-                { value: IssuePriority.LOW, label: t('priorities.low') },
-              ]}
-              value={filterPriority}
-              onChange={(e) => { setFilterPriority(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterPriority || '__all__'}
+              onValueChange={(v) => { setFilterPriority(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allPriorities')}</SelectItem>
+                <SelectItem value={IssuePriority.CRITICAL}>{t('priorities.critical')}</SelectItem>
+                <SelectItem value={IssuePriority.HIGH}>{t('priorities.high')}</SelectItem>
+                <SelectItem value={IssuePriority.MEDIUM}>{t('priorities.medium')}</SelectItem>
+                <SelectItem value={IssuePriority.LOW}>{t('priorities.low')}</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allStatuses') },
-                ...(board?.statuses?.map((s) => ({ value: s.id, label: s.name })) || []),
-              ]}
-              value={filterStatus}
-              onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterStatus || '__all__'}
+              onValueChange={(v) => { setFilterStatus(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allStatuses')}</SelectItem>
+                {board?.statuses?.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select
-              options={[
-                { value: '', label: t('issues.allAssignees') },
-                ...(users?.map((u) => ({ value: u.id, label: u.displayName })) || []),
-              ]}
-              value={filterAssignee}
-              onChange={(e) => { setFilterAssignee(e.target.value); setPage(1) }}
-              className="w-40"
-            />
+              value={filterAssignee || '__all__'}
+              onValueChange={(v) => { setFilterAssignee(v === '__all__' ? '' : v); setPage(1) }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('issues.allAssignees')}</SelectItem>
+                {users?.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {sprints && sprints.length > 0 && (
               <Select
-                options={[
-                  { value: '', label: t('issues.allSprints') },
-                  ...(sprints?.map((s) => ({ value: s.id, label: s.name })) || []),
-                ]}
-                value={filterSprint}
-                onChange={(e) => { setFilterSprint(e.target.value); setPage(1) }}
-                className="w-40"
-              />
+                value={filterSprint || '__all__'}
+                onValueChange={(v) => { setFilterSprint(v === '__all__' ? '' : v); setPage(1) }}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">{t('issues.allSprints')}</SelectItem>
+                  {sprints?.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
         </div>
@@ -275,7 +311,7 @@ export function ProjectIssuesPage() {
         {/* Saved Views */}
         {((savedViews && savedViews.length > 0) || hasActiveFilters) && (
           <div className="flex flex-wrap items-center gap-2 py-1">
-            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1 shrink-0">
+            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 shrink-0">
               <Bookmark className="h-3 w-3" />
               Saved Views:
             </span>
@@ -285,8 +321,8 @@ export function ProjectIssuesPage() {
                 key={view.id}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border cursor-pointer transition-colors ${
                   activeViewId === view.id
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-600 dark:text-blue-300'
-                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:border-gray-600'
+                    ? 'bg-primary/10 border-primary/50 text-primary dark:bg-primary/10 dark:border-primary dark:text-primary'
+                    : 'bg-muted border-border text-muted-foreground hover:border-border'
                 }`}
               >
                 <button onClick={() => applyView(view)} className="max-w-32 truncate">
@@ -313,7 +349,7 @@ export function ProjectIssuesPage() {
             {hasActiveFilters && !showSaveViewInput && (
               <button
                 onClick={() => setShowSaveViewInput(true)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 dark:border-gray-600 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 <BookmarkPlus className="h-3 w-3" />
                 Save view
@@ -358,10 +394,10 @@ export function ProjectIssuesPage() {
         {isLoading ? (
           <LoadingPage />
         ) : issues.length > 0 ? (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800/50 shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="sticky top-0 z-10 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50/95 dark:bg-gray-800/95 backdrop-blur-sm">
+                <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm">
                   <th className="px-4 py-2.5 w-10">
                     <input
                       type="checkbox"
@@ -370,20 +406,20 @@ export function ProjectIssuesPage() {
                         if (el) el.indeterminate = someSelected && !allSelected
                       }}
                       onChange={() => selectAll(allIssueIds)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                       aria-label="Select all issues"
                     />
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-32">Key</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('common.title')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-28">{t('common.priority')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-36">{t('common.status')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-16">{t('common.assignee')}</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-16">SP</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">Key</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('common.title')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">{t('common.priority')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-36">{t('common.status')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">{t('common.assignee')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">{t('issues.dueDate')}</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">SP</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-700/40">
+              <tbody className="divide-y divide-border/40">
                 {issues.map((issue) => (
                   <IssueTableRow key={issue.id} issue={issue} selectable />
                 ))}
@@ -417,32 +453,34 @@ export function ProjectIssuesPage() {
         projectId={projectKey}
       />
 
-      <Dialog open={showCreate} onClose={() => issueFormRef.current?.requestClose()} className="max-w-2xl">
-        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={(issuesData?.data || []).map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={users || []}
-            onSubmit={(values) =>
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                { onSuccess: () => setShowCreate(false) },
-              )
-            }
-            onCancel={() => setShowCreate(false)}
-            isLoading={createIssue.isPending}
-          />
+      <Dialog open={showCreate} onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={(issuesData?.data || []).map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={users || []}
+              onSubmit={(values) =>
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  { onSuccess: () => setShowCreate(false) },
+                )
+              }
+              onCancel={() => setShowCreate(false)}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

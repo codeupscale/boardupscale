@@ -1,6 +1,12 @@
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import type { AutomationAction } from '@/hooks/useAutomation'
 
@@ -67,30 +73,38 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-foreground/80">
         Then do this...
       </label>
 
       {actions.length === 0 && (
-        <p className="text-sm text-gray-500 italic">
+        <p className="text-sm text-muted-foreground italic">
           Add at least one action.
         </p>
       )}
 
       {actions.map((action, index) => (
-        <div key={index} className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div key={index} className="bg-muted rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <Select
-                options={ACTION_OPTIONS}
                 value={action.type}
-                onChange={(e) => handleTypeChange(index, e.target.value)}
-              />
+                onValueChange={(v) => handleTypeChange(index, v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-gray-400 hover:text-red-600"
+              className="text-muted-foreground hover:text-red-600"
               onClick={() => removeAction(index)}
             >
               <X className="h-4 w-4" />
@@ -101,10 +115,18 @@ export function ActionBuilder({ actions, onChange }: ActionBuilderProps) {
           {action.type === 'set_field' && (
             <div className="grid grid-cols-2 gap-2">
               <Select
-                options={SET_FIELD_OPTIONS}
-                value={action.config.field || ''}
-                onChange={(e) => updateActionConfig(index, 'field', e.target.value)}
-              />
+                value={action.config.field || SET_FIELD_OPTIONS[0].value}
+                onValueChange={(v) => updateActionConfig(index, 'field', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SET_FIELD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 placeholder="Value"
                 value={action.config.value ?? ''}

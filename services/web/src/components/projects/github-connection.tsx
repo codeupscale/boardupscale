@@ -109,7 +109,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -122,11 +122,11 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       <div>
         <SectionHeader />
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+        <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0">
-                <Github className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 rounded-lg bg-card flex items-center justify-center flex-shrink-0">
+                <Github className="h-5 w-5 text-foreground" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -134,14 +134,14 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                     href={repoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
+                    className="text-sm font-medium text-foreground hover:text-primary flex items-center gap-1"
                   >
                     {connection.repoOwner}/{connection.repoName}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                   <Badge variant="success">Connected</Badge>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Connected on {formatDate(connection.createdAt)}
                 </p>
               </div>
@@ -149,11 +149,11 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
           </div>
 
           {/* Webhook status */}
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Webhook className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Webhook</span>
+                <Webhook className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-foreground/80">Webhook</span>
                 {connection.webhookActive ? (
                   <Badge variant="success" className="text-[10px]">Active</Badge>
                 ) : (
@@ -171,19 +171,19 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
               </Button>
             </div>
             {connection.webhookActive && (
-              <p className="text-xs text-gray-400 mt-2">
-                Commits and PRs mentioning issue keys (e.g. <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PROJ-123</code>) are linked automatically.
+              <p className="text-xs text-muted-foreground mt-2">
+                Commits and PRs mentioning issue keys (e.g. <code className="font-mono bg-muted px-1 rounded">PROJ-123</code>) are linked automatically.
               </p>
             )}
             {!connection.webhookActive && (
               <p className="text-xs text-amber-500 mt-2">
                 Webhook was not auto-registered. This can happen if the OAuth token lacks admin permissions.
-                You can manually add a webhook in GitHub repo settings pointing to your API's <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">/api/github/webhook</code> endpoint.
+                You can manually add a webhook in GitHub repo settings pointing to your API's <code className="font-mono bg-muted px-1 rounded">/api/github/webhook</code> endpoint.
               </p>
             )}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="mt-4 pt-4 border-t border-border">
             <Button variant="destructive" size="sm" onClick={() => setShowDisconnect(true)}>
               Disconnect Repository
             </Button>
@@ -218,26 +218,26 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
       <div>
         <SectionHeader />
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           {/* Search header */}
-          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
+              <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <input
                 autoFocus
                 type="text"
                 placeholder="Search repositories…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 text-sm bg-transparent outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           {/* Repo list */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+          <div className="max-h-80 overflow-y-auto divide-y divide-border">
             {filteredRepos.length === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-400">No repositories found</div>
+              <div className="py-8 text-center text-sm text-muted-foreground">No repositories found</div>
             ) : (
               filteredRepos.map((repo) => {
                 const isSelected = selectedRepo?.id === repo.id
@@ -249,21 +249,21 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                     className={cn(
                       'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                        ? 'bg-primary/10'
+                        : 'hover:bg-accent',
                     )}
                   >
                     {repo.private ? (
-                      <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <Lock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     ) : (
-                      <Globe className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {repo.fullName}
                       </p>
                       {repo.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                           {repo.description}
                         </p>
                       )}
@@ -274,7 +274,7 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                       </Badge>
                     )}
                     {isSelected && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
                     )}
                   </button>
                 )
@@ -283,11 +283,11 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
+          <div className="p-4 border-t border-border flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => { setRepos([]); setSelectedRepo(null); setAccessToken('') }}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
               ← Back
             </button>
@@ -310,20 +310,20 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
     <div>
       <SectionHeader />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex flex-col items-center text-center gap-4 py-4">
-          <div className="h-14 w-14 rounded-2xl bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
-            <Github className="h-7 w-7 text-white" />
+          <div className="h-14 w-14 rounded-2xl bg-card flex items-center justify-center">
+            <Github className="h-7 w-7 text-foreground" />
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Connect a GitHub Repository
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
               Log in with GitHub to browse and select a repository. A webhook will be
               registered automatically — pull requests and commits mentioning issue keys
-              (e.g. <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">PROJ-123</code>) will be linked to your issues.
+              (e.g. <code className="font-mono bg-muted px-1 rounded">PROJ-123</code>) will be linked to your issues.
             </p>
           </div>
 
@@ -351,10 +351,10 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
 function SectionHeader() {
   return (
     <div className="flex items-start gap-3 mb-6">
-      <Github className="h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5 flex-shrink-0" />
+      <Github className="h-5 w-5 text-foreground/80 mt-0.5 flex-shrink-0" />
       <div>
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">GitHub Integration</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <h2 className="text-base font-semibold text-foreground">GitHub Integration</h2>
+        <p className="text-sm text-muted-foreground mt-1">
           Connect a GitHub repository to automatically track commits and pull requests linked to your issues.
         </p>
       </div>

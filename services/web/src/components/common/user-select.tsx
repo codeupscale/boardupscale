@@ -1,10 +1,28 @@
-import { useState, useRef, useEffect } from 'react'
-import { Search, X, Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Check, ChevronsUpDown, Sparkles, X } from 'lucide-react'
 import { useUsersDropdown, DropdownUser } from '@/hooks/useUsers'
 import { useProjectMembers } from '@/hooks/useProjects'
 import { useAiAssignees, useAiStatus, AssigneeSuggestion } from '@/hooks/useAi'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command'
+
+function isSyntheticEmail(email: string) {
+  return email.endsWith('@migrated.jira.local')
+}
 
 interface UserSelectProps {
   value: string | null
@@ -15,12 +33,16 @@ interface UserSelectProps {
   issueType?: string
 }
 
-export function UserSelect({ value, onChange, placeholder = 'Select user', className, projectId, issueType }: UserSelectProps) {
+export function UserSelect({
+  value,
+  onChange,
+  placeholder = 'Select user',
+  className,
+  projectId,
+  issueType,
+}: UserSelectProps) {
   const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef<HTMLDivElement>(null)
 
-  // When projectId is supplied, scope the list to project members only
   const { data: allUsers = [] } = useUsersDropdown()
   const { data: projectMembers } = useProjectMembers(projectId || '')
 
@@ -35,144 +57,121 @@ export function UserSelect({ value, onChange, placeholder = 'Select user', class
 
   const { data: aiStatus } = useAiStatus()
   const { data: aiSuggestions = [] } = useAiAssignees(projectId, issueType)
+  const selectedUser = users.find((u) => u.id === value) ?? null
 
-  const selectedUser = users.find((u) => u.id === value) || null
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setSearch('')
-      }
-    }
-    if (open) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
-
-  const isSyntheticEmail = (email: string) => email.endsWith('@migrated.jira.local')
-
-  const filtered = users.filter(
-    (u) =>
-      u.displayName.toLowerCase().includes(search.toLowerCase()) ||
-      (!isSyntheticEmail(u.email) && u.email.toLowerCase().includes(search.toLowerCase())),
-  )
+  const handleSelect = (userId: string | null) => {
+    onChange(userId)
+    setOpen(false)
+  }
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          'w-full flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-left',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors',
-        )}
-      >
-        {selectedUser ? (
-          <>
-            <Avatar user={selectedUser} size="xs" />
-            <span className="flex-1 text-gray-900 dark:text-gray-100">{selectedUser.displayName}</span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onChange(null)
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </>
-        ) : (
-          <span className="text-gray-400 flex-1">{placeholder}</span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-            <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search users..."
-              className="flex-1 text-sm outline-none bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-60 overflow-y-auto py-1">
-            <button
-              type="button"
-              onClick={() => {
-                onChange(null)
-                setOpen(false)
-                setSearch('')
-              }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Unassigned
-            </button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-left',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            className,
+          )}
+        >
+          {selectedUser ? (
+            <>
+              <Avatar user={selectedUser} size="xs" />
+              <span className="flex-1 text-foreground truncate">{selectedUser.displayName}</span>
+              <button
+                type="button"
+                aria-label="Clear selection"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange(null)
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="flex-1 text-muted-foreground">{placeholder}</span>
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            </>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[280px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search users..." />
+          <CommandList>
+            <CommandEmpty>No users found.</CommandEmpty>
 
             {/* AI Suggested Assignees */}
-            {aiStatus?.enabled && aiSuggestions.length > 0 && !search && (
+            {aiStatus?.enabled && aiSuggestions.length > 0 && (
               <>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
-                  <Sparkles className="h-3 w-3 text-purple-500" />
-                  <span className="text-[10px] uppercase tracking-wider text-purple-500 font-semibold">AI Suggested</span>
-                </div>
-                {aiSuggestions.map((s: AssigneeSuggestion) => {
-                  const user = users.find((u) => u.id === s.userId)
-                  return (
-                    <button
-                      key={`ai-${s.userId}`}
-                      type="button"
-                      onClick={() => {
-                        onChange(s.userId)
-                        setOpen(false)
-                        setSearch('')
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-purple-50 dark:hover:bg-purple-900/20 text-left"
-                    >
-                      <Avatar user={user || { displayName: s.displayName, avatarUrl: s.avatarUrl }} size="xs" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{s.displayName}</p>
-                        <p className="text-purple-500 text-[10px] truncate">{s.reason}</p>
-                      </div>
-                    </button>
-                  )
-                })}
-                <div className="border-b border-gray-100 dark:border-gray-700 my-0.5" />
+                <CommandGroup>
+                  <div className="flex items-center gap-1.5 px-2 py-1.5">
+                    <Sparkles className="h-3 w-3 text-purple-500" />
+                    <span className="text-xs font-medium text-purple-500">AI Suggested</span>
+                  </div>
+                  {aiSuggestions.map((s: AssigneeSuggestion) => {
+                    const user = users.find((u) => u.id === s.userId)
+                    return (
+                      <CommandItem
+                        key={`ai-${s.userId}`}
+                        value={`ai-${s.userId}-${s.displayName}`}
+                        onSelect={() => handleSelect(s.userId)}
+                        className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                      >
+                        <Avatar
+                          user={user || { displayName: s.displayName, avatarUrl: s.avatarUrl }}
+                          size="xs"
+                        />
+                        <div className="flex-1 min-w-0 ml-2">
+                          <p className="font-medium truncate">{s.displayName}</p>
+                          <p className="text-purple-500 text-[10px] truncate">{s.reason}</p>
+                        </div>
+                        {value === s.userId && <Check className="h-4 w-4 ml-auto" />}
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+                <CommandSeparator />
               </>
             )}
 
-            {filtered.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => {
-                  onChange(user.id)
-                  setOpen(false)
-                  setSearch('')
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 text-left"
+            <CommandGroup>
+              <CommandItem
+                value="__unassigned__"
+                onSelect={() => handleSelect(null)}
               >
-                <Avatar user={user} size="xs" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 dark:text-gray-100 font-medium truncate">{user.displayName}</p>
-                  {isSyntheticEmail(user.email) ? (
-                    <p className="text-amber-500 text-xs truncate">Migrated (no email)</p>
-                  ) : (
-                    <p className="text-gray-500 text-xs truncate">{user.email}</p>
-                  )}
-                </div>
-              </button>
-            ))}
-            {filtered.length === 0 && (
-              <div className="py-4 text-center text-sm text-gray-500">No users found</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+                <span className="text-muted-foreground">Unassigned</span>
+                {value === null && <Check className="h-4 w-4 ml-auto" />}
+              </CommandItem>
+              {users.map((user) => (
+                <CommandItem
+                  key={user.id}
+                  value={`${user.displayName} ${user.email}`}
+                  onSelect={() => handleSelect(user.id)}
+                >
+                  <Avatar user={user} size="xs" />
+                  <div className="flex-1 min-w-0 ml-2">
+                    <p className="font-medium truncate">{user.displayName}</p>
+                    {isSyntheticEmail(user.email) ? (
+                      <p className="text-amber-500 text-xs truncate">Migrated (no email)</p>
+                    ) : (
+                      <p className="text-muted-foreground text-xs truncate">{user.email}</p>
+                    )}
+                  </div>
+                  {value === user.id && <Check className="h-4 w-4 ml-auto" />}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }

@@ -199,7 +199,7 @@ export function RoleManagementPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-auto p-6 bg-background">
         {roles.length === 0 ? (
           <EmptyState
             icon={<Shield className="h-12 w-12" />}
@@ -217,10 +217,10 @@ export function RoleManagementPage() {
                 <div
                   key={role.id}
                   className={cn(
-                    'bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow',
+                    'bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow',
                     isSystem
                       ? 'border-l-4 border-l-purple-400 dark:border-l-purple-500'
-                      : 'border-l-4 border-l-blue-400 dark:border-l-blue-500',
+                      : 'border-l-4 border-l-primary',
                   )}
                 >
                   {/* Role header row */}
@@ -235,7 +235,7 @@ export function RoleManagementPage() {
                           'h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0',
                           isSystem
                             ? 'bg-purple-50 dark:bg-purple-900/20'
-                            : 'bg-blue-50 dark:bg-blue-900/20',
+                            : 'bg-primary/10',
                         )}
                       >
                         <Shield
@@ -243,14 +243,14 @@ export function RoleManagementPage() {
                             'h-4.5 w-4.5',
                             isSystem
                               ? 'text-purple-500 dark:text-purple-400'
-                              : 'text-blue-500 dark:text-blue-400',
+                              : 'text-primary dark:text-primary',
                           )}
                           style={{ width: '1.125rem', height: '1.125rem' }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          <span className="text-sm font-semibold text-foreground">
                             {role.name}
                           </span>
                           {role.isSystem && (
@@ -261,12 +261,12 @@ export function RoleManagementPage() {
                           )}
                         </div>
                         {role.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
                             {role.description}
                           </p>
                         )}
                       </div>
-                      <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
+                      <span className="bg-muted text-foreground px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
                         {role.permissions.length} permission{role.permissions.length !== 1 ? 's' : ''}
                       </span>
                     </button>
@@ -283,7 +283,7 @@ export function RoleManagementPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                           onClick={() => setDeleteTarget(role)}
                           aria-label={`Delete ${role.name} role`}
                         >
@@ -295,7 +295,7 @@ export function RoleManagementPage() {
 
                   {/* Expanded permissions grid */}
                   {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-gray-800 px-5 py-4 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="border-t border-border px-5 py-4 bg-muted/50">
                       <PermissionsGrid
                         permissionGroups={permissionGroups}
                         allActions={allActions}
@@ -315,56 +315,57 @@ export function RoleManagementPage() {
       {/* Create / Edit Role Dialog */}
       <Dialog
         open={showRoleDialog}
-        onClose={() => setShowRoleDialog(false)}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && setShowRoleDialog(false)}
       >
-        <DialogHeader onClose={() => setShowRoleDialog(false)}>
-          <DialogTitle>
-            {editingRole ? 'Edit Role' : 'Create Role'}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Role Name"
-              placeholder="e.g. QA Engineer"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-            />
-            <Input
-              label="Description"
-              placeholder="Optional description"
-              value={roleDescription}
-              onChange={(e) => setRoleDescription(e.target.value)}
-            />
-          </div>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRole ? 'Edit Role' : 'Create Role'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Role Name"
+                placeholder="e.g. QA Engineer"
+                value={roleName}
+                onChange={(e) => setRoleName(e.target.value)}
+              />
+              <Input
+                label="Description"
+                placeholder="Optional description"
+                value={roleDescription}
+                onChange={(e) => setRoleDescription(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-              Permissions
-            </h3>
-            <PermissionsGrid
-              permissionGroups={permissionGroups}
-              allActions={allActions}
-              permLookup={permLookup}
-              selectedIds={selectedPermissionIds}
-              onToggle={togglePermission}
-              onToggleResource={toggleResourceAll}
-            />
+            <div>
+              <h3 className="text-sm font-medium text-foreground mb-3">
+                Permissions
+              </h3>
+              <PermissionsGrid
+                permissionGroups={permissionGroups}
+                allActions={allActions}
+                permLookup={permLookup}
+                selectedIds={selectedPermissionIds}
+                onToggle={togglePermission}
+                onToggleResource={toggleResourceAll}
+              />
+            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!roleName.trim()}
+              isLoading={createRole.isPending || updateRole.isPending}
+            >
+              {editingRole ? 'Save Changes' : 'Create Role'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!roleName.trim()}
-            isLoading={createRole.isPending || updateRole.isPending}
-          >
-            {editingRole ? 'Save Changes' : 'Create Role'}
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Delete confirmation */}
@@ -409,20 +410,20 @@ function PermissionsGrid({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-700">
-            <th className="text-left py-2 pr-4 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+          <tr className="border-b border-border">
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">
               Resource
             </th>
             {allActions.map((action) => (
               <th
                 key={action}
-                className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider"
+                className="text-center py-2 px-2 font-medium text-muted-foreground text-xs uppercase tracking-wider"
               >
                 {capitalize(action)}
               </th>
             ))}
             {!readOnly && (
-              <th className="text-center py-2 px-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+              <th className="text-center py-2 px-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                 All
               </th>
             )}
@@ -432,8 +433,8 @@ function PermissionsGrid({
           {permissionGroups.map(([resource, perms]) => {
             const allSelected = perms.every((p) => selectedIds.has(p.id))
             return (
-              <tr key={resource} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                <td className="py-2.5 pr-4 font-medium text-gray-700 dark:text-gray-300">
+              <tr key={resource} className="border-b border-border last:border-0">
+                <td className="py-2.5 pr-4 font-medium text-foreground">
                   {capitalize(resource)}
                 </td>
                 {allActions.map((action) => {
@@ -441,7 +442,7 @@ function PermissionsGrid({
                   if (!permId) {
                     return (
                       <td key={action} className="text-center py-2.5 px-2">
-                        <span className="text-gray-200 dark:text-gray-700">--</span>
+                        <span className="text-muted-foreground/60">--</span>
                       </td>
                     )
                   }
@@ -454,7 +455,7 @@ function PermissionsGrid({
                         disabled={readOnly}
                         onChange={() => onToggle?.(permId)}
                         className={cn(
-                          'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500',
+                          'h-4 w-4 rounded border-border text-primary focus:ring-ring',
                           readOnly && 'cursor-default opacity-70',
                         )}
                       />
@@ -467,7 +468,7 @@ function PermissionsGrid({
                       type="checkbox"
                       checked={allSelected}
                       onChange={() => onToggleResource?.(perms)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                     />
                   </td>
                 )}

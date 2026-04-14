@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { BarChart3, Users, Zap, TrendingUp } from 'lucide-react'
 import { useAiUsageStats, useAiStatus } from '@/hooks/useAi'
 import { cn } from '@/lib/utils'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 export function AiUsageDashboard() {
   const [daysRange, setDaysRange] = useState(30)
@@ -17,14 +18,14 @@ export function AiUsageDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     )
   }
 
   if (!stats) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+      <div className="text-center py-12 text-muted-foreground">
         <p>No AI usage data available.</p>
       </div>
     )
@@ -37,16 +38,17 @@ export function AiUsageDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Usage</h3>
-        <select
-          value={daysRange}
-          onChange={(e) => setDaysRange(Number(e.target.value))}
-          className="text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1"
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={30}>Last 30 days</option>
-          <option value={90}>Last 90 days</option>
-        </select>
+        <h3 className="text-lg font-semibold text-foreground">AI Usage</h3>
+        <Select value={String(daysRange)} onValueChange={(v) => setDaysRange(Number(v))}>
+          <SelectTrigger className="w-[140px] text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Summary cards */}
@@ -78,16 +80,16 @@ export function AiUsageDashboard() {
       </div>
 
       {/* Today's usage bar */}
-      <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      <div className="rounded-lg border border-border p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Today's Usage</span>
-          <span className="text-xs text-gray-500">{status?.usage?.tokensUsedToday?.toLocaleString() || 0} / {stats.dailyLimit?.toLocaleString()} tokens</span>
+          <span className="text-sm font-medium text-foreground/80">Today's Usage</span>
+          <span className="text-xs text-muted-foreground">{status?.usage?.tokensUsedToday?.toLocaleString() || 0} / {stats.dailyLimit?.toLocaleString()} tokens</span>
         </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+        <div className="w-full bg-muted rounded-full h-2.5">
           <div
             className={cn(
               'h-2.5 rounded-full transition-all',
-              tier === 'exhausted' ? 'bg-red-500' : tier === 'warning' ? 'bg-amber-500' : 'bg-blue-500',
+              tier === 'exhausted' ? 'bg-red-500' : tier === 'warning' ? 'bg-amber-500' : 'bg-primary',
             )}
             style={{ width: `${Math.min(100, percentUsed)}%` }}
           />
@@ -96,13 +98,13 @@ export function AiUsageDashboard() {
 
       {/* Usage by feature */}
       {stats.byFeature && stats.byFeature.length > 0 && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By Feature</h4>
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="text-sm font-medium text-foreground/80 mb-3">By Feature</h4>
           <div className="space-y-2">
             {stats.byFeature.map((f) => (
               <div key={f.feature} className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400 capitalize">{f.feature.replace(/-/g, ' ')}</span>
-                <div className="flex items-center gap-3 text-gray-500">
+                <span className="text-muted-foreground capitalize">{f.feature.replace(/-/g, ' ')}</span>
+                <div className="flex items-center gap-3 text-muted-foreground">
                   <span>{formatNumber(f.tokens)} tokens</span>
                   <span className="text-xs">{f.requests} req</span>
                 </div>
@@ -114,13 +116,13 @@ export function AiUsageDashboard() {
 
       {/* Usage by user */}
       {stats.byUser && stats.byUser.length > 0 && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">By User</h4>
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="text-sm font-medium text-foreground/80 mb-3">By User</h4>
           <div className="space-y-2">
             {stats.byUser.sort((a, b) => b.tokens - a.tokens).slice(0, 10).map((u) => (
               <div key={u.userId} className="flex items-center justify-between text-sm">
-                <span className="text-gray-600 dark:text-gray-400">{u.displayName || 'Unknown'}</span>
-                <div className="flex items-center gap-3 text-gray-500">
+                <span className="text-muted-foreground">{u.displayName || 'Unknown'}</span>
+                <div className="flex items-center gap-3 text-muted-foreground">
                   <span>{formatNumber(u.tokens)} tokens</span>
                   <span className="text-xs">{u.requests} req</span>
                 </div>
@@ -132,8 +134,8 @@ export function AiUsageDashboard() {
 
       {/* Daily trend */}
       {stats.byDay && stats.byDay.length > 0 && (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Daily Trend</h4>
+        <div className="rounded-lg border border-border p-4">
+          <h4 className="text-sm font-medium text-foreground/80 mb-3">Daily Trend</h4>
           <div className="flex items-end gap-1 h-24">
             {stats.byDay.map((d) => {
               const maxTokens = Math.max(...stats.byDay.map((x) => x.tokens), 1)
@@ -141,14 +143,14 @@ export function AiUsageDashboard() {
               return (
                 <div key={d.date} className="flex-1 flex flex-col items-center gap-1" title={`${d.date}: ${formatNumber(d.tokens)} tokens`}>
                   <div
-                    className="w-full bg-blue-500 rounded-t min-h-[2px] transition-all"
+                    className="w-full bg-primary rounded-t min-h-[2px] transition-all"
                     style={{ height: `${heightPct}%` }}
                   />
                 </div>
               )
             })}
           </div>
-          <div className="flex justify-between text-xs text-gray-400 mt-1">
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
             <span>{stats.byDay[0]?.date}</span>
             <span>{stats.byDay[stats.byDay.length - 1]?.date}</span>
           </div>
@@ -160,19 +162,19 @@ export function AiUsageDashboard() {
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   const colorMap: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+    blue: 'bg-primary/10 text-primary',
     green: 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400',
     purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
     amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+    <div className="rounded-lg border border-border p-3">
       <div className={cn('inline-flex p-1.5 rounded-md mb-2', colorMap[color])}>
         {icon}
       </div>
-      <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-xl font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   )
 }

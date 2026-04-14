@@ -31,12 +31,12 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
       {/* Swimlane Header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 px-4 py-2.5 w-full text-left bg-gray-50 border-y border-gray-200 hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 px-4 py-2.5 w-full text-left bg-muted/50 border-y border-border hover:bg-muted transition-colors"
       >
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-gray-500 flex-shrink-0" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         )}
         {group.avatarUrl ? (
           <img
@@ -45,12 +45,12 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
             className="h-5 w-5 rounded-full flex-shrink-0"
           />
         ) : (
-          <span className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+          <span className="h-5 w-5 rounded-full bg-muted-foreground/60 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
             {group.label[0]?.toUpperCase() || '?'}
           </span>
         )}
-        <span className="text-sm font-semibold text-gray-700">{group.label}</span>
-        <span className="text-xs text-gray-500 font-medium bg-gray-200 rounded-full px-1.5 py-0.5">
+        <span className="text-sm font-semibold text-foreground/80">{group.label}</span>
+        <span className="text-xs text-muted-foreground font-medium bg-muted rounded-full px-1.5 py-0.5">
           {issueCount}
         </span>
       </button>
@@ -73,10 +73,10 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
                       className={cn(
                         'flex-1 flex flex-col gap-2 p-2 rounded-xl min-h-[80px] transition-colors',
                         snapshot.isDraggingOver && !exceeded
-                          ? 'bg-blue-50 border-2 border-dashed border-blue-300'
+                          ? 'bg-primary/10 border-2 border-dashed border-primary/50'
                           : snapshot.isDraggingOver && exceeded
                             ? 'bg-red-50 border-2 border-dashed border-red-300'
-                            : 'bg-gray-100/50',
+                            : 'bg-muted/50',
                       )}
                     >
                       {columnIssues.map((issue, index) => (
@@ -84,7 +84,7 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
                       ))}
                       {provided.placeholder}
                       {columnIssues.length === 0 && !snapshot.isDraggingOver && (
-                        <div className="flex items-center justify-center h-12 text-xs text-gray-500">
+                        <div className="flex items-center justify-center h-12 text-xs text-muted-foreground">
                           {t('issues.noIssuesBoard', 'No issues')}
                         </div>
                       )}

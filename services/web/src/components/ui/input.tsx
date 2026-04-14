@@ -1,5 +1,6 @@
 import { forwardRef, InputHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
+import { Label } from './label'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -13,27 +14,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-          >
+          <Label htmlFor={inputId} className="mb-1">
             {label}
-          </label>
+          </Label>
         )}
         <input
           id={inputId}
           ref={ref}
           className={cn(
-            'block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-            'disabled:bg-gray-50 dark:disabled:bg-gray-900 disabled:text-gray-500 dark:disabled:text-gray-500 disabled:cursor-not-allowed',
-            error && 'border-red-500 focus:ring-red-500',
+            'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-sm transition-colors',
+            'placeholder:text-muted-foreground',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            error && 'border-destructive focus-visible:ring-destructive',
             className,
           )}
           {...props}
         />
-        {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
-        {helperText && !error && <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{helperText}</p>}
+        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
+        {helperText && !error && <p className="mt-1 text-sm text-muted-foreground">{helperText}</p>}
       </div>
     )
   },

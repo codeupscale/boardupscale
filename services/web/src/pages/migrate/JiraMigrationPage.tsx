@@ -37,10 +37,10 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-all flex-shrink-0',
                     isCompleted
-                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                      ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                       : isActive
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/40 shadow-sm shadow-blue-200'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500',
+                      ? 'bg-primary text-primary-foreground ring-4 ring-primary/20 shadow-sm shadow-primary/20'
+                      : 'bg-muted text-muted-foreground',
                   )}
                   aria-current={isActive ? 'step' : undefined}
                 >
@@ -50,17 +50,17 @@ function Stepper({ currentStep }: { currentStep: WizardStep }) {
                   className={cn(
                     'text-xs sm:text-sm font-semibold hidden sm:inline',
                     isActive
-                      ? 'text-blue-700 dark:text-blue-300'
+                      ? 'text-primary'
                       : isCompleted
-                      ? 'text-gray-700 dark:text-gray-200'
-                      : 'text-gray-400 dark:text-gray-500',
+                      ? 'text-foreground/80'
+                      : 'text-muted-foreground',
                   )}
                 >
                   {STEP_LABELS[step]}
                 </span>
               </div>
               {idx < steps.length - 1 && (
-                <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600 flex-shrink-0 mx-1" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 mx-1" />
               )}
             </li>
           )
@@ -191,19 +191,19 @@ export function JiraMigrationPage() {
   const isWideStep = WIDE_STEPS.includes(step)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4 sm:px-6">
+    <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
       <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-blue-600 mb-4 shadow-lg shadow-blue-200 dark:shadow-blue-900/40">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary mb-4 shadow-lg shadow-primary/20 dark:shadow-primary/40">
             <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M11.53 2c-.59 0-1.04.46-1.04 1.04v8.49H2.04C1.46 11.53 1 11.99 1 12.57c0 3.54 2.82 6.43 6.43 6.43h4.06v2.96c0 .59.46 1.04 1.04 1.04s1.04-.46 1.04-1.04v-2.96h4.06c3.61 0 6.37-2.89 6.37-6.43 0-.58-.46-1.04-1.04-1.04H13.62V3.04c0-.58-.5-1.04-1.04-1.04H11.53z" />
             </svg>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Migrate from Jira
           </h1>
-          <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm sm:text-base">
+          <p className="mt-2 text-muted-foreground text-sm sm:text-base">
             Import your projects, issues, sprints, and team members into Boardupscale.
           </p>
         </div>
@@ -222,7 +222,7 @@ export function JiraMigrationPage() {
 
         {/* Step content */}
         <div className={cn(
-          'bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800',
+          'bg-card rounded-2xl shadow-sm border border-border',
           isWideStep ? 'p-6 sm:p-8' : 'p-6 sm:p-8',
         )}>
           {step === 1 && <ConnectStep onNext={handleConnect} />}

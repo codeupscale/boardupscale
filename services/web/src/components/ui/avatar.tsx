@@ -1,5 +1,6 @@
 import { cn, getInitials, generateAvatarColor } from '@/lib/utils'
 import { User } from '@/types'
+import * as AvatarPrimitive from '@radix-ui/react-avatar'
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg'
 
@@ -21,32 +22,32 @@ const sizes: Record<AvatarSize, string> = {
 export function Avatar({ user, name, src, size = 'md', className }: AvatarProps) {
   const displayName = name || user?.displayName || 'Unknown'
   const avatarSrc = src || user?.avatarUrl
-
-  if (avatarSrc) {
-    return (
-      <img
-        src={avatarSrc}
-        alt={displayName}
-        className={cn('rounded-full object-cover flex-shrink-0', sizes[size], className)}
-      />
-    )
-  }
-
   const initials = getInitials(displayName)
   const colorClass = generateAvatarColor(displayName)
 
   return (
-    <div
+    <AvatarPrimitive.Root
       className={cn(
-        'rounded-full flex items-center justify-center text-white font-medium flex-shrink-0',
-        colorClass,
+        'rounded-full flex-shrink-0 overflow-hidden inline-flex',
         sizes[size],
         className,
       )}
-      title={displayName}
     >
-      {initials}
-    </div>
+      <AvatarPrimitive.Image
+        src={avatarSrc}
+        alt={displayName}
+        className="h-full w-full object-cover"
+      />
+      <AvatarPrimitive.Fallback
+        className={cn(
+          'flex h-full w-full items-center justify-center rounded-full text-white font-medium',
+          colorClass,
+        )}
+        title={displayName}
+      >
+        {initials}
+      </AvatarPrimitive.Fallback>
+    </AvatarPrimitive.Root>
   )
 }
 
@@ -67,13 +68,13 @@ export function AvatarGroup({ users, max = 3, size = 'sm' }: AvatarGroupProps) {
           key={user.id || i}
           user={user}
           size={size}
-          className="ring-2 ring-white dark:ring-gray-900"
+          className="ring-2 ring-background"
         />
       ))}
       {extra > 0 && (
         <div
           className={cn(
-            'rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-medium ring-2 ring-white dark:ring-gray-900 text-xs',
+            'rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium ring-2 ring-background text-xs',
             sizes[size],
           )}
         >

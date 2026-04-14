@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
 interface ConfigureStepProps {
@@ -42,9 +43,9 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
   return (
     <div className="flex items-start justify-between gap-4 py-3">
       <div className="flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
         {description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <button
@@ -52,8 +53,8 @@ function Toggle({ checked, onChange, label, description }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-          checked ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700',
+          'relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2',
+          checked ? 'bg-primary' : 'bg-muted',
         )}
       >
         <span
@@ -89,10 +90,10 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold text-foreground">
           Configure Migration
         </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           Map Jira statuses and roles to Boardupscale equivalents.
         </p>
       </div>
@@ -100,30 +101,28 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Status Mapping */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Status Mapping
           </h3>
           <div className="space-y-2">
             {DEFAULT_JIRA_STATUSES.map((row) => (
               <div key={row.jira} className="flex items-center gap-3">
-                <div className="flex-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
+                <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
-                <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
-                <select
-                  value={statusMapping[row.jira] ?? row.default}
-                  onChange={(e) =>
-                    setStatusMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
-                  }
-                  className="flex-1 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label={`Map ${row.jira} to`}
-                >
-                  {BOARDUPSCALE_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-muted-foreground text-sm flex-shrink-0">maps to</span>
+                <Select value={statusMapping[row.jira] ?? row.default} onValueChange={(v) => setStatusMapping((prev) => ({ ...prev, [row.jira]: v }))}>
+                  <SelectTrigger className="flex-1 text-sm" aria-label={`Map ${row.jira} to`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOARDUPSCALE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>
@@ -133,10 +132,10 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Import Options */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+          <h3 className="text-sm font-semibold text-foreground mb-1">
             Import Options
           </h3>
-          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+          <div className="divide-y divide-border">
             <Toggle
               checked={importComments}
               onChange={setImportComments}
@@ -162,30 +161,28 @@ export function ConfigureStep({ onNext, onBack }: ConfigureStepProps) {
       {/* Role Mapping */}
       <Card>
         <CardContent className="p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+          <h3 className="text-sm font-semibold text-foreground mb-3">
             Role Mapping
           </h3>
           <div className="space-y-2">
             {DEFAULT_JIRA_ROLES.map((row) => (
               <div key={row.jira} className="flex items-center gap-3">
-                <div className="flex-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 px-3 py-2 rounded-md border border-gray-200 dark:border-gray-700">
+                <div className="flex-1 text-sm text-foreground bg-muted px-3 py-2 rounded-md border border-border">
                   {row.jira}
                 </div>
-                <span className="text-gray-400 text-sm flex-shrink-0">maps to</span>
-                <select
-                  value={roleMapping[row.jira] ?? row.default}
-                  onChange={(e) =>
-                    setRoleMapping((prev) => ({ ...prev, [row.jira]: e.target.value }))
-                  }
-                  className="flex-1 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label={`Map ${row.jira} role to`}
-                >
-                  {BOARDUPSCALE_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-muted-foreground text-sm flex-shrink-0">maps to</span>
+                <Select value={roleMapping[row.jira] ?? row.default} onValueChange={(v) => setRoleMapping((prev) => ({ ...prev, [row.jira]: v }))}>
+                  <SelectTrigger className="flex-1 text-sm" aria-label={`Map ${row.jira} role to`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOARDUPSCALE_ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             ))}
           </div>

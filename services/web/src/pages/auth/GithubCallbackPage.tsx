@@ -25,11 +25,11 @@ export function GithubCallbackPage() {
   }, [searchParams])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-white dark:bg-gray-900">
-      <div className="h-12 w-12 rounded-xl bg-gray-900 dark:bg-gray-700 flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-4 bg-card">
+      <div className="h-12 w-12 rounded-xl bg-foreground flex items-center justify-center">
         <Github className="h-6 w-6 text-white" />
       </div>
-      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Connecting to GitHub…</span>
       </div>

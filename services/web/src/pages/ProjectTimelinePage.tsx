@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   format,
   addDays,
@@ -14,12 +14,20 @@ import { useProject } from '@/hooks/useProjects'
 import { useIssues } from '@/hooks/useIssues'
 import { useSprints } from '@/hooks/useSprints'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 
-const LABEL_W = 240
+const LABEL_W = 260
 
 const ZOOM_CFG = {
   week: { dayPx: 40, days: 28, step: 14 },
@@ -31,7 +39,7 @@ type Zoom = keyof typeof ZOOM_CFG
 
 const TYPE_BAR: Record<string, string> = {
   epic: 'bg-purple-500',
-  story: 'bg-blue-500',
+  story: 'bg-primary',
   task: 'bg-emerald-500',
   bug: 'bg-red-500',
   subtask: 'bg-gray-400',
@@ -39,10 +47,10 @@ const TYPE_BAR: Record<string, string> = {
 
 const TYPE_BADGE: Record<string, string> = {
   epic: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  story: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  story: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary',
   task: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   bug: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  subtask: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  subtask: 'bg-muted text-muted-foreground',
 }
 
 const TYPE_OPTIONS = ['all', 'epic', 'story', 'task', 'bug', 'subtask'] as const
@@ -50,7 +58,6 @@ type TypeFilter = (typeof TYPE_OPTIONS)[number]
 
 export function ProjectTimelinePage() {
   const { key: projectKey } = useParams<{ key: string }>()
-  const location = useLocation()
   const navigate = useNavigate()
 
   const [zoom, setZoom] = useState<Zoom>('month')
@@ -115,17 +122,6 @@ export function ProjectTimelinePage() {
 
   if (projectLoading) return <LoadingPage />
 
-  const tabs = [
-    { label: 'Board', href: `/projects/${projectKey}/board` },
-    { label: 'Backlog', href: `/projects/${projectKey}/backlog` },
-    { label: 'Issues', href: `/projects/${projectKey}/issues` },
-    { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
-    { label: 'Timeline', href: `/projects/${projectKey}/timeline` },
-    { label: 'Trash', href: `/projects/${projectKey}/trash` },
-    { label: 'Automations', href: `/projects/${projectKey}/automations` },
-    { label: 'Settings', href: `/projects/${projectKey}/settings` },
-  ]
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -137,29 +133,10 @@ export function ProjectTimelinePage() {
         ]}
       />
 
-      {/* Tab nav */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {tabs.map((tab) => {
-          const isActive = location.pathname === tab.href
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300',
-              )}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0">
         <Button variant="outline" size="sm" onClick={() => setViewStart((d) => subDays(d, cfg.step))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
@@ -169,13 +146,13 @@ export function ProjectTimelinePage() {
         <Button variant="outline" size="sm" onClick={() => setViewStart(subDays(today, 7))}>
           Today
         </Button>
-        <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+        <span className="text-sm text-muted-foreground ml-2">
           {format(viewStart, 'MMM d')} – {format(viewEnd, 'MMM d, yyyy')}
         </span>
 
         <div className="ml-auto flex items-center gap-3">
           {/* Zoom toggle */}
-          <div className="flex border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden text-xs">
+          <div className="flex border border-border rounded-md overflow-hidden text-xs">
             {(['week', 'month', 'quarter'] as Zoom[]).map((z) => (
               <button
                 key={z}
@@ -183,8 +160,8 @@ export function ProjectTimelinePage() {
                 className={cn(
                   'px-3 py-1.5 font-medium transition-colors',
                   zoom === z
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:bg-muted',
                 )}
               >
                 {z.charAt(0).toUpperCase() + z.slice(1)}
@@ -193,24 +170,25 @@ export function ProjectTimelinePage() {
           </div>
 
           {/* Type filter */}
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-            className="text-sm border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {TYPE_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPE_OPTIONS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t === 'all' ? 'All types' : t.charAt(0).toUpperCase() + t.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Timeline body */}
       {issuesLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <span className="text-gray-400">Loading…</span>
+          <span className="text-muted-foreground">Loading…</span>
         </div>
       ) : filteredIssues.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
@@ -225,7 +203,7 @@ export function ProjectTimelinePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+        <div className="flex-1 overflow-auto">
           <div style={{ minWidth: LABEL_W + totalWidth }}>
             {/* STICKY HEADER */}
             <div
@@ -234,25 +212,25 @@ export function ProjectTimelinePage() {
             >
               {/* Corner cell (sticky top + left) */}
               <div
-                className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800 border-r border-b border-gray-200 dark:border-gray-700 flex items-end px-3 pb-1"
+                className="sticky left-0 z-30 bg-muted border-r border-b border-border flex items-end px-3 pb-1"
                 style={{ width: LABEL_W, flexShrink: 0, minHeight: 68 }}
               >
-                <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Issue
                 </span>
               </div>
 
               {/* Time header columns */}
               <div
-                className="relative bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+                className="relative bg-muted border-b border-border"
                 style={{ width: totalWidth, flexShrink: 0, minHeight: 68 }}
               >
                 {/* Row 1: Month labels */}
-                <div className="flex h-7 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex h-7 border-b border-border">
                   {monthSegs.map((seg) => (
                     <div
                       key={seg.label}
-                      className="flex items-center px-2 border-r border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800"
+                      className="flex items-center px-2 border-r border-border text-xs font-semibold text-muted-foreground bg-muted"
                       style={{ width: seg.count * cfg.dayPx, flexShrink: 0 }}
                     >
                       {seg.label}
@@ -261,15 +239,15 @@ export function ProjectTimelinePage() {
                 </div>
 
                 {/* Row 2: Sprint bands */}
-                <div className="relative h-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                <div className="relative h-5 border-b border-border bg-card">
                   {sprintBands.map((b) => (
                     <div
                       key={b.id}
-                      className="absolute inset-y-0 bg-blue-100 dark:bg-blue-900/40 border-x border-blue-200 dark:border-blue-800 flex items-center px-1 overflow-hidden"
+                      className="absolute inset-y-0 bg-primary/15 border-x border-primary/30 flex items-center px-1 overflow-hidden"
                       style={{ left: b.sStart * cfg.dayPx, width: (b.sEnd - b.sStart) * cfg.dayPx }}
                       title={b.name}
                     >
-                      <span className="text-[10px] font-medium text-blue-700 dark:text-blue-300 truncate">
+                      <span className="text-[10px] font-medium text-primary truncate">
                         {b.name}
                       </span>
                     </div>
@@ -282,11 +260,11 @@ export function ProjectTimelinePage() {
                     <div
                       key={i}
                       className={cn(
-                        'flex items-center justify-center text-[10px] border-r border-gray-200 dark:border-gray-700 flex-shrink-0',
+                        'flex items-center justify-center text-[10px] border-r border-border flex-shrink-0',
                         isWeekend(day)
-                          ? 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500'
-                          : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400',
-                        i === todayOffset && 'font-bold text-blue-600 dark:text-blue-400',
+                          ? 'bg-muted text-muted-foreground'
+                          : 'bg-card text-muted-foreground',
+                        i === todayOffset && 'font-bold text-primary',
                       )}
                       style={{ width: cfg.dayPx }}
                     >
@@ -301,7 +279,7 @@ export function ProjectTimelinePage() {
                   {/* Today marker in day row */}
                   {todayInView && (
                     <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-blue-500 dark:bg-blue-400 pointer-events-none"
+                      className="absolute top-0 bottom-0 w-0.5 bg-primary dark:bg-primary pointer-events-none"
                       style={{ left: todayOffset * cfg.dayPx + cfg.dayPx / 2 }}
                     />
                   )}
@@ -337,12 +315,12 @@ export function ProjectTimelinePage() {
               return (
                 <div
                   key={issue.id}
-                  className="flex border-b border-gray-100 dark:border-gray-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
+                  className="flex border-b border-border hover:bg-primary/5 dark:hover:bg-primary/5"
                   style={{ minWidth: LABEL_W + totalWidth, height: 44 }}
                 >
                   {/* Label (sticky left) */}
                   <div
-                    className="sticky left-0 z-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex items-center gap-2 px-3"
+                    className="sticky left-0 z-10 bg-card border-r border-border flex items-center gap-2 px-3"
                     style={{ width: LABEL_W, flexShrink: 0 }}
                   >
                     <span className={cn('text-[10px] font-bold px-1 rounded flex-shrink-0', badgeClass)}>
@@ -350,7 +328,7 @@ export function ProjectTimelinePage() {
                     </span>
                     <button
                       onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
-                      className="text-xs text-gray-700 dark:text-gray-300 truncate hover:text-blue-600 dark:hover:text-blue-400 text-left min-w-0"
+                      className="text-xs text-foreground truncate hover:text-primary dark:hover:text-primary text-left min-w-0"
                       title={issue.title}
                     >
                       {issue.title}
@@ -362,7 +340,7 @@ export function ProjectTimelinePage() {
                     {/* Today line (faint in body rows) */}
                     {todayInView && (
                       <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-blue-400/30 dark:bg-blue-500/30 pointer-events-none z-10"
+                        className="absolute top-0 bottom-0 w-0.5 bg-blue-400/30 dark:bg-primary/30 pointer-events-none z-10"
                         style={{ left: todayOffset * cfg.dayPx + cfg.dayPx / 2 }}
                       />
                     )}

@@ -60,7 +60,7 @@ export function AiSummaryPanel({ issueId, className }: AiSummaryPanelProps) {
           {summary && (
             <>
               <div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p className="text-sm text-foreground leading-relaxed">
                   {summary.summary}
                 </p>
               </div>
@@ -77,14 +77,14 @@ export function AiSummaryPanel({ issueId, className }: AiSummaryPanelProps) {
                 <SummarySection title="Next Steps" items={summary.nextSteps} variant="success" />
               )}
 
-              <div className="text-[10px] text-gray-400 dark:text-gray-500 pt-1">
+              <div className="text-[10px] text-muted-foreground pt-1">
                 Generated {new Date(summary.generatedAt).toLocaleString()}
               </div>
             </>
           )}
 
           {!isPending && !summary && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Unable to generate summary. Try again later.
             </div>
           )}
@@ -116,7 +116,7 @@ function SummarySection({
       </h4>
       <ul className="space-y-0.5">
         {items.map((item, idx) => (
-          <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
+          <li key={idx} className="text-xs text-muted-foreground flex items-start gap-1.5">
             <span className="text-purple-400 mt-0.5">•</span>
             <span>{item}</span>
           </li>

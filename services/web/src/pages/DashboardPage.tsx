@@ -35,29 +35,37 @@ import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intellig
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-/* ── Stat Card — matches ProjectsPage pattern ────────────────────── */
+/* ── Stat Card ────────────────────────────────────────────────────── */
 
 function StatCard({
   icon,
   label,
   value,
   color,
+  accentBorder,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   color: string
+  accentBorder?: string
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-center gap-4">
-      <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {value}
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+    <div
+      className={cn(
+        'bg-card rounded-xl border border-border p-5 relative overflow-hidden',
+        'card-elevated plasma-card-hover cursor-default',
+        accentBorder,
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-3xl font-bold text-foreground tracking-tight leading-none">{value}</p>
+          <p className="text-sm text-muted-foreground mt-2">{label}</p>
+        </div>
+        <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5', color)}>
+          {icon}
+        </div>
       </div>
     </div>
   )
@@ -87,15 +95,15 @@ function MiniBurndownWidget({
   const remaining = data.actual.length > 0 ? data.actual[data.actual.length - 1] : data.totalPoints
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{projectName}</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">{data.sprintName}</p>
+          <p className="text-xs font-medium text-muted-foreground truncate">{projectName}</p>
+          <p className="text-sm font-semibold text-foreground mt-0.5">{data.sprintName}</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{remaining}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">pts left</p>
+          <p className="text-xs text-muted-foreground">pts left</p>
         </div>
       </div>
       <div className="h-24 -mx-1">
@@ -133,7 +141,7 @@ function MiniBurndownWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary dark:hover:text-primary mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -161,15 +169,15 @@ function VelocityWidget({
   }))
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">{projectName}</p>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-0.5">Velocity</p>
+          <p className="text-xs font-medium text-muted-foreground truncate">{projectName}</p>
+          <p className="text-sm font-semibold text-foreground mt-0.5">Velocity</p>
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.averageVelocity}</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">avg pts/sprint</p>
+          <p className="text-xs text-muted-foreground">avg pts/sprint</p>
         </div>
       </div>
       <div className="h-24 -mx-1">
@@ -198,7 +206,7 @@ function VelocityWidget({
       </div>
       <Link
         to={`/projects/${projectId}/reports`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition-colors"
+        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary dark:hover:text-primary mt-2 transition-colors"
       >
         View full report
         <ArrowUpRight className="h-3 w-3" />
@@ -225,29 +233,29 @@ function WorkloadSummaryWidget({
   ).length
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-xl border border-border p-5 card-elevated plasma-card-hover transition-all duration-200">
       <div className="flex items-center gap-2.5 mb-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20">
           <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </div>
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">My Workload</p>
+        <p className="text-sm font-semibold text-foreground">My Workload</p>
       </div>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500 dark:text-gray-400">In Progress</span>
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm text-muted-foreground">In Progress</span>
+          <span className="text-sm font-semibold text-foreground bg-primary/10 px-2.5 py-0.5 rounded-full">
             {inProgressCount} issues
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Total Points</span>
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-purple-50 dark:bg-purple-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm text-muted-foreground">Total Points</span>
+          <span className="text-sm font-semibold text-foreground bg-purple-50 dark:bg-purple-900/20 px-2.5 py-0.5 rounded-full">
             {totalPoints} SP
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Time Logged</span>
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-sm text-muted-foreground">Time Logged</span>
+          <span className="text-sm font-semibold text-foreground bg-amber-50 dark:bg-amber-900/20 px-2.5 py-0.5 rounded-full">
             {formatMinutes(totalTimeLogged)}
           </span>
         </div>
@@ -320,33 +328,36 @@ export function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<AlertCircle className="h-5 w-5 text-amber-600" />}
+            icon={<AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
             label={t('dashboard.openIssues')}
             value={stats.open}
             color="bg-amber-50 dark:bg-amber-900/20"
+            accentBorder="stat-accent-amber"
           />
           <StatCard
-            icon={<Clock className="h-5 w-5 text-blue-600" />}
+            icon={<Clock className="h-5 w-5 text-violet-600 dark:text-violet-400" />}
             label={t('dashboard.inProgress')}
             value={stats.inProgress}
-            color="bg-blue-50 dark:bg-blue-900/20"
+            color="bg-violet-50 dark:bg-violet-900/20"
+            accentBorder="stat-accent-violet"
           />
           <StatCard
-            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+            icon={<CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
             label={t('dashboard.completedAllTime')}
             value={stats.done}
             color="bg-emerald-50 dark:bg-emerald-900/20"
+            accentBorder="stat-accent-emerald"
           />
         </div>
 
         {/* Report Widgets */}
         {firstProject && (
           <>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-                <BarChart3 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 dark:bg-violet-900/20">
+                <BarChart3 className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Insights</h2>
+              <h2 className="text-sm font-semibold text-foreground tracking-wide">Insights</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {activeSprint && (
@@ -371,22 +382,22 @@ export function DashboardPage() {
         )}
 
         {/* My Issues */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-card rounded-xl border border-border overflow-hidden card-elevated">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Target className="h-4 w-4 text-primary" />
               </div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.myIssues')}</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t('dashboard.myIssues')}</h2>
               {myIssues.length > 0 && (
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                   {myIssues.length}
                 </span>
               )}
             </div>
             <Link
               to="/issues"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary dark:hover:text-primary transition-colors"
             >
               {t('common.viewAll')}
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -403,17 +414,17 @@ export function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Key</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('common.title')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('common.priority')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">{t('common.status')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">{t('common.assignee')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">SP</th>
+                  <tr className="border-b border-border bg-muted">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-32">Key</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('common.title')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">{t('common.priority')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-36">{t('common.status')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">{t('common.assignee')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">{t('issues.dueDate')}</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-16">SP</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                <tbody className="divide-y divide-border">
                   {myIssues.map((issue) => (
                     <IssueTableRow key={issue.id} issue={issue} />
                   ))}
@@ -426,15 +437,15 @@ export function DashboardPage() {
         {/* Recent Projects */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
-                <FolderOpen className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-900/20">
+                <FolderOpen className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               </div>
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">{t('dashboard.recentProjects')}</h2>
+              <h2 className="text-sm font-semibold text-foreground tracking-wide">{t('dashboard.recentProjects')}</h2>
             </div>
             <Link
               to="/projects"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-primary dark:hover:text-primary transition-colors"
             >
               {t('common.viewAll')}
               <ArrowUpRight className="h-3.5 w-3.5" />

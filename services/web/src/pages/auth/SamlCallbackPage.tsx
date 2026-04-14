@@ -29,12 +29,12 @@ export function SamlCallbackPage() {
   }, [searchParams, setTokens, navigate])
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="flex flex-col items-center">
-        <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-4 shadow-md">
+        <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-4 shadow-md">
           <Shield className="h-7 w-7 text-white" />
         </div>
-        <p className="text-gray-600 text-sm">Completing SSO sign-in...</p>
+        <p className="text-muted-foreground text-sm">Completing SSO sign-in...</p>
       </div>
     </div>
   )

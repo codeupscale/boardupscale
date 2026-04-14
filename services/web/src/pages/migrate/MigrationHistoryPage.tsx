@@ -25,12 +25,12 @@ const STATUS_CONFIG: Record<
   pending: {
     label: 'Pending',
     icon: <Clock className="h-3.5 w-3.5" />,
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    className: 'bg-muted text-muted-foreground',
   },
   processing: {
     label: 'In Progress',
     icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-    className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    className: 'bg-primary/10 text-primary dark:bg-primary/10 dark:text-primary',
   },
   completed: {
     label: 'Completed',
@@ -45,7 +45,7 @@ const STATUS_CONFIG: Record<
   cancelled: {
     label: 'Cancelled',
     icon: <XCircle className="h-3.5 w-3.5" />,
-    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    className: 'bg-muted text-muted-foreground',
   },
 }
 
@@ -87,7 +87,7 @@ function RunCard({ run, onRetry }: { run: MigrationRun; onRetry: (id: string) =>
         'transition-colors',
         run.status === 'failed'
           ? 'border-red-200 dark:border-red-900'
-          : 'hover:border-gray-300 dark:hover:border-gray-600',
+          : 'hover:border-border',
       )}
     >
       <CardContent className="p-4">
@@ -99,15 +99,15 @@ function RunCard({ run, onRetry }: { run: MigrationRun; onRetry: (id: string) =>
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={run.status} />
               {run.selectedProjects && run.selectedProjects.length > 0 && (
-                <span className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                <span className="text-sm text-muted-foreground truncate">
                   {projectNames}
                   {moreProjects > 0 && (
-                    <span className="text-gray-400"> +{moreProjects} more</span>
+                    <span className="text-muted-foreground"> +{moreProjects} more</span>
                   )}
                 </span>
               )}
             </div>
-            <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
               <span>
                 {run.processedIssues.toLocaleString()} / {run.totalIssues.toLocaleString()} issues
               </span>
@@ -162,8 +162,8 @@ export function MigrationHistoryPage() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Migration History</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Migration History</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             All Jira migration runs for this organisation.
           </p>
         </div>
@@ -192,7 +192,7 @@ export function MigrationHistoryPage() {
       {!isLoading && runs.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No migrations yet.</p>
+            <p className="text-muted-foreground">No migrations yet.</p>
             <Button className="mt-4" onClick={() => navigate('/settings/migrate/jira')}>
               Start your first migration
             </Button>
@@ -220,7 +220,7 @@ export function MigrationHistoryPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-gray-600 dark:text-gray-400">
+          <span className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </span>
           <Button

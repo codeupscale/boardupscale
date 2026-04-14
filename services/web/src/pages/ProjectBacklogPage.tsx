@@ -36,7 +36,16 @@ import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -44,6 +53,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogContent,
+  DialogBody,
 } from '@/components/ui/dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -85,9 +95,9 @@ function DraggableIssueRow({
           ref={provided.innerRef}
           {...provided.draggableProps}
           className={cn(
-            'group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0',
-            selectable && isSelected && 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20',
-            snapshot.isDragging && 'bg-blue-50 dark:bg-blue-900/30 shadow-lg rounded-lg border border-blue-200 dark:border-blue-700',
+            'group hover:bg-accent/50 transition-colors border-b border-border last:border-0',
+            selectable && isSelected && 'bg-primary/10 hover:bg-primary/10 dark:hover:bg-primary/10',
+            snapshot.isDragging && 'bg-primary/10 shadow-lg rounded-lg border border-primary/30 dark:border-primary/40',
           )}
           style={{
             ...provided.draggableProps.style,
@@ -100,7 +110,7 @@ function DraggableIssueRow({
             className="px-1 py-3 w-8"
             {...provided.dragHandleProps}
           >
-            <GripVertical className="h-4 w-4 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+            <GripVertical className="h-4 w-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
           </td>
 
           {/* Checkbox */}
@@ -114,7 +124,7 @@ function DraggableIssueRow({
                   toggleIssue(issue.id)
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
               />
             </td>
           )}
@@ -127,7 +137,7 @@ function DraggableIssueRow({
               onClick={(e) => e.stopPropagation()}
             >
               <IssueTypeIcon type={issue.type} />
-              <span className="text-xs font-mono text-blue-600 dark:text-blue-400 font-medium">{issue.key}</span>
+              <span className="text-xs font-mono text-primary font-medium">{issue.key}</span>
             </Link>
           </td>
 
@@ -135,7 +145,7 @@ function DraggableIssueRow({
           <td className="px-3 py-3">
             <Link
               to={`/issues/${issue.id}`}
-              className="text-sm text-gray-900 dark:text-gray-100 font-medium line-clamp-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-sm text-foreground font-medium line-clamp-1 hover:text-primary dark:hover:text-primary transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               {issue.title}
@@ -150,15 +160,19 @@ function DraggableIssueRow({
           {/* Status — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
             {statuses && onUpdateIssue ? (
-              <select
+              <Select
                 value={issue.statusId || ''}
-                onChange={(e) => onUpdateIssue(issue.id, { statusId: e.target.value })}
-                className="text-xs font-medium rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                onValueChange={(v) => onUpdateIssue(issue.id, { statusId: v })}
               >
-                {statuses.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="text-xs py-1 h-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
               <StatusBadge status={issue.status} />
             )}
@@ -167,14 +181,14 @@ function DraggableIssueRow({
           {/* Due Date — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
             {onUpdateIssue ? (
-              <input
-                type="date"
-                value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : ''}
-                onChange={(e) => onUpdateIssue(issue.id, { dueDate: e.target.value || null })}
-                className="text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-md px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              <DatePicker
+                value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : undefined}
+                onChange={(date) => onUpdateIssue(issue.id, { dueDate: date ?? null })}
+                placeholder="No date"
+                className="text-xs"
               />
             ) : (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {issue.dueDate ? formatDate(issue.dueDate) : '--'}
               </span>
             )}
@@ -185,18 +199,18 @@ function DraggableIssueRow({
             {issue.assignee ? (
               <Avatar user={issue.assignee} size="xs" />
             ) : (
-              <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600" />
+              <div className="h-6 w-6 rounded-full bg-muted border border-dashed border-border" />
             )}
           </td>
 
           {/* Story Points */}
           <td className="px-3 py-3 w-14 text-center">
             {issue.storyPoints != null ? (
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+              <span className="text-xs font-medium text-foreground bg-muted rounded-full px-2 py-0.5">
                 {issue.storyPoints}
               </span>
             ) : (
-              <span className="text-xs text-gray-300 dark:text-gray-600">--</span>
+              <span className="text-xs text-muted-foreground/60">--</span>
             )}
           </td>
         </tr>
@@ -269,8 +283,8 @@ function SprintSection({
           className={cn(
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
-              ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
-              : 'border-gray-200 dark:border-gray-700',
+              ? 'border-primary/50 dark:border-primary bg-primary/5 dark:bg-primary/10'
+              : 'border-border',
           )}
         >
           {/* Sprint Header */}
@@ -278,37 +292,37 @@ function SprintSection({
             className={cn(
               'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
               isActive
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800'
-                : 'bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700',
+                ? 'bg-primary/10 border-b border-primary/20 dark:border-primary/30'
+                : 'bg-muted/50 border-b border-border',
             )}
             onClick={() => setCollapsed((c) => !c)}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {collapsed ? (
-                <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               )}
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{sprint.name}</h3>
+              <h3 className="font-semibold text-sm text-foreground truncate">{sprint.name}</h3>
               {isActive && (
-                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 text-xs font-medium rounded-full flex-shrink-0">
+                <span className="px-2 py-0.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium rounded-full flex-shrink-0">
                   {t('sprints.active')}
                 </span>
               )}
-              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
 
               {/* Story Points Summary */}
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300 flex-shrink-0">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-xs font-medium text-foreground flex-shrink-0">
                   <Target className="h-3 w-3" />
                   {completedPoints}/{totalPoints} SP
                 </span>
               )}
 
               {sprint.startDate && sprint.endDate && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 hidden sm:inline">
+                <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 hidden sm:inline">
                   {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
                 </span>
               )}
@@ -333,7 +347,7 @@ function SprintSection({
                 size="icon-sm"
                 variant="ghost"
                 onClick={() => setShowConfirm('delete')}
-                className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -342,7 +356,7 @@ function SprintSection({
 
           {/* Sprint Goal */}
           {!collapsed && (sprint.goal || editingGoal) && (
-            <div className="px-4 py-2 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-2 bg-muted/50 border-b border-border">
               {editingGoal ? (
                 <div className="flex items-start gap-2">
                   <Textarea
@@ -369,7 +383,7 @@ function SprintSection({
                         setEditingGoal(false)
                         setGoalText(sprint.goal || '')
                       }}
-                      className="text-gray-400 dark:text-gray-500"
+                      className="text-muted-foreground"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -383,12 +397,12 @@ function SprintSection({
                     setEditingGoal(true)
                   }}
                 >
-                  <Target className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-gray-600 dark:text-gray-400 flex-1">
-                    <span className="font-medium text-gray-500 dark:text-gray-400">Goal:</span>{' '}
+                  <Target className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground flex-1">
+                    <span className="font-medium text-muted-foreground">Goal:</span>{' '}
                     {sprint.goal}
                   </p>
-                  <Pencil className="h-3 w-3 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                  <Pencil className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
                 </div>
               )}
             </div>
@@ -396,10 +410,10 @@ function SprintSection({
 
           {/* Add goal button when no goal exists */}
           {!collapsed && !sprint.goal && !editingGoal && (
-            <div className="px-4 py-1.5 border-b border-gray-100 dark:border-gray-700">
+            <div className="px-4 py-1.5 border-b border-border">
               <button
                 onClick={() => setEditingGoal(true)}
-                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors flex items-center gap-1"
+                className="text-xs text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <Plus className="h-3 w-3" />
                 Add sprint goal
@@ -412,13 +426,13 @@ function SprintSection({
             <div
               className={cn(
                 'min-h-[48px] transition-colors',
-                snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
+                snapshot.isDraggingOver && 'bg-primary/5 dark:bg-primary/10',
               )}
             >
               {issues.length > 0 ? (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                    <tr className="border-b border-border">
                       <th className="w-8" />
                       <th className="px-2 py-2 w-8">
                         <input
@@ -428,7 +442,7 @@ function SprintSection({
                             if (el) el.indeterminate = someSelected && !allSelected
                           }}
                           onChange={() => selectAll(issueIds)}
-                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                         />
                       </th>
                       <th colSpan={6} />
@@ -441,7 +455,7 @@ function SprintSection({
                   </tbody>
                 </table>
               ) : (
-                <div className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                <div className="py-6 text-center text-sm text-muted-foreground">
                   Drag issues here or create new ones
                 </div>
               )}
@@ -452,43 +466,42 @@ function SprintSection({
           {/* Start Sprint Confirm */}
           <Dialog
             open={showConfirm === 'start'}
-            onClose={() => setShowConfirm(null)}
-            className="max-w-sm"
+            onOpenChange={(o) => !o && setShowConfirm(null)}
           >
-            <DialogHeader onClose={() => setShowConfirm(null)}>
-              <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
-            </DialogHeader>
-            <DialogContent className="space-y-3">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
-              </div>
-              <Input
-                label={t('sprints.startDate')}
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <Input
-                label={t('sprints.endDate')}
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowConfirm(null)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  isLoading={startSprint.isPending}
-                  onClick={() =>
-                    startSprint.mutate(
-                      { projectId, sprintId: sprint.id, startDate, endDate },
-                      { onSuccess: () => setShowConfirm(null) },
-                    )
-                  }
-                >
-                  {t('sprints.start')}
-                </Button>
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t('sprints.startSprint')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="text-sm text-muted-foreground">
+                  Starting <strong>{sprint.name}</strong> with {issues.length} issues ({totalPoints} story points).
+                </div>
+                <DatePicker
+                  label={t('sprints.startDate')}
+                  value={startDate || undefined}
+                  onChange={(date) => setStartDate(date ?? '')}
+                />
+                <DatePicker
+                  label={t('sprints.endDate')}
+                  value={endDate || undefined}
+                  onChange={(date) => setEndDate(date ?? '')}
+                />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    isLoading={startSprint.isPending}
+                    onClick={() =>
+                      startSprint.mutate(
+                        { projectId, sprintId: sprint.id, startDate, endDate },
+                        { onSuccess: () => setShowConfirm(null) },
+                      )
+                    }
+                  >
+                    {t('sprints.start')}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -496,82 +509,87 @@ function SprintSection({
           {/* Complete Sprint Dialog */}
           <Dialog
             open={showConfirm === 'complete'}
-            onClose={() => setShowConfirm(null)}
-            className="max-w-md"
+            onOpenChange={(o) => !o && setShowConfirm(null)}
           >
-            <DialogHeader onClose={() => setShowConfirm(null)}>
-              <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
-            </DialogHeader>
-            <DialogContent className="space-y-4">
-              {(() => {
-                const doneCount = issues.filter((i) => i.status?.category === 'done').length
-                const incompleteCount = issues.length - doneCount
-                const otherSprints = allSprints.filter(
-                  (s) => s.id !== sprint.id && s.status !== 'completed',
-                )
-                return (
-                  <>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                          <CheckCircle className="h-4 w-4" /> {doneCount} done
-                        </span>
-                        {incompleteCount > 0 && (
-                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                            · {incompleteCount} incomplete
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {(() => {
+                  const doneCount = issues.filter((i) => i.status?.category === 'done').length
+                  const incompleteCount = issues.length - doneCount
+                  const otherSprints = allSprints.filter(
+                    (s) => s.id !== sprint.id && s.status !== 'completed',
+                  )
+                  return (
+                    <>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                            <CheckCircle className="h-4 w-4" /> {doneCount} done
                           </span>
-                        )}
+                          {incompleteCount > 0 && (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                              · {incompleteCount} incomplete
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    {incompleteCount > 0 && (
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
-                        </label>
-                        <select
-                          value={moveToSprintId}
-                          onChange={(e) => setMoveToSprintId(e.target.value)}
-                          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      {incompleteCount > 0 && (
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium text-foreground">
+                            Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                          </label>
+                          <Select
+                            value={moveToSprintId || '__backlog__'}
+                            onValueChange={(v) => setMoveToSprintId(v === '__backlog__' ? '' : v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__backlog__">Backlog</SelectItem>
+                              {otherSprints.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}{s.status === 'active' ? ' (active)' : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            {moveToSprintId
+                              ? `Incomplete issues will be moved to the selected sprint.`
+                              : `Incomplete issues will be moved to the backlog.`}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                          {t('common.cancel')}
+                        </Button>
+                        <Button
+                          isLoading={completeSprint.isPending}
+                          onClick={() =>
+                            completeSprint.mutate(
+                              {
+                                projectId,
+                                sprintId: sprint.id,
+                                moveToSprintId: moveToSprintId || null,
+                              },
+                              { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
+                            )
+                          }
                         >
-                          <option value="">Backlog</option>
-                          {otherSprints.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}{s.status === 'active' ? ' (active)' : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {moveToSprintId
-                            ? `Incomplete issues will be moved to the selected sprint.`
-                            : `Incomplete issues will be moved to the backlog.`}
-                        </p>
+                          {t('sprints.completeSprint')}
+                        </Button>
                       </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={() => setShowConfirm(null)}>
-                        {t('common.cancel')}
-                      </Button>
-                      <Button
-                        isLoading={completeSprint.isPending}
-                        onClick={() =>
-                          completeSprint.mutate(
-                            {
-                              projectId,
-                              sprintId: sprint.id,
-                              moveToSprintId: moveToSprintId || null,
-                            },
-                            { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
-                          )
-                        }
-                      >
-                        {t('sprints.completeSprint')}
-                      </Button>
-                    </div>
-                  </>
-                )
-              })()}
+                    </>
+                  )
+                })()}
+              </div>
             </DialogContent>
           </Dialog>
 
@@ -630,20 +648,20 @@ function BacklogSection({
           className={cn(
             'border rounded-xl overflow-hidden transition-colors',
             snapshot.isDraggingOver
-              ? 'border-blue-300 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
-              : 'border-gray-200 dark:border-gray-700',
+              ? 'border-primary/50 dark:border-primary bg-primary/5 dark:bg-primary/10'
+              : 'border-border',
           )}
         >
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/50 border-b border-border">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t('sprints.backlog')}
               </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 {issues.length} {issues.length !== 1 ? 'issues' : 'issue'}
               </span>
               {totalPoints > 0 && (
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-muted rounded-full text-xs font-medium text-foreground">
                   <Target className="h-3 w-3" />
                   {totalPoints} SP
                 </span>
@@ -654,13 +672,13 @@ function BacklogSection({
           <div
             className={cn(
               'min-h-[48px] transition-colors',
-              snapshot.isDraggingOver && 'bg-blue-50/30 dark:bg-blue-900/10',
+              snapshot.isDraggingOver && 'bg-primary/5 dark:bg-primary/10',
             )}
           >
             {issues.length > 0 ? (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <tr className="border-b border-border">
                     <th className="w-8" />
                     <th className="px-2 py-2 w-8">
                       <input
@@ -670,7 +688,7 @@ function BacklogSection({
                           if (el) el.indeterminate = someBacklogSelected && !allBacklogSelected
                         }}
                         onChange={() => selectAll(backlogIds)}
-                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                       />
                     </th>
                     <th colSpan={6} />
@@ -828,21 +846,23 @@ export function ProjectBacklogPage() {
         }
       />
 
+      <ProjectTabNav projectKey={projectKey!} />
+
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           {/* Summary Bar */}
           {activeSprints.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
               <span>
                 {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-muted-foreground/60">•</span>
               <span>{allIssues.length} total issues</span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
+              <span className="text-muted-foreground/60">•</span>
               <span>{backlogIssues.length} in backlog</span>
-              <span className="text-gray-300 dark:text-gray-600">•</span>
-              <span className="text-blue-600 dark:text-blue-400 font-medium">
+              <span className="text-muted-foreground/60">•</span>
+              <span className="text-primary font-medium">
                 Drag issues between sprints to plan
               </span>
             </div>
@@ -882,51 +902,52 @@ export function ProjectBacklogPage() {
       {/* Create Sprint Dialog */}
       <Dialog
         open={showCreateSprint}
-        onClose={() => setShowCreateSprint(false)}
-        className="max-w-sm"
+        onOpenChange={(o) => !o && setShowCreateSprint(false)}
       >
-        <DialogHeader onClose={() => setShowCreateSprint(false)}>
-          <DialogTitle>{t('sprints.createSprint')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent className="space-y-3">
-          <Input
-            label={t('sprints.sprintName')}
-            placeholder={`Sprint ${(sprints?.length || 0) + 1}`}
-            value={sprintName}
-            onChange={(e) => setSprintName(e.target.value)}
-          />
-          <Textarea
-            label="Sprint Goal (optional)"
-            placeholder="What do you want to achieve in this sprint?"
-            value={sprintGoal}
-            onChange={(e) => setSprintGoal(e.target.value)}
-            rows={3}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              isLoading={createSprint.isPending}
-              onClick={() =>
-                createSprint.mutate(
-                  {
-                    projectId: projectKey!,
-                    name: sprintName || `Sprint ${(sprints?.length || 0) + 1}`,
-                    goal: sprintGoal || undefined,
-                  },
-                  {
-                    onSuccess: () => {
-                      setShowCreateSprint(false)
-                      setSprintName('')
-                      setSprintGoal('')
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('sprints.createSprint')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              label={t('sprints.sprintName')}
+              placeholder={`Sprint ${(sprints?.length || 0) + 1}`}
+              value={sprintName}
+              onChange={(e) => setSprintName(e.target.value)}
+            />
+            <Textarea
+              label="Sprint Goal (optional)"
+              placeholder="What do you want to achieve in this sprint?"
+              value={sprintGoal}
+              onChange={(e) => setSprintGoal(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCreateSprint(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                isLoading={createSprint.isPending}
+                onClick={() =>
+                  createSprint.mutate(
+                    {
+                      projectId: projectKey!,
+                      name: sprintName || `Sprint ${(sprints?.length || 0) + 1}`,
+                      goal: sprintGoal || undefined,
                     },
-                  },
-                )
-              }
-            >
-              {t('common.create')}
-            </Button>
+                    {
+                      onSuccess: () => {
+                        setShowCreateSprint(false)
+                        setSprintName('')
+                        setSprintGoal('')
+                      },
+                    },
+                  )
+                }
+              >
+                {t('common.create')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -934,34 +955,35 @@ export function ProjectBacklogPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateIssue}
-        onClose={() => issueFormRef.current?.requestClose()}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
       >
-        <DialogHeader onClose={() => issueFormRef.current?.requestClose()}>
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={allIssues.map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={users || []}
-            onSubmit={(values) =>
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                { onSuccess: () => setShowCreateIssue(false) },
-              )
-            }
-            onCancel={() => setShowCreateIssue(false)}
-            isLoading={createIssue.isPending}
-          />
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={allIssues.map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={users || []}
+              onSubmit={(values) =>
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  { onSuccess: () => setShowCreateIssue(false) },
+                )
+              }
+              onCancel={() => setShowCreateIssue(false)}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>

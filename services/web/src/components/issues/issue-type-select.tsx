@@ -72,7 +72,7 @@ export function IssueTypeSelect({
   return (
     <div className={cn('w-full', className)} ref={containerRef}>
       {label && (
-        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {label}
         </label>
       )}
@@ -85,18 +85,18 @@ export function IssueTypeSelect({
           aria-label={label || 'Select issue type'}
           disabled={disabled}
           className={cn(
-            'flex items-center gap-2 w-full rounded-lg border border-gray-200 dark:border-gray-600',
-            'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'flex items-center gap-2 w-full rounded-lg border border-input',
+            'bg-card text-foreground px-3 py-2 text-sm',
+            'focus:outline-none focus:ring-2 focus:ring-ring',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'hover:border-gray-300 dark:hover:border-gray-500 transition-colors',
+            'hover:border-border transition-colors',
           )}
           onClick={() => !disabled && setOpen(!open)}
           onKeyDown={handleKeyDown}
         >
           <IssueTypeIcon type={value as IssueType} />
           <span className="flex-1 text-left">{TYPE_LABELS[value] || value}</span>
-          <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', open && 'rotate-180')} />
+          <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </button>
 
         {open && (
@@ -104,8 +104,8 @@ export function IssueTypeSelect({
             role="listbox"
             aria-label="Issue types"
             className={cn(
-              'absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600',
-              'bg-white dark:bg-gray-800 shadow-lg py-1 max-h-60 overflow-auto',
+              'absolute z-50 mt-1 w-full rounded-lg border border-border',
+              'bg-card shadow-lg py-1 max-h-60 overflow-auto',
             )}
           >
             {typeOptions.map((type) => (
@@ -115,8 +115,8 @@ export function IssueTypeSelect({
                 aria-selected={value === type}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer',
-                  'hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                  value === type && 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                  'hover:bg-accent transition-colors',
+                  value === type && 'bg-primary/10 text-primary',
                 )}
                 onClick={() => {
                   onChange(type)

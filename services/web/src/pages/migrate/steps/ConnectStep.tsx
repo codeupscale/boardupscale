@@ -95,10 +95,10 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold text-foreground">
           Connect to Jira
         </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-muted-foreground">
           Connect your Atlassian account to begin migration. Your credentials are encrypted before storage.
         </p>
       </div>
@@ -130,7 +130,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
             {oauthLoading ? 'Redirecting to Atlassian...' : 'Connect with Atlassian'}
           </Button>
 
-          <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-center text-xs text-muted-foreground">
             Recommended — uses OAuth 2.0. No password or API token required.
           </p>
         </div>
@@ -140,10 +140,10 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
       {!result && (
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white dark:bg-gray-900 px-3 text-gray-400 dark:text-gray-500">
+            <span className="bg-card px-3 text-muted-foreground">
               or
             </span>
           </div>
@@ -156,7 +156,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
           <button
             type="button"
             onClick={() => setManualOpen((v) => !v)}
-            className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors w-full"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
             aria-expanded={manualOpen}
           >
             {manualOpen ? (
@@ -168,10 +168,10 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
           </button>
 
           {manualOpen && (
-            <div className="mt-4 space-y-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="mt-4 space-y-4 border border-border rounded-lg p-4">
               {/* Jira URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Jira URL
                 </label>
                 <Input
@@ -186,7 +186,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Jira Account Email
                 </label>
                 <Input
@@ -202,14 +202,14 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
               {/* API Token */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="block text-sm font-medium text-foreground">
                     API Token
                   </label>
                   <a
                     href="https://id.atlassian.com/manage-profile/security/api-tokens"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
                   >
                     How to get an API token <ExternalLink className="h-3 w-3" />
                   </a>
@@ -226,7 +226,7 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
                   <button
                     type="button"
                     onClick={() => setShowToken((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                     aria-label={showToken ? 'Hide token' : 'Show token'}
                   >
                     {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -289,21 +289,21 @@ export function ConnectStep({ onNext }: ConnectStepProps) {
                 <div className="mt-2 grid grid-cols-3 gap-4 text-sm">
                   {result.orgName && (
                     <div>
-                      <p className="text-gray-500 dark:text-gray-400 text-xs">Organisation</p>
-                      <p className="font-medium text-gray-900 dark:text-white capitalize">
+                      <p className="text-muted-foreground text-xs">Organisation</p>
+                      <p className="font-medium text-foreground capitalize">
                         {result.orgName}
                       </p>
                     </div>
                   )}
                   <div>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs">Projects</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="text-muted-foreground text-xs">Projects</p>
+                    <p className="font-medium text-foreground">
                       {result.projectCount}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500 dark:text-gray-400 text-xs">Members</p>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="text-muted-foreground text-xs">Members</p>
+                    <p className="font-medium text-foreground">
                       {result.memberCount}
                     </p>
                   </div>

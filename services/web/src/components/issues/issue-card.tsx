@@ -17,18 +17,18 @@ export function IssueCard({ issue, className }: IssueCardProps) {
     <div
       onClick={() => navigate(`/issues/${issue.id}`)}
       className={cn(
-        'bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md hover:border-gray-300 cursor-pointer transition-all group',
+        'bg-card rounded-lg border border-border p-3 shadow-sm hover:shadow-md hover:border-border cursor-pointer transition-all group',
         className,
       )}
     >
       {/* Issue key + type */}
       <div className="flex items-center gap-1.5 mb-2">
         <IssueTypeIcon type={issue.type} />
-        <span className="text-xs font-mono text-blue-600 font-medium">{issue.key}</span>
+        <span className="text-xs font-mono text-primary font-medium">{issue.key}</span>
       </div>
 
       {/* Title */}
-      <p className="text-sm text-gray-900 font-medium leading-snug line-clamp-2 mb-3 group-hover:text-blue-700 transition-colors">
+      <p className="text-sm text-foreground font-medium leading-snug line-clamp-2 mb-3 group-hover:text-primary transition-colors">
         {issue.title}
       </p>
 
@@ -37,14 +37,14 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         <PriorityBadge priority={issue.priority} showLabel={false} />
         <div className="flex items-center gap-2 ml-auto">
           {issue.storyPoints != null && (
-            <span className="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+            <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
               {issue.storyPoints}
             </span>
           )}
           {issue.assignee ? (
             <Avatar user={issue.assignee} size="xs" />
           ) : (
-            <div className="h-6 w-6 rounded-full bg-gray-100 border-2 border-dashed border-gray-300" />
+            <div className="h-6 w-6 rounded-full bg-muted border-2 border-dashed border-border" />
           )}
         </div>
       </div>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/common/page-header'
-import { Tabs, TabContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useTimesheet, useTeamTimesheet } from '@/hooks/useReports'
 import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
@@ -87,15 +87,15 @@ function StatCard({
   color: string
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-center gap-4">
+    <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
       <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <p className="text-2xl font-bold text-foreground">
           {value}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
       </div>
     </div>
   )
@@ -153,10 +153,10 @@ export function TimesheetPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<Timer className="h-5 w-5 text-blue-600" />}
+            icon={<Timer className="h-5 w-5 text-primary" />}
             label="Total This Week"
             value={formatMinutes(totalMinutes) === '-' ? '0h' : formatMinutes(totalMinutes)}
-            color="bg-blue-50 dark:bg-blue-900/20"
+            color="bg-primary/10"
           />
           <StatCard
             icon={<ListChecks className="h-5 w-5 text-emerald-600" />}
@@ -172,57 +172,64 @@ export function TimesheetPage() {
           />
         </div>
 
-        <Tabs tabs={VIEW_TABS} activeTab={activeView} onChange={setActiveView} />
+        <Tabs value={activeView} onValueChange={setActiveView}>
+          <TabsList>
+            {VIEW_TABS.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.icon}
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        {/* Week Navigation */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setWeekOffset((w) => w - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-44 text-center">
-            {weekLabel}
-          </span>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={() => setWeekOffset((w) => w + 1)}
-            disabled={weekOffset >= 0}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {weekOffset !== 0 && (
+          {/* Week Navigation */}
+          <div className="flex items-center gap-3 mt-4">
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setWeekOffset(0)}
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setWeekOffset((w) => w - 1)}
             >
-              This Week
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
-        </div>
+            <span className="text-sm font-medium text-foreground min-w-44 text-center">
+              {weekLabel}
+            </span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setWeekOffset((w) => w + 1)}
+              disabled={weekOffset >= 0}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {weekOffset !== 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setWeekOffset(0)}
+              >
+                This Week
+              </Button>
+            )}
+          </div>
 
-        <TabContent>
-          {activeView === 'my' && (
+          <TabsContent value="my">
             <MyTimesheetView
               data={timesheetQuery.data}
               isLoading={timesheetQuery.isLoading}
               startDate={startDate}
               endDate={endDate}
             />
-          )}
-          {activeView === 'team' && (
+          </TabsContent>
+          <TabsContent value="team">
             <TeamTimesheetView
               data={teamTimesheetQuery.data}
               isLoading={teamTimesheetQuery.isLoading}
               startDate={startDate}
               endDate={endDate}
             />
-          )}
-        </TabContent>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
@@ -289,9 +296,9 @@ function MyTimesheetView({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">
           My Time ({formatMinutes(data.totalMinutes)})
         </h3>
         <Button variant="outline" size="sm" onClick={handleExport}>
@@ -302,36 +309,36 @@ function MyTimesheetView({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-48">
+            <tr className="border-b border-border bg-muted">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-48">
                 Issue
               </th>
               {dates.map((d: string) => (
                 <th
                   key={d}
-                  className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-20"
+                  className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20"
                 >
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-20 bg-gray-100 dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted">
                 Total
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-border">
             {issueRows.map((row) => {
               const rowTotal = row.dailyMinutes.reduce(
                 (s: number, m: number) => s + m,
                 0,
               )
               return (
-                <tr key={row.key} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <tr key={row.key} className="hover:bg-accent/50 transition-colors">
                   <td className="px-4 py-2.5">
-                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <div className="text-sm font-medium text-foreground">
                       {row.key}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-56">
+                    <div className="text-xs text-muted-foreground truncate max-w-56">
                       {row.title}
                     </div>
                   </td>
@@ -340,13 +347,13 @@ function MyTimesheetView({
                       key={i}
                       className={cn(
                         'px-3 py-2.5 text-center text-sm',
-                        m > 0 ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-300 dark:text-gray-600',
+                        m > 0 ? 'text-foreground font-medium' : 'text-muted-foreground/60',
                       )}
                     >
                       {formatMinutes(m)}
                     </td>
                   ))}
-                  <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800/50">
+                  <td className="px-4 py-2.5 text-center text-sm font-semibold text-foreground bg-muted/50">
                     {formatMinutes(rowTotal)}
                   </td>
                 </tr>
@@ -354,19 +361,19 @@ function MyTimesheetView({
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <td className="px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <tr className="bg-muted border-t border-border">
+              <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
                 Daily Total
               </td>
               {dailyTotals.map((m: number, i: number) => (
                 <td
                   key={i}
-                  className="px-3 py-2.5 text-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="px-3 py-2.5 text-center text-sm font-semibold text-foreground"
                 >
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>
@@ -414,9 +421,9 @@ function TeamTimesheetView({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">
           Team Time ({formatMinutes(data.totalMinutes)})
         </h3>
         <Button variant="outline" size="sm" onClick={handleExport}>
@@ -427,28 +434,28 @@ function TeamTimesheetView({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-40">
+            <tr className="border-b border-border bg-muted">
+              <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-40">
                 Team Member
               </th>
               {dates.map((d: string) => (
                 <th
                   key={d}
-                  className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-20"
+                  className="px-3 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20"
                 >
                   {formatDayHeader(d)}
                 </th>
               ))}
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-20 bg-gray-100 dark:bg-gray-700">
+              <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider min-w-20 bg-muted">
                 Total
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className="divide-y divide-border">
             {members.map((member: any) => (
               <tr
                 key={member.userId}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="hover:bg-accent/50 transition-colors"
               >
                 <td className="px-4 py-2.5">
                   <div className="flex items-center gap-2">
@@ -459,11 +466,11 @@ function TeamTimesheetView({
                         className="h-6 w-6 rounded-full"
                       />
                     ) : (
-                      <div className="h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-xs font-medium text-blue-600 dark:text-blue-400">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
                         {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                       </div>
                     )}
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <span className="text-sm font-medium text-foreground">
                       {member.displayName}
                     </span>
                   </div>
@@ -473,32 +480,32 @@ function TeamTimesheetView({
                     key={i}
                     className={cn(
                       'px-3 py-2.5 text-center text-sm',
-                      m > 0 ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-300 dark:text-gray-600',
+                      m > 0 ? 'text-foreground font-medium' : 'text-muted-foreground/60',
                     )}
                   >
                     {formatMinutes(m)}
                   </td>
                 ))}
-                <td className="px-4 py-2.5 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800/50">
+                <td className="px-4 py-2.5 text-center text-sm font-semibold text-foreground bg-muted/50">
                   {formatMinutes(member.totalMinutes)}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <td className="px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <tr className="bg-muted border-t border-border">
+              <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
                 Daily Total
               </td>
               {(data.dailyTotals || []).map((m: number, i: number) => (
                 <td
                   key={i}
-                  className="px-3 py-2.5 text-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                  className="px-3 py-2.5 text-center text-sm font-semibold text-foreground"
                 >
                   {formatMinutes(m)}
                 </td>
               ))}
-              <td className="px-4 py-2.5 text-center text-sm font-bold text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-700">
+              <td className="px-4 py-2.5 text-center text-sm font-bold text-foreground bg-muted">
                 {formatMinutes(data.totalMinutes)}
               </td>
             </tr>

@@ -92,10 +92,10 @@ export function AcceptInvitePage() {
 
   if (validating) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Validating invitation...</p>
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Validating invitation...</p>
         </div>
       </div>
     )
@@ -103,18 +103,18 @@ export function AcceptInvitePage() {
 
   if (error && !inviteEmail) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center justify-center h-12 w-12 bg-red-100 rounded-xl mx-auto mb-4">
             <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h2 className="text-lg font-semibold text-foreground mb-2">
             Invalid Invitation
           </h2>
-          <p className="text-sm text-gray-600 mb-6">{error}</p>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <Link
             to="/login"
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            className="text-primary hover:text-primary text-sm font-medium"
           >
             Go to Login
           </Link>
@@ -124,21 +124,21 @@ export function AcceptInvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center justify-center h-12 w-12 bg-blue-600 rounded-xl mb-3 shadow-md">
+          <div className="flex items-center justify-center h-12 w-12 bg-primary rounded-xl mb-3 shadow-md">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Join {orgName || 'Boardupscale'}</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Join {orgName || 'Boardupscale'}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Set up your account for <strong>{inviteEmail}</strong>
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input
               label="Display Name"
@@ -159,7 +159,7 @@ export function AcceptInvitePage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 {showPassword ? (
@@ -182,7 +182,7 @@ export function AcceptInvitePage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 top-[34px] text-muted-foreground hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 {showConfirmPassword ? (
@@ -210,11 +210,11 @@ export function AcceptInvitePage() {
           </form>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           Already have an account?{' '}
           <Link
             to="/login"
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary hover:text-primary font-medium"
           >
             Sign in
           </Link>

@@ -153,9 +153,9 @@ export function MentionTextarea({
         rows={rows}
         disabled={disabled}
         className={cn(
-          'block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-          'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+          'block w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground',
+          'focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent',
+          'disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed',
           'resize-y min-h-[80px]',
           className,
         )}
@@ -163,15 +163,15 @@ export function MentionTextarea({
       {showDropdown && filteredUsers.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-64 max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg dark:shadow-black/40"
+          className="absolute z-50 mt-1 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg dark:shadow-black/40"
         >
           {filteredUsers.map((user, idx) => (
             <button
               key={user.id}
               type="button"
               className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors',
-                idx === selectedIndex && 'bg-blue-50 dark:bg-blue-900/30',
+                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
+                idx === selectedIndex && 'bg-primary/10',
               )}
               onMouseDown={(e) => {
                 e.preventDefault() // Prevent textarea blur
@@ -181,10 +181,10 @@ export function MentionTextarea({
             >
               <Avatar user={user} size="xs" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                <div className="font-medium text-foreground truncate">
                   {user.displayName}
                 </div>
-                <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
               </div>
             </button>
           ))}

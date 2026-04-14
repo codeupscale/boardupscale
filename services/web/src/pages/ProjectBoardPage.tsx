@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, Link, useSearchParams, useLocation } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle } from 'lucide-react'
@@ -15,13 +15,20 @@ import { cn } from '@/lib/utils'
 import { BoardColumn } from '@/components/board/board-column'
 import { BoardQuickFilters } from '@/components/board/board-filters'
 import { BoardSwimlane, groupIssuesBySwimlane } from '@/components/board/board-swimlane'
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { LoadingPage } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
@@ -41,7 +48,6 @@ const COLOR_PRESETS = [
 export function ProjectBoardPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
-  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -406,11 +412,11 @@ export function ProjectBoardPage() {
       />
 
       {activeSprints.length > 0 && (
-        <div className="flex items-center justify-between px-6 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-b border-blue-100 dark:border-blue-800/40">
-          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+        <div className="flex items-center justify-between px-6 py-2.5 bg-primary/5 border-b border-primary/20">
+          <p className="text-sm font-medium text-primary">
             {t('board.activeSprint', { name: activeSprints[0].name })}
             {activeSprints[0].endDate && (
-              <span className="text-blue-500 dark:text-blue-400 ml-2">
+              <span className="text-primary dark:text-primary ml-2">
                 {t('board.endsOn', { date: new Date(activeSprints[0].endDate).toLocaleDateString() })}
               </span>
             )}
@@ -426,35 +432,7 @@ export function ProjectBoardPage() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {[
-          { label: t('nav.board'), href: `/projects/${projectKey}/board` },
-          { label: t('nav.backlog'), href: `/projects/${projectKey}/backlog` },
-          { label: t('nav.issues'), href: `/projects/${projectKey}/issues` },
-          { label: 'Calendar', href: `/projects/${projectKey}/calendar` },
-          { label: 'Timeline', href: `/projects/${projectKey}/timeline` },
-          { label: 'Trash', href: `/projects/${projectKey}/trash` },
-          { label: 'Automations', href: `/projects/${projectKey}/automations` },
-          { label: t('nav.settings'), href: `/projects/${projectKey}/settings` },
-        ].map((tab) => {
-          const isActive = location.pathname === tab.href
-          return (
-            <Link
-              key={tab.href}
-              to={tab.href}
-              className={cn(
-                'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600',
-              )}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
-      </div>
+      <ProjectTabNav projectKey={projectKey!} />
 
       {/* Quick Filters Bar */}
       <BoardQuickFilters
@@ -484,7 +462,7 @@ export function ProjectBoardPage() {
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex-1 overflow-auto">
             {/* Column Headers (sticky) */}
-            <div className="flex gap-4 px-6 pt-4 pb-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+            <div className="flex gap-4 px-6 pt-4 pb-2 bg-card border-b border-border sticky top-0 z-10">
               {board.statuses.map((column) => {
                 const wipLimit = column.wipLimit || 0
                 const totalIssues = column.issues.length
@@ -504,7 +482,7 @@ export function ProjectBoardPage() {
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: column.color || '#6b7280' }}
                       />
-                      <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide truncate">
+                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide truncate">
                         {column.name}
                       </h3>
                       <span
@@ -514,7 +492,7 @@ export function ProjectBoardPage() {
                             ? 'text-red-700 bg-red-100'
                             : isAt
                               ? 'text-amber-700 bg-amber-100'
-                              : 'text-gray-400 bg-gray-100',
+                              : 'text-muted-foreground bg-muted',
                         )}
                       >
                         {wipLimit > 0 ? `${totalIssues}/${wipLimit}` : totalIssues}
@@ -537,7 +515,7 @@ export function ProjectBoardPage() {
                 />
               ))
             ) : (
-              <div className="flex items-center justify-center py-12 text-sm text-gray-500">
+              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
                 No issues match the current filters
               </div>
             )}
@@ -549,7 +527,7 @@ export function ProjectBoardPage() {
           <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
             {(provided) => (
               <div
-                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-gray-50 dark:bg-gray-950"
+                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-background"
                 ref={provided.innerRef}
                 {...provided.droppableProps}
               >
@@ -588,7 +566,7 @@ export function ProjectBoardPage() {
                   {/* Add Column Button */}
                   <button
                     onClick={() => setShowAddColumn(true)}
-                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-blue-400 dark:hover:border-blue-600 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all"
+                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
                   >
                     <Plus className="h-6 w-6 mb-1" />
                     <span className="text-sm font-medium">Add Column</span>
@@ -603,54 +581,53 @@ export function ProjectBoardPage() {
       {/* Create Issue Dialog */}
       <Dialog
         open={showCreateDialog}
-        onClose={() => issueFormRef.current?.requestClose()}
-        className="max-w-2xl"
+        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
       >
-        <DialogHeader
-          onClose={() => issueFormRef.current?.requestClose()}
-        >
-          <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
-          <IssueForm
-            ref={issueFormRef}
-            projectId={project?.id || projectKey!}
-            statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-            sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-            parentIssues={allIssues.map((i) => ({
-              id: i.id,
-              key: i.key,
-              title: i.title,
-              type: i.type,
-            }))}
-            users={orgUsers || []}
-            defaultValues={{ statusId: createStatusId }}
-            onSubmit={(values) => {
-              createIssue.mutate(
-                { ...values, projectId: project?.id || projectKey! } as any,
-                {
-                  onSuccess: () => {
-                    setShowCreateDialog(false)
-                    setCreateStatusId(undefined)
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <IssueForm
+              ref={issueFormRef}
+              projectId={project?.id || projectKey!}
+              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+              parentIssues={allIssues.map((i) => ({
+                id: i.id,
+                key: i.key,
+                title: i.title,
+                type: i.type,
+              }))}
+              users={orgUsers || []}
+              defaultValues={{ statusId: createStatusId }}
+              onSubmit={(values) => {
+                createIssue.mutate(
+                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    onSuccess: () => {
+                      setShowCreateDialog(false)
+                      setCreateStatusId(undefined)
+                    },
                   },
-                },
-              )
-            }}
-            onCancel={() => {
-              setShowCreateDialog(false)
-              setCreateStatusId(undefined)
-            }}
-            isLoading={createIssue.isPending}
-          />
+                )
+              }}
+              onCancel={() => {
+                setShowCreateDialog(false)
+                setCreateStatusId(undefined)
+              }}
+              isLoading={createIssue.isPending}
+            />
+          </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* Add Column Dialog */}
-      <Dialog open={showAddColumn} onClose={() => setShowAddColumn(false)} className="max-w-sm">
-        <DialogHeader onClose={() => setShowAddColumn(false)}>
-          <DialogTitle>Add Column</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={showAddColumn} onOpenChange={(o) => !o && setShowAddColumn(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <Input
               label="Column Name"
@@ -660,14 +637,21 @@ export function ProjectBoardPage() {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
             />
-            <Select
-              label="Category"
-              options={CATEGORY_OPTIONS}
-              value={newColumnCategory}
-              onChange={(e) => setNewColumnCategory(e.target.value)}
-            />
+            <div className="w-full">
+              <label className="block text-sm font-medium text-foreground mb-1">Category</label>
+              <Select value={newColumnCategory} onValueChange={setNewColumnCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Color</label>
               <div className="flex gap-2">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -675,7 +659,7 @@ export function ProjectBoardPage() {
                     onClick={() => setNewColumnColor(color)}
                     className={cn(
                       'h-7 w-7 rounded-full border-2 transition-all',
-                      newColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                      newColumnColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105',
                     )}
                     style={{ backgroundColor: color }}
                   />
@@ -683,21 +667,21 @@ export function ProjectBoardPage() {
               </div>
             </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddColumn(false)}>Cancel</Button>
+            <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} isLoading={createStatus.isPending}>
+              Add Column
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowAddColumn(false)}>Cancel</Button>
-          <Button onClick={handleAddColumn} disabled={!newColumnName.trim()} isLoading={createStatus.isPending}>
-            Add Column
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Edit Column Dialog */}
-      <Dialog open={!!editColumnId} onClose={() => setEditColumnId(null)} className="max-w-sm">
-        <DialogHeader onClose={() => setEditColumnId(null)}>
-          <DialogTitle>Edit Column</DialogTitle>
-        </DialogHeader>
-        <DialogContent>
+      <Dialog open={!!editColumnId} onOpenChange={(o) => !o && setEditColumnId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Column</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <Input
               label="Column Name"
@@ -706,14 +690,21 @@ export function ProjectBoardPage() {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleSaveEditColumn()}
             />
-            <Select
-              label="Category"
-              options={CATEGORY_OPTIONS}
-              value={editColumnCategory}
-              onChange={(e) => setEditColumnCategory(e.target.value)}
-            />
+            <div className="w-full">
+              <label className="block text-sm font-medium text-foreground mb-1">Category</label>
+              <Select value={editColumnCategory} onValueChange={setEditColumnCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Color</label>
               <div className="flex gap-2">
                 {COLOR_PRESETS.map((color) => (
                   <button
@@ -721,7 +712,7 @@ export function ProjectBoardPage() {
                     onClick={() => setEditColumnColor(color)}
                     className={cn(
                       'h-7 w-7 rounded-full border-2 transition-all',
-                      editColumnColor === color ? 'border-gray-800 scale-110' : 'border-transparent hover:scale-105',
+                      editColumnColor === color ? 'border-foreground scale-110' : 'border-transparent hover:scale-105',
                     )}
                     style={{ backgroundColor: color }}
                   />
@@ -729,13 +720,13 @@ export function ProjectBoardPage() {
               </div>
             </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditColumnId(null)}>Cancel</Button>
+            <Button onClick={handleSaveEditColumn} disabled={!editColumnName.trim()} isLoading={updateStatus.isPending}>
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditColumnId(null)}>Cancel</Button>
-          <Button onClick={handleSaveEditColumn} disabled={!editColumnName.trim()} isLoading={updateStatus.isPending}>
-            Save Changes
-          </Button>
-        </DialogFooter>
       </Dialog>
 
       {/* Delete Column Confirmation */}
@@ -758,85 +749,90 @@ export function ProjectBoardPage() {
       {activeSprints.length > 0 && (
         <Dialog
           open={showCompleteSprint}
-          onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}
-          className="max-w-md"
+          onOpenChange={(o) => !o && (setShowCompleteSprint(false), setBoardMoveToSprintId(''))}
         >
-          <DialogHeader onClose={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
-            <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
-          </DialogHeader>
-          <DialogContent className="space-y-4">
-            {(() => {
-              const doneCount = board?.statuses
-                .filter((s) => s.category === 'done')
-                .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
-              const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
-              const incompleteCount = totalCount - doneCount
-              const otherSprints = sprints?.filter(
-                (s) => s.id !== activeSprints[0].id && s.status !== 'completed',
-              ) || []
-              return (
-                <>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                        <CheckCircle className="h-4 w-4" /> {doneCount} done
-                      </span>
-                      {incompleteCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                          · {incompleteCount} incomplete
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('sprints.completeSprint')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {(() => {
+                const doneCount = board?.statuses
+                  .filter((s) => s.category === 'done')
+                  .reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+                const totalCount = board?.statuses.reduce((sum, s) => sum + s.issues.length, 0) ?? 0
+                const incompleteCount = totalCount - doneCount
+                const otherSprints = sprints?.filter(
+                  (s) => s.id !== activeSprints[0].id && s.status !== 'completed',
+                ) || []
+                return (
+                  <>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                          <CheckCircle className="h-4 w-4" /> {doneCount} done
                         </span>
-                      )}
+                        {incompleteCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            · {incompleteCount} incomplete
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {incompleteCount > 0 && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
-                      </label>
-                      <select
-                        value={boardMoveToSprintId}
-                        onChange={(e) => setBoardMoveToSprintId(e.target.value)}
-                        className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    {incompleteCount > 0 && (
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">
+                          Move {incompleteCount} incomplete issue{incompleteCount > 1 ? 's' : ''} to
+                        </label>
+                        <Select
+                          value={boardMoveToSprintId || '__backlog__'}
+                          onValueChange={(v) => setBoardMoveToSprintId(v === '__backlog__' ? '' : v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__backlog__">Backlog</SelectItem>
+                            {otherSprints.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}{s.status === 'active' ? ' (active)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {boardMoveToSprintId
+                            ? `Incomplete issues will be moved to the selected sprint.`
+                            : `Incomplete issues will be moved to the backlog.`}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
+                        {t('common.cancel')}
+                      </Button>
+                      <Button
+                        isLoading={completeSprint.isPending}
+                        onClick={() =>
+                          completeSprint.mutate(
+                            {
+                              projectId: project?.id || projectKey!,
+                              sprintId: activeSprints[0].id,
+                              moveToSprintId: boardMoveToSprintId || null,
+                            },
+                            { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
+                          )
+                        }
                       >
-                        <option value="">Backlog</option>
-                        {otherSprints.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}{s.status === 'active' ? ' (active)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        {boardMoveToSprintId
-                          ? `Incomplete issues will be moved to the selected sprint.`
-                          : `Incomplete issues will be moved to the backlog.`}
-                      </p>
+                        {t('sprints.completeSprint')}
+                      </Button>
                     </div>
-                  )}
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => { setShowCompleteSprint(false); setBoardMoveToSprintId('') }}>
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      isLoading={completeSprint.isPending}
-                      onClick={() =>
-                        completeSprint.mutate(
-                          {
-                            projectId: project?.id || projectKey!,
-                            sprintId: activeSprints[0].id,
-                            moveToSprintId: boardMoveToSprintId || null,
-                          },
-                          { onSuccess: () => { setShowCompleteSprint(false); setBoardMoveToSprintId('') } },
-                        )
-                      }
-                    >
-                      {t('sprints.completeSprint')}
-                    </Button>
-                  </div>
-                </>
-              )
-            })()}
+                  </>
+                )
+              })()}
+            </div>
           </DialogContent>
         </Dialog>
       )}

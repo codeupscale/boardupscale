@@ -26,32 +26,32 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-base font-semibold text-foreground">
           Assignee Workload
         </h3>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-muted-foreground mt-0.5">
           Issue distribution per team member
         </p>
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
-          <div className="h-80 flex items-center justify-center text-gray-500 text-sm">
+          <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">
             No assigned issues
           </div>
         ) : (
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} layout="vertical" barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                 />
                 <YAxis
                   dataKey="name"
                   type="category"
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
                   width={120}
@@ -59,7 +59,9 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
                 <Tooltip
                   contentStyle={{
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--tooltip-border)',
+                    backgroundColor: 'var(--tooltip-bg)',
+                    color: 'var(--tooltip-fg)',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                   }}
                 />
@@ -88,40 +90,40 @@ export function WorkloadChart({ data }: WorkloadChartProps) {
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-2 px-3 font-semibold text-gray-500 text-xs">
+                <tr className="border-b border-border">
+                  <th className="text-left py-2 px-3 font-semibold text-muted-foreground text-xs">
                     Assignee
                   </th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-500 text-xs">
+                  <th className="text-right py-2 px-3 font-semibold text-muted-foreground text-xs">
                     Open
                   </th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-500 text-xs">
+                  <th className="text-right py-2 px-3 font-semibold text-muted-foreground text-xs">
                     Total
                   </th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-500 text-xs">
+                  <th className="text-right py-2 px-3 font-semibold text-muted-foreground text-xs">
                     Story Points
                   </th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-500 text-xs">
+                  <th className="text-right py-2 px-3 font-semibold text-muted-foreground text-xs">
                     Time Logged
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {data.assignees.map((a) => (
-                  <tr key={a.assigneeId} className="border-b border-gray-50">
-                    <td className="py-2 px-3 font-medium text-gray-900 dark:text-gray-100">
+                  <tr key={a.assigneeId} className="border-b border-border">
+                    <td className="py-2 px-3 font-medium text-foreground">
                       {a.displayName}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">
+                    <td className="py-2 px-3 text-right text-muted-foreground">
                       {a.openIssues}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">
+                    <td className="py-2 px-3 text-right text-muted-foreground">
                       {a.issueCount}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">
+                    <td className="py-2 px-3 text-right text-muted-foreground">
                       {a.totalStoryPoints}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">
+                    <td className="py-2 px-3 text-right text-muted-foreground">
                       {formatMinutes(a.totalTimeSpent)}
                     </td>
                   </tr>

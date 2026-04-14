@@ -20,7 +20,7 @@ export function WatchButton({ issueId }: { issueId: string }) {
 
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+      <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
         {t('issues.watchers', 'Watchers')}
       </label>
       <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ export function WatchButton({ issueId }: { issueId: string }) {
             : t('issues.watch', 'Watch')}
         </Button>
         <button
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80"
           onClick={() => setShowWatchers(!showWatchers)}
         >
           <span>{watcherCount}</span>
@@ -61,7 +61,7 @@ export function WatchButton({ issueId }: { issueId: string }) {
                 user={{ displayName: w.displayName, avatarUrl: w.avatarUrl } as any}
                 size="xs"
               />
-              <span className="text-xs text-gray-600 truncate">{w.displayName}</span>
+              <span className="text-xs text-muted-foreground truncate">{w.displayName}</span>
             </div>
           ))}
         </div>

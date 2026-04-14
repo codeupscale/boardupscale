@@ -5,13 +5,14 @@ import { useProjects, useCreateProject } from '@/hooks/useProjects'
 import { useAuthStore } from '@/store/auth.store'
 import { ProjectCard } from '@/components/projects/project-card'
 import { ProjectForm } from '@/components/projects/project-form'
-import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { LoadingPage } from '@/components/ui/spinner'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { ProjectType } from '@/types'
 
 const LIMIT = 12
@@ -30,15 +31,15 @@ function StatCard({
   color: string
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-center gap-4">
+    <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-4">
       <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0', color)}>
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <p className="text-2xl font-bold text-foreground">
           {value ?? '—'}
         </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
       </div>
     </div>
   )
@@ -102,10 +103,10 @@ export function ProjectsPage() {
         {/* Hero stats bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
-            icon={<FolderOpen className="h-5 w-5 text-blue-600" />}
+            icon={<FolderOpen className="h-5 w-5 text-primary" />}
             label="Total Projects"
             value={totalProjects}
-            color="bg-blue-50 dark:bg-blue-900/20"
+            color="bg-primary/10"
           />
           <StatCard
             icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
@@ -124,24 +125,20 @@ export function ProjectsPage() {
         {/* Filter bar */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-48 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-            <input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
               type="search"
               placeholder={t('projects.searchProjects')}
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className={cn(
-                'w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600',
-                'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors',
-              )}
+              className="pl-9 pr-3 py-2 text-sm"
               aria-label="Search projects"
             />
           </div>
 
           {/* View toggle */}
           <div
-            className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-0.5"
+            className="flex items-center rounded-lg border border-border bg-card p-0.5"
             role="group"
             aria-label="View mode"
           >
@@ -151,8 +148,8 @@ export function ProjectsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                 viewMode === 'grid'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:text-foreground',
               )}
               aria-pressed={viewMode === 'grid'}
               title="Grid view"
@@ -166,8 +163,8 @@ export function ProjectsPage() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                 viewMode === 'list'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:text-foreground',
               )}
               aria-pressed={viewMode === 'list'
               }
@@ -181,7 +178,7 @@ export function ProjectsPage() {
 
         {/* Results count */}
         {!isLoading && meta && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             {meta.total === 0
               ? 'No projects found'
               : `${meta.total} project${meta.total !== 1 ? 's' : ''}`}
@@ -194,13 +191,13 @@ export function ProjectsPage() {
           <LoadingPage />
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mb-5">
-              <FolderOpen className="h-10 w-10 text-blue-400 dark:text-blue-500" />
+            <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+              <FolderOpen className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               {debouncedSearch ? t('projects.noProjectsMatch') : t('projects.noProjects')}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm">
+            <p className="text-sm text-muted-foreground mb-6 max-w-sm">
               {debouncedSearch
                 ? t('projects.tryDifferentSearch')
                 : t('projects.createFirstProject')}
@@ -220,23 +217,23 @@ export function ProjectsPage() {
           </div>
         ) : (
           <div
-            className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="bg-card rounded-xl border border-border overflow-hidden"
             role="table"
             aria-label="Projects list"
           >
             {/* List header */}
-            <div className="flex items-center gap-4 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-4 px-4 py-2.5 bg-muted border-b border-border">
               <div className="w-8 flex-shrink-0" />
-              <div className="w-48 flex-shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="w-48 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Project
               </div>
-              <div className="w-24 flex-shrink-0 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="w-24 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Type
               </div>
-              <div className="flex-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Description
               </div>
-              <div className="flex items-center gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wide flex-shrink-0">
+              <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-shrink-0">
                 <span className="flex items-center gap-1">
                   <Layers className="h-3.5 w-3.5" />
                   Issues
@@ -269,11 +266,11 @@ export function ProjectsPage() {
       </div>
 
       {/* Create Project Dialog */}
-      <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
-        <DialogHeader onClose={() => setShowCreate(false)}>
-          <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
-        </DialogHeader>
+      <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && setShowCreate(false)}>
         <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
+          </DialogHeader>
           <ProjectForm
             onSubmit={(values) =>
               createProject.mutate(
