@@ -179,6 +179,24 @@ export class MigrationController {
   }
 
   /**
+   * GET /api/migration/jira/metrics/:runId
+   * Return real-time system utilization, throughput, and queue metrics
+   * for the migration dashboard.
+   */
+  @Get('metrics/:runId')
+  @ApiOperation({ summary: 'Get system metrics for a running migration' })
+  @ApiParam({ name: 'runId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'System metrics' })
+  @ApiResponse({ status: 404, description: 'Migration run not found' })
+  async getMetrics(
+    @Param('runId', ParseUUIDPipe) runId: string,
+    @OrgId() organizationId: string,
+  ) {
+    const data = await this.migrationService.getSystemMetrics(runId, organizationId);
+    return { status: true, message: 'OK', data };
+  }
+
+  /**
    * GET /api/migration/jira/projects?connectionId=xxx
    * Return the list of Jira projects for the given connection.
    * Called by the PreviewStep when coming from OAuth (connectResult.projects is empty).

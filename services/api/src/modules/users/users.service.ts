@@ -79,7 +79,12 @@ export class UsersService {
     return this.usersRepository
       .createQueryBuilder('user')
       .select(['user.id', 'user.email', 'user.displayName', 'user.avatarUrl'])
-      .where('user.organizationId = :organizationId', { organizationId })
+      .innerJoin(
+        'organization_members',
+        'om',
+        'om.user_id = user.id AND om.organization_id = :organizationId',
+        { organizationId },
+      )
       .andWhere('user.isActive = true')
       .orderBy('user.displayName', 'ASC')
       .getMany() as Promise<Pick<User, 'id' | 'email' | 'displayName' | 'avatarUrl'>[]>;

@@ -247,6 +247,57 @@ export function useMigrationMembers(connectionId: string | null) {
   })
 }
 
+export interface SystemMetrics {
+  system: {
+    cpuUsagePercent: number
+    cpuCores: number
+    memoryTotal: number
+    memoryUsed: number
+    memoryUsagePercent: number
+    loadAverage: [number, number, number]
+    uptime: number
+  }
+  process: {
+    heapUsed: number
+    heapTotal: number
+    rss: number
+    external: number
+  }
+  throughput: {
+    issuesPerMin: number
+    commentsPerMin: number
+    elapsedSeconds: number
+    etaMinutes: number
+  }
+  queue: {
+    waiting: number
+    active: number
+    delayed: number
+    failed: number
+  }
+  database: {
+    total: number
+    idle: number
+    active: number
+  }
+}
+
+export function useMigrationMetrics(runId: string | null) {
+  return useQuery({
+    queryKey: ['migration-metrics', runId],
+    queryFn: async () => {
+      const { data } = await api.get(`/migration/jira/metrics/${runId}`)
+      return data.data as SystemMetrics
+    },
+    enabled: !!runId,
+    refetchInterval: (query) => {
+      // Stop polling when there is an error
+      if (query.state.error) return false
+      return 5000 // poll every 5s
+    },
+  })
+}
+
 export function useCancelMigration() {
   return useMutation({
     mutationFn: async (runId: string) => {

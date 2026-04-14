@@ -244,9 +244,11 @@ function SprintSection({
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalText, setGoalText] = useState(sprint.goal || '')
   const [moveToSprintId, setMoveToSprintId] = useState<string>('')
+  const [newSprintName, setNewSprintName] = useState('')
 
   const startSprint = useStartSprint()
   const completeSprint = useCompleteSprint()
+  const createSprint = useCreateSprint()
   const deleteSprint = useDeleteSprint()
   const updateSprint = useUpdateSprint()
   const { data: allSprints = [] } = useSprints(projectId)
@@ -544,13 +546,14 @@ function SprintSection({
                           </label>
                           <Select
                             value={moveToSprintId || '__backlog__'}
-                            onValueChange={(v) => setMoveToSprintId(v === '__backlog__' ? '' : v)}
+                            onValueChange={(v) => { setMoveToSprintId(v === '__backlog__' ? '' : v); if (v !== '__new__') setNewSprintName('') }}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="__backlog__">Backlog</SelectItem>
+                              <SelectItem value="__new__">+ Create new sprint</SelectItem>
                               {otherSprints.map((s) => (
                                 <SelectItem key={s.id} value={s.id}>
                                   {s.name}{s.status === 'active' ? ' (active)' : ''}
@@ -558,30 +561,51 @@ function SprintSection({
                               ))}
                             </SelectContent>
                           </Select>
+                          {moveToSprintId === '__new__' && (
+                            <Input
+                              placeholder="New sprint name"
+                              value={newSprintName}
+                              onChange={(e) => setNewSprintName(e.target.value)}
+                              autoFocus
+                            />
+                          )}
                           <p className="text-xs text-muted-foreground">
-                            {moveToSprintId
-                              ? `Incomplete issues will be moved to the selected sprint.`
-                              : `Incomplete issues will be moved to the backlog.`}
+                            {moveToSprintId === '__new__'
+                              ? 'A new sprint will be created and incomplete issues moved to it.'
+                              : moveToSprintId
+                                ? 'Incomplete issues will be moved to the selected sprint.'
+                                : 'Incomplete issues will be moved to the backlog.'}
                           </p>
                         </div>
                       )}
 
                       <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setShowConfirm(null)}>
+                        <Button variant="outline" onClick={() => { setShowConfirm(null); setNewSprintName('') }}>
                           {t('common.cancel')}
                         </Button>
                         <Button
-                          isLoading={completeSprint.isPending}
-                          onClick={() =>
+                          isLoading={completeSprint.isPending || createSprint.isPending}
+                          disabled={moveToSprintId === '__new__' && !newSprintName.trim()}
+                          onClick={async () => {
+                            let targetSprintId: string | null = moveToSprintId || null
+                            if (moveToSprintId === '__new__' && newSprintName.trim()) {
+                              try {
+                                const created = await createSprint.mutateAsync({
+                                  projectId,
+                                  name: newSprintName.trim(),
+                                })
+                                targetSprintId = created.id
+                              } catch { return }
+                            }
                             completeSprint.mutate(
                               {
                                 projectId,
                                 sprintId: sprint.id,
-                                moveToSprintId: moveToSprintId || null,
+                                moveToSprintId: targetSprintId,
                               },
-                              { onSuccess: () => { setShowConfirm(null); setMoveToSprintId('') } },
+                              { onSuccess: () => { setShowConfirm(null); setMoveToSprintId(''); setNewSprintName('') } },
                             )
-                          }
+                          }}
                         >
                           {t('sprints.completeSprint')}
                         </Button>

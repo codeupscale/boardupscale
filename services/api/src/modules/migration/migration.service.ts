@@ -12,6 +12,7 @@ import { Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
+import * as os from 'os';
 import * as https from 'https';
 import * as querystring from 'querystring';
 import { createHmac, timingSafeEqual } from 'crypto';
@@ -446,7 +447,106 @@ export class MigrationService {
     return { data, total, page, limit };
   }
 
-  // ── 8. Get Jira projects for selection (used after OAuth when project list is empty) ──
+  // ── 8. System metrics for the migration dashboard ──────────────────────────
+
+  async getSystemMetrics(runId: string, organizationId: string) {
+    const run = await this.findRun(runId, organizationId);
+
+    // ── Node.js / host process metrics ──
+    const cpus = os.cpus();
+    const cpuCount = cpus.length;
+
+    // CPU usage: average idle% across all cores, inverted to busy%
+    const cpuAvg = cpus.reduce((acc, cpu) => {
+      const total = Object.values(cpu.times).reduce((s, t) => s + t, 0);
+      return acc + (1 - cpu.times.idle / total);
+    }, 0) / cpuCount;
+
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+
+    const processMemory = process.memoryUsage();
+
+    // ── Throughput calculation ──
+    const elapsed = run.startedAt
+      ? (Date.now() - new Date(run.startedAt).getTime()) / 1000
+      : 0;
+
+    const issuesPerMin = elapsed > 0 && run.processedIssues > 0
+      ? Math.round((run.processedIssues / elapsed) * 60)
+      : 0;
+    const commentsPerMin = elapsed > 0 && run.processedComments > 0
+      ? Math.round((run.processedComments / elapsed) * 60)
+      : 0;
+
+    // ── ETA calculation ──
+    const remainingIssues = Math.max(0, (run.totalIssues ?? 0) - (run.processedIssues ?? 0));
+    const remainingComments = Math.max(0, (run.totalComments ?? 0) - (run.processedComments ?? 0));
+    const issueRate = issuesPerMin > 0 ? issuesPerMin : 100; // default ~100/min
+    const commentRate = commentsPerMin > 0 ? commentsPerMin : 200;
+    const etaMinutes = Math.ceil(
+      (remainingIssues / issueRate) + (remainingComments / commentRate),
+    );
+
+    // ── BullMQ queue depth ──
+    let queueDepth = { waiting: 0, active: 0, delayed: 0, failed: 0 };
+    try {
+      const [waiting, active, delayed, failed] = await Promise.all([
+        this.migrationQueue.getWaitingCount(),
+        this.migrationQueue.getActiveCount(),
+        this.migrationQueue.getDelayedCount(),
+        this.migrationQueue.getFailedCount(),
+      ]);
+      queueDepth = { waiting, active, delayed, failed };
+    } catch {
+      // non-fatal
+    }
+
+    // ── DB connection pool stats (TypeORM exposes the underlying driver) ──
+    let dbPool = { total: 0, idle: 0, active: 0 };
+    try {
+      const driver = (this.runRepository.manager.connection as any).driver;
+      const pool = driver?.master;
+      if (pool) {
+        dbPool = {
+          total: pool.totalCount ?? 0,
+          idle: pool.idleCount ?? 0,
+          active: (pool.totalCount ?? 0) - (pool.idleCount ?? 0),
+        };
+      }
+    } catch {
+      // non-fatal
+    }
+
+    return {
+      system: {
+        cpuUsagePercent: Math.round(cpuAvg * 100),
+        cpuCores: cpuCount,
+        memoryTotal: totalMem,
+        memoryUsed: usedMem,
+        memoryUsagePercent: Math.round((usedMem / totalMem) * 100),
+        loadAverage: os.loadavg(),
+        uptime: os.uptime(),
+      },
+      process: {
+        heapUsed: processMemory.heapUsed,
+        heapTotal: processMemory.heapTotal,
+        rss: processMemory.rss,
+        external: processMemory.external,
+      },
+      throughput: {
+        issuesPerMin,
+        commentsPerMin,
+        elapsedSeconds: Math.round(elapsed),
+        etaMinutes: run.status === 'processing' ? etaMinutes : 0,
+      },
+      queue: queueDepth,
+      database: dbPool,
+    };
+  }
+
+  // ── 9. Get Jira projects for selection (used after OAuth when project list is empty) ──
 
   async getMigrationProjects(
     connectionId: string,

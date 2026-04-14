@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +30,7 @@ export class OrganizationsService {
     private emailService: EmailService,
     private auditService: AuditService,
     private configService: ConfigService,
+    private dataSource: DataSource,
   ) {}
 
   async findById(id: string): Promise<Organization> {
@@ -332,17 +333,28 @@ export class OrganizationsService {
       );
     }
 
-    // Ensure the new email is not already taken by another user
-    const existing = await this.userRepository.findOne({
+    // Check if the new email is already taken by another user
+    const existingUser = await this.userRepository.findOne({
       where: { email: newEmail },
     });
-    if (existing && existing.id !== memberId) {
-      throw new ConflictException('Email is already in use by another account');
+
+    if (existingUser && existingUser.id !== memberId) {
+      // Email belongs to an existing user — merge the placeholder into that user
+      // and add the existing user to this organization
+      return this.mergeAndInviteExistingUser(
+        organizationId,
+        member,
+        existingUser,
+        actorId,
+      );
     }
 
     member.email = newEmail;
     member.emailVerified = false;
     const saved = await this.userRepository.save(member);
+
+    // Send invitation so the user can set up their account
+    await this.generateAndSendInvitation(saved, actorId, organizationId);
 
     this.auditService.log(
       organizationId,
@@ -355,6 +367,139 @@ export class OrganizationsService {
     );
 
     return saved;
+  }
+
+  /**
+   * Merge a Jira-migrated placeholder user into an existing real user.
+   * Reassigns all data (issues, comments, activity, etc.) from the placeholder
+   * to the real user, adds the real user to this org, and sends an invitation.
+   */
+  private async mergeAndInviteExistingUser(
+    organizationId: string,
+    placeholder: User,
+    existingUser: User,
+    actorId: string,
+  ): Promise<User> {
+    // Check if the existing user is already a member of this org
+    const existingMembership = await this.organizationMemberRepository.findOne({
+      where: { userId: existingUser.id, organizationId },
+    });
+
+    await this.dataSource.transaction(async (manager) => {
+      const placeholderId = placeholder.id;
+      const realUserId = existingUser.id;
+
+      // Reassign all references from placeholder to real user within this org
+      // Issues: assignee and reporter
+      await manager.query(
+        `UPDATE issues SET assignee_id = $1 WHERE assignee_id = $2 AND organization_id = $3`,
+        [realUserId, placeholderId, organizationId],
+      );
+      await manager.query(
+        `UPDATE issues SET reporter_id = $1 WHERE reporter_id = $2 AND organization_id = $3`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Comments (scoped through issue's organization_id)
+      await manager.query(
+        `UPDATE comments SET author_id = $1 WHERE author_id = $2
+         AND issue_id IN (SELECT id FROM issues WHERE organization_id = $3)`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Activity logs
+      await manager.query(
+        `UPDATE activity SET user_id = $1 WHERE user_id = $2 AND organization_id = $3`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Work logs (scoped through issue's organization_id)
+      await manager.query(
+        `UPDATE work_logs SET user_id = $1 WHERE user_id = $2
+         AND issue_id IN (SELECT id FROM issues WHERE organization_id = $3)`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Issue watchers
+      await manager.query(
+        `UPDATE issue_watchers SET user_id = $1 WHERE user_id = $2
+         AND issue_id IN (SELECT id FROM issues WHERE organization_id = $3)
+         AND NOT EXISTS (SELECT 1 FROM issue_watchers WHERE user_id = $1 AND issue_id = issue_watchers.issue_id)`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Project members — transfer or skip if already exists
+      await manager.query(
+        `UPDATE project_members SET user_id = $1 WHERE user_id = $2
+         AND project_id IN (SELECT id FROM projects WHERE organization_id = $3)
+         AND NOT EXISTS (SELECT 1 FROM project_members WHERE user_id = $1 AND project_id = project_members.project_id)`,
+        [realUserId, placeholderId, organizationId],
+      );
+
+      // Copy jiraAccountId to real user if not already set
+      if (placeholder.jiraAccountId && !existingUser.jiraAccountId) {
+        await manager.query(
+          `UPDATE users SET jira_account_id = $1 WHERE id = $2`,
+          [placeholder.jiraAccountId, realUserId],
+        );
+      }
+
+      // Remove the placeholder's org membership and delete the placeholder user
+      await manager.query(
+        `DELETE FROM organization_members WHERE user_id = $1 AND organization_id = $2`,
+        [placeholderId, organizationId],
+      );
+
+      // Clean up remaining references to placeholder before deleting
+      await manager.query(
+        `DELETE FROM issue_watchers WHERE user_id = $1
+         AND issue_id IN (SELECT id FROM issues WHERE organization_id = $2)`,
+        [placeholderId, organizationId],
+      );
+      await manager.query(
+        `DELETE FROM project_members WHERE user_id = $1
+         AND project_id IN (SELECT id FROM projects WHERE organization_id = $2)`,
+        [placeholderId, organizationId],
+      );
+
+      // Delete placeholder if it has no memberships in any other org
+      const remainingMemberships = await manager.query(
+        `SELECT COUNT(*) as count FROM organization_members WHERE user_id = $1`,
+        [placeholderId],
+      );
+      if (parseInt(remainingMemberships[0].count, 10) === 0) {
+        await manager.query(`DELETE FROM users WHERE id = $1`, [placeholderId]);
+      }
+
+      // Add real user to this org if not already a member
+      if (!existingMembership) {
+        await manager.query(
+          `INSERT INTO organization_members (user_id, organization_id, role, is_default)
+           VALUES ($1, $2, 'member', false)
+           ON CONFLICT (user_id, organization_id) DO NOTHING`,
+          [realUserId, organizationId],
+        );
+      }
+    });
+
+    // Send invitation email to the existing user for this org
+    await this.generateAndSendInvitation(existingUser, actorId, organizationId);
+
+    this.auditService.log(
+      organizationId,
+      actorId,
+      'organization.member.merged_and_invited',
+      'user',
+      existingUser.id,
+      {
+        email: existingUser.email,
+        mergedFromPlaceholder: placeholder.id,
+        placeholderEmail: placeholder.email,
+      },
+      null,
+    );
+
+    return existingUser;
   }
 
   // ── SAML SSO Configuration ─────────────────────────────────────────────

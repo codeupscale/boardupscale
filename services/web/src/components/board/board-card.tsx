@@ -57,7 +57,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
               <div className="flex items-center gap-1 mb-1.5">
                 <IssueTypeIcon type={issue.parent.type} className="h-3 w-3 flex-shrink-0" />
                 <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 truncate">
-                  {issue.parent.key}
+                  {issue.parent.key}{issue.parent.title ? ` ${issue.parent.title}` : ''}
                 </span>
               </div>
             )}

@@ -140,6 +140,8 @@ export class IssuesService {
       .leftJoin('issue.reporter', 'reporter')
       .addSelect(['reporter.id', 'reporter.displayName', 'reporter.avatarUrl', 'reporter.email'])
       .leftJoinAndSelect('issue.sprint', 'sprint')
+      .leftJoin('issue.parent', 'parent')
+      .addSelect(['parent.id', 'parent.key', 'parent.title', 'parent.type'])
       .where('issue.organization_id = :organizationId', { organizationId });
 
     if (deleted) {
@@ -815,6 +817,10 @@ export class IssuesService {
       }
     }
 
+    if (!targetStatusId) {
+      throw new BadRequestException('Target project has no statuses configured');
+    }
+
     // Re-key each issue with the target project's key prefix
     const issues = await this.issueRepository.find({
       where: { id: In(dto.issueIds), organizationId, deletedAt: IsNull() },
@@ -833,10 +839,13 @@ export class IssuesService {
     const { rows } = await this.issueRepository.query(
       `UPDATE projects
        SET next_issue_number = next_issue_number + $1
-       WHERE id = $2
+       WHERE id = $2 AND organization_id = $3
        RETURNING next_issue_number - $1 AS first_number`,
-      [affected, dto.targetProjectId],
+      [affected, dto.targetProjectId, organizationId],
     );
+    if (!rows || rows.length === 0) {
+      throw new BadRequestException('Failed to reserve issue numbers in target project');
+    }
     const firstNumber: number = Number(rows[0].first_number);
 
     // Build a single bulk UPDATE assigning new keys and moving issues

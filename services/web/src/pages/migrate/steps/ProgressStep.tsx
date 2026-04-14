@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle2, Loader2, XCircle, AlertTriangle,
-  RefreshCw, ChevronDown, ChevronUp, Users, FolderOpen,
+  RefreshCw, Users, FolderOpen,
   Zap, FileText, MessageSquare, Paperclip, Clock, TrendingUp,
+  Cpu, HardDrive, Database, Activity, Timer, Gauge,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
-  useStartMigration, useMigrationStatus, useRetryMigration, useCancelMigration, StartMigrationPayload,
+  useStartMigration, useMigrationStatus, useRetryMigration, useCancelMigration,
+  useMigrationMetrics, StartMigrationPayload, SystemMetrics,
 } from '@/hooks/useMigration'
 import { getSocket } from '@/lib/socket'
 
@@ -16,7 +18,6 @@ interface ProgressStepProps {
   payload: StartMigrationPayload
   onComplete: (runId: string) => void
   initialRunId?: string
-  /** Called when the migration run no longer exists (404) so the wizard can reset */
   onReset?: () => void
 }
 
@@ -48,11 +49,216 @@ interface LiveCounts {
   completedPhases: number[]
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(0)} KB`
+  if (bytes < 1073741824) return `${(bytes / 1048576).toFixed(0)} MB`
+  return `${(bytes / 1073741824).toFixed(1)} GB`
+}
+
+function formatDurationShort(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m < 60) return `${m}m ${s}s`
+  const h = Math.floor(m / 60)
+  return `${h}h ${m % 60}m`
+}
+
+function formatEta(minutes: number): string {
+  if (minutes <= 0) return 'Calculating...'
+  if (minutes < 1) return '< 1 min'
+  if (minutes < 60) return `~${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `~${h}h ${m}m`
+}
+
+// ── Gauge Ring (SVG circular progress) ──────────────────────────────────
+
+function GaugeRing({ value, max = 100, size = 48, strokeWidth = 4, color, children }: {
+  value: number; max?: number; size?: number; strokeWidth?: number; color: string; children?: React.ReactNode
+}) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const pct = Math.min(value / max, 1)
+  const offset = circumference * (1 - pct)
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" className="stroke-muted" strokeWidth={strokeWidth} />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── System Utilization Panel ────────────────────────────────────────────
+
+function SystemPanel({ metrics, isActive }: { metrics: SystemMetrics | undefined; isActive: boolean }) {
+  if (!metrics || !isActive) return null
+
+  const cpuColor = metrics.system.cpuUsagePercent > 80 ? '#ef4444' : metrics.system.cpuUsagePercent > 50 ? '#f59e0b' : '#22c55e'
+  const memColor = metrics.system.memoryUsagePercent > 85 ? '#ef4444' : metrics.system.memoryUsagePercent > 60 ? '#f59e0b' : '#22c55e'
+  const heapPct = Math.round((metrics.process.heapUsed / metrics.process.heapTotal) * 100)
+  const heapColor = heapPct > 85 ? '#ef4444' : heapPct > 60 ? '#f59e0b' : '#3b82f6'
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <Activity className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">System Utilization</h3>
+        <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          Live
+        </span>
+      </div>
+      <div className="p-4">
+        {/* Gauges row */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          {/* CPU */}
+          <div className="flex flex-col items-center gap-2">
+            <GaugeRing value={metrics.system.cpuUsagePercent} color={cpuColor} size={56} strokeWidth={5}>
+              <span className="text-xs font-bold text-foreground">{metrics.system.cpuUsagePercent}%</span>
+            </GaugeRing>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-foreground">CPU</p>
+              <p className="text-[10px] text-muted-foreground">{metrics.system.cpuCores} cores</p>
+            </div>
+          </div>
+          {/* Memory */}
+          <div className="flex flex-col items-center gap-2">
+            <GaugeRing value={metrics.system.memoryUsagePercent} color={memColor} size={56} strokeWidth={5}>
+              <span className="text-xs font-bold text-foreground">{metrics.system.memoryUsagePercent}%</span>
+            </GaugeRing>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-foreground">Memory</p>
+              <p className="text-[10px] text-muted-foreground">
+                {formatBytes(metrics.system.memoryUsed)} / {formatBytes(metrics.system.memoryTotal)}
+              </p>
+            </div>
+          </div>
+          {/* Heap */}
+          <div className="flex flex-col items-center gap-2">
+            <GaugeRing value={heapPct} color={heapColor} size={56} strokeWidth={5}>
+              <span className="text-xs font-bold text-foreground">{heapPct}%</span>
+            </GaugeRing>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-foreground">Heap</p>
+              <p className="text-[10px] text-muted-foreground">
+                {formatBytes(metrics.process.heapUsed)} / {formatBytes(metrics.process.heapTotal)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Detail grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+            <Cpu className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs font-semibold text-foreground">
+              {metrics.system.loadAverage[0].toFixed(2)}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Load (1m)</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+            <HardDrive className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs font-semibold text-foreground">
+              {formatBytes(metrics.process.rss)}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Process RSS</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+            <Database className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs font-semibold text-foreground">
+              {metrics.database.active}/{metrics.database.total}
+            </p>
+            <p className="text-[10px] text-muted-foreground">DB Conns</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5 text-center">
+            <Activity className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+            <p className="text-xs font-semibold text-foreground">
+              {metrics.queue.active} / {metrics.queue.waiting}
+            </p>
+            <p className="text-[10px] text-muted-foreground">Queue Act/Wait</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Throughput & ETA Panel ──────────────────────────────────────────────
+
+function ThroughputPanel({ metrics, liveCounts, isActive }: {
+  metrics: SystemMetrics | undefined; liveCounts: LiveCounts; isActive: boolean
+}) {
+  if (!metrics || !isActive) return null
+
+  const { throughput } = metrics
+  const totalProcessed = liveCounts.processedIssues + liveCounts.processedComments +
+    liveCounts.processedMembers + liveCounts.processedSprints + liveCounts.processedProjects
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <Gauge className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Throughput & ETA</h3>
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Elapsed */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <Timer className="h-4 w-4 mx-auto mb-1.5 text-blue-500" />
+            <p className="text-sm font-bold text-foreground">
+              {formatDurationShort(throughput.elapsedSeconds)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Elapsed</p>
+          </div>
+          {/* ETA */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <Clock className="h-4 w-4 mx-auto mb-1.5 text-amber-500" />
+            <p className="text-sm font-bold text-foreground">
+              {formatEta(throughput.etaMinutes)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Remaining</p>
+          </div>
+          {/* Issues/min */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <TrendingUp className="h-4 w-4 mx-auto mb-1.5 text-indigo-500" />
+            <p className="text-sm font-bold text-foreground">
+              {throughput.issuesPerMin > 0 ? `${throughput.issuesPerMin}/min` : '--'}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Issue Rate</p>
+          </div>
+          {/* Total processed */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <Zap className="h-4 w-4 mx-auto mb-1.5 text-green-500" />
+            <p className="text-sm font-bold text-foreground">
+              {totalProcessed.toLocaleString()}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Total Synced</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ──────────────────────────────────────────────────────
+
 export function ProgressStep({ payload, onComplete, initialRunId, onReset }: ProgressStepProps) {
   const [runId, setRunId] = useState<string | null>(null)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [activityLog, setActivityLog] = useState<LogEntry[]>([])
-  const [projectsExpanded, setProjectsExpanded] = useState(false)
   const [phaseDurations, setPhaseDurations] = useState<Record<number, { start: number; end?: number }>>({})
   const [liveCounts, setLiveCounts] = useState<LiveCounts>({
     processedIssues: 0, totalIssues: 0, failedIssues: 0,
@@ -70,8 +276,9 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
   const queryClient = useQueryClient()
 
   const { data: status, error: statusError } = useMigrationStatus(runId)
+  const { data: metrics } = useMigrationMetrics(runId)
 
-  // ── 404 guard: run was deleted (e.g. admin cleared it) → reset wizard ────
+  // ── 404 guard: run was deleted → reset wizard ────
   useEffect(() => {
     const err = statusError as any
     if (err?.response?.status === 404 && onReset) {
@@ -115,14 +322,12 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
     }) {
       if (data.runId !== runId) return
 
-      // Update live counts from socket
       setLiveCounts((prev) => ({
         ...prev,
         ...data.counts,
         completedPhases: data.completedPhases ?? prev.completedPhases,
       }))
 
-      // Track phase start/end times
       setPhaseDurations((prev) => {
         const existing = prev[data.phase]
         if (!existing) return { ...prev, [data.phase]: { start: Date.now() } }
@@ -132,7 +337,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
         return prev
       })
 
-      // Log meaningful events
       const phaseLabel = PHASES.find(p => p.id === data.phase)?.label ?? `Phase ${data.phase}`
       if (data.status === 'completed' && !completedRef.current) {
         completedRef.current = true
@@ -163,7 +367,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
     if (status.status === 'failed') {
       addLog('Migration failed — see error details below')
     }
-    // Sync poll data into liveCounts
     setLiveCounts((prev) => ({
       ...prev,
       processedIssues: status.processedIssues ?? prev.processedIssues,
@@ -193,7 +396,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
     ? liveCounts.completedPhases
     : (isCompleted ? [1, 2, 3, 4, 5, 6] : PHASES.filter(p => p.id < currentPhase).map(p => p.id))
 
-  // Overall progress: weight phases equally but use issues as primary signal
   const overallPct = isCompleted ? 100 : (() => {
     const phaseWeight = completedPhases.length / 6 * 100
     const issueBonus = liveCounts.totalIssues > 0
@@ -202,7 +404,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
     return Math.min(99, Math.round(phaseWeight + issueBonus))
   })()
 
-  function formatDuration(phase: number): string | null {
+  function formatPhaseDuration(phase: number): string | null {
     const d = phaseDurations[phase]
     if (!d) return null
     const ms = (d.end ?? Date.now()) - d.start
@@ -239,6 +441,13 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm text-foreground">Overall Progress</span>
           <div className="flex items-center gap-3">
+            {/* ETA badge */}
+            {isActive && metrics?.throughput.etaMinutes != null && metrics.throughput.etaMinutes > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {formatEta(metrics.throughput.etaMinutes)} left
+              </span>
+            )}
             <span className={cn(
               'text-xs font-semibold px-2 py-0.5 rounded-full',
               isCompleted ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
@@ -283,6 +492,12 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
         )}
       </div>
 
+      {/* Throughput & ETA + System Utilization — side by side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <ThroughputPanel metrics={metrics} liveCounts={liveCounts} isActive={isActive} />
+        <SystemPanel metrics={metrics} isActive={isActive} />
+      </div>
+
       {/* Phase cards */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
@@ -295,7 +510,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
             const isPending = !isDone && !isRunning
             const { processed, total } = getPhaseProgress(phase.id)
             const pct = total > 0 ? Math.round((processed / total) * 100) : (isDone ? 100 : 0)
-            const duration = formatDuration(phase.id)
+            const duration = formatPhaseDuration(phase.id)
             const Icon = phase.icon
 
             return (
@@ -355,7 +570,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                         )}
                       </div>
                     </div>
-                    {/* Progress bar (only when running or done with counts) */}
                     {(isRunning || (isDone && total > 0)) && (
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
@@ -374,42 +588,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
           })}
         </div>
       </div>
-
-      {/* Projects list (collapsible) */}
-      {payload.projectKeys.length > 0 && (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <button
-            onClick={() => setProjectsExpanded(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">
-                Projects ({payload.projectKeys.length})
-              </span>
-            </div>
-            {projectsExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </button>
-          {projectsExpanded && (
-            <div className="border-t border-border divide-y divide-border">
-              {payload.projectKeys.map((key) => (
-                <div key={key} className="px-4 py-2.5 flex items-center gap-3">
-                  <span className="text-[11px] font-mono font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 dark:border-primary/30 flex-shrink-0">
-                    {key}
-                  </span>
-                  <span className="flex-1 text-sm text-foreground truncate">{key}</span>
-                  {(completedPhases.includes(4) || isCompleted) && (
-                    <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                  )}
-                  {currentPhase === 4 && isActive && (
-                    <Loader2 className="h-4 w-4 text-primary animate-spin flex-shrink-0" />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Activity log */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -454,8 +632,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                   }
                 }}
                 disabled={retryMutation.isPending}
-                size="sm"
-                className="mt-3 bg-red-600 hover:bg-red-700 text-white gap-2"
+                className="mt-3 bg-red-600 hover:bg-red-700 text-white gap-2 h-8 px-3 text-sm"
               >
                 {retryMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 Retry Migration
@@ -469,9 +646,8 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
       {!isCompleted && !isFailed && (
         <div className="flex justify-end">
           <Button
-            variant="outline"
             onClick={() => setCancelDialogOpen(true)}
-            className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800"
+            className="border border-red-200 bg-transparent text-red-600 hover:bg-red-50 dark:text-red-400 dark:border-red-800"
           >
             Cancel Migration
           </Button>
@@ -487,7 +663,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
               Completed phases are preserved. You can retry from the migration history page.
             </p>
             <div className="mt-5 flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Running</Button>
+              <Button onClick={() => setCancelDialogOpen(false)} className="border border-border bg-transparent hover:bg-accent">Keep Running</Button>
               <Button
                 className="bg-red-600 hover:bg-red-700 text-white"
                 disabled={cancelMutation.isPending}
