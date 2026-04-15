@@ -11,7 +11,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { CircleDot, AlertCircle, Clock, CheckCircle, ListFilter } from 'lucide-react'
@@ -88,7 +88,7 @@ export function MyIssuesPage() {
     <div className="flex flex-col h-full">
       <PageHeader title={t('nav.myIssues')} />
 
-      <div className="p-6 lg:p-8 space-y-5 max-w-[1400px] mx-auto w-full">
+      <div className="p-6 lg:p-8 space-y-5 max-w-[1400px] mx-auto w-full flex-1 overflow-y-auto min-h-0">
         {/* Stats Row */}
         <div className="flex flex-wrap gap-3">
           <StatPill
@@ -149,8 +149,9 @@ export function MyIssuesPage() {
 
         {/* Table */}
         {isLoading ? (
-          <LoadingPage />
+          <TableSkeleton />
         ) : filtered.length > 0 ? (
+          <ContentFade>
           <div className="rounded-2xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
             <table className="w-full">
               <thead>
@@ -197,6 +198,7 @@ export function MyIssuesPage() {
               </div>
             )}
           </div>
+          </ContentFade>
         ) : (
           <EmptyState
             icon={<CircleDot className="h-12 w-12" />}

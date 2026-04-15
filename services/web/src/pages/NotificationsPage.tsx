@@ -9,7 +9,7 @@ import {
 import { Notification } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -172,7 +172,7 @@ export function NotificationsPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
@@ -197,7 +197,7 @@ export function NotificationsPage() {
 
         {/* Content */}
         {isLoading ? (
-          <LoadingPage />
+          <ListSkeleton rows={8} />
         ) : !notifications || notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">

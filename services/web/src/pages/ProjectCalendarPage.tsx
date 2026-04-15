@@ -30,7 +30,7 @@ import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { CalendarSkeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectTrigger,
@@ -217,7 +217,7 @@ export function ProjectCalendarPage() {
     return issuesByDate.get(key) ?? []
   }, [selectedDay, issuesByDate])
 
-  if (projectLoading) return <LoadingPage />
+  if (projectLoading) return <CalendarSkeleton />
 
   return (
     <div className="flex flex-col h-full">
@@ -313,7 +313,7 @@ export function ProjectCalendarPage() {
       {/* Body: calendar + optional side panel */}
       <div className="flex flex-1 overflow-hidden">
         {/* Calendar area */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto min-h-0 p-4">
           {issuesLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">Loading issues…</div>
           ) : (

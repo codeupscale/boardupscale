@@ -11,7 +11,7 @@ import {
   FileText,
   BarChart3,
 } from 'lucide-react'
-import { LoadingPage } from '@/components/ui/spinner'
+import { ChartSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Select,
@@ -172,7 +172,7 @@ export function ProjectReportsPage() {
         </div>
 
         {/* Right panel — chart */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto min-h-0 p-6">
           {/* Controls row */}
           <div className="flex items-end gap-4 mb-6">
             {/* Sprint selector for burndown, burnup, and sprint report */}
@@ -278,7 +278,7 @@ export function ProjectReportsPage() {
                   description="Select a sprint to view the burndown chart."
                 />
               ) : burndownQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : burndownQuery.data ? (
                 <BurndownChart data={burndownQuery.data} />
               ) : (
@@ -298,7 +298,7 @@ export function ProjectReportsPage() {
                   description="Select a sprint to view the burnup chart."
                 />
               ) : burnupQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : burnupQuery.data ? (
                 <BurnupChart data={burnupQuery.data} />
               ) : (
@@ -313,7 +313,7 @@ export function ProjectReportsPage() {
           {activeReport === 'velocity' && (
             <>
               {velocityQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : velocityQuery.data ? (
                 <VelocityChart data={velocityQuery.data} />
               ) : (
@@ -328,7 +328,7 @@ export function ProjectReportsPage() {
           {activeReport === 'created-vs-resolved' && (
             <>
               {createdVsResolvedQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : createdVsResolvedQuery.data ? (
                 <CreatedVsResolvedChart data={createdVsResolvedQuery.data} />
               ) : (
@@ -343,7 +343,7 @@ export function ProjectReportsPage() {
           {activeReport === 'cumulative-flow' && (
             <>
               {cfdQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : cfdQuery.data ? (
                 <CumulativeFlowChart data={cfdQuery.data} />
               ) : (
@@ -358,7 +358,7 @@ export function ProjectReportsPage() {
           {activeReport === 'breakdown' && (
             <>
               {breakdownQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : breakdownQuery.data ? (
                 <IssueBreakdownCharts data={breakdownQuery.data} />
               ) : (
@@ -373,7 +373,7 @@ export function ProjectReportsPage() {
           {activeReport === 'workload' && (
             <>
               {workloadQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : workloadQuery.data ? (
                 <WorkloadChart data={workloadQuery.data} />
               ) : (
@@ -388,7 +388,7 @@ export function ProjectReportsPage() {
           {activeReport === 'cycle-time' && (
             <>
               {cycleTimeQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : cycleTimeQuery.data ? (
                 <CycleTimeChart data={cycleTimeQuery.data} />
               ) : (
@@ -408,7 +408,7 @@ export function ProjectReportsPage() {
                   description="Select a sprint to view the report."
                 />
               ) : sprintReportQuery.isLoading ? (
-                <LoadingPage />
+                <ChartSkeleton />
               ) : sprintReportQuery.data ? (
                 <SprintReport data={sprintReportQuery.data} />
               ) : (

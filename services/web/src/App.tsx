@@ -1,8 +1,9 @@
 import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { LoadingPage } from '@/components/ui/spinner'
 import { useAuthStore } from '@/store/auth.store'
+import { RoleGuard } from '@/components/common/role-guard'
+import { UserRole } from '@/types'
 
 // Auth pages — eager imports (first-load pages)
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -111,7 +112,7 @@ function RootRoute() {
 
 export default function App() {
   return (
-    <Suspense fallback={<LoadingPage />}>
+    <Suspense fallback={<div className="flex items-center justify-center w-full h-screen bg-background" />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<RootRoute />} />
@@ -149,13 +150,13 @@ export default function App() {
           <Route path="/issues/:id" element={<IssueDetailPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<UserSettingsPage />} />
-          <Route path="/settings/roles" element={<RoleManagementPage />} />
-          <Route path="/settings/team" element={<TeamPage />} />
-          <Route path="/settings/billing" element={<BillingPage />} />
-          <Route path="/admin/audit-logs" element={<AuditLogPage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/settings/migrate/jira" element={<JiraMigrationPage />} />
-          <Route path="/settings/migrate/history" element={<MigrationHistoryPage />} />
+          <Route path="/settings/roles" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><RoleManagementPage /></RoleGuard>} />
+          <Route path="/settings/team" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><TeamPage /></RoleGuard>} />
+          <Route path="/settings/billing" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><BillingPage /></RoleGuard>} />
+          <Route path="/admin/audit-logs" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><AuditLogPage /></RoleGuard>} />
+          <Route path="/import" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><ImportPage /></RoleGuard>} />
+          <Route path="/settings/migrate/jira" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><JiraMigrationPage /></RoleGuard>} />
+          <Route path="/settings/migrate/history" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><MigrationHistoryPage /></RoleGuard>} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 

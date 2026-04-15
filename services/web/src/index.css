@@ -59,6 +59,7 @@
     --border: 260 28% 91%;
     --input: 260 20% 93%;
     --ring: 315 65% 45%;
+    --shimmer-highlight: rgba(255, 255, 255, 0.5);
     --radius: 0.625rem;
     --sidebar: 0 0% 98%;
     --sidebar-foreground: 260 15% 12%;
@@ -89,6 +90,7 @@
     --border: 260 18% 18%;
     --input: 260 18% 14%;
     --ring: 315 60% 55%;
+    --shimmer-highlight: rgba(255, 255, 255, 0.06);
     --sidebar: 260 25% 5%;
     --sidebar-foreground: 260 15% 92%;
     --sidebar-muted: 260 18% 10%;
@@ -193,6 +195,31 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* ── react-day-picker v9 calendar grid fix ──
+   rdp v9 uses <table> elements but shadcn overrides rows to flex.
+   Force all table elements to block/flex so cells distribute evenly. */
+[data-slot="calendar"] table {
+  display: block;
+  width: 100%;
+}
+[data-slot="calendar"] thead,
+[data-slot="calendar"] tbody {
+  display: block;
+  width: 100%;
+}
+[data-slot="calendar"] tr {
+  display: flex;
+  width: 100%;
+}
+[data-slot="calendar"] th,
+[data-slot="calendar"] td {
+  flex: 1 1 0%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
 }
 
 html, body, #root {
@@ -557,6 +584,33 @@ html.theme-transition *::after {
   0%   { transform: translate(-50%, -50%) scale(1);    opacity: 0.30; }
   50%  { transform: translate(-50%, -50%) scale(1.15); opacity: 0.40; }
   100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.30; }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Shimmer block — self-contained shimmer for inline skeleton placeholders */
+.shimmer-block {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--shimmer-highlight, rgba(255, 255, 255, 0.4)) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 .login-orb {

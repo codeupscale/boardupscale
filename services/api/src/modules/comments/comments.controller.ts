@@ -49,6 +49,7 @@ export class CommentsController {
   }
 
   @Patch(':id')
+  @RequirePermission('comment', 'update')
   @ApiOperation({ summary: 'Update a comment' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,

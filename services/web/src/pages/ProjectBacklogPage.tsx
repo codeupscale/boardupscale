@@ -33,6 +33,7 @@ import {
 import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -46,7 +47,7 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
@@ -237,6 +238,7 @@ function SprintSection({
   onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
 }) {
   const { t } = useTranslation()
+  const { hasPermission } = useHasPermission(projectId)
   const [collapsed, setCollapsed] = useState(false)
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
@@ -333,26 +335,28 @@ function SprintSection({
               className="flex items-center gap-2 flex-shrink-0 ml-2"
               onClick={(e) => e.stopPropagation()}
             >
-              {isPlanned && (
+              {isPlanned && hasPermission('sprint', 'manage') && (
                 <Button size="sm" variant="outline" onClick={() => setShowConfirm('start')}>
                   <Play className="h-3.5 w-3.5" />
                   {t('sprints.startSprint')}
                 </Button>
               )}
-              {isActive && (
+              {isActive && hasPermission('sprint', 'manage') && (
                 <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
                   <CheckCircle className="h-3.5 w-3.5" />
                   {t('sprints.complete')}
                 </Button>
               )}
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => setShowConfirm('delete')}
-                className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {hasPermission('sprint', 'delete') && (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => setShowConfirm('delete')}
+                  className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -434,9 +438,9 @@ function SprintSection({
               {issues.length > 0 ? (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="w-8" />
-                      <th className="px-2 py-2 w-8">
+                    <tr className="border-b border-border/50">
+                      <th className="w-8 py-1" />
+                      <th className="px-2 py-1 w-8">
                         <input
                           type="checkbox"
                           checked={allSelected}
@@ -702,9 +706,9 @@ function BacklogSection({
             {issues.length > 0 ? (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="w-8" />
-                    <th className="px-2 py-2 w-8">
+                  <tr className="border-b border-border/50">
+                    <th className="w-8 py-1" />
+                    <th className="px-2 py-1 w-8">
                       <input
                         type="checkbox"
                         checked={allBacklogSelected}
@@ -754,6 +758,7 @@ export function ProjectBacklogPage() {
   const [sprintGoal, setSprintGoal] = useState('')
 
   const { data: project } = useProject(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
   const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!)
@@ -845,8 +850,6 @@ export function ProjectBacklogPage() {
     [projectKey, qc, moveIssue],
   )
 
-  if (sprintsLoading || issuesLoading) return <LoadingPage />
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -858,23 +861,28 @@ export function ProjectBacklogPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
-              <Plus className="h-4 w-4" />
-              {t('sprints.createSprint')}
-            </Button>
-            <Button size="sm" onClick={() => setShowCreateIssue(true)}>
-              <Plus className="h-4 w-4" />
-              {t('issues.createIssue')}
-            </Button>
+            {hasPermission('sprint', 'create') && (
+              <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
+                <Plus className="h-4 w-4" />
+                {t('sprints.createSprint')}
+              </Button>
+            )}
+            {hasPermission('issue', 'create') && (
+              <Button size="sm" onClick={() => setShowCreateIssue(true)}>
+                <Plus className="h-4 w-4" />
+                {t('issues.createIssue')}
+              </Button>
+            )}
           </div>
         }
       />
 
       <ProjectTabNav projectKey={projectKey!} />
 
+      {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade>
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
           {/* Summary Bar */}
           {activeSprints.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
@@ -922,6 +930,7 @@ export function ProjectBacklogPage() {
         sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
         projectId={projectKey}
       />
+      </ContentFade>}
 
       {/* Create Sprint Dialog */}
       <Dialog

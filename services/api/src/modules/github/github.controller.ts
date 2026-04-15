@@ -14,18 +14,21 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { GithubService } from './github.service';
 import { ConnectGithubDto } from './dto/connect-github.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('github')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class GithubController {
   constructor(private readonly githubService: GithubService) {}
 
   @Post('projects/:projectId/github/connect')
+  @RequirePermission('project', 'manage')
   @ApiOperation({ summary: 'Connect a GitHub repository to a project' })
   async connect(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -41,6 +44,7 @@ export class GithubController {
   }
 
   @Delete('projects/:projectId/github/disconnect')
+  @RequirePermission('project', 'manage')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Disconnect GitHub repository from a project' })
   async disconnect(

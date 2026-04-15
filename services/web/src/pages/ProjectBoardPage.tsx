@@ -9,6 +9,7 @@ import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useCreateIssue } from '@/hooks/useIssues'
 import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { cn } from '@/lib/utils'
@@ -29,7 +30,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { LoadingPage } from '@/components/ui/spinner'
+import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
 import { toast } from '@/store/ui.store'
@@ -110,6 +111,7 @@ export function ProjectBoardPage() {
   )
 
   const { data: project } = useProject(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: sprints } = useSprints(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
   const { data: usersResult } = useUsers()
@@ -391,13 +393,11 @@ export function ProjectBoardPage() {
     )
   }
 
-  if (isLoading) return <LoadingPage />
-
   const activeSprints = sprints?.filter((s) => s.status === 'active') || []
   const deleteColumn = board?.statuses.find((c) => c.id === deleteColumnId)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <PageHeader
         title={project?.name || t('board.title')}
         breadcrumbs={[
@@ -406,10 +406,12 @@ export function ProjectBoardPage() {
           { label: t('nav.board') },
         ]}
         actions={
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4" />
-            {t('issues.createIssue')}
-          </Button>
+          hasPermission('issue', 'create') ? (
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4" />
+              {t('issues.createIssue')}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -423,14 +425,16 @@ export function ProjectBoardPage() {
               </span>
             )}
           </p>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowCompleteSprint(true)}
-          >
-            <CheckCircle className="h-3.5 w-3.5" />
-            {t('sprints.complete')}
-          </Button>
+          {hasPermission('sprint', 'manage') && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowCompleteSprint(true)}
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              {t('sprints.complete')}
+            </Button>
+          )}
         </div>
       )}
 
@@ -448,23 +452,25 @@ export function ProjectBoardPage() {
       />
 
       {/* Board */}
-      {!board || board.statuses.length === 0 ? (
+      {isLoading ? <KanbanSkeleton /> : !board || board.statuses.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <EmptyState
             title={t('board.noColumns')}
             description={t('board.noColumnsDesc')}
           />
-          <Button onClick={() => setShowAddColumn(true)}>
-            <Plus className="h-4 w-4" />
-            Add Column
-          </Button>
+          {hasPermission('board', 'manage') && (
+            <Button onClick={() => setShowAddColumn(true)}>
+              <Plus className="h-4 w-4" />
+              Add Column
+            </Button>
+          )}
         </div>
       ) : groupBy !== 'none' ? (
         /* Swimlane View */
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex-1 overflow-auto">
-            {/* Column Headers (sticky) */}
-            <div className="flex gap-4 px-6 pt-4 pb-2 bg-card border-b border-border sticky top-0 z-10">
+        <ContentFade className="flex-1 min-h-0 flex flex-col">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {/* Column Headers (sticky — outside scroll container) */}
+            <div className="flex gap-4 px-6 pt-4 pb-2 bg-card border-b border-border flex-shrink-0 z-10">
               {board.statuses.map((column) => {
                 const wipLimit = column.wipLimit || 0
                 const totalIssues = column.issues.length
@@ -505,79 +511,85 @@ export function ProjectBoardPage() {
               })}
             </div>
 
-            {/* Swimlane rows */}
-            {swimlaneGroups.length > 0 ? (
-              swimlaneGroups.map((group) => (
-                <BoardSwimlane
-                  key={group.key}
-                  group={group}
-                  columns={board.statuses}
-                  onAddIssue={handleAddIssue}
-                  isWipExceeded={isWipExceeded}
-                />
-              ))
-            ) : (
-              <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                No issues match the current filters
-              </div>
-            )}
-          </div>
-        </DragDropContext>
+            {/* Scrollable swimlane rows */}
+            <div className="flex-1 overflow-auto min-h-0">
+              {swimlaneGroups.length > 0 ? (
+                swimlaneGroups.map((group) => (
+                  <BoardSwimlane
+                    key={group.key}
+                    group={group}
+                    columns={board.statuses}
+                    onAddIssue={handleAddIssue}
+                    isWipExceeded={isWipExceeded}
+                  />
+                ))
+              ) : (
+                <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                  No issues match the current filters
+                </div>
+              )}
+            </div>
+          </DragDropContext>
+        </ContentFade>
       ) : (
         /* Standard Board View */
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
-            {(provided) => (
-              <div
-                className="flex-1 overflow-x-auto overflow-y-hidden min-h-0 bg-background"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
+        <ContentFade className="flex-1 min-h-0">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="board-columns" type="COLUMN" direction="horizontal">
+              {(provided) => (
                 <div
-                  className="flex gap-3 p-4 h-full"
-                  style={{ minWidth: `${board.statuses.length * 296 + 312}px` }}
+                  className="h-full overflow-x-auto overflow-y-hidden bg-background"
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
                 >
-                  {board.statuses.map((column, index) => (
-                    <Draggable key={column.id} draggableId={`col-${column.id}`} index={index}>
-                      {(dragProvided, dragSnapshot) => (
-                        <div
-                          ref={dragProvided.innerRef}
-                          {...dragProvided.draggableProps}
-                          className={cn(
-                            'flex flex-col h-full',
-                            dragSnapshot.isDragging && 'opacity-90 rotate-1',
-                          )}
-                        >
-                          <BoardColumn
-                            column={column}
-                            extraIssues={extraIssues[column.id] ?? []}
-                            dragHandleProps={dragProvided.dragHandleProps}
-                            onAddIssue={handleAddIssue}
-                            onUpdateWipLimit={handleUpdateWipLimit}
-                            onEditColumn={handleEditColumn}
-                            onDeleteColumn={board.statuses.length > 1 ? handleDeleteColumn : undefined}
-                            onLoadMore={handleLoadMore}
-                            isLoadingMore={loadingMoreColumn === column.id}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-
-                  {/* Add Column Button */}
-                  <button
-                    onClick={() => setShowAddColumn(true)}
-                    className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+                  <div
+                    className="flex gap-3 p-4 h-full"
+                    style={{ minWidth: `${board.statuses.length * 296 + 312}px` }}
                   >
-                    <Plus className="h-6 w-6 mb-1" />
-                    <span className="text-sm font-medium">Add Column</span>
-                  </button>
+                    {board.statuses.map((column, index) => (
+                      <Draggable key={column.id} draggableId={`col-${column.id}`} index={index}>
+                        {(dragProvided, dragSnapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            className={cn(
+                              'flex flex-col h-full',
+                              dragSnapshot.isDragging && 'opacity-90 rotate-1',
+                            )}
+                          >
+                            <BoardColumn
+                              column={column}
+                              extraIssues={extraIssues[column.id] ?? []}
+                              dragHandleProps={dragProvided.dragHandleProps}
+                              onAddIssue={handleAddIssue}
+                              onUpdateWipLimit={handleUpdateWipLimit}
+                              onEditColumn={handleEditColumn}
+                              onDeleteColumn={board.statuses.length > 1 ? handleDeleteColumn : undefined}
+                              onLoadMore={handleLoadMore}
+                              isLoadingMore={loadingMoreColumn === column.id}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+
+                    {/* Add Column Button */}
+                    {hasPermission('board', 'manage') && (
+                    <button
+                      onClick={() => setShowAddColumn(true)}
+                      className="flex flex-col items-center justify-center w-[280px] flex-shrink-0 min-h-[200px] rounded-xl border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+                    >
+                      <Plus className="h-6 w-6 mb-1" />
+                      <span className="text-sm font-medium">Add Column</span>
+                    </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </ContentFade>
       )}
 
       {/* Create Issue Dialog */}

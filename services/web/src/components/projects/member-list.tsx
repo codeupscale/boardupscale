@@ -54,7 +54,10 @@ export function MemberList({ projectId, members }: MemberListProps) {
           >
             {t(roleKeys[member.role] || 'projects.member')}
           </span>
-          {currentUser?.id !== member.userId && (
+          {currentUser?.id !== member.userId &&
+            (currentUser?.role === UserRole.OWNER ||
+              currentUser?.role === UserRole.ADMIN ||
+              currentUser?.role === UserRole.MANAGER) && (
             <Button
               variant="ghost"
               size="icon-sm"

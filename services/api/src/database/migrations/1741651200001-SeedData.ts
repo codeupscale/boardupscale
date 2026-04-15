@@ -67,7 +67,44 @@ export class SeedData1741651200001 implements MigrationInterface {
         ('page',         'update', 'Edit pages'),
         ('page',         'delete', 'Delete pages'),
         -- Organization
-        ('organization', 'manage', 'Manage organization settings and billing')
+        ('organization', 'manage', 'Manage organization settings and billing'),
+        -- Automation
+        ('automation',   'create', 'Create automation rules'),
+        ('automation',   'read',   'View automation rules'),
+        ('automation',   'update', 'Update automation rules'),
+        ('automation',   'delete', 'Delete automation rules'),
+        ('automation',   'manage', 'Toggle and test automation rules'),
+        -- Webhook
+        ('webhook',      'create', 'Create outbound webhooks'),
+        ('webhook',      'read',   'View webhooks'),
+        ('webhook',      'update', 'Update webhooks'),
+        ('webhook',      'delete', 'Delete webhooks'),
+        ('webhook',      'manage', 'Test webhooks and retry deliveries'),
+        -- Component
+        ('component',    'create', 'Create project components'),
+        ('component',    'read',   'View project components'),
+        ('component',    'update', 'Update project components'),
+        ('component',    'delete', 'Delete project components'),
+        -- Version
+        ('version',      'create', 'Create project versions'),
+        ('version',      'read',   'View project versions'),
+        ('version',      'update', 'Update project versions'),
+        ('version',      'delete', 'Delete project versions'),
+        ('version',      'manage', 'Release versions'),
+        -- Custom Field
+        ('custom-field', 'create', 'Create custom field definitions'),
+        ('custom-field', 'read',   'View custom fields'),
+        ('custom-field', 'update', 'Update custom field definitions'),
+        ('custom-field', 'delete', 'Delete custom field definitions'),
+        -- API Key
+        ('api-key',      'create', 'Create API keys'),
+        ('api-key',      'read',   'View API keys'),
+        ('api-key',      'delete', 'Revoke API keys'),
+        -- AI
+        ('ai',           'read',   'View AI feature settings and history'),
+        ('ai',           'use',    'Use AI-powered features like suggestions and search'),
+        ('ai',           'chat',   'Use AI chat assistant'),
+        ('ai',           'admin',  'Manage AI configuration and models')
       ON CONFLICT ("resource", "action") DO NOTHING
     `);
 
@@ -108,6 +145,8 @@ export class SeedData1741651200001 implements MigrationInterface {
          AND r.is_system IS TRUE
          AND r.organization_id IS NULL
          AND NOT (p.resource = 'organization' AND p.action = 'manage')
+         AND NOT (p.resource = 'ai' AND p.action = 'admin')
+         AND NOT (p.resource = 'api-key' AND p.action = 'delete')
       ON CONFLICT DO NOTHING
     `);
 
@@ -128,7 +167,14 @@ export class SeedData1741651200001 implements MigrationInterface {
             OR (p.resource = 'comment'  AND p.action IN ('create', 'read', 'update'))
             OR (p.resource = 'worklog'  AND p.action IN ('create', 'read', 'update'))
             OR (p.resource = 'page'     AND p.action IN ('create', 'read', 'update'))
-            OR (p.resource = 'member'   AND p.action = 'read')
+            OR (p.resource = 'member'      AND p.action = 'read')
+            OR (p.resource = 'automation'  AND p.action = 'read')
+            OR (p.resource = 'webhook'     AND p.action = 'read')
+            OR (p.resource = 'component'   AND p.action IN ('create', 'read', 'update'))
+            OR (p.resource = 'version'     AND p.action = 'read')
+            OR (p.resource = 'custom-field' AND p.action = 'read')
+            OR (p.resource = 'api-key'     AND p.action = 'read')
+            OR (p.resource = 'ai'          AND p.action IN ('read', 'use', 'chat'))
          )
       ON CONFLICT DO NOTHING
     `);
@@ -191,7 +237,9 @@ export class SeedData1741651200001 implements MigrationInterface {
       DELETE FROM "permissions"
        WHERE "resource" IN (
          'project', 'issue', 'board', 'sprint', 'comment',
-         'worklog', 'member', 'page', 'organization'
+         'worklog', 'member', 'page', 'organization', 'ai',
+         'automation', 'webhook', 'component', 'version',
+         'custom-field', 'api-key'
        )
     `);
   }

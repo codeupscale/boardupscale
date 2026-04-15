@@ -17,6 +17,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
@@ -24,7 +25,7 @@ import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('permissions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class PermissionsController {
   constructor(private permissionsService: PermissionsService) {}
@@ -44,6 +45,7 @@ export class PermissionsController {
   }
 
   @Post('organizations/:orgId/roles')
+  @Roles('admin', 'owner')
   @ApiOperation({ summary: 'Create a custom role for an organization' })
   async createRole(
     @Param('orgId', ParseUUIDPipe) orgId: string,
@@ -66,6 +68,7 @@ export class PermissionsController {
   }
 
   @Put('roles/:id')
+  @Roles('admin', 'owner')
   @ApiOperation({ summary: 'Update a custom role' })
   async updateRole(
     @Param('id', ParseUUIDPipe) id: string,
@@ -80,6 +83,7 @@ export class PermissionsController {
   }
 
   @Delete('roles/:id')
+  @Roles('admin', 'owner')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a custom role' })
   async deleteRole(@Param('id', ParseUUIDPipe) id: string) {
@@ -87,6 +91,7 @@ export class PermissionsController {
   }
 
   @Post('projects/:projectId/members/:memberId/role')
+  @Roles('admin', 'owner')
   @ApiOperation({ summary: 'Assign a role to a project member' })
   async assignRoleToMember(
     @Param('projectId', ResolveProjectPipe) projectId: string,

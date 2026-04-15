@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { usePageTree, useCreatePage, useDeletePage } from '@/hooks/usePages'
 import { useProjects } from '@/hooks/useProjects'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { PageTree } from '@/components/pages/page-tree'
 import { BookOpen, Plus, FileText } from 'lucide-react'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
@@ -17,6 +19,8 @@ export function ProjectPagesPage() {
   const project = projects?.find((p) => p.key === key)
 
   const { data: pages = [], isLoading } = usePageTree(project?.id)
+  const { hasPermission } = useHasPermission(key)
+  const canCreatePage = hasPermission('page', 'create')
   const createPage = useCreatePage()
   const deletePage = useDeletePage()
 
@@ -62,10 +66,12 @@ export function ProjectPagesPage() {
           { label: 'Pages' },
         ]}
         actions={
-          <Button size="sm" onClick={() => handleCreatePage()} disabled={!project || createPage.isPending}>
-            <Plus size={14} className="mr-1.5" />
-            New Page
-          </Button>
+          canCreatePage ? (
+            <Button size="sm" onClick={() => handleCreatePage()} disabled={!project || createPage.isPending}>
+              <Plus size={14} className="mr-1.5" />
+              New Page
+            </Button>
+          ) : undefined
         }
       />
       <ProjectTabNav projectKey={key} />
@@ -78,15 +84,17 @@ export function ProjectPagesPage() {
               <BookOpen size={15} />
               Pages
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0"
-              onClick={() => handleCreatePage()}
-              title="New page"
-            >
-              <Plus size={14} />
-            </Button>
+            {canCreatePage && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={() => handleCreatePage()}
+                title="New page"
+              >
+                <Plus size={14} />
+              </Button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto py-1">
@@ -105,28 +113,32 @@ export function ProjectPagesPage() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <FileText size={32} className="text-primary" />
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            {isLoading
-              ? 'Loading pages...'
-              : pages.length === 0
+          {isLoading ? (
+            <ListSkeleton rows={5} />
+          ) : (
+            <>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {pages.length === 0
                 ? 'Create your first page'
                 : 'Select a page'}
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-sm mb-6">
-            {isLoading
-              ? ''
-              : pages.length === 0
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-sm mb-6">
+              {pages.length === 0
                 ? 'Write specs, runbooks, meeting notes, and RFCs — all in one place alongside your issues.'
                 : 'Click a page in the sidebar to open it, or create a new one.'}
-          </p>
-          <Button
-            onClick={() => handleCreatePage()}
-            disabled={createPage.isPending || !project}
-            className="gap-2"
-          >
-            <Plus size={14} />
-            New Page
-          </Button>
+            </p>
+          {canCreatePage && (
+            <Button
+              onClick={() => handleCreatePage()}
+              disabled={createPage.isPending || !project}
+              className="gap-2"
+            >
+              <Plus size={14} />
+              New Page
+            </Button>
+          )}
+            </>
+          )}
         </div>
       </div>
 

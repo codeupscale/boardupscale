@@ -17,15 +17,17 @@ import { AutomationEngineService } from './automation-engine.service';
 import { CreateRuleDto } from './dto/create-rule.dto';
 import { UpdateRuleDto } from './dto/update-rule.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiTags('automations')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class AutomationController {
   constructor(
@@ -34,6 +36,7 @@ export class AutomationController {
   ) {}
 
   @Post('projects/:projectId/automations')
+  @RequirePermission('automation', 'create')
   @ApiOperation({ summary: 'Create an automation rule' })
   async create(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -45,6 +48,7 @@ export class AutomationController {
   }
 
   @Get('projects/:projectId/automations')
+  @RequirePermission('automation', 'read')
   @ApiOperation({ summary: 'List automation rules for a project' })
   async findAll(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -54,6 +58,7 @@ export class AutomationController {
   }
 
   @Get('automations/:id')
+  @RequirePermission('automation', 'read')
   @ApiOperation({ summary: 'Get automation rule by ID' })
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
@@ -62,6 +67,7 @@ export class AutomationController {
   }
 
   @Put('automations/:id')
+  @RequirePermission('automation', 'update')
   @ApiOperation({ summary: 'Update an automation rule' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -71,6 +77,7 @@ export class AutomationController {
   }
 
   @Delete('automations/:id')
+  @RequirePermission('automation', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an automation rule' })
   async delete(
@@ -80,6 +87,7 @@ export class AutomationController {
   }
 
   @Post('automations/:id/toggle')
+  @RequirePermission('automation', 'manage')
   @ApiOperation({ summary: 'Toggle automation rule active/inactive' })
   async toggle(
     @Param('id', ParseUUIDPipe) id: string,
@@ -88,6 +96,7 @@ export class AutomationController {
   }
 
   @Get('automations/:id/logs')
+  @RequirePermission('automation', 'read')
   @ApiOperation({ summary: 'Get execution logs for an automation rule' })
   async getLogs(
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,6 +119,7 @@ export class AutomationController {
   }
 
   @Post('automations/:id/test')
+  @RequirePermission('automation', 'manage')
   @ApiOperation({ summary: 'Dry-run an automation rule against a specific issue' })
   async testRule(
     @Param('id', ParseUUIDPipe) id: string,

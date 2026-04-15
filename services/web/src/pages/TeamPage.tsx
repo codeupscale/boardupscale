@@ -34,7 +34,7 @@ import { User, UserRole } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TeamSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog,
@@ -311,9 +311,7 @@ export function TeamPage() {
   // ── Pagination ────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState(1)
 
-  // Fix: 'owner' is NOT in UserRole enum, so compare as string
-  const myRole = (me?.role as string) ?? ''
-  const isAdmin = myRole === 'owner' || myRole === 'admin' || me?.role === UserRole.ADMIN
+  const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
 
   const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members])
   const pendingMembers = useMemo(() => members.filter((m) => !m.isActive), [members])
@@ -339,7 +337,7 @@ export function TeamPage() {
   )
 
   const adminCount = activeMembers.filter(
-    (m) => (m.role as string) === 'admin' || (m.role as string) === 'owner',
+    (m) => m.role === UserRole.ADMIN || m.role === UserRole.OWNER,
   ).length
 
   const handleSearch = (v: string) => { setSearch(v); setActivePage(1) }
@@ -402,7 +400,7 @@ export function TeamPage() {
     )
   }
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TeamSkeleton />
 
   return (
     <div className="flex flex-col h-full">
@@ -422,7 +420,7 @@ export function TeamPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto min-h-0 p-6 space-y-6">
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">

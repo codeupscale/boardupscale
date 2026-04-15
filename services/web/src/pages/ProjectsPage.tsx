@@ -7,7 +7,7 @@ import { ProjectCard } from '@/components/projects/project-card'
 import { ProjectForm } from '@/components/projects/project-form'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { CardGridSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/common/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -78,12 +78,12 @@ export function ProjectsPage() {
   const activeProjects = projects.filter((p) => p.status === 'active').length
   const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
-  const canCreateProject = currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER
+  const canCreateProject = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.MANAGER
   const createProject = useCreateProject()
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const isEmpty = !isLoading && projects.length === 0
@@ -102,7 +102,7 @@ export function ProjectsPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Hero stats bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
@@ -191,7 +191,7 @@ export function ProjectsPage() {
 
         {/* Content */}
         {isLoading ? (
-          <LoadingPage />
+          <CardGridSkeleton stats={0} cards={6} />
         ) : isEmpty ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
@@ -213,47 +213,51 @@ export function ProjectsPage() {
             )}
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <div
-            className="bg-card rounded-xl border border-border overflow-hidden"
-            role="table"
-            aria-label="Projects list"
-          >
-            {/* List header */}
-            <div className="flex items-center gap-4 px-4 py-2.5 bg-muted border-b border-border">
-              <div className="w-8 flex-shrink-0" />
-              <div className="w-48 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Project
-              </div>
-              <div className="w-24 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Type
-              </div>
-              <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Description
-              </div>
-              <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-shrink-0">
-                <span className="flex items-center gap-1">
-                  <Layers className="h-3.5 w-3.5" />
-                  Issues
-                </span>
-                <span className="flex items-center gap-1">
-                  <User className="h-3.5 w-3.5" />
-                  Members
-                </span>
-                <span>Updated</span>
-              </div>
-            </div>
-            <div role="rowgroup">
+          <ContentFade>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} listView />
+                <ProjectCard key={project.id} project={project} />
               ))}
             </div>
-          </div>
+          </ContentFade>
+        ) : (
+          <ContentFade>
+            <div
+              className="bg-card rounded-xl border border-border overflow-hidden"
+              role="table"
+              aria-label="Projects list"
+            >
+              {/* List header */}
+              <div className="flex items-center gap-4 px-4 py-2.5 bg-muted border-b border-border">
+                <div className="w-8 flex-shrink-0" />
+                <div className="w-48 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Project
+                </div>
+                <div className="w-24 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Type
+                </div>
+                <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Description
+                </div>
+                <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-shrink-0">
+                  <span className="flex items-center gap-1">
+                    <Layers className="h-3.5 w-3.5" />
+                    Issues
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <User className="h-3.5 w-3.5" />
+                    Members
+                  </span>
+                  <span>Updated</span>
+                </div>
+              </div>
+              <div role="rowgroup">
+                {projects.map((project) => (
+                  <ProjectCard key={project.id} project={project} listView />
+                ))}
+              </div>
+            </div>
+          </ContentFade>
         )}
 
         {/* Pagination */}

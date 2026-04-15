@@ -191,6 +191,7 @@ export class IssuesController {
   // ── Issue Links ──
 
   @Post(':id/links')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Create an issue link' })
   async createLink(
     @Param('id', ParseUUIDPipe) id: string,
@@ -212,6 +213,7 @@ export class IssuesController {
   }
 
   @Delete(':id/links/:linkId')
+  @RequirePermission('issue', 'update')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an issue link' })
   async deleteLink(
@@ -255,6 +257,7 @@ export class IssuesController {
   }
 
   @Post(':id/work-log')
+  @RequirePermission('worklog', 'create')
   @ApiOperation({ summary: 'Log work on an issue' })
   async createWorkLog(
     @Param('id', ParseUUIDPipe) id: string,

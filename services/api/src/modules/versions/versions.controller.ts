@@ -16,17 +16,20 @@ import { VersionsService } from './versions.service';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('versions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class VersionsController {
   constructor(private versionsService: VersionsService) {}
 
   @Post('projects/:projectId/versions')
+  @RequirePermission('version', 'create')
   @ApiOperation({ summary: 'Create a version for a project' })
   async create(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -51,6 +54,7 @@ export class VersionsController {
   }
 
   @Put('versions/:id')
+  @RequirePermission('version', 'update')
   @ApiOperation({ summary: 'Update a version' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -61,6 +65,7 @@ export class VersionsController {
   }
 
   @Delete('versions/:id')
+  @RequirePermission('version', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a version' })
   async delete(@Param('id', ParseUUIDPipe) id: string) {
@@ -68,6 +73,7 @@ export class VersionsController {
   }
 
   @Post('versions/:id/release')
+  @RequirePermission('version', 'manage')
   @ApiOperation({ summary: 'Release a version' })
   async release(@Param('id', ParseUUIDPipe) id: string) {
     const version = await this.versionsService.release(id);
@@ -95,6 +101,7 @@ export class VersionsController {
   }
 
   @Put('issues/:issueId/versions')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Set versions for an issue' })
   async setIssueVersions(
     @Param('issueId', ParseUUIDPipe) issueId: string,

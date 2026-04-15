@@ -6,10 +6,12 @@ import { GithubService } from './github.service';
 import { GitHubConnection } from './entities/github-connection.entity';
 import { GitHubEvent } from './entities/github-event.entity';
 import { Issue } from '../issues/entities/issue.entity';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([GitHubConnection, GitHubEvent, Issue]),
+    PermissionsModule,
   ],
   controllers: [GithubController, GithubWebhookController],
   providers: [GithubService],

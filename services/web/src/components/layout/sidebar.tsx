@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { useProjects } from '@/hooks/useProjects'
+import { UserRole } from '@/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Tooltip } from '@/components/ui/tooltip'
 
@@ -55,7 +56,7 @@ export function Sidebar() {
     }
   }, [location.pathname, setSidebarOpen])
 
-  const isAdmin = user?.role === 'admin' || (user?.role as string) === 'owner'
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
 
   const navItems = [
     { icon: LayoutGrid, label: t('nav.dashboard'), href: '/dashboard' },

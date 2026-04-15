@@ -19,7 +19,8 @@ import { useBoard, useCreateStatus, useUpdateStatus, useDeleteStatus } from '@/h
 import { useUsers } from '@/hooks/useUsers'
 import { useMe } from '@/hooks/useAuth'
 import { useRoles, useAssignRole } from '@/hooks/usePermissions'
-import { IssueStatusCategory } from '@/types'
+import { useHasPermission } from '@/hooks/useHasPermission'
+import { IssueStatusCategory, UserRole } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { LoadingPage } from '@/components/ui/spinner'
+import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { MemberList } from '@/components/projects/member-list'
@@ -104,6 +105,7 @@ export function ProjectSettingsPage() {
   const { data: project, isLoading } = useProject(projectKey!)
   const { data: board } = useBoard(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
+  const { hasPermission } = useHasPermission(projectKey)
   const { data: usersResult } = useUsers()
   const users = usersResult?.data
 
@@ -114,7 +116,7 @@ export function ProjectSettingsPage() {
   const updateStatus = useUpdateStatus()
   const deleteStatus = useDeleteStatus()
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <SettingsSkeleton />
 
   const handleOpenEditStatus = (status: any) => {
     setEditStatus(status)
@@ -234,7 +236,7 @@ export function ProjectSettingsPage() {
         </div>
 
         {/* Content panel */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto min-h-0 p-6">
 
           {/* General */}
           {activeTab === 'general' && project && (
@@ -263,10 +265,12 @@ export function ProjectSettingsPage() {
                   <h2 className="text-base font-semibold text-foreground">{t('projects.projectMembers')}</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">Add and manage who has access to this project.</p>
                 </div>
-                <Button size="sm" onClick={() => setShowAddMember(true)}>
-                  <Plus className="h-4 w-4" />
-                  {t('projects.addMember')}
-                </Button>
+                {hasPermission('member', 'create') && (
+                  <Button size="sm" onClick={() => setShowAddMember(true)}>
+                    <Plus className="h-4 w-4" />
+                    {t('projects.addMember')}
+                  </Button>
+                )}
               </div>
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 <MemberList projectId={projectKey!} members={members || []} />
@@ -465,9 +469,11 @@ export function ProjectSettingsPage() {
                     <p className="text-sm text-red-600 dark:text-red-400 mb-4">
                       {t('settings.deleteProjectDesc')}
                     </p>
-                    <Button variant="destructive" size="sm" onClick={() => setShowDeleteProject(true)}>
-                      {t('settings.deleteProject')}
-                    </Button>
+                    {hasPermission('project', 'delete') && (
+                      <Button variant="destructive" size="sm" onClick={() => setShowDeleteProject(true)}>
+                        {t('settings.deleteProject')}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

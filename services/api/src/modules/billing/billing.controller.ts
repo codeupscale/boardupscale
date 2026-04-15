@@ -8,6 +8,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 
 @ApiTags('billing')
@@ -42,7 +43,8 @@ export class BillingController {
 
   @Post('checkout')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'owner')
   @ApiOperation({ summary: 'Create a Stripe checkout session' })
   async createCheckout(
     @OrgId() organizationId: string,
@@ -58,7 +60,8 @@ export class BillingController {
 
   @Post('portal')
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'owner')
   @ApiOperation({ summary: 'Create a Stripe billing portal session' })
   async createPortal(@OrgId() organizationId: string) {
     const data = await this.billingService.createBillingPortalSession(organizationId);

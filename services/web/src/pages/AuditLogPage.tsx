@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { formatRelativeTime } from '@/lib/utils'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton } from '@/components/ui/skeleton'
 
 export function AuditLogPage() {
   const { t } = useTranslation()
@@ -93,9 +93,9 @@ export function AuditLogPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         {isLoading ? (
-          <LoadingPage />
+          <TableSkeleton rows={10} showFilters={false} />
         ) : logs.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             {t('audit.noLogs')}

@@ -16,18 +16,21 @@ import { CreateFieldDefinitionDto } from './dto/create-field-definition.dto';
 import { UpdateFieldDefinitionDto } from './dto/update-field-definition.dto';
 import { SetFieldValueDto } from './dto/set-field-value.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('custom-fields')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class CustomFieldsController {
   constructor(private customFieldsService: CustomFieldsService) {}
 
   @Post('projects/:projectId/custom-fields')
+  @RequirePermission('custom-field', 'create')
   @ApiOperation({ summary: 'Create a custom field definition' })
   async createDefinition(
     @Param('projectId', ResolveProjectPipe) projectId: string,
@@ -56,6 +59,7 @@ export class CustomFieldsController {
   }
 
   @Put('custom-fields/:id')
+  @RequirePermission('custom-field', 'update')
   @ApiOperation({ summary: 'Update a custom field definition' })
   async updateDefinition(
     @Param('id', ParseUUIDPipe) id: string,
@@ -66,6 +70,7 @@ export class CustomFieldsController {
   }
 
   @Delete('custom-fields/:id')
+  @RequirePermission('custom-field', 'delete')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a custom field definition' })
   async deleteDefinition(@Param('id', ParseUUIDPipe) id: string) {
@@ -73,6 +78,7 @@ export class CustomFieldsController {
   }
 
   @Put('issues/:issueId/custom-fields')
+  @RequirePermission('issue', 'update')
   @ApiOperation({ summary: 'Set custom field values for an issue' })
   async setFieldValues(
     @Param('issueId', ParseUUIDPipe) issueId: string,

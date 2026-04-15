@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Github, ExternalLink, Loader2, Search, Lock, Globe, CheckCircle2, AlertCircle, Webhook, RefreshCw } from 'lucide-react'
+import { Github, ExternalLink, Search, Lock, Globe, CheckCircle2, AlertCircle, Webhook, RefreshCw } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useGithubConnection, useConnectGithub, useDisconnectGithub, useGithubOAuthExchange, useVerifyWebhook, GitHubRepo } from '@/hooks/useGithub'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -108,8 +109,10 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      <div className="space-y-4 p-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-3/4" />
       </div>
     )
   }

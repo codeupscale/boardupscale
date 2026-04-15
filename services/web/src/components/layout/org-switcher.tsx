@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth.store'
 import { useMyMemberships, useSwitchOrg } from '@/hooks/useOrganization'
@@ -50,16 +51,9 @@ export function OrgSwitcher() {
 
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          'flex items-center gap-2 px-3 py-2 mx-2 mt-2',
-          !isSidebarOpen && 'justify-center px-2 mx-0',
-        )}
-      >
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        {isSidebarOpen && (
-          <span className="text-xs text-muted-foreground">Loading...</span>
-        )}
+      <div className="space-y-2 px-2">
+        <Skeleton className="h-8 w-full rounded-md" />
+        <Skeleton className="h-8 w-full rounded-md" />
       </div>
     )
   }

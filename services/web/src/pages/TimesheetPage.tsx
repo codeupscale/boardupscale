@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Download, ChevronLeft, ChevronRight, Clock, Users, Timer, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { LoadingPage } from '@/components/ui/spinner'
+import { TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/common/page-header'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -149,7 +149,7 @@ export function TimesheetPage() {
         subtitle="Track time logged across issues"
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
@@ -248,7 +248,7 @@ function MyTimesheetView({
   startDate,
   endDate,
 }: MyTimesheetViewProps) {
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TableSkeleton rows={7} showFilters={false} />
   if (!data || !data.days || data.days.length === 0) {
     return (
       <EmptyState
@@ -397,7 +397,7 @@ function TeamTimesheetView({
   startDate,
   endDate,
 }: TeamTimesheetViewProps) {
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <TableSkeleton rows={7} showFilters={false} />
   if (!data || !data.members || data.members.length === 0) {
     return (
       <EmptyState

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { BarChart3, Users, Zap, TrendingUp } from 'lucide-react'
 import { useAiUsageStats, useAiStatus } from '@/hooks/useAi'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 export function AiUsageDashboard() {
@@ -17,8 +18,13 @@ export function AiUsageDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="grid grid-cols-2 gap-4 p-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border p-4 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-6 w-16" />
+          </div>
+        ))}
       </div>
     )
   }

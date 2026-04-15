@@ -692,7 +692,7 @@ export function ImportPage() {
   )
 
   return (
-    <div className="p-6">
+    <div className="flex flex-col h-full overflow-y-auto p-6">
       <div className="max-w-2xl mx-auto">
         <Stepper currentStep={step} />
 

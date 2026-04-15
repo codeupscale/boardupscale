@@ -32,7 +32,7 @@ import { useThemeStore } from '@/store/theme.store'
 import { useSearch, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
 import { useProjects } from '@/hooks/useProjects'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
-import { IssueType } from '@/types'
+import { IssueType, UserRole } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ─── Types ──────────────────────────────────────────────────
@@ -86,7 +86,7 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const isAdmin = user?.role === 'admin' || (user?.role as string) === 'owner'
+  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
 
   // Detect current project context
   const currentProjectKey = useMemo(() => {

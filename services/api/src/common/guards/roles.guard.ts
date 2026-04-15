@@ -50,14 +50,21 @@ export class RolesGuard implements CanActivate {
       // Extract projectId from route params, query, or body
       const projectId =
         request.params?.projectId ||
-        request.params?.id ||
         request.query?.projectId ||
         request.body?.projectId;
 
       if (!projectId) {
-        // If no projectId can be determined, fall back to org-level admin/owner check
-        if (user.role === 'admin' || user.role === 'owner') return true;
-        throw new ForbiddenException('Insufficient permissions');
+        // No projectId (e.g. creating a project) — check the user's org-level
+        // role against the system role permission matrix.
+        const allowed = await this.permissionsService.checkOrgLevelPermission(
+          user.role,
+          requiredPermission.resource,
+          requiredPermission.action,
+        );
+        if (!allowed) {
+          throw new ForbiddenException('Insufficient permissions');
+        }
+        return true;
       }
 
       const hasPermission = await this.permissionsService.checkPermission(

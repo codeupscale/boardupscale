@@ -23,7 +23,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { LoadingPage } from '@/components/ui/spinner'
+import { ChartSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 
@@ -120,7 +120,7 @@ export function ProjectTimelinePage() {
     })
   }, [issuesData, typeFilter])
 
-  if (projectLoading) return <LoadingPage />
+  if (projectLoading) return <ChartSkeleton height="h-[500px]" />
 
   return (
     <div className="flex flex-col h-full">
@@ -203,7 +203,7 @@ export function ProjectTimelinePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto min-h-0">
           <div style={{ minWidth: LABEL_W + totalWidth }}>
             {/* STICKY HEADER */}
             <div

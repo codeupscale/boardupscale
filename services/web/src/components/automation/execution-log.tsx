@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 import { useRuleLogs } from '@/hooks/useAutomation'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@/components/ui/spinner'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 interface ExecutionLogProps {
@@ -21,11 +21,7 @@ export function ExecutionLog({ ruleId }: ExecutionLogProps) {
   const { data, isLoading } = useRuleLogs(ruleId, page)
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner className="h-6 w-6 text-primary" />
-      </div>
-    )
+    return <ListSkeleton rows={3} />
   }
 
   const logs = data?.logs || []

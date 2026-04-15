@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/auth.store'
 import { useMe } from '@/hooks/useAuth'
@@ -6,6 +6,7 @@ import { disconnectSocket } from '@/lib/socket'
 import { useUiStore } from '@/store/ui.store'
 import { useNotificationSocket } from '@/hooks/useNotifications'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { LoadingPage } from '@/components/ui/spinner'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { Toaster } from '@/components/ui/sonner'
@@ -61,9 +62,11 @@ export function AppLayout() {
         className="flex-1 flex flex-col min-w-0 transition-all duration-200"
       >
         <Topbar />
-        <main id="main-content" className="flex-1 overflow-auto plasma-main-content">
+        <main id="main-content" className="flex-1 overflow-hidden plasma-main-content">
           <ErrorBoundary>
-            <Outlet />
+            <Suspense fallback={<LoadingPage />}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

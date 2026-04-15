@@ -29,7 +29,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { LoadingPage } from '@/components/ui/spinner'
+import { ListSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -97,7 +97,7 @@ function DeliveryHistory({
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">Loading deliveries...</div>
+        <ListSkeleton rows={3} />
       ) : !data?.items?.length ? (
         <EmptyState
           icon={<Send className="h-8 w-8" />}
@@ -303,7 +303,7 @@ export function WebhooksPage() {
     })
   }
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <div className="p-6"><ListSkeleton /></div>
 
   // Show delivery history for a specific webhook
   if (deliveryTarget) {
@@ -318,7 +318,7 @@ export function WebhooksPage() {
             { label: 'Webhooks' },
           ]}
         />
-        <div className="p-6 max-w-4xl">
+        <div className="p-6 max-w-4xl flex-1 overflow-y-auto min-h-0">
           <DeliveryHistory
             webhook={deliveryTarget}
             onBack={() => setDeliveryTarget(null)}
@@ -364,7 +364,7 @@ export function WebhooksPage() {
         ]}
       />
 
-      <div className="p-6 max-w-4xl">
+      <div className="p-6 max-w-4xl flex-1 overflow-y-auto min-h-0">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">Webhooks</h2>
