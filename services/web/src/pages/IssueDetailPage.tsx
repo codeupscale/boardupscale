@@ -415,7 +415,7 @@ export function IssueDetailPage() {
 
 
   return (
-    <ContentFade><div className="flex flex-col h-full bg-background">
+    <ContentFade className="h-full"><div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
       <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap">
         <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">

@@ -21,7 +21,7 @@ export function ProjectTabNav({ projectKey }: ProjectTabNavProps) {
 
   return (
     <nav aria-label="Project navigation">
-      <div className="flex gap-1 px-6 pt-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0 overflow-x-auto">
+      <div className="flex gap-1 px-6 pt-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab) => {
           const href = `/projects/${projectKey}/${tab.path}`
           const isActive = location.pathname === href || location.pathname.startsWith(href + '/')
