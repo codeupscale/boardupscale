@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { LoadingPage } from '@/components/ui/spinner'
 import { useAuthStore } from '@/store/auth.store'
 import { RoleGuard } from '@/components/common/role-guard'
 import { UserRole } from '@/types'
@@ -113,7 +112,7 @@ function RootRoute() {
 
 export default function App() {
   return (
-    <Suspense fallback={<LoadingPage />}>
+    <Suspense fallback={<div className="flex items-center justify-center w-full h-screen bg-background" />}>
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<RootRoute />} />
