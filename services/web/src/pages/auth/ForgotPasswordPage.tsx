@@ -55,8 +55,8 @@ export function ForgotPasswordPage() {
               <div
                 className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
                 style={{
-                  background: 'linear-gradient(135deg, oklch(0.35 0.28 308) 0%, oklch(0.45 0.24 350) 100%)',
-                  boxShadow: '0 0 28px oklch(0.45 0.24 310 / 0.45)',
+                  background: 'linear-gradient(135deg, oklch(0.35 0.24 275) 0%, oklch(0.48 0.22 295) 100%)',
+                  boxShadow: '0 0 28px oklch(0.45 0.22 280 / 0.40)',
                 }}
               >
                 <Mail className="h-8 w-8 text-white" />
@@ -80,8 +80,8 @@ export function ForgotPasswordPage() {
                 <div
                   className="flex items-center justify-center h-11 w-11 rounded-xl flex-shrink-0"
                   style={{
-                    background: 'linear-gradient(135deg, oklch(0.25 0.20 308) 0%, oklch(0.38 0.24 340) 100%)',
-                    boxShadow: '0 0 18px oklch(0.40 0.22 315 / 0.40)',
+                    background: 'linear-gradient(135deg, oklch(0.28 0.18 275) 0%, oklch(0.40 0.22 290) 100%)',
+                    boxShadow: '0 0 18px oklch(0.40 0.20 280 / 0.35)',
                   }}
                 >
                   <KeyRound className="h-5 w-5 text-white" />

@@ -37,37 +37,246 @@
 }
 
 @layer base {
+  /* ── Default light theme (electric-cyan) ── */
   :root {
-    /* Background: subtle lavender-tinted off-white — echoes the purple brand
-       while keeping readability. Cards (pure white) pop off this with depth. */
-    --background: 260 35% 97%;
-    --foreground: 260 20% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 260 20% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 260 20% 11%;
-    --primary: 315 65% 28%;
+    --background: 168 16% 97%;
+    --foreground: 180 10% 12%;
+    --card: 170 10% 100%;
+    --card-foreground: 180 10% 12%;
+    --popover: 170 10% 100%;
+    --popover-foreground: 180 10% 12%;
+    --primary: 172 55% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 260 25% 94%;
-    --secondary-foreground: 260 20% 18%;
-    --muted: 260 25% 94%;
-    --muted-foreground: 260 12% 46%;
-    --accent: 260 25% 93%;
-    --accent-foreground: 260 20% 18%;
+    --secondary: 170 18% 93%;
+    --secondary-foreground: 175 20% 20%;
+    --muted: 168 10% 92%;
+    --muted-foreground: 170 6% 44%;
+    --accent: 174 22% 94%;
+    --accent-foreground: 174 22% 18%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 260 28% 91%;
-    --input: 260 20% 93%;
-    --ring: 315 65% 45%;
+    --border: 170 14% 89%;
+    --input: 168 12% 91%;
+    --ring: 172 50% 38%;
     --shimmer-highlight: rgba(255, 255, 255, 0.5);
     --radius: 0.625rem;
-    --sidebar: 0 0% 98%;
-    --sidebar-foreground: 260 15% 12%;
-    --sidebar-muted: 260 15% 95%;
-    --sidebar-muted-foreground: 260 10% 45%;
-    --sidebar-accent: 260 20% 94%;
-    --sidebar-accent-foreground: 260 15% 20%;
-    --sidebar-border: 260 20% 88%;
+    --sidebar: 168 16% 98%;
+    --sidebar-foreground: 175 12% 13%;
+    --sidebar-muted: 170 14% 95%;
+    --sidebar-muted-foreground: 170 8% 44%;
+    --sidebar-accent: 174 18% 93%;
+    --sidebar-accent-foreground: 174 14% 20%;
+    --sidebar-border: 170 14% 88%;
+  }
+
+  /* ── B: Molten Ember ── */
+  :root[data-color-theme="molten-ember"]:not(.dark) {
+    --background: 20 30% 97%;
+    --foreground: 15 20% 12%;
+    --card: 18 18% 100%;
+    --card-foreground: 15 20% 12%;
+    --popover: 18 18% 100%;
+    --popover-foreground: 15 20% 12%;
+    --primary: 21 90% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 30% 93%;
+    --secondary-foreground: 18 30% 22%;
+    --muted: 18 16% 92%;
+    --muted-foreground: 18 8% 44%;
+    --accent: 22 35% 94%;
+    --accent-foreground: 22 35% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 22% 88%;
+    --input: 18 18% 91%;
+    --ring: 21 80% 45%;
+    --sidebar: 20 28% 98%;
+    --sidebar-foreground: 15 18% 14%;
+    --sidebar-muted: 20 22% 95%;
+    --sidebar-muted-foreground: 18 10% 44%;
+    --sidebar-accent: 22 28% 93%;
+    --sidebar-accent-foreground: 22 22% 20%;
+    --sidebar-border: 20 20% 87%;
+  }
+
+  /* ── C: Arctic Sapphire ── */
+  :root[data-color-theme="arctic-sapphire"]:not(.dark) {
+    --background: 214 30% 97%;
+    --foreground: 215 20% 12%;
+    --card: 213 22% 100%;
+    --card-foreground: 215 20% 12%;
+    --popover: 213 22% 100%;
+    --popover-foreground: 215 20% 12%;
+    --primary: 217 89% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 30% 93%;
+    --secondary-foreground: 214 28% 22%;
+    --muted: 212 16% 92%;
+    --muted-foreground: 214 8% 44%;
+    --accent: 216 35% 94%;
+    --accent-foreground: 216 35% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 22% 89%;
+    --input: 212 18% 91%;
+    --ring: 217 80% 50%;
+    --sidebar: 214 28% 98%;
+    --sidebar-foreground: 215 18% 14%;
+    --sidebar-muted: 214 22% 95%;
+    --sidebar-muted-foreground: 214 10% 44%;
+    --sidebar-accent: 216 28% 93%;
+    --sidebar-accent-foreground: 216 22% 20%;
+    --sidebar-border: 214 20% 88%;
+  }
+
+  /* ── D: Neon Rose ── */
+  :root[data-color-theme="neon-rose"]:not(.dark) {
+    --background: 350 30% 97%;
+    --foreground: 348 18% 12%;
+    --card: 350 20% 100%;
+    --card-foreground: 348 18% 12%;
+    --popover: 350 20% 100%;
+    --popover-foreground: 348 18% 12%;
+    --primary: 347 77% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 350 28% 93%;
+    --secondary-foreground: 348 30% 22%;
+    --muted: 348 14% 92%;
+    --muted-foreground: 350 8% 44%;
+    --accent: 352 32% 94%;
+    --accent-foreground: 352 32% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 350 22% 89%;
+    --input: 348 16% 91%;
+    --ring: 347 75% 48%;
+    --sidebar: 350 26% 98%;
+    --sidebar-foreground: 348 16% 14%;
+    --sidebar-muted: 350 20% 95%;
+    --sidebar-muted-foreground: 350 8% 44%;
+    --sidebar-accent: 352 24% 93%;
+    --sidebar-accent-foreground: 352 20% 20%;
+    --sidebar-border: 350 18% 88%;
+  }
+
+  /* ── E: Jade Dragon ── */
+  :root[data-color-theme="jade-dragon"]:not(.dark) {
+    --background: 152 24% 97%;
+    --foreground: 155 18% 11%;
+    --card: 150 16% 100%;
+    --card-foreground: 155 18% 11%;
+    --popover: 150 16% 100%;
+    --popover-foreground: 155 18% 11%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 152 26% 93%;
+    --secondary-foreground: 155 28% 20%;
+    --muted: 150 14% 92%;
+    --muted-foreground: 152 8% 44%;
+    --accent: 154 30% 94%;
+    --accent-foreground: 154 30% 17%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 152 20% 89%;
+    --input: 150 16% 91%;
+    --ring: 160 75% 36%;
+    --sidebar: 152 22% 98%;
+    --sidebar-foreground: 155 16% 13%;
+    --sidebar-muted: 152 18% 95%;
+    --sidebar-muted-foreground: 152 10% 44%;
+    --sidebar-accent: 154 24% 93%;
+    --sidebar-accent-foreground: 154 18% 20%;
+    --sidebar-border: 152 18% 88%;
+  }
+
+  /* ── F: Midnight Cobalt ── */
+  :root[data-color-theme="midnight-cobalt"]:not(.dark) {
+    --background: 220 30% 97%;
+    --foreground: 222 22% 11%;
+    --card: 220 20% 100%;
+    --card-foreground: 222 22% 11%;
+    --popover: 220 20% 100%;
+    --popover-foreground: 222 22% 11%;
+    --primary: 226 71% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 28% 93%;
+    --secondary-foreground: 222 28% 22%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 8% 44%;
+    --accent: 222 32% 94%;
+    --accent-foreground: 222 32% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 22% 89%;
+    --input: 220 16% 91%;
+    --ring: 226 65% 45%;
+    --sidebar: 220 26% 98%;
+    --sidebar-foreground: 222 18% 13%;
+    --sidebar-muted: 220 20% 95%;
+    --sidebar-muted-foreground: 220 10% 44%;
+    --sidebar-accent: 222 26% 93%;
+    --sidebar-accent-foreground: 222 20% 20%;
+    --sidebar-border: 220 18% 88%;
+  }
+
+  /* ── G: Obsidian Graphite ── */
+  :root[data-color-theme="obsidian-graphite"]:not(.dark) {
+    --background: 20 6% 97%;
+    --foreground: 20 6% 10%;
+    --card: 20 4% 100%;
+    --card-foreground: 20 6% 10%;
+    --popover: 20 4% 100%;
+    --popover-foreground: 20 6% 10%;
+    --primary: 20 6% 25%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 6% 93%;
+    --secondary-foreground: 20 6% 22%;
+    --muted: 20 4% 92%;
+    --muted-foreground: 20 3% 44%;
+    --accent: 20 6% 94%;
+    --accent-foreground: 20 6% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 5% 88%;
+    --input: 20 4% 91%;
+    --ring: 20 5% 32%;
+    --sidebar: 20 5% 97%;
+    --sidebar-foreground: 20 6% 12%;
+    --sidebar-muted: 20 4% 95%;
+    --sidebar-muted-foreground: 20 3% 44%;
+    --sidebar-accent: 20 5% 93%;
+    --sidebar-accent-foreground: 20 5% 20%;
+    --sidebar-border: 20 4% 87%;
+  }
+
+  /* ── H: Solar Gold ── */
+  :root[data-color-theme="solar-gold"]:not(.dark) {
+    --background: 38 35% 97%;
+    --foreground: 30 22% 11%;
+    --card: 36 24% 100%;
+    --card-foreground: 30 22% 11%;
+    --popover: 36 24% 100%;
+    --popover-foreground: 30 22% 11%;
+    --primary: 28 88% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 30% 93%;
+    --secondary-foreground: 32 30% 22%;
+    --muted: 36 16% 92%;
+    --muted-foreground: 36 8% 44%;
+    --accent: 40 35% 94%;
+    --accent-foreground: 40 35% 18%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 38 24% 88%;
+    --input: 36 18% 91%;
+    --ring: 28 80% 42%;
+    --sidebar: 38 30% 98%;
+    --sidebar-foreground: 30 18% 14%;
+    --sidebar-muted: 38 24% 95%;
+    --sidebar-muted-foreground: 36 10% 44%;
+    --sidebar-accent: 40 28% 93%;
+    --sidebar-accent-foreground: 40 22% 20%;
+    --sidebar-border: 38 20% 87%;
   }
 
   .dark {
@@ -116,30 +325,94 @@
    ============================================================ */
 
 :root {
-  /* Brand gradient stops */
-  --plasma-stop-0: #000000;
-  --plasma-stop-1: oklch(0.18 0.1 315);
-  --plasma-stop-2: oklch(0.52 0.26 316);
-  --plasma-glow: oklch(0.52 0.26 316 / 0.35);
+  /* Brand gradient stops — deep teal spectrum */
+  --plasma-stop-0: oklch(0.32 0.10 178);
+  --plasma-stop-1: oklch(0.40 0.12 172);
+  --plasma-stop-2: oklch(0.50 0.13 168);
+  --plasma-glow: oklch(0.48 0.11 172 / 0.25);
 
-  /* Primary button (light) */
+  /* Primary button (light) — rich teal gradient */
   --plasma-btn-bg: linear-gradient(
     135deg,
     var(--plasma-stop-0) 0%,
-    var(--plasma-stop-0) 30%,
-    var(--plasma-stop-1) 58%,
+    var(--plasma-stop-1) 50%,
     var(--plasma-stop-2) 100%
   );
   --plasma-btn-color: #ffffff;
   --plasma-btn-shadow:
-    0 0 0 1px oklch(0.35 0.18 315 / 0.5),
-    0 4px 18px rgba(0, 0, 0, 0.35),
-    0 0 22px var(--plasma-glow);
+    0 0 0 1px oklch(0.38 0.10 172 / 0.40),
+    0 4px 14px oklch(0.35 0.10 172 / 0.22),
+    0 0 16px var(--plasma-glow);
 
   /* Active nav item */
   --plasma-nav-active-bg: var(--plasma-btn-bg);
   --plasma-nav-active-color: #ffffff;
-  --plasma-nav-active-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.35 0.10 172 / 0.20);
+}
+
+/* ── Plasma overrides per color theme (light mode only) ── */
+
+:root[data-color-theme="molten-ember"]:not(.dark) {
+  --plasma-stop-0: oklch(0.30 0.12 30);
+  --plasma-stop-1: oklch(0.42 0.16 28);
+  --plasma-stop-2: oklch(0.55 0.18 25);
+  --plasma-glow: oklch(0.50 0.14 28 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.42 0.14 28 / 0.40), 0 4px 14px oklch(0.38 0.12 28 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.40 0.12 28 / 0.25);
+}
+
+:root[data-color-theme="arctic-sapphire"]:not(.dark) {
+  --plasma-stop-0: oklch(0.28 0.10 250);
+  --plasma-stop-1: oklch(0.40 0.14 245);
+  --plasma-stop-2: oklch(0.55 0.16 240);
+  --plasma-glow: oklch(0.50 0.12 245 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.40 0.12 245 / 0.40), 0 4px 14px oklch(0.35 0.10 245 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.40 0.12 245 / 0.25);
+}
+
+:root[data-color-theme="neon-rose"]:not(.dark) {
+  --plasma-stop-0: oklch(0.28 0.16 355);
+  --plasma-stop-1: oklch(0.42 0.20 350);
+  --plasma-stop-2: oklch(0.56 0.22 348);
+  --plasma-glow: oklch(0.50 0.18 350 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.42 0.16 350 / 0.40), 0 4px 14px oklch(0.38 0.14 350 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.42 0.16 350 / 0.25);
+}
+
+:root[data-color-theme="jade-dragon"]:not(.dark) {
+  --plasma-stop-0: oklch(0.28 0.10 160);
+  --plasma-stop-1: oklch(0.40 0.14 155);
+  --plasma-stop-2: oklch(0.55 0.16 150);
+  --plasma-glow: oklch(0.50 0.12 155 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.40 0.12 155 / 0.40), 0 4px 14px oklch(0.35 0.10 155 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.40 0.12 155 / 0.25);
+}
+
+:root[data-color-theme="midnight-cobalt"]:not(.dark) {
+  --plasma-stop-0: oklch(0.25 0.10 260);
+  --plasma-stop-1: oklch(0.38 0.14 255);
+  --plasma-stop-2: oklch(0.52 0.16 250);
+  --plasma-glow: oklch(0.48 0.12 255 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.38 0.12 255 / 0.40), 0 4px 14px oklch(0.32 0.10 255 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.38 0.12 255 / 0.25);
+}
+
+:root[data-color-theme="obsidian-graphite"]:not(.dark) {
+  --plasma-stop-0: oklch(0.22 0.01 60);
+  --plasma-stop-1: oklch(0.32 0.01 55);
+  --plasma-stop-2: oklch(0.42 0.01 50);
+  --plasma-glow: oklch(0.38 0.01 55 / 0.20);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.32 0.01 55 / 0.40), 0 4px 14px oklch(0.28 0.01 55 / 0.25), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.28 0.01 55 / 0.30);
+}
+
+:root[data-color-theme="solar-gold"]:not(.dark) {
+  --plasma-stop-0: oklch(0.30 0.10 55);
+  --plasma-stop-1: oklch(0.44 0.14 50);
+  --plasma-stop-2: oklch(0.58 0.16 45);
+  --plasma-glow: oklch(0.52 0.12 50 / 0.25);
+  --plasma-btn-shadow: 0 0 0 1px oklch(0.44 0.12 50 / 0.40), 0 4px 14px oklch(0.38 0.10 50 / 0.22), 0 0 16px var(--plasma-glow);
+  --plasma-nav-active-shadow: 0 2px 10px oklch(0.44 0.12 50 / 0.25);
 }
 
 .dark {
@@ -233,13 +506,8 @@ body {
 
 /* ── Light mode premium sidebar ── */
 :root .plasma-sidebar {
-  background: linear-gradient(
-    175deg,
-    oklch(0.965 0.032 308) 0%,
-    oklch(0.948 0.045 292) 40%,
-    oklch(0.955 0.035 318) 100%
-  );
-  border-right: 1px solid oklch(0.89 0.048 300 / 0.8) !important;
+  background: linear-gradient(175deg, hsl(var(--sidebar)) 0%, hsl(var(--sidebar-accent)) 40%, hsl(var(--sidebar-muted)) 100%);
+  border-right: 1px solid hsl(var(--sidebar-border)) !important;
 }
 .dark .plasma-sidebar {
   background: linear-gradient(
@@ -259,7 +527,7 @@ body {
   left: 0;
   right: 0;
   height: 180px;
-  background: radial-gradient(ellipse 80% 120% at 50% -30%, oklch(0.88 0.08 310 / 0.35) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 120% at 50% -30%, hsl(var(--primary) / 0.08) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -280,7 +548,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: oklch(0.38 0.18 308);
+  color: hsl(var(--primary));
   padding: 0 8px;
   margin-bottom: 6px;
 }
@@ -290,8 +558,8 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, oklch(0.45 0.24 308), oklch(0.52 0.28 340));
-  box-shadow: 0 0 6px oklch(0.50 0.26 316 / 0.40);
+  background: linear-gradient(135deg, var(--plasma-stop-1), var(--plasma-stop-2));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.30);
   flex-shrink: 0;
 }
 .dark .sidebar-section-label {
@@ -306,7 +574,7 @@ body {
 .sidebar-divider {
   height: 1px;
   margin: 12px 16px;
-  background: linear-gradient(90deg, transparent 0%, oklch(0.82 0.06 310 / 0.5) 30%, oklch(0.82 0.06 310 / 0.5) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--sidebar-border) / 0.5) 30%, hsl(var(--sidebar-border) / 0.5) 70%, transparent 100%);
 }
 .dark .sidebar-divider {
   background: linear-gradient(90deg, transparent 0%, oklch(0.25 0.08 310 / 0.5) 30%, oklch(0.25 0.08 310 / 0.5) 70%, transparent 100%);
@@ -314,8 +582,8 @@ body {
 
 /* ── Sidebar nav item hover glow ── */
 :root .sidebar-nav-hover:hover:not(.plasma-nav-active) {
-  background: linear-gradient(90deg, oklch(0.94 0.035 310 / 0.7) 0%, oklch(0.95 0.02 290 / 0.4) 100%);
-  color: oklch(0.22 0.10 310);
+  background: linear-gradient(90deg, hsl(var(--sidebar-accent) / 0.7) 0%, hsl(var(--sidebar-muted) / 0.5) 100%);
+  color: hsl(var(--sidebar-foreground));
 }
 .dark .sidebar-nav-hover:hover:not(.plasma-nav-active) {
   background: linear-gradient(90deg, oklch(0.16 0.06 310 / 0.5) 0%, oklch(0.14 0.04 290 / 0.3) 100%);
@@ -324,10 +592,10 @@ body {
 
 /* ── Sidebar project badge ── */
 .sidebar-project-badge {
-  background: linear-gradient(135deg, oklch(0.92 0.05 310) 0%, oklch(0.90 0.06 290) 100%);
-  color: oklch(0.38 0.18 308);
+  background: linear-gradient(135deg, hsl(var(--sidebar-accent)) 0%, hsl(var(--sidebar-muted)) 100%);
+  color: hsl(var(--primary));
   font-weight: 800;
-  border: 1px solid oklch(0.86 0.06 300 / 0.6);
+  border: 1px solid hsl(var(--sidebar-border) / 0.6);
 }
 .dark .sidebar-project-badge {
   background: linear-gradient(135deg, oklch(0.18 0.06 310) 0%, oklch(0.16 0.07 290) 100%);
@@ -337,8 +605,8 @@ body {
 
 /* ── Sidebar user card ── */
 .sidebar-user-card {
-  background: linear-gradient(135deg, oklch(0.96 0.028 305 / 0.6) 0%, oklch(0.97 0.015 285 / 0.4) 100%);
-  border-top: 1px solid oklch(0.90 0.04 300 / 0.5);
+  background: linear-gradient(135deg, hsl(var(--sidebar) / 0.6) 0%, hsl(var(--sidebar-muted) / 0.4) 100%);
+  border-top: 1px solid hsl(var(--sidebar-border) / 0.45);
 }
 .dark .sidebar-user-card {
   background: linear-gradient(135deg, oklch(0.12 0.04 310 / 0.5) 0%, oklch(0.11 0.03 290 / 0.4) 100%);
@@ -360,9 +628,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: linear-gradient(90deg, oklch(0.955 0.030 310 / 0.7) 0%, oklch(0.965 0.018 285 / 0.5) 100%);
+  background: linear-gradient(90deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--accent) / 0.5) 100%);
   border-bottom: 1px solid hsl(var(--border) / 0.6);
-  color: oklch(0.38 0.17 308);
+  color: hsl(var(--primary));
 }
 .dark .issue-panel-section-header {
   background: linear-gradient(90deg, oklch(0.14 0.06 310 / 0.6) 0%, oklch(0.12 0.04 285 / 0.4) 100%);
@@ -382,7 +650,7 @@ body {
 
 /* ── Logo "upscale" gradient text ── */
 .logo-upscale-text {
-  background: linear-gradient(135deg, oklch(0.45 0.25 308) 0%, oklch(0.52 0.28 340) 100%);
+  background: linear-gradient(135deg, var(--plasma-stop-1) 0%, var(--plasma-stop-2) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -402,13 +670,13 @@ body {
 /* ── Light mode card shadow — white cards lift off the tinted background ── */
 :root .card-elevated {
   box-shadow:
-    0 1px 3px oklch(0.55 0.10 280 / 0.08),
-    0 4px 12px oklch(0.55 0.10 280 / 0.06);
+    0 1px 3px hsl(var(--primary) / 0.06),
+    0 4px 12px hsl(var(--primary) / 0.04);
 }
 :root .card-elevated:hover {
   box-shadow:
-    0 2px 6px oklch(0.55 0.10 280 / 0.10),
-    0 8px 24px oklch(0.55 0.10 280 / 0.09);
+    0 2px 6px hsl(var(--primary) / 0.08),
+    0 8px 24px hsl(var(--primary) / 0.06);
   transform: translateY(-1px);
 }
 .dark .card-elevated {
@@ -424,8 +692,8 @@ body {
   transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 .plasma-card-hover:hover {
-  box-shadow: 0 0 0 1px oklch(0.80 0.08 315 / 0.15), 0 4px 16px oklch(0.80 0.12 310 / 0.08);
-  border-color: oklch(0.80 0.08 315 / 0.25);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.10), 0 4px 16px hsl(var(--primary) / 0.06);
+  border-color: hsl(var(--primary) / 0.18);
 }
 .dark .plasma-card-hover:hover {
   box-shadow: 0 0 0 1px oklch(0.45 0.18 315 / 0.20), 0 4px 16px oklch(0.35 0.20 310 / 0.12);
@@ -434,13 +702,13 @@ body {
 
 /* ── Settings/project sidebar active item ── */
 .plasma-settings-active {
-  background: linear-gradient(135deg, oklch(0.94 0.04 315 / 0.6) 0%, oklch(0.95 0.03 280 / 0.5) 100%);
-  color: oklch(0.30 0.18 315);
+  background: linear-gradient(135deg, hsl(var(--accent) / 0.6) 0%, hsl(var(--secondary) / 0.5) 100%);
+  color: hsl(var(--primary));
   font-weight: 600;
   border-radius: 0.5rem;
 }
 .plasma-settings-active svg {
-  color: oklch(0.45 0.20 315);
+  color: hsl(var(--primary));
 }
 .dark .plasma-settings-active {
   background: linear-gradient(135deg, oklch(0.22 0.10 315 / 0.5) 0%, oklch(0.25 0.12 280 / 0.4) 100%);
@@ -452,9 +720,9 @@ body {
 
 /* CSS custom properties for recharts dark mode */
 :root {
-  --tooltip-bg: #fff;
-  --tooltip-fg: #111827;
-  --tooltip-border: #e5e7eb;
+  --tooltip-bg: #ffffff;
+  --tooltip-fg: #1a2b2b;
+  --tooltip-border: #dde9e8;
 }
 
 .dark {
@@ -482,12 +750,12 @@ html.theme-transition *::after {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #c8d8d6;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #a3b8b5;
 }
 
 /* Dark mode scrollbar */
@@ -512,12 +780,12 @@ html.theme-transition *::after {
   bottom: 0;
   z-index: 0;
   pointer-events: none;
-  /* Light mode: warm lavender plasma wash — visible but never distracting */
+  /* Light mode: gentle brand wash — adapts to color theme */
   background:
-    radial-gradient(ellipse 65% 55% at 0% 0%,      oklch(0.88 0.10 310 / 0.55) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 60% at 100% 100%,   oklch(0.86 0.12 280 / 0.40) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 45% at 78% 5%,      oklch(0.90 0.08 350 / 0.28) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 35% at 15% 85%,     oklch(0.89 0.09 300 / 0.22) 0%, transparent 70%);
+    radial-gradient(ellipse 65% 55% at 0% 0%,      hsl(var(--primary) / 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 60% at 100% 100%,   hsl(var(--accent) / 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 45% at 78% 5%,      hsl(var(--primary) / 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 85%,     hsl(var(--accent) / 0.06) 0%, transparent 70%);
   filter: blur(72px);
 }
 .dark .plasma-main-content::before {
@@ -849,7 +1117,7 @@ html.theme-transition *::after {
 /* Blockquote */
 .rich-text-editor-content .ProseMirror blockquote,
 .rich-text-content blockquote {
-  border-left: 3px solid #d1d5db;
+  border-left: 3px solid #b2d8d4;
   padding-left: 1em;
   margin: 0.5em 0;
   color: #6b7280;
@@ -859,13 +1127,13 @@ html.theme-transition *::after {
 /* Inline code */
 .rich-text-editor-content .ProseMirror code,
 .rich-text-content code {
-  background-color: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background-color: #ecf5f4;
+  border: 1px solid #d5e5e3;
   border-radius: 3px;
   padding: 0.1em 0.35em;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.8125rem;
-  color: #dc2626;
+  color: #0f766e;
 }
 
 /* Code block */
@@ -891,7 +1159,7 @@ html.theme-transition *::after {
 .rich-text-editor-content .ProseMirror hr,
 .rich-text-content hr {
   border: none;
-  border-top: 2px solid #e5e7eb;
+  border-top: 2px solid #d5e5e3;
   margin: 0.75em 0;
 }
 
@@ -913,9 +1181,9 @@ html.theme-transition *::after {
 /* @Mentions */
 .rich-text-editor-content .ProseMirror .mention,
 .rich-text-content .mention {
-  background-color: #dbeafe;
+  background-color: #e0f2f1;
   border-radius: 4px;
-  color: #1d4ed8;
+  color: #0f766e;
   font-weight: 500;
   padding: 0.05em 0.3em;
   white-space: nowrap;
@@ -944,7 +1212,7 @@ html.theme-transition *::after {
 
 /* Selection highlight in editor */
 .rich-text-editor-content .ProseMirror ::selection {
-  background-color: #bfdbfe;
+  background-color: #b2dfdb;
 }
 
 /* Dark mode adjustments */
@@ -1020,7 +1288,7 @@ html.theme-transition *::after {
 .page-editor-content .ProseMirror table td,
 .rich-text-content table th,
 .rich-text-content table td {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d5e5e3;
   padding: 6px 10px;
   vertical-align: top;
   min-width: 80px;
@@ -1030,7 +1298,7 @@ html.theme-transition *::after {
 .rich-text-editor-content .ProseMirror table th,
 .page-editor-content .ProseMirror table th,
 .rich-text-content table th {
-  background-color: #f9fafb;
+  background-color: #f5fafa;
   font-weight: 600;
   text-align: left;
 }
@@ -1038,7 +1306,7 @@ html.theme-transition *::after {
 /* Selected cell highlight */
 .rich-text-editor-content .ProseMirror .selectedCell::after,
 .page-editor-content .ProseMirror .selectedCell::after {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(15, 118, 110, 0.10);
   content: '';
   inset: 0;
   pointer-events: none;
@@ -1049,7 +1317,7 @@ html.theme-transition *::after {
 /* Column resize handle */
 .rich-text-editor-content .ProseMirror .column-resize-handle,
 .page-editor-content .ProseMirror .column-resize-handle {
-  background-color: #3b82f6;
+  background-color: #0d9488;
   bottom: -2px;
   pointer-events: none;
   position: absolute;

@@ -16,9 +16,15 @@ import {
   Crown,
   Shield,
   User2,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+  Check,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
+import { useThemeStore, COLOR_THEMES, type ColorTheme } from '@/store/theme.store'
 import { useMe, useSetup2FA, useConfirm2FA, useDisable2FA, useRegenerateBackupCodes } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -551,11 +557,169 @@ function SecurityTab() {
   )
 }
 
+// ─── Appearance Tab ──────────────────────────────────────────────────────────
+
+function AppearanceTab() {
+  const { theme, setTheme, colorTheme, setColorTheme, resolved } = useThemeStore()
+
+  const modeOptions: { id: 'light' | 'dark' | 'system'; label: string; icon: typeof Sun; description: string }[] = [
+    { id: 'light', label: 'Light', icon: Sun, description: 'Clean & bright' },
+    { id: 'dark', label: 'Dark', icon: Moon, description: 'Easy on the eyes' },
+    { id: 'system', label: 'System', icon: Monitor, description: 'Match your OS' },
+  ]
+
+  return (
+    <>
+      <SectionHeader title="Appearance" description="Customize the look and feel of your workspace" />
+      <div className="space-y-8 max-w-2xl">
+        {/* Mode selector */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-3">Mode</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {modeOptions.map(({ id, label, icon: Icon, description }) => (
+              <button
+                key={id}
+                onClick={() => setTheme(id)}
+                className={cn(
+                  'relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer',
+                  theme === id
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-primary/30 hover:bg-accent/50',
+                )}
+              >
+                {theme === id && (
+                  <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+                <div className={cn(
+                  'h-10 w-10 rounded-lg flex items-center justify-center',
+                  theme === id ? 'bg-primary/10' : 'bg-muted',
+                )}>
+                  <Icon className={cn('h-5 w-5', theme === id ? 'text-primary' : 'text-muted-foreground')} />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Color theme selector */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Light Theme</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {resolved === 'dark' ? 'Preview shows selected theme (visible in light mode)' : 'Active color scheme for light mode'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {COLOR_THEMES.map((t) => (
+              <ThemeCard
+                key={t.id}
+                theme={t}
+                isActive={colorTheme === t.id}
+                onSelect={() => setColorTheme(t.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function ThemeCard({
+  theme,
+  isActive,
+  onSelect,
+}: {
+  theme: (typeof COLOR_THEMES)[number]
+  isActive: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'relative text-left rounded-xl border-2 overflow-hidden transition-all duration-200 cursor-pointer group',
+        isActive
+          ? 'border-primary shadow-md ring-1 ring-primary/20'
+          : 'border-border hover:border-primary/30 hover:shadow-sm',
+      )}
+    >
+      {isActive && (
+        <div className="absolute top-2.5 right-2.5 z-10 h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm">
+          <Check className="h-3 w-3 text-primary-foreground" />
+        </div>
+      )}
+
+      {/* Mini preview */}
+      <div className="h-20 flex overflow-hidden">
+        {/* Mini sidebar */}
+        <div
+          className="w-16 flex flex-col gap-1 p-2 border-r"
+          style={{ background: `linear-gradient(175deg, ${theme.preview.primary}08, ${theme.preview.primary}12)`, borderColor: `${theme.preview.primary}20` }}
+        >
+          <div className="h-2 w-10 rounded-sm" style={{ background: `${theme.preview.primary}20` }} />
+          <div className="h-4 rounded-sm" style={{ background: `linear-gradient(135deg, ${theme.preview.primary}, ${theme.preview.secondary})` }} />
+          <div className="h-2 w-8 rounded-sm" style={{ background: `${theme.preview.primary}15` }} />
+          <div className="h-2 w-9 rounded-sm" style={{ background: `${theme.preview.primary}15` }} />
+        </div>
+        {/* Mini main */}
+        <div className="flex-1 p-2 flex flex-col gap-1" style={{ background: `${theme.preview.primary}05` }}>
+          <div className="flex items-center justify-between">
+            <div className="h-2 w-14 rounded-sm" style={{ background: `${theme.preview.primary}25` }} />
+            <div className="h-3 w-10 rounded-sm" style={{ background: `linear-gradient(135deg, ${theme.preview.primary}, ${theme.preview.secondary})` }} />
+          </div>
+          <div className="flex gap-1 flex-1">
+            <div className="flex-1 rounded-sm border p-1" style={{ borderColor: `${theme.preview.primary}18`, background: 'white' }}>
+              <div className="h-1.5 w-full rounded-sm mb-1" style={{ background: `${theme.preview.primary}12` }} />
+              <div className="flex gap-1">
+                <div className="h-2 w-6 rounded-sm" style={{ background: `${theme.preview.secondary}20` }} />
+                <div className="h-2 w-2 rounded-full" style={{ background: `${theme.preview.accent}` }} />
+              </div>
+            </div>
+            <div className="flex-1 rounded-sm border p-1" style={{ borderColor: `${theme.preview.primary}18`, background: 'white' }}>
+              <div className="h-1.5 w-full rounded-sm mb-1" style={{ background: `${theme.preview.primary}12` }} />
+              <div className="flex gap-1">
+                <div className="h-2 w-6 rounded-sm" style={{ background: `${theme.preview.secondary}20` }} />
+                <div className="h-2 w-2 rounded-full" style={{ background: `${theme.preview.primary}` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Label */}
+      <div className="px-3 py-2.5 border-t" style={{ borderColor: isActive ? undefined : `${theme.preview.primary}12` }}>
+        <div className="flex items-center gap-2">
+          {/* Color dots */}
+          <div className="flex -space-x-1">
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm" style={{ background: theme.preview.primary }} />
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm" style={{ background: theme.preview.secondary }} />
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm" style={{ background: theme.preview.accent }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground truncate">{theme.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">{theme.description}</p>
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
   { id: 'profile', label: 'Profile', description: 'Avatar, name & preferences', icon: User },
   { id: 'account', label: 'Account', description: 'Password & credentials', icon: KeyRound },
+  { id: 'appearance', label: 'Appearance', description: 'Themes & color schemes', icon: Palette },
   { id: 'security', label: 'Security', description: 'Two-factor authentication', icon: ShieldCheck },
 ]
 
@@ -587,7 +751,7 @@ export function UserSettingsPage() {
 
       <div className="flex-1 overflow-auto min-h-0 bg-background">
         {/* Full-width gradient hero banner */}
-        <div className="h-32 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 relative overflow-hidden">
+        <div className="h-32 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--plasma-stop-0), var(--plasma-stop-1) 50%, var(--plasma-stop-2))' }}>
           <div className="absolute inset-0 bg-black/5" />
           <div
             className="absolute inset-0"
@@ -701,6 +865,7 @@ export function UserSettingsPage() {
           <div className="flex-1 min-w-0 bg-card rounded-2xl border border-border shadow-sm p-6">
             {activeTab === 'profile' && <ProfileTab />}
             {activeTab === 'account' && <AccountTab />}
+            {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'security' && <SecurityTab />}
             {activeTab === 'sso' && isOrgAdmin && (
               <>

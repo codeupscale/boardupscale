@@ -31,8 +31,8 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 const ICON_STYLE = {
-  background: 'linear-gradient(135deg, oklch(0.25 0.20 308) 0%, oklch(0.38 0.24 340) 100%)',
-  boxShadow: '0 0 18px oklch(0.40 0.22 315 / 0.40)',
+  background: 'linear-gradient(135deg, oklch(0.28 0.18 275) 0%, oklch(0.40 0.22 290) 100%)',
+  boxShadow: '0 0 18px oklch(0.40 0.20 280 / 0.35)',
 }
 
 export function ResetPasswordPage() {
