@@ -526,6 +526,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
             onChange={(fieldId, value) =>
               setCustomFieldValues((prev) => ({ ...prev, [fieldId]: value }))
             }
+            projectId={projectId}
           />
         </div>
       )}

@@ -258,6 +258,13 @@ export class IssuesService {
       }
     }
 
+    if (dto.assigneeId) {
+      const isAssigneeMember = await this.projectsService.isMember(dto.projectId, dto.assigneeId);
+      if (!isAssigneeMember) {
+        throw new BadRequestException('Assignee is not a member of this project');
+      }
+    }
+
     const issueNumber = await this.projectsService.getNextIssueNumber(dto.projectId);
     const key = `${project.key}-${issueNumber}`;
 
@@ -361,6 +368,13 @@ export class IssuesService {
       assigneeId: issue.assignee?.displayName || null,
       sprintId: issue.sprint?.name || null,
     };
+
+    if (dto.assigneeId) {
+      const isAssigneeMember = await this.projectsService.isMember(issue.projectId, dto.assigneeId);
+      if (!isAssigneeMember) {
+        throw new BadRequestException('Assignee is not a member of this project');
+      }
+    }
 
     Object.assign(issue, dto);
 

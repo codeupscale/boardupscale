@@ -2,12 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Download, Bookmark, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useProject } from '@/hooks/useProjects'
+import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
-import { useUsers } from '@/hooks/useUsers'
 import { useSelectionStore } from '@/store/selection.store'
 import { IssueType, IssuePriority } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -60,8 +59,8 @@ export function ProjectIssuesPage() {
   const projects = projectsResult?.data
   const { data: board } = useBoard(projectKey!)
   const { data: sprints } = useSprints(projectKey!)
-  const { data: usersResult } = useUsers()
-  const users = usersResult?.data
+  const { data: projectMembers } = useProjectMembers(projectKey!)
+  const users = projectMembers?.map((m) => m.user)
   const { data: issuesData, isLoading } = useIssues({
     projectId: projectKey!,
     search: search || undefined,
