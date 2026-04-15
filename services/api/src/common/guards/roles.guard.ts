@@ -50,7 +50,6 @@ export class RolesGuard implements CanActivate {
       // Extract projectId from route params, query, or body
       const projectId =
         request.params?.projectId ||
-        request.params?.id ||
         request.query?.projectId ||
         request.body?.projectId;
 

@@ -96,6 +96,7 @@ export class AutomationController {
   }
 
   @Get('automations/:id/logs')
+  @RequirePermission('automation', 'read')
   @ApiOperation({ summary: 'Get execution logs for an automation rule' })
   async getLogs(
     @Param('id', ParseUUIDPipe) id: string,
