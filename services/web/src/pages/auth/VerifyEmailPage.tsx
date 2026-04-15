@@ -70,8 +70,8 @@ export function VerifyEmailPage() {
               <div
                 className="flex items-center justify-center h-16 w-16 rounded-2xl mx-auto mb-6"
                 style={{
-                  background: 'linear-gradient(135deg, oklch(0.22 0.18 308) 0%, oklch(0.35 0.22 340) 100%)',
-                  boxShadow: '0 0 24px oklch(0.40 0.20 315 / 0.40)',
+                  background: 'linear-gradient(135deg, oklch(0.25 0.16 275) 0%, oklch(0.38 0.20 290) 100%)',
+                  boxShadow: '0 0 24px oklch(0.40 0.18 280 / 0.35)',
                 }}
               >
                 <Mail className="h-8 w-8 text-white/80" />
