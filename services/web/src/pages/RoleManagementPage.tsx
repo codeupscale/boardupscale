@@ -199,7 +199,7 @@ export function RoleManagementPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 bg-background">
+      <div className="flex-1 overflow-auto min-h-0 p-6 bg-background">
         {roles.length === 0 ? (
           <EmptyState
             icon={<Shield className="h-12 w-12" />}

@@ -313,7 +313,7 @@ export function ProjectCalendarPage() {
       {/* Body: calendar + optional side panel */}
       <div className="flex flex-1 overflow-hidden">
         {/* Calendar area */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto min-h-0 p-4">
           {issuesLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">Loading issues…</div>
           ) : (

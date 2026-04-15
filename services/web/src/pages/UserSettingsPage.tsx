@@ -585,7 +585,7 @@ export function UserSettingsPage() {
         breadcrumbs={[{ label: 'Settings', href: '/settings' }, { label: 'Account' }]}
       />
 
-      <div className="flex-1 overflow-auto bg-background">
+      <div className="flex-1 overflow-auto min-h-0 bg-background">
         {/* Full-width gradient hero banner */}
         <div className="h-32 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/5" />

@@ -154,7 +154,7 @@ export function ProjectTrashPage() {
           { label: 'Trash' },
         ]}
       />
-      <div className="p-6">
+      <div className="p-6 flex-1 overflow-y-auto min-h-0">
         <TrashContent projectKey={projectKey} />
       </div>
     </div>

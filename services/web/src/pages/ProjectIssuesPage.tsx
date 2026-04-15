@@ -205,7 +205,7 @@ export function ProjectIssuesPage() {
 
       <ProjectTabNav projectKey={projectKey!} />
 
-      <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+      <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
         {/* Filters card */}
         <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3 shadow-sm">
           {/* Stats strip */}

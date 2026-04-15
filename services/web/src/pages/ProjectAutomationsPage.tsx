@@ -427,7 +427,7 @@ export function ProjectAutomationsPage() {
           { label: 'Automations' },
         ]}
       />
-      <div className="p-6">
+      <div className="p-6 flex-1 overflow-y-auto min-h-0">
         <AutomationsContent projectKey={projectKey} />
       </div>
     </div>

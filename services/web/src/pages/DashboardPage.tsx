@@ -326,7 +326,7 @@ export function DashboardPage() {
         subtitle={t('dashboard.hereIsWhatsHappening', { date: formatDate(new Date()) })}
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard

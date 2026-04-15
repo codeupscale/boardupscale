@@ -236,7 +236,7 @@ export function ProjectSettingsPage() {
         </div>
 
         {/* Content panel */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto min-h-0 p-6">
 
           {/* General */}
           {activeTab === 'general' && project && (

@@ -203,7 +203,7 @@ export function ProjectTimelinePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto min-h-0">
           <div style={{ minWidth: LABEL_W + totalWidth }}>
             {/* STICKY HEADER */}
             <div

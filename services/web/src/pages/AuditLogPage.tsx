@@ -93,7 +93,7 @@ export function AuditLogPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         {isLoading ? (
           <TableSkeleton rows={10} showFilters={false} />
         ) : logs.length === 0 ? (

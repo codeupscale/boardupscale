@@ -420,7 +420,7 @@ export function TeamPage() {
         }
       />
 
-      <div className="flex-1 overflow-auto p-6 space-y-6">
+      <div className="flex-1 overflow-auto min-h-0 p-6 space-y-6">
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">

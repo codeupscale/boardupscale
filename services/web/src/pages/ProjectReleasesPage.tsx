@@ -209,7 +209,7 @@ export function ProjectReleasesPage() {
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-8">
         {/* Unreleased */}
         {unreleased.length > 0 && (
           <div>

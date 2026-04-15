@@ -447,7 +447,7 @@ export function IssueDetailPage() {
         {/* ================================================================ */}
         {/*  Main Content Area                                               */}
         {/* ================================================================ */}
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6 lg:p-8 space-y-8">
           {/* Title Section */}
           <div>
             <div className="flex items-center gap-2.5 mb-3">

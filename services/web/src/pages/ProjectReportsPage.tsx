@@ -172,7 +172,7 @@ export function ProjectReportsPage() {
         </div>
 
         {/* Right panel — chart */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto min-h-0 p-6">
           {/* Controls row */}
           <div className="flex items-end gap-4 mb-6">
             {/* Sprint selector for burndown, burnup, and sprint report */}

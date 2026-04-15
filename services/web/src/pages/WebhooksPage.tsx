@@ -318,7 +318,7 @@ export function WebhooksPage() {
             { label: 'Webhooks' },
           ]}
         />
-        <div className="p-6 max-w-4xl">
+        <div className="p-6 max-w-4xl flex-1 overflow-y-auto min-h-0">
           <DeliveryHistory
             webhook={deliveryTarget}
             onBack={() => setDeliveryTarget(null)}
@@ -364,7 +364,7 @@ export function WebhooksPage() {
         ]}
       />
 
-      <div className="p-6 max-w-4xl">
+      <div className="p-6 max-w-4xl flex-1 overflow-y-auto min-h-0">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">Webhooks</h2>

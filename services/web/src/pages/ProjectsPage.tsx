@@ -83,7 +83,7 @@ export function ProjectsPage() {
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const isEmpty = !isLoading && projects.length === 0
@@ -102,7 +102,7 @@ export function ProjectsPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
         {/* Hero stats bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard

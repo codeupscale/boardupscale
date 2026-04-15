@@ -88,7 +88,7 @@ export function MyIssuesPage() {
     <div className="flex flex-col h-full">
       <PageHeader title={t('nav.myIssues')} />
 
-      <div className="p-6 lg:p-8 space-y-5 max-w-[1400px] mx-auto w-full">
+      <div className="p-6 lg:p-8 space-y-5 max-w-[1400px] mx-auto w-full flex-1 overflow-y-auto min-h-0">
         {/* Stats Row */}
         <div className="flex flex-wrap gap-3">
           <StatPill

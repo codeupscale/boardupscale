@@ -882,7 +882,7 @@ export function ProjectBacklogPage() {
       {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade>
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
           {/* Summary Bar */}
           {activeSprints.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
