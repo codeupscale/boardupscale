@@ -16,6 +16,7 @@ interface CustomFieldsFormProps {
   values: CustomFieldValue[]
   onChange: (fieldId: string, value: any) => void
   readOnly?: boolean
+  projectId?: string
 }
 
 function CustomFieldInput({
@@ -23,11 +24,13 @@ function CustomFieldInput({
   value,
   onChange,
   readOnly,
+  projectId,
 }: {
   definition: CustomFieldDefinition
   value: any
   onChange: (value: any) => void
   readOnly?: boolean
+  projectId?: string
 }) {
   switch (definition.fieldType) {
     case 'text':
@@ -175,6 +178,7 @@ function CustomFieldInput({
           value={value || null}
           onChange={(id) => onChange(id)}
           placeholder="Select user..."
+          projectId={projectId}
         />
       )
 
@@ -194,6 +198,7 @@ export function CustomFieldsForm({
   values,
   onChange,
   readOnly,
+  projectId,
 }: CustomFieldsFormProps) {
   if (!definitions || definitions.length === 0) return null
 
@@ -215,6 +220,7 @@ export function CustomFieldsForm({
             value={getFieldValue(def.id)}
             onChange={(val) => onChange(def.id, val)}
             readOnly={readOnly}
+            projectId={projectId}
           />
         </div>
       ))}

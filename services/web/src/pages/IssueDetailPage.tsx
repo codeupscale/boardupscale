@@ -806,6 +806,7 @@ export function IssueDetailPage() {
                   onChange={canEdit ? (id) =>
                     updateIssue.mutate({ id: issue.id, assigneeId: id })
                   : undefined}
+                  projectId={issue.projectId}
                 />
               </SidebarField>
 
@@ -1153,6 +1154,7 @@ export function IssueDetailPage() {
                         values: [{ fieldId, value }],
                       })
                     }}
+                    projectId={issue.projectId}
                   />
                 </div>
               </div>

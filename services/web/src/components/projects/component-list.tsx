@@ -152,7 +152,7 @@ export function ComponentList({ projectId }: ComponentListProps) {
               <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Lead (optional)
               </label>
-              <UserSelect value={leadId} onChange={setLeadId} placeholder="Select lead..." />
+              <UserSelect value={leadId} onChange={setLeadId} placeholder="Select lead..." projectId={projectId} />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowDialog(false)}>

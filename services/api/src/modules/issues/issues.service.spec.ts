@@ -45,6 +45,7 @@ describe('IssuesService', () => {
     statusRepo = createMockRepository();
     workLogRepo = createMockRepository();
     projectsService = createMockProjectsService();
+    projectsService.isMember.mockResolvedValue(true);
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
     emailService = {
