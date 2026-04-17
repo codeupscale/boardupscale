@@ -197,7 +197,7 @@ export function JiraMigrationPage() {
   const isWideStep = WIDE_STEPS.includes(step)
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
+    <div className="h-full overflow-y-auto bg-background py-8 px-4 sm:px-6">
       <div className={cn('mx-auto transition-all duration-300', isWideStep ? 'max-w-6xl' : 'max-w-2xl')}>
         {/* Header */}
         <div className="text-center mb-8">

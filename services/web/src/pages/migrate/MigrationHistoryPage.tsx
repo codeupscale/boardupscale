@@ -159,7 +159,8 @@ export function MigrationHistoryPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Migration History</h1>
@@ -234,6 +235,7 @@ export function MigrationHistoryPage() {
           </Button>
         </div>
       )}
+      </div>
     </div>
   )
 }
