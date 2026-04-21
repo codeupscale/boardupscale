@@ -73,7 +73,8 @@ export class OrganizationsService {
         users.push(u);
       }
     }
-    return users;
+    // Exclude deactivated users — isActive: false means removed from org
+    return users.filter((u) => u.isActive !== false);
   }
 
   async inviteMember(
