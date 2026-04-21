@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -129,6 +131,35 @@ export class OrganizationsService {
       );
 
       return existingUser;
+    }
+
+    // Guard: if org has Jira placeholder users (synthetic emails), the admin must either
+    // select a placeholder to merge with OR explicitly pass forceCreate:true.
+    // This prevents silently creating a fresh user that is disconnected from Jira history.
+    if (!dto.forceCreate) {
+      const placeholders = await this.userRepository.find({
+        where: { organizationId } as any,
+      });
+      const syntheticPlaceholders = placeholders.filter((u) =>
+        u.email.endsWith('@migrated.jira.local'),
+      );
+      if (syntheticPlaceholders.length > 0) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            code: 'JIRA_MERGE_REQUIRED',
+            message:
+              'This organisation has Jira placeholder users. Select a placeholder to merge with, ' +
+              'or pass forceCreate:true to add a genuinely new member.',
+            placeholders: syntheticPlaceholders.map((u) => ({
+              id: u.id,
+              displayName: u.displayName,
+              email: u.email,
+            })),
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     // Create user without password (invitation pending)

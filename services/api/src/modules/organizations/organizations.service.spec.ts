@@ -132,6 +132,7 @@ describe('OrganizationsService', () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
         .mockResolvedValueOnce(mockUser({ id: inviterId })) // inviter lookup (generateAndSendInvitation)
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
       orgRepo.findOne.mockResolvedValue(mockOrganization());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ email: 'invited@example.com', role: 'member', isActive: false });
@@ -193,6 +194,7 @@ describe('OrganizationsService', () => {
       userRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockUser({ id: inviterId }));
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
       orgRepo.findOne.mockResolvedValue(mockOrganization());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ role: 'member' });
@@ -205,6 +207,89 @@ describe('OrganizationsService', () => {
       expect(userRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ role: 'member' }),
       );
+    });
+
+    it('should return 409 JIRA_MERGE_REQUIRED when org has Jira placeholders and forceCreate is not set', async () => {
+      const placeholder = mockUser({
+        id: 'placeholder-id',
+        email: 'jira-abc@migrated.jira.local',
+        displayName: 'Shujaat Ali',
+      });
+
+      // No user exists with the invited email
+      userRepo.findOne.mockResolvedValueOnce(null);
+      // Synthetic placeholders exist in the org
+      userRepo.find.mockResolvedValueOnce([placeholder]);
+
+      await expect(
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'shujaat@example.com', role: 'member' }, inviterId),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: expect.objectContaining({ code: 'JIRA_MERGE_REQUIRED' }),
+      });
+    });
+
+    it('should create a new user when forceCreate is true even with Jira placeholders', async () => {
+      const placeholder = mockUser({
+        id: 'placeholder-id',
+        email: 'jira-abc@migrated.jira.local',
+        displayName: 'Shujaat Ali',
+      });
+
+      userRepo.findOne
+        .mockResolvedValueOnce(null)   // email check — no existing user
+        .mockResolvedValueOnce(mockUser({ id: inviterId })); // inviter lookup in generateAndSendInvitation
+      userRepo.find.mockResolvedValueOnce([placeholder]); // synthetic placeholders
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      const newUser = mockUser({ email: 'shujaat@example.com', isActive: false });
+      userRepo.create.mockReturnValue(newUser);
+      userRepo.save.mockResolvedValue(newUser);
+      const qb = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({}),
+      };
+      orgMemberRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      const result = await service.inviteMember(
+        TEST_IDS.ORG_ID,
+        { email: 'shujaat@example.com', role: 'member', forceCreate: true },
+        inviterId,
+      );
+
+      expect(result).toEqual(newUser);
+      expect(userRepo.create).toHaveBeenCalled();
+    });
+
+    it('should proceed normally when no Jira placeholders exist', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce(null)  // email check
+        .mockResolvedValueOnce(mockUser({ id: inviterId })); // inviter
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      const newUser = mockUser({ email: 'fresh@example.com', isActive: false });
+      userRepo.create.mockReturnValue(newUser);
+      userRepo.save.mockResolvedValue(newUser);
+      const qb = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({}),
+      };
+      orgMemberRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      const result = await service.inviteMember(
+        TEST_IDS.ORG_ID,
+        { email: 'fresh@example.com', role: 'member' },
+        inviterId,
+      );
+
+      expect(result).toEqual(newUser);
     });
   });
 
