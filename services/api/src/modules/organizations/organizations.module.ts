@@ -9,6 +9,7 @@ import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
+import { EventsModule } from '../../websocket/events.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { TelemetryModule } from '../telemetry/telemetry.module';
     NotificationsModule,
     PermissionsModule,
     TelemetryModule,
+    EventsModule,
   ],
   controllers: [OrganizationsController],
   providers: [OrganizationsService, OrganizationMembersService],
