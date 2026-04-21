@@ -113,7 +113,7 @@ function SystemPanel({ metrics, isActive }: { metrics: SystemMetrics | undefined
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+      <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
         <Activity className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">System Utilization</h3>
         <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -167,28 +167,28 @@ function SystemPanel({ metrics, isActive }: { metrics: SystemMetrics | undefined
             <p className="text-xs font-semibold text-foreground">
               {metrics.system.loadAverage[0].toFixed(2)}
             </p>
-            <p className="text-[10px] text-muted-foreground">Load (1m)</p>
+            <p className="text-[10px] text-muted-foreground" title="1-minute load average">Load (1m)</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <HardDrive className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {formatBytes(metrics.process.rss)}
             </p>
-            <p className="text-[10px] text-muted-foreground">Process RSS</p>
+            <p className="text-[10px] text-muted-foreground" title="Process resident set size">Proc Memory</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <Database className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {metrics.database.active}/{metrics.database.total}
             </p>
-            <p className="text-[10px] text-muted-foreground">DB Conns</p>
+            <p className="text-[10px] text-muted-foreground" title="Active / total database connections">DB Pool</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <Activity className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {metrics.queue.active} / {metrics.queue.waiting}
             </p>
-            <p className="text-[10px] text-muted-foreground">Queue Act/Wait</p>
+            <p className="text-[10px] text-muted-foreground" title="Active / waiting queue jobs">Queue Jobs</p>
           </div>
         </div>
       </div>
@@ -209,40 +209,43 @@ function ThroughputPanel({ metrics, liveCounts, isActive }: {
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+      <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
         <Gauge className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Throughput & ETA</h3>
       </div>
       <div className="p-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Elapsed */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Timer className="h-4 w-4 mx-auto mb-1.5 text-blue-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate" title={formatDurationShort(throughput.elapsedSeconds)}>
               {formatDurationShort(throughput.elapsedSeconds)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Elapsed</p>
           </div>
           {/* ETA */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Clock className="h-4 w-4 mx-auto mb-1.5 text-amber-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p
+              className={cn('font-bold text-foreground truncate', formatEta(throughput.etaMinutes).length > 6 ? 'text-xs' : 'text-sm')}
+              title={formatEta(throughput.etaMinutes)}
+            >
               {formatEta(throughput.etaMinutes)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Remaining</p>
           </div>
           {/* Issues/min */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <TrendingUp className="h-4 w-4 mx-auto mb-1.5 text-indigo-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate">
               {throughput.issuesPerMin > 0 ? `${throughput.issuesPerMin}/min` : '--'}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Issue Rate</p>
           </div>
           {/* Total processed */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Zap className="h-4 w-4 mx-auto mb-1.5 text-green-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate">
               {totalProcessed.toLocaleString()}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Total Synced</p>
@@ -452,35 +455,45 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
               'text-xs font-semibold px-2 py-0.5 rounded-full',
               isCompleted ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                 : isFailed ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                : 'bg-primary/10 text-primary dark:text-primary',
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
             )}>
               {isCompleted ? 'Complete' : isFailed ? 'Failed' : `${overallPct}%`}
             </span>
           </div>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden relative">
           <div
             className={cn(
-              'h-full rounded-full transition-all duration-700',
+              'h-full rounded-full transition-all duration-700 relative overflow-hidden',
               isFailed ? 'bg-red-500' : isCompleted ? 'bg-gradient-to-r from-green-500 to-emerald-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500',
             )}
             style={{ width: `${overallPct}%` }}
-          />
+          >
+            {isActive && (
+              <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-[shimmer_1.8s_ease-in-out_infinite]" />
+            )}
+          </div>
         </div>
         {/* Stats row */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {[
-            { label: 'Projects', val: liveCounts.processedProjects, total: liveCounts.totalProjects, icon: FolderOpen, color: 'text-primary' },
-            { label: 'Issues', val: liveCounts.processedIssues, total: liveCounts.totalIssues, icon: FileText, color: 'text-indigo-600 dark:text-indigo-400' },
-            { label: 'Members', val: liveCounts.processedMembers, total: liveCounts.totalMembers, icon: Users, color: 'text-violet-600 dark:text-violet-400' },
-            { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Comments', val: liveCounts.processedComments, total: liveCounts.totalComments, icon: MessageSquare, color: 'text-teal-600 dark:text-teal-400' },
-          ].map(({ label, val, total, icon: Icon, color }) => (
-            <div key={label} className="bg-muted/50 rounded-lg p-2 text-center">
-              <Icon className={cn('h-3.5 w-3.5 mx-auto mb-1', color)} />
-              <div className="text-sm font-bold text-foreground">{val.toLocaleString()}</div>
-              {total > 0 && <div className="text-[10px] text-muted-foreground">of {total.toLocaleString()}</div>}
-              <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+            { label: 'Projects', val: liveCounts.processedProjects, total: liveCounts.totalProjects, icon: FolderOpen, color: 'text-primary', iconBg: 'bg-primary/10' },
+            { label: 'Issues', val: liveCounts.processedIssues, total: liveCounts.totalIssues, icon: FileText, color: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+            { label: 'Members', val: liveCounts.processedMembers, total: liveCounts.totalMembers, icon: Users, color: 'text-violet-600 dark:text-violet-400', iconBg: 'bg-violet-50 dark:bg-violet-900/20' },
+            { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-900/20' },
+            { label: 'Comments', val: liveCounts.processedComments, total: liveCounts.totalComments, icon: MessageSquare, color: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-900/20' },
+          ].map(({ label, val, total, icon: Icon, color, iconBg }) => (
+            <div key={label} className="bg-muted/50 rounded-lg p-3 text-center">
+              <div className={cn('h-7 w-7 rounded-md flex items-center justify-center mx-auto mb-2', iconBg)}>
+                <Icon className={cn('h-3.5 w-3.5', color)} />
+              </div>
+              <div className="text-base font-bold text-foreground leading-none">
+                {val.toLocaleString()}
+                {total > 0 && (
+                  <span className="text-[10px] font-normal text-muted-foreground ml-1">/ {total.toLocaleString()}</span>
+                )}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
             </div>
           ))}
         </div>
@@ -500,7 +513,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
       {/* Phase cards */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30">
           <h3 className="text-sm font-semibold text-foreground">Sync Phases</h3>
         </div>
         <div className="divide-y divide-border">
@@ -548,25 +561,31 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {isRunning && total > 0 && (
-                          <span className="text-xs font-mono text-muted-foreground">
+                          <span className="text-[10px] font-mono text-muted-foreground">
                             {processed.toLocaleString()} / {total.toLocaleString()}
                           </span>
                         )}
                         {isDone && duration && (
-                          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                             <Clock className="h-3 w-3" />{duration}
                           </span>
                         )}
                         {isDone && !duration && (
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">Done</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            Done
+                          </span>
                         )}
                         {isRunning && (
-                          <span className={cn('text-xs font-medium', phase.color.split(' ')[0])}>
-                            {total > 0 ? `${pct}%` : 'Running...'}
+                          <span className={cn(
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                            phase.bgColor,
+                            phase.color.split(' ')[0],
+                          )}>
+                            {total > 0 ? `${pct}%` : 'Running…'}
                           </span>
                         )}
                         {isPending && (
-                          <span className="text-xs text-muted-foreground/60">Pending</span>
+                          <span className="text-[10px] text-muted-foreground/40">Waiting</span>
                         )}
                       </div>
                     </div>
@@ -591,7 +610,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
       {/* Activity log */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-foreground">Activity Log</h3>
         </div>
