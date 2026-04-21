@@ -27,6 +27,8 @@ import IORedis from 'ioredis';
 import { createRedisConnection } from '../redis';
 import { config } from '../config';
 import { adfToText } from './adf-helpers';
+import { S3Client, PutObjectCommand, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+import { randomUUID } from 'crypto';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -1986,6 +1988,143 @@ async function runCommentsPhase(
   console.log(`[Migration:${state.id}] Phase 5 done — ${processedComments} comments inserted`);
 }
 
+// ─── MinIO / S3 helpers ───────────────────────────────────────────────────────
+
+const MINIO_BUCKET = process.env.MINIO_BUCKET ?? 'boardupscale';
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024; // 50 MB hard limit
+const ATTACHMENT_BATCH_SIZE = 20;
+
+function initMinIOClient(): S3Client {
+  const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
+  const port = process.env.MINIO_PORT ?? '9000';
+  const useSSL = process.env.MINIO_USE_SSL === 'true';
+  return new S3Client({
+    endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
+      secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
+    },
+    forcePathStyle: true,
+  });
+}
+
+async function ensureMinIOBucket(s3: S3Client, bucket: string): Promise<void> {
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+  } catch {
+    await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+  }
+}
+
+function sanitizeStorageKey(runId: string, filename: string): string {
+  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+  return `jira/${runId}/${randomUUID()}-${safe}`;
+}
+
+/**
+ * Download a binary file from a URL with auth, redirect-following, size limit,
+ * and exponential backoff on 429.
+ *
+ * Security: auth header is stripped when following redirects to a different
+ * hostname — prevents credential leakage to third-party CDNs.
+ */
+async function downloadAttachmentBinary(
+  url: string,
+  authHeader: string,
+  maxBytes: number,
+  _attempt = 1,
+  _originalHost = '',
+): Promise<Buffer> {
+  const parsed = new URL(url);
+  const isHttps = parsed.protocol === 'https:';
+  const transport = isHttps ? https : http;
+  const originalHost = _originalHost || parsed.hostname;
+
+  return new Promise<Buffer>((resolve, reject) => {
+    const headers: Record<string, string> = { Accept: '*/*' };
+    // Only send auth to the same origin — not to third-party CDN redirects
+    if (parsed.hostname === originalHost && authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+
+    const options: http.RequestOptions = {
+      hostname: parsed.hostname,
+      port: parsed.port ? parseInt(parsed.port, 10) : (isHttps ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      method: 'GET',
+      headers,
+    };
+
+    const req = transport.request(options, (res) => {
+      const status = res.statusCode ?? 0;
+
+      // Handle redirects (up to 5 hops)
+      if (status === 301 || status === 302 || status === 307 || status === 308) {
+        res.resume();
+        if (_attempt > 5) { reject(new Error('Too many redirects')); return; }
+        const location = res.headers['location'];
+        if (!location) { reject(new Error('Redirect with no Location header')); return; }
+        const nextUrl = new URL(location, url).toString();
+        downloadAttachmentBinary(nextUrl, authHeader, maxBytes, _attempt + 1, originalHost)
+          .then(resolve).catch(reject);
+        return;
+      }
+
+      // Rate limited — exponential backoff and retry
+      if (status === 429 && _attempt <= 4) {
+        res.resume();
+        const backoff = Math.pow(2, _attempt - 1) * 500; // 500ms, 1s, 2s, 4s
+        setTimeout(() => {
+          downloadAttachmentBinary(url, authHeader, maxBytes, _attempt + 1, originalHost)
+            .then(resolve).catch(reject);
+        }, backoff);
+        return;
+      }
+
+      if (status >= 400) {
+        res.resume();
+        reject(new Error(`HTTP ${status}`));
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      let received = 0;
+
+      res.on('data', (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > maxBytes) {
+          req.destroy();
+          reject(new Error(`Response exceeded ${Math.round(maxBytes / 1024 / 1024)}MB limit`));
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    });
+
+    req.on('error', (err) => {
+      if (_attempt <= 3) {
+        setTimeout(() => {
+          downloadAttachmentBinary(url, authHeader, maxBytes, _attempt + 1, originalHost)
+            .then(resolve).catch(reject);
+        }, 1000);
+      } else {
+        reject(err);
+      }
+    });
+
+    req.setTimeout(30000, () => {
+      req.destroy();
+      reject(new Error('Download timed out (30s)'));
+    });
+
+    req.end();
+  });
+}
+
 // ─── Phase 6: Attachments ─────────────────────────────────────────────────────
 
 async function runAttachmentsPhase(
@@ -1993,7 +2132,7 @@ async function runAttachmentsPhase(
   state: RunState,
   io: IORedis | null,
 ): Promise<void> {
-  console.log(`[Migration:${state.id}] Phase 6 — attachments (skipped: feature not enabled in this run)`);
+  console.log(`[Migration:${state.id}] Phase 6 — attachments`);
 
   if (!state.options?.importAttachments) {
     await updateRunProgress(client, state.id, { completedPhase: PHASE_ATTACHMENTS }, io);
@@ -2001,8 +2140,163 @@ async function runAttachmentsPhase(
     return;
   }
 
-  // Attachment import requires MinIO — log as deferred
-  addError(state, 'Attachment import is not yet implemented — skipped');
+  // Verify MinIO is reachable before entering the loop (fail fast, phase is resumable)
+  let s3: S3Client;
+  try {
+    s3 = initMinIOClient();
+    await ensureMinIOBucket(s3, MINIO_BUCKET);
+  } catch (err: any) {
+    addError(state, `Phase 6: MinIO unavailable — ${err.message}`);
+    await updateRunProgress(client, state.id, { errorLog: state.errorLog }, io);
+    throw err; // re-throw so runPhaseWithRetry can retry the phase
+  }
+
+  // Count total pending rows for progress UI
+  const { rows: [countRow] } = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+     FROM jira_migration_attachment_staging
+     WHERE migration_run_id = $1 AND downloaded_at IS NULL`,
+    [state.id],
+  );
+  state.totalAttachments = parseInt(countRow.count, 10);
+  state.processedAttachments = 0;
+  await updateRunProgress(client, state.id, {
+    totalAttachments: state.totalAttachments,
+    processedAttachments: 0,
+    currentPhase: PHASE_ATTACHMENTS,
+  }, io);
+
+  // Build Jira auth header (same pattern as jiraGet)
+  const credentials = await loadCredentials(client, state.connectionId, state.organizationId);
+  const authHeader = credentials.email
+    ? `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`
+    : `Bearer ${credentials.apiToken}`;
+
+  console.log(
+    `[Migration:${state.id}] Phase 6 — ${state.totalAttachments} attachments to download`,
+  );
+
+  // ── Batch loop ───────────────────────────────────────────────────────────────
+  while (true) {
+    const { rows: batch } = await client.query<{
+      id: string;
+      jira_attachment_id: string;
+      local_issue_id: string;
+      download_url: string;
+      file_name: string;
+      mime_type: string;
+      file_size: string;
+    }>(
+      `SELECT id, jira_attachment_id, local_issue_id, download_url,
+              file_name, mime_type, file_size
+       FROM jira_migration_attachment_staging
+       WHERE migration_run_id = $1
+         AND downloaded_at IS NULL
+         AND attempt_count < 3
+       ORDER BY jira_issue_key, file_name
+       LIMIT $2`,
+      [state.id, ATTACHMENT_BATCH_SIZE],
+    );
+
+    if (batch.length === 0) break;
+
+    for (const row of batch) {
+      // Increment attempt count first — crash mid-download still counts
+      await client.query(
+        `UPDATE jira_migration_attachment_staging
+         SET attempt_count = attempt_count + 1
+         WHERE id = $1`,
+        [row.id],
+      );
+
+      const fileSize = parseInt(row.file_size, 10);
+
+      // Skip oversized files
+      if (fileSize > MAX_ATTACHMENT_BYTES) {
+        const msg = `Attachment "${row.file_name}" skipped — ${Math.round(fileSize / 1024 / 1024)}MB exceeds ${Math.round(MAX_ATTACHMENT_BYTES / 1024 / 1024)}MB limit`;
+        addError(state, msg);
+        await client.query(
+          `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
+          [msg, row.id],
+        );
+        continue;
+      }
+
+      // Download from Jira
+      let buffer: Buffer;
+      try {
+        buffer = await downloadAttachmentBinary(row.download_url, authHeader, MAX_ATTACHMENT_BYTES);
+      } catch (err: any) {
+        const msg = `Download failed "${row.file_name}": ${err.message}`;
+        addError(state, msg);
+        await client.query(
+          `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
+          [msg, row.id],
+        );
+        continue;
+      }
+
+      // Upload to MinIO
+      const storageKey = sanitizeStorageKey(state.id, row.file_name);
+      try {
+        await s3.send(new PutObjectCommand({
+          Bucket: MINIO_BUCKET,
+          Key: storageKey,
+          Body: buffer,
+          ContentType: row.mime_type,
+          ContentLength: buffer.length,
+        }));
+      } catch (err: any) {
+        const msg = `MinIO upload failed "${row.file_name}": ${err.message}`;
+        addError(state, msg);
+        await client.query(
+          `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
+          [msg, row.id],
+        );
+        continue;
+      }
+
+      // Insert attachment record (ON CONFLICT DO NOTHING = last-resort dedup)
+      await client.query(
+        `INSERT INTO attachments
+           (id, issue_id, uploaded_by, file_name, file_size, mime_type,
+            storage_key, storage_bucket, jira_attachment_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (jira_attachment_id) WHERE jira_attachment_id IS NOT NULL DO NOTHING`,
+        [
+          randomUUID(),
+          row.local_issue_id,
+          state.triggeredById,
+          row.file_name,
+          buffer.length,
+          row.mime_type,
+          storageKey,
+          MINIO_BUCKET,
+          row.jira_attachment_id,
+        ],
+      ).catch((err: any) => addError(state, `attachments insert "${row.file_name}": ${err.message}`));
+
+      // Mark staging row complete
+      await client.query(
+        `UPDATE jira_migration_attachment_staging SET downloaded_at = NOW() WHERE id = $1`,
+        [row.id],
+      );
+
+      state.processedAttachments++;
+      await updateRunProgress(client, state.id, {
+        processedAttachments: state.processedAttachments,
+        errorLog: state.errorLog,
+      }, io);
+
+      await delay(REQUEST_DELAY_MS);
+    }
+  }
+
+  const failed = state.totalAttachments - state.processedAttachments;
+  console.log(
+    `[Migration:${state.id}] Phase 6 done — ${state.processedAttachments} downloaded, ${failed} failed/skipped`,
+  );
+
   await updateRunProgress(client, state.id, {
     completedPhase: PHASE_ATTACHMENTS,
     errorLog: state.errorLog,
