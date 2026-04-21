@@ -401,7 +401,46 @@ export class OrganizationsService {
       );
     }
 
-    await this.userRepository.remove(member);
+    // Remove this org's membership first — that's the real "revoke" action.
+    if (membership) {
+      await this.organizationMemberRepository.remove(membership);
+    }
+
+    // Attempt to hard-delete the user ONLY if they have no other membership and
+    // no historical references (issues, comments, attachments). If they do,
+    // fall back to a soft revoke — the membership is already gone above, so
+    // they won't appear in this org's member list anyway.
+    const otherMemberships = await this.organizationMemberRepository.count({
+      where: { userId: memberId },
+    });
+
+    if (otherMemberships === 0 && !member.passwordHash) {
+      try {
+        await this.userRepository.remove(member);
+      } catch (err: any) {
+        // FK violation (e.g. they were set as reporter on a migrated issue).
+        // Soft-revoke instead: mark inactive + detach the legacy organization_id
+        // so getMembers() hides them.
+        if (/foreign key/i.test(err?.message ?? '')) {
+          await this.userRepository.update(memberId, {
+            isActive: false,
+            invitationStatus: 'revoked' as any,
+            organizationId: null as any,
+          });
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      // User exists in other orgs or has a real password — never hard-delete.
+      // Just clear the legacy organizationId pointer (if it still pointed here)
+      // so the legacy-user branch of getMembers() doesn't resurrect them.
+      if (member.organizationId === organizationId) {
+        await this.userRepository.update(memberId, {
+          organizationId: null as any,
+        });
+      }
+    }
 
     this.auditService.log(
       organizationId,
