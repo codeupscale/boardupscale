@@ -62,6 +62,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
+  app.enableShutdownHooks();
+
   const port = process.env.PORT || 4000;
   await app.listen(port);
   console.log(`Boardupscale API running on port ${port}`);

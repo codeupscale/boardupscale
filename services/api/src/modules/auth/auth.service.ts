@@ -226,19 +226,18 @@ export class AuthService {
     userAgent?: string,
     activeOrganizationId?: string,
   ) {
-    let organizationId = user.organizationId;
+    const organizationId = activeOrganizationId || user.organizationId;
     let role = user.role;
 
-    // If an explicit org is requested, look up the membership to get the role
-    if (activeOrganizationId) {
+    // Always resolve the org membership role — more accurate than users.role for org context.
+    // This ensures admins/owners set at the org level are never downgraded to 'member' in the JWT.
+    if (organizationId) {
       const membership = await this.orgMemberRepository.findOne({
-        where: { userId: user.id, organizationId: activeOrganizationId },
+        where: { userId: user.id, organizationId },
       });
       if (membership) {
-        organizationId = activeOrganizationId;
         role = membership.role;
       }
-      // If no membership found, fall back to user's default org/role
     }
 
     const payload = {
@@ -883,6 +882,11 @@ export class AuthService {
           }),
         );
       }
+      try {
+        await this.organizationsService.repairOrgMemberships(orgId);
+      } catch (err: unknown) {
+        console.warn(`[findOrCreateSamlUser] repairOrgMemberships failed: ${(err as Error)?.message}`);
+      }
       return existingUser;
     }
 
@@ -906,6 +910,12 @@ export class AuthService {
         isDefault: true,
       }),
     );
+
+    try {
+      await this.organizationsService.repairOrgMemberships(orgId);
+    } catch (err: unknown) {
+      console.warn(`[findOrCreateSamlUser] repairOrgMemberships failed: ${(err as Error)?.message}`);
+    }
 
     return user;
   }

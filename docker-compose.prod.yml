@@ -11,6 +11,13 @@ services:
     networks:
       - boardupscale
     restart: always
+    stop_grace_period: 15s
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/']
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -73,6 +80,13 @@ services:
     networks:
       - boardupscale
     restart: always
+    stop_grace_period: 30s
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/api/health']
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -110,6 +124,7 @@ services:
     networks:
       - boardupscale
     restart: always
+    stop_grace_period: 60s
     deploy:
       resources:
         limits:

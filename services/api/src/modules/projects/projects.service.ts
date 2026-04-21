@@ -61,7 +61,7 @@ export class ProjectsService {
       .andWhere('project.status != :archived', { archived: 'archived' })
       .orderBy('project.createdAt', 'DESC');
 
-    const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin';
+    const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin' || orgRole === 'manager';
     if (!isOrgAdmin) {
       qb.innerJoin('project_members', 'pm', 'pm.project_id = project.id AND pm.user_id = :userId', { userId });
     }

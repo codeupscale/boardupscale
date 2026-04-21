@@ -227,6 +227,7 @@ export function useRepairOrgMemberships() {
       // Invalidate all project-members queries so every open settings tab refreshes
       qc.invalidateQueries({ queryKey: ['project-members'] })
       qc.invalidateQueries({ queryKey: ['org-members'] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
       const added = result.repairedProjectMembers
       toast(
         added > 0

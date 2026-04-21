@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
+import { useAuthStore } from '@/store/auth.store'
 import { Project, ProjectMember } from '@/types'
 
 interface ProjectFilters {
@@ -10,8 +11,9 @@ interface ProjectFilters {
 }
 
 export function useProjects(filters: ProjectFilters = {}) {
+  const organizationId = useAuthStore((s) => s.user?.organizationId)
   return useQuery({
-    queryKey: ['projects', filters],
+    queryKey: ['projects', organizationId, filters],
     queryFn: async () => {
       const params = Object.fromEntries(
         Object.entries(filters).filter(([, v]) => v !== undefined && v !== ''),

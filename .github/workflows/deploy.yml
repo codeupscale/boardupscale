@@ -144,7 +144,7 @@ jobs:
             log() { echo "[deploy] $*"; }
             die() { echo "[deploy] FATAL: $*" >&2; exit 1; }
 
-            # ── Helper: wait for a container's Docker healthcheck to pass ──
+            # ── Helper: wait for a compose service's Docker healthcheck to pass ──
             wait_healthy() {
               local svc="$1" max_wait="${2:-60}"
               log "Waiting for $svc to become healthy (max ${max_wait}s)..."
@@ -156,10 +156,23 @@ jobs:
                   log "$svc is healthy ✓"
                   return 0
                 fi
-                sleep 3
-                elapsed=$((elapsed + 3))
+                sleep 5
+                elapsed=$((elapsed + 5))
               done
               die "$svc did not become healthy within ${max_wait}s (current state: $state)"
+            }
+
+            # ── Helper: wait for any named container's healthcheck to pass ─
+            wait_healthy_named() {
+              local name="$1" max_wait="${2:-180}"
+              log "Waiting for $name to become healthy (max ${max_wait}s)..."
+              local elapsed=0 state
+              while [ $elapsed -lt $max_wait ]; do
+                state=$(docker inspect --format='{{.State.Health.Status}}' "$name" 2>/dev/null || echo "missing")
+                [ "$state" = "healthy" ] && { log "$name is healthy ✓"; return 0; }
+                sleep 5; elapsed=$((elapsed + 5))
+              done
+              return 1
             }
 
             # ── Helper: rollback a single service to the 'main' tag ────────
@@ -167,7 +180,7 @@ jobs:
               local svc="$1"
               log "Rolling back $svc to :main tag..."
               cd "$COMPOSE_DIR"
-              BU_IMAGE_TAG=main docker compose up -d --no-deps --force-recreate "$svc" || true
+              IMAGE_TAG=main docker compose up -d --no-deps --force-recreate "$svc" || true
             }
 
             # ── 1. Authenticate with GHCR ──────────────────────────────────
@@ -193,26 +206,86 @@ jobs:
               node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js \
               || die "Database migrations failed — fix migrations or DB state before redeploying."
 
-            # ── 4. Restart bu-api — verify health before proceeding ────────
-            log "Restarting bu-api..."
-            docker compose up -d --no-deps --force-recreate bu-api
+            # ── 4. Zero-downtime bu-api restart via canary pre-start ──────
+            # Strategy: start new container alongside old one, wait for it to
+            # be healthy, then gracefully drain old before switching compose
+            # to the new image. nginx's resolver (127.0.0.11 valid=10s) will
+            # pick up the canary as soon as it joins the network with the
+            # 'api' alias, ensuring zero traffic gap during the swap.
+            log "Starting bu-api canary container..."
+
+            # Detect compose network and running container name
+            OLD_API_CTR=$(docker ps --filter "name=infra-bu-api" --format "{{.Names}}" | head -1 || true)
+            COMPOSE_NETWORK=$(docker inspect "$OLD_API_CTR" \
+              --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' \
+              2>/dev/null || echo "infra_boardupscale")
+
+            # Dump env from running container so canary has identical config
+            docker inspect "$OLD_API_CTR" \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' \
+              > /tmp/bu-api-canary.env 2>/dev/null || true
+
+            # Start canary on the compose network (so it can reach Postgres/Redis)
+            # but WITHOUT the 'api' DNS alias yet — nginx ignores it during warmup
+            docker run -d \
+              --name bu-api-canary \
+              --network "$COMPOSE_NETWORK" \
+              --env-file /tmp/bu-api-canary.env \
+              "$API_IMAGE" \
+              || die "Failed to start bu-api-canary"
+
+            # Wait for canary to be fully healthy before touching live traffic
+            if ! wait_healthy_named bu-api-canary 180; then
+              docker stop bu-api-canary 2>/dev/null || true
+              docker rm   bu-api-canary 2>/dev/null || true
+              rm -f /tmp/bu-api-canary.env
+              die "bu-api-canary failed health check — aborting to preserve running container"
+            fi
+
+            # Canary is healthy: add the 'api' alias so nginx's DNS TTL picks it up
+            # and starts load-balancing new requests to the canary
+            docker network connect --alias api "$COMPOSE_NETWORK" bu-api-canary || true
+            log "Canary joined network as 'api' — waiting for nginx DNS TTL (12s)..."
+            sleep 12
+
+            # Gracefully drain and remove the old container
+            # nginx will route 100% of traffic to the canary during this gap
+            log "Draining old bu-api container (30s grace period)..."
+            docker stop --time=30 "$OLD_API_CTR" 2>/dev/null || true
+            docker rm "$OLD_API_CTR" 2>/dev/null || true
+
+            # Bring up the compose-managed container with the new image tag
+            log "Starting compose-managed bu-api..."
+            docker compose up -d --no-deps bu-api
             wait_healthy bu-api 180 || {
               log "bu-api health check failed — rolling back..."
               rollback_service bu-api
               wait_healthy bu-api 60 || true
+              docker stop bu-api-canary 2>/dev/null || true
+              docker rm   bu-api-canary 2>/dev/null || true
+              rm -f /tmp/bu-api-canary.env
               die "Deploy aborted: bu-api failed to become healthy after restart."
             }
+
+            # Compose container is healthy — remove the canary
+            log "Removing bu-api-canary..."
+            docker stop bu-api-canary 2>/dev/null || true
+            docker rm   bu-api-canary 2>/dev/null || true
+            rm -f /tmp/bu-api-canary.env
 
             # ── 5. Restart bu-worker ───────────────────────────────────────
             # Worker has a 60s stop_grace_period so in-flight BullMQ jobs can
             # finish cleanly. New worker picks up queue from Redis on start.
             log "Restarting bu-worker..."
             docker compose up -d --no-deps --force-recreate bu-worker
-            wait_healthy bu-worker 120 || {
-              log "WARNING: bu-worker health check did not pass within 120s — investigating..."
-              docker logs --tail=50 infra-bu-worker-1 || true
-              # Non-fatal: worker is stateless relative to HTTP traffic
-            }
+            # Non-fatal: worker has no HTTP healthcheck; check it started cleanly
+            sleep 10
+            if ! docker ps --filter "name=infra-bu-worker-1" --filter "status=running" -q | grep -q .; then
+              log "WARNING: bu-worker does not appear to be running — check logs:"
+              docker logs --tail=50 infra-bu-worker-1 2>/dev/null || true
+            else
+              log "bu-worker is running ✓"
+            fi
 
             # ── 6. Restart bu-web ──────────────────────────────────────────
             # Nginx (or the load balancer) continues to route to the old container
