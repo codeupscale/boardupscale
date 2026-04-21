@@ -22,6 +22,7 @@ import {
 import { useMe } from '@/hooks/useAuth'
 import {
   useOrgMembers,
+  useOrgMembersRealtime,
   useInviteMember,
   useUpdateMember,
   useUpdateMemberEmail,
@@ -275,6 +276,7 @@ function Pagination({
 export function TeamPage() {
   const { data: me } = useMe()
   const { data: members = [], isLoading } = useOrgMembers()
+  useOrgMembersRealtime()
   const inviteMember = useInviteMember()
   const updateMember = useUpdateMember()
   const updateMemberEmail = useUpdateMemberEmail()
