@@ -693,28 +693,9 @@ export class OrganizationsService {
   async repairOrgMemberships(
     organizationId: string,
   ): Promise<{ repairedOrgMembers: number; repairedProjectMembers: number }> {
-    // Step 1: Ensure every user who has project_members in this org also has organization_members
-    const orgMembersResult = await this.dataSource.query(
-      `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
-       SELECT
-         gen_random_uuid(),
-         pm.user_id,
-         p.organization_id,
-         COALESCE(u.role, 'member'),
-         false,
-         NOW(),
-         NOW()
-       FROM project_members pm
-       JOIN projects p ON p.id = pm.project_id
-       JOIN users u ON u.id = pm.user_id
-       WHERE p.organization_id = $1
-         AND NOT EXISTS (
-           SELECT 1 FROM organization_members om
-           WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
-         )
-       ON CONFLICT (user_id, organization_id) DO NOTHING`,
-      [organizationId],
-    );
+    // Steps 2a/2b/3 run first so that newly added project_members rows are visible
+    // when Step 1 backfills organization_members. Running Step 1 last ensures every
+    // user added by the three project_members inserts also gets an org membership row.
 
     // Step 2a: Re-sync assignees → project_members
     const assigneeResult = await this.dataSource.query(
@@ -747,6 +728,30 @@ export class OrganizationsService {
        JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
        WHERE c.author_id IS NOT NULL
        ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 1 (runs last): Ensure every user who has project_members in this org also has
+    // organization_members — including those just added above. Use literal 'member' since
+    // users.role is a system-level field and must not bleed into org membership role.
+    const orgMembersResult = await this.dataSource.query(
+      `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+       SELECT
+         gen_random_uuid(),
+         pm.user_id,
+         p.organization_id,
+         'member',
+         false,
+         NOW(),
+         NOW()
+       FROM project_members pm
+       JOIN projects p ON p.id = pm.project_id
+       WHERE p.organization_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM organization_members om
+           WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
+         )
+       ON CONFLICT (user_id, organization_id) DO NOTHING`,
       [organizationId],
     );
 

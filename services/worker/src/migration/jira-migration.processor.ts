@@ -2316,29 +2316,6 @@ async function runRepairPhase(
   const orgId = state.organizationId;
   console.log(`[Migration:${state.id}] Phase 7 — membership repair (orgId=${orgId})`);
 
-  // Step 1: Ensure organization_members rows for all project_members users
-  await client.query(
-    `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
-     SELECT
-       gen_random_uuid(),
-       pm.user_id,
-       p.organization_id,
-       COALESCE(u.role, 'member'),
-       false,
-       NOW(),
-       NOW()
-     FROM project_members pm
-     JOIN projects p ON p.id = pm.project_id
-     JOIN users u ON u.id = pm.user_id
-     WHERE p.organization_id = $1
-       AND NOT EXISTS (
-         SELECT 1 FROM organization_members om
-         WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
-       )
-     ON CONFLICT (user_id, organization_id) DO NOTHING`,
-    [orgId],
-  );
-
   // Step 2a: Re-sync issue assignees → project_members
   await client.query(
     `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
@@ -2370,6 +2347,30 @@ async function runRepairPhase(
      JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
      WHERE c.author_id IS NOT NULL
      ON CONFLICT (project_id, user_id) DO NOTHING`,
+    [orgId],
+  );
+
+  // Step 1 (runs last): Ensure organization_members rows for ALL project_members users,
+  // including those just added by Steps 2a/2b/3 above.
+  // Use literal 'member' — users.role is a system-level role; org membership role is always 'member'.
+  await client.query(
+    `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+     SELECT
+       gen_random_uuid(),
+       pm.user_id,
+       p.organization_id,
+       'member',
+       false,
+       NOW(),
+       NOW()
+     FROM project_members pm
+     JOIN projects p ON p.id = pm.project_id
+     WHERE p.organization_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM organization_members om
+         WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
+       )
+     ON CONFLICT (user_id, organization_id) DO NOTHING`,
     [orgId],
   );
 

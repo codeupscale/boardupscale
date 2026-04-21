@@ -314,11 +314,13 @@ describe('OrganizationsService', () => {
 
   describe('repairOrgMemberships', () => {
     it('should run all four repair SQL statements and return counts', async () => {
+      // Steps 2a/2b/3 run first (project_members), then Step 1 (org_members) runs last
+      // so that org_members backfill covers users added by the project_members inserts.
       mockDataSource.query = jest.fn()
-        .mockResolvedValueOnce({ rowCount: 2 }) // org_members repair
-        .mockResolvedValueOnce({ rowCount: 3 }) // assignee project_members
-        .mockResolvedValueOnce({ rowCount: 1 }) // reporter project_members
-        .mockResolvedValueOnce({ rowCount: 0 }); // comment author project_members
+        .mockResolvedValueOnce({ rowCount: 3 }) // Step 2a: assignee project_members
+        .mockResolvedValueOnce({ rowCount: 1 }) // Step 2b: reporter project_members
+        .mockResolvedValueOnce({ rowCount: 0 }) // Step 3: comment author project_members
+        .mockResolvedValueOnce({ rowCount: 2 }); // Step 1 (last): org_members backfill
 
       const result = await service.repairOrgMemberships(TEST_IDS.ORG_ID);
 
