@@ -89,6 +89,8 @@ interface RunState {
   processedSprints: number;
   totalComments: number;
   processedComments: number;
+  totalAttachments: number;
+  processedAttachments: number;
   errorLog: string[];
   jiraProjectIdToLocalId: Record<string, string>;
   jiraUserEmailToLocalId: Record<string, string>;
@@ -208,6 +210,8 @@ async function loadRun(client: PoolClient, runId: string, organizationId: string
             processed_sprints AS "processedSprints",
             total_comments AS "totalComments",
             processed_comments AS "processedComments",
+            total_attachments AS "totalAttachments",
+            processed_attachments AS "processedAttachments",
             COALESCE(error_log, '[]') AS "errorLog"
      FROM jira_migration_runs WHERE id = $1 AND organization_id = $2`,
     [runId, organizationId],
@@ -380,6 +384,8 @@ async function updateRunProgress(
   if (state.processedSprints !== undefined) add('processed_sprints', state.processedSprints);
   if (state.totalComments !== undefined) add('total_comments', state.totalComments);
   if (state.processedComments !== undefined) add('processed_comments', state.processedComments);
+  if (state.totalAttachments !== undefined) add('total_attachments', state.totalAttachments);
+  if (state.processedAttachments !== undefined) add('processed_attachments', state.processedAttachments);
 
   if (state.completedPhase !== undefined) {
     fields.push(`completed_phases = completed_phases || $${idx++}::jsonb`);
