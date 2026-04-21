@@ -20,6 +20,7 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
+import { EventsGateway } from '../../websocket/events.gateway';
 
 @Injectable()
 export class OrganizationsService {
@@ -35,6 +36,7 @@ export class OrganizationsService {
     private configService: ConfigService,
     private dataSource: DataSource,
     private posthogService: PosthogService,
+    private gateway: EventsGateway,
   ) {}
 
   async findById(id: string): Promise<Organization> {
@@ -130,6 +132,7 @@ export class OrganizationsService {
         null,
       );
 
+      this.notifyOrgMembersChanged(organizationId);
       return existingUser;
     }
 
@@ -200,6 +203,7 @@ export class OrganizationsService {
       role: dto.role || 'member',
     });
 
+    this.notifyOrgMembersChanged(organizationId);
     return saved;
   }
 
@@ -228,6 +232,7 @@ export class OrganizationsService {
       null,
     );
 
+    this.notifyOrgMembersChanged(organizationId);
     return saved;
   }
 
@@ -267,6 +272,7 @@ export class OrganizationsService {
       null,
     );
 
+    this.notifyOrgMembersChanged(organizationId);
     return saved;
   }
 
@@ -311,6 +317,8 @@ export class OrganizationsService {
       { email: member.email },
       null,
     );
+
+    this.notifyOrgMembersChanged(organizationId);
   }
 
   async resendInvitation(
@@ -339,6 +347,8 @@ export class OrganizationsService {
     await this.userRepository.update(memberId, { invitationStatus: 'pending' });
     const updated = await this.userRepository.findOne({ where: { id: memberId } });
     await this.generateAndSendInvitation(updated!, actorId, organizationId);
+
+    this.notifyOrgMembersChanged(organizationId);
   }
 
   async revokeInvitation(
@@ -381,6 +391,8 @@ export class OrganizationsService {
       { email: member.email },
       null,
     );
+
+    this.notifyOrgMembersChanged(organizationId);
   }
 
   async updateMigratedMemberEmail(
@@ -443,6 +455,7 @@ export class OrganizationsService {
       null,
     );
 
+    this.notifyOrgMembersChanged(organizationId);
     return saved;
   }
 
@@ -696,7 +709,9 @@ export class OrganizationsService {
       throw new BadRequestException('Cannot merge placeholder into your own account');
     }
 
-    return this.mergeAndInviteExistingUser(organizationId, placeholder, targetUser, actorId);
+    const result = await this.mergeAndInviteExistingUser(organizationId, placeholder, targetUser, actorId);
+    this.notifyOrgMembersChanged(organizationId);
+    return result;
   }
 
   async repairOrgMemberships(
@@ -904,6 +919,10 @@ export class OrganizationsService {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
+
+  private notifyOrgMembersChanged(organizationId: string): void {
+    this.gateway.emitToOrg(organizationId, 'org:members:changed', {});
+  }
 
   private async generateAndSendInvitation(
     user: User,
