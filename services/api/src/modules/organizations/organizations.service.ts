@@ -511,12 +511,23 @@ export class OrganizationsService {
         [realUserId, placeholderId, organizationId],
       );
 
-      // Copy jiraAccountId to real user if not already set
+      // Copy jiraAccountId to real user only if:
+      //   1. placeholder actually has one, AND
+      //   2. real user does not already have one, AND
+      //   3. no other user holds that accountId (unique constraint guard)
       if (placeholder.jiraAccountId && !existingUser.jiraAccountId) {
-        await manager.query(
-          `UPDATE users SET jira_account_id = $1 WHERE id = $2`,
+        const conflict: { id: string }[] = await manager.query(
+          `SELECT id FROM users WHERE jira_account_id = $1 AND id != $2 LIMIT 1`,
           [placeholder.jiraAccountId, realUserId],
         );
+        if (conflict.length === 0) {
+          await manager.query(
+            `UPDATE users SET jira_account_id = $1 WHERE id = $2`,
+            [placeholder.jiraAccountId, realUserId],
+          );
+        }
+        // If another user already owns this jira_account_id, skip silently —
+        // the merge still succeeds; only the accountId link is not transferred.
       }
 
       // Remove the placeholder's org membership and delete the placeholder user
