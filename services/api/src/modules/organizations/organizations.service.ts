@@ -728,6 +728,37 @@ export class OrganizationsService {
     return { repairedOrgMembers, repairedProjectMembers };
   }
 
+  async bulkInvitePending(
+    organizationId: string,
+  ): Promise<{ sent: number; skipped: number }> {
+    // Find all pending-status members in this org
+    const pendingUsers = await this.userRepository.find({
+      where: {
+        organizationId,
+        invitationStatus: 'pending',
+      } as any,
+    });
+
+    // Filter: skip synthetic emails and users with a still-valid token
+    const now = new Date();
+    const toInvite = pendingUsers.filter(
+      (u) =>
+        !u.email.endsWith('@migrated.jira.local') &&
+        (!u.emailVerificationToken ||
+          !u.emailVerificationExpiry ||
+          new Date(u.emailVerificationExpiry) < now),
+    );
+    const skipped = pendingUsers.length - toInvite.length;
+
+    for (const user of toInvite) {
+      // Pass organizationId as inviterId — system-level action, no human inviter.
+      // generateAndSendInvitation will resolve inviter to null → falls back to 'A team member'.
+      await this.generateAndSendInvitation(user, organizationId, organizationId);
+    }
+
+    return { sent: toInvite.length, skipped };
+  }
+
   // ── SAML SSO Configuration ─────────────────────────────────────────────
 
   async getSamlConfig(organizationId: string): Promise<{

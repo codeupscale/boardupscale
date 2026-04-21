@@ -249,4 +249,61 @@ describe('OrganizationsService', () => {
       expect(result).toEqual({ repairedOrgMembers: 0, repairedProjectMembers: 0 });
     });
   });
+
+  describe('bulkInvitePending', () => {
+    it('should send invitations to users with pending status and no valid token', async () => {
+      const pendingUser1 = mockUser({
+        id: 'pending-1',
+        email: 'p1@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: null,
+        emailVerificationExpiry: null,
+      });
+      const pendingUser2 = mockUser({
+        id: 'pending-2',
+        email: 'p2@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: null,
+        emailVerificationExpiry: null,
+      });
+
+      userRepo.find.mockResolvedValue([pendingUser1, pendingUser2]);
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      userRepo.findOne
+        .mockResolvedValueOnce(mockUser({ id: 'inviter-id' })) // inviter lookup for user1
+        .mockResolvedValueOnce(mockUser({ id: 'inviter-id' })); // inviter lookup for user2
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 2, skipped: 0 });
+      expect(mockEmailService.sendInvitationEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('should skip users who already have a valid non-expired token', async () => {
+      const futureExpiry = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h from now
+      const alreadyInvited = mockUser({
+        id: 'already-invited',
+        email: 'invited@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: 'existing-hash',
+        emailVerificationExpiry: futureExpiry,
+      });
+
+      userRepo.find.mockResolvedValue([alreadyInvited]);
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 0, skipped: 1 });
+      expect(mockEmailService.sendInvitationEmail).not.toHaveBeenCalled();
+    });
+
+    it('should return zeros when no pending users exist', async () => {
+      userRepo.find.mockResolvedValue([]);
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 0, skipped: 0 });
+    });
+  });
 });
