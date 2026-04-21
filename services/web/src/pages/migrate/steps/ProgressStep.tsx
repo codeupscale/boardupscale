@@ -113,7 +113,7 @@ function SystemPanel({ metrics, isActive }: { metrics: SystemMetrics | undefined
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+      <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
         <Activity className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">System Utilization</h3>
         <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -167,28 +167,28 @@ function SystemPanel({ metrics, isActive }: { metrics: SystemMetrics | undefined
             <p className="text-xs font-semibold text-foreground">
               {metrics.system.loadAverage[0].toFixed(2)}
             </p>
-            <p className="text-[10px] text-muted-foreground">Load (1m)</p>
+            <p className="text-[10px] text-muted-foreground" title="1-minute load average">Load (1m)</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <HardDrive className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {formatBytes(metrics.process.rss)}
             </p>
-            <p className="text-[10px] text-muted-foreground">Process RSS</p>
+            <p className="text-[10px] text-muted-foreground" title="Process resident set size">Proc Memory</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <Database className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {metrics.database.active}/{metrics.database.total}
             </p>
-            <p className="text-[10px] text-muted-foreground">DB Conns</p>
+            <p className="text-[10px] text-muted-foreground" title="Active / total database connections">DB Pool</p>
           </div>
           <div className="bg-muted/50 rounded-lg p-2.5 text-center">
             <Activity className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
             <p className="text-xs font-semibold text-foreground">
               {metrics.queue.active} / {metrics.queue.waiting}
             </p>
-            <p className="text-[10px] text-muted-foreground">Queue Act/Wait</p>
+            <p className="text-[10px] text-muted-foreground" title="Active / waiting queue jobs">Queue Jobs</p>
           </div>
         </div>
       </div>
@@ -209,40 +209,43 @@ function ThroughputPanel({ metrics, liveCounts, isActive }: {
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+      <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
         <Gauge className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Throughput & ETA</h3>
       </div>
       <div className="p-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Elapsed */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Timer className="h-4 w-4 mx-auto mb-1.5 text-blue-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate" title={formatDurationShort(throughput.elapsedSeconds)}>
               {formatDurationShort(throughput.elapsedSeconds)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Elapsed</p>
           </div>
           {/* ETA */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Clock className="h-4 w-4 mx-auto mb-1.5 text-amber-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p
+              className={cn('font-bold text-foreground truncate', formatEta(throughput.etaMinutes).length > 6 ? 'text-xs' : 'text-sm')}
+              title={formatEta(throughput.etaMinutes)}
+            >
               {formatEta(throughput.etaMinutes)}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Remaining</p>
           </div>
           {/* Issues/min */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <TrendingUp className="h-4 w-4 mx-auto mb-1.5 text-indigo-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate">
               {throughput.issuesPerMin > 0 ? `${throughput.issuesPerMin}/min` : '--'}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Issue Rate</p>
           </div>
           {/* Total processed */}
-          <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <div className="bg-muted/50 rounded-lg p-3 text-center min-w-0 overflow-hidden">
             <Zap className="h-4 w-4 mx-auto mb-1.5 text-green-500" />
-            <p className="text-sm font-bold text-foreground">
+            <p className="text-sm font-bold text-foreground truncate">
               {totalProcessed.toLocaleString()}
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">Total Synced</p>
@@ -510,7 +513,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
       {/* Phase cards */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+        <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30">
           <h3 className="text-sm font-semibold text-foreground">Sync Phases</h3>
         </div>
         <div className="divide-y divide-border">
@@ -601,7 +604,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
       {/* Activity log */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <div className="pl-3 pr-4 py-3 border-b border-border border-l-2 border-l-primary/30 flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-foreground">Activity Log</h3>
         </div>
