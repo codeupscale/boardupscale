@@ -9,6 +9,7 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
@@ -91,6 +92,9 @@ export class OrganizationsController {
     @Param('memberId') memberId: string,
     @Query('email') email: string,
   ) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('email query parameter is required and must be a valid email address');
+    }
     const preview = await this.organizationsService.getMergePreview(organizationId, memberId, email);
     return { data: preview };
   }
