@@ -42,7 +42,7 @@ export function adfToText(node: any, attachmentMap?: Map<string, string>): strin
     case 'paragraph':
       return parts.join('') + '\n';
     case 'mediaSingle':
-      return parts.join('') + '\n';
+      return parts.join('');   // media child already ends with \n
     case 'bulletList':
     case 'orderedList':
       return parts.join('');
