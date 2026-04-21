@@ -83,6 +83,7 @@ export interface User {
   language: string
   role: UserRole
   isActive: boolean
+  invitationStatus: 'none' | 'pending' | 'accepted' | 'expired'
   emailVerified: boolean
   twoFaEnabled: boolean
   jiraAccountId?: string | null
