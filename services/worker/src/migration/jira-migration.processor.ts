@@ -26,6 +26,7 @@ import { URL } from 'url';
 import IORedis from 'ioredis';
 import { createRedisConnection } from '../redis';
 import { config } from '../config';
+import { adfToText } from './adf-helpers';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -1972,28 +1973,13 @@ function mapPriority(name?: string): string {
   return 'medium';
 }
 
-function extractDescription(description: any): string | null {
+function extractDescription(description: any, attachmentMap?: Map<string, string>): string | null {
   if (!description) return null;
   if (typeof description === 'string') return description;
   if (description.type === 'doc' && Array.isArray(description.content)) {
-    return adfToText(description).trim() || null;
+    return adfToText(description, attachmentMap).trim() || null;
   }
   return null;
-}
-
-function adfToText(node: any): string {
-  if (!node) return '';
-  if (node.type === 'text') return node.text || '';
-  if (!Array.isArray(node.content)) return '';
-  const parts = node.content.map((c: any) => adfToText(c));
-  switch (node.type) {
-    case 'paragraph': return parts.join('') + '\n';
-    case 'bulletList': case 'orderedList': return parts.join('');
-    case 'listItem': return '- ' + parts.join('').trim() + '\n';
-    case 'codeBlock': return '```\n' + parts.join('') + '```\n';
-    case 'hardBreak': return '\n';
-    default: return parts.join('');
-  }
 }
 
 // ─── Main job handler ─────────────────────────────────────────────────────────
