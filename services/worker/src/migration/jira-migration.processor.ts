@@ -62,6 +62,16 @@ interface JiraCredentials {
   apiToken: string;
 }
 
+interface JiraApiAttachment {
+  id: string;
+  filename: string;
+  content: string;    // Direct authenticated download URL
+  mimeType: string;
+  size: number;
+  author?: { accountId?: string; emailAddress?: string };
+  created?: string;
+}
+
 interface RunState {
   id: string;
   organizationId: string;
@@ -1173,6 +1183,7 @@ async function runIssuesPhase(
     'assignee', 'reporter', 'created', 'updated', 'duedate', 'labels',
     'customfield_10016', 'customfield_10020', 'timetracking',
     'subtasks', 'parent', 'issuelinks', 'comment',
+    'attachment',
   ].join(',');
 
   // Initialize the pagination map — Phase 5 checks for its presence to detect resume.
@@ -1374,9 +1385,14 @@ async function runIssuesPhase(
             dueDate = new Date(dueMs).toISOString().substring(0, 10);
           }
 
+          const attachmentMap = new Map<string, string>();
+          for (const att of (fields.attachment ?? []) as JiraApiAttachment[]) {
+            attachmentMap.set(att.id, att.filename);
+          }
+
           issueRowsToInsert.push({
             title: fields.summary ?? issue.key,
-            description: extractDescription(fields.description),
+            description: extractDescription(fields.description, attachmentMap),
             type, priority, statusId, assigneeId,
             reporterId: safeReporterId,
             sprintId, jiraKey: issue.key, jiraNum: issueNumber,
@@ -1659,6 +1675,47 @@ async function runIssuesPhase(
              ON CONFLICT DO NOTHING`,
             commentParams,
           ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
+        }
+      }
+
+      // ── Stage attachment metadata for Phase 6 ───────────────────────────────
+      if (state.options?.importAttachments) {
+        const stagingRows: unknown[][] = [];
+        for (const issue of page.issues ?? []) {
+          const localId = state.jiraIssueKeyToLocalId[issue.key];
+          if (!localId) continue;
+          for (const att of (issue.fields?.attachment ?? []) as JiraApiAttachment[]) {
+            stagingRows.push([
+              state.id,          // migration_run_id
+              state.organizationId, // organization_id
+              att.id,            // jira_attachment_id
+              issue.key,         // jira_issue_key
+              localId,           // local_issue_id
+              att.content,       // download_url
+              att.filename,      // file_name
+              att.mimeType,      // mime_type
+              att.size,          // file_size
+            ]);
+          }
+        }
+
+        if (stagingRows.length > 0) {
+          const stagingPlaceholders = stagingRows
+            .map((_, i) => {
+              const b = i * 9 + 1;
+              return `($${b}::uuid,$${b+1}::uuid,$${b+2},$${b+3},$${b+4}::uuid,$${b+5},$${b+6},$${b+7},$${b+8}::bigint)`;
+            })
+            .join(', ');
+          await client.query(
+            `INSERT INTO jira_migration_attachment_staging
+               (migration_run_id, organization_id, jira_attachment_id, jira_issue_key, local_issue_id,
+                download_url, file_name, mime_type, file_size)
+             VALUES ${stagingPlaceholders}
+             ON CONFLICT (migration_run_id, jira_attachment_id) DO NOTHING`,
+            stagingRows.flat(),
+          ).catch((err: any) => {
+            addError(state, `attachment staging insert: ${err.message}`);
+          });
         }
       }
 
