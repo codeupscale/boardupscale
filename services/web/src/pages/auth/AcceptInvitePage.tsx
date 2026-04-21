@@ -23,6 +23,29 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+const ERROR_SCREENS: Record<string, { heading: string; body: string; cta: boolean }> = {
+  INVITE_ALREADY_ACCEPTED: {
+    heading: 'Already Accepted',
+    body: 'Your account is already active.',
+    cta: true,
+  },
+  INVITE_EXPIRED: {
+    heading: 'Invite Expired',
+    body: 'This invite expired after 7 days. Ask your admin to resend it.',
+    cta: true,
+  },
+  INVITE_INVALID: {
+    heading: 'Invalid Link',
+    body: 'This invite link is invalid or has already been used.',
+    cta: true,
+  },
+  INVITE_NOT_SENT: {
+    heading: 'No Invite Sent',
+    body: "Your admin hasn't sent an invitation yet. Contact them to get access.",
+    cta: false,
+  },
+}
+
 export function AcceptInvitePage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
@@ -110,29 +133,6 @@ export function AcceptInvitePage() {
         </div>
       </div>
     )
-  }
-
-  const ERROR_SCREENS: Record<string, { heading: string; body: string; cta: boolean }> = {
-    INVITE_ALREADY_ACCEPTED: {
-      heading: 'Already Accepted',
-      body: 'Your account is already active.',
-      cta: true,
-    },
-    INVITE_EXPIRED: {
-      heading: 'Invite Expired',
-      body: 'This invite expired after 7 days. Ask your admin to resend it.',
-      cta: true,
-    },
-    INVITE_INVALID: {
-      heading: 'Invalid Link',
-      body: 'This invite link is invalid or has already been used.',
-      cta: true,
-    },
-    INVITE_NOT_SENT: {
-      heading: 'No Invite Sent',
-      body: "Your admin hasn't sent an invitation yet. Contact them to get access.",
-      cta: false,
-    },
   }
 
   if (!validating && (errorCode || error) && !inviteEmail) {

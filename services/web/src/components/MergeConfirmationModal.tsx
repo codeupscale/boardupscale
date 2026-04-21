@@ -68,17 +68,17 @@ export function MergeConfirmationModal({ open, preview, loading, error, onConfir
             )}
 
             <p className="text-xs text-muted-foreground mb-5">This cannot be undone.</p>
+
+            {/* Error — only shown when preview is loaded */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg px-3 py-2 mb-4">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg px-3 py-2 mb-4">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         )}
 
