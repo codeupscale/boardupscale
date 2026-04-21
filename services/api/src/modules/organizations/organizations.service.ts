@@ -708,8 +708,8 @@ export class OrganizationsService {
 
     // Step 2a: Re-sync assignees → project_members
     const assigneeResult = await this.dataSource.query(
-      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-       SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW(), NOW()
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+       SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW()
        FROM issues i
        JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
        WHERE i.assignee_id IS NOT NULL
@@ -719,8 +719,8 @@ export class OrganizationsService {
 
     // Step 2b: Re-sync reporters → project_members
     const reporterResult = await this.dataSource.query(
-      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-       SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW(), NOW()
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+       SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW()
        FROM issues i
        JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
        WHERE i.reporter_id IS NOT NULL
@@ -730,8 +730,8 @@ export class OrganizationsService {
 
     // Step 3: Re-sync comment authors → project_members
     const commentResult = await this.dataSource.query(
-      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-       SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW(), NOW()
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+       SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW()
        FROM comments c
        JOIN issues i ON i.id = c.issue_id
        JOIN projects p ON p.id = i.project_id AND p.organization_id = $1

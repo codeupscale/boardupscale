@@ -684,8 +684,8 @@ async function runProjectMemberSyncPhase(
       const role = userRows[0]?.role || 'member';
 
       await client.query(
-        `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW())
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, NOW())
          ON CONFLICT (project_id, user_id) DO NOTHING`,
         [project.id, userId, role],
       ).catch((err: any) => {
@@ -2318,8 +2318,8 @@ async function runRepairPhase(
 
   // Step 2a: Re-sync issue assignees → project_members
   await client.query(
-    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-     SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW(), NOW()
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+     SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW()
      FROM issues i
      JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
      WHERE i.assignee_id IS NOT NULL
@@ -2329,8 +2329,8 @@ async function runRepairPhase(
 
   // Step 2b: Re-sync issue reporters → project_members
   await client.query(
-    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-     SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW(), NOW()
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+     SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW()
      FROM issues i
      JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
      WHERE i.reporter_id IS NOT NULL
@@ -2340,8 +2340,8 @@ async function runRepairPhase(
 
   // Step 3: Re-sync comment authors → project_members
   await client.query(
-    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-     SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW(), NOW()
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at)
+     SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW()
      FROM comments c
      JOIN issues i ON i.id = c.issue_id
      JOIN projects p ON p.id = i.project_id AND p.organization_id = $1

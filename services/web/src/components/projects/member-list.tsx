@@ -40,7 +40,7 @@ export function MemberList({ projectId, members }: MemberListProps) {
   return (
     <div className="divide-y divide-border">
       {members.map((member) => (
-        <div key={member.id} className="flex items-center gap-4 py-3">
+        <div key={member.id} className="flex items-center gap-4 px-4 py-3">
           <Avatar user={member.user} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{member.user.displayName}</p>
