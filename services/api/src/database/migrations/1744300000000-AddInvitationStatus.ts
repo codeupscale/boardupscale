@@ -17,32 +17,34 @@ export class AddInvitationStatus1744300000000 implements MigrationInterface {
       CHECK ("invitation_status" IN ('none', 'pending', 'accepted', 'expired'))
     `);
 
-    // Backfill non-Jira active users → 'accepted' (they genuinely accepted an invite or registered normally)
+    // Backfill active users who completed registration (password or OAuth) → 'accepted'.
+    // These are real users who went through the invite/signup flow.
+    // Note: jira_account_id is intentionally not used here — it may not exist on older DBs.
     await queryRunner.query(`
       UPDATE "users"
       SET "invitation_status" = 'accepted'
       WHERE "is_active" = true
-        AND "jira_account_id" IS NULL
         AND "email" NOT LIKE '%@migrated.jira.local'
+        AND ("password_hash" IS NOT NULL OR "oauth_provider" IS NOT NULL)
     `);
 
-    // Backfill non-Jira inactive users → 'pending' (pending invite, not yet accepted)
+    // Active users without credentials and no synthetic email → Jira-imported with real email,
+    // pending invitation (admin set email but user hasn't accepted yet).
+    await queryRunner.query(`
+      UPDATE "users"
+      SET "invitation_status" = 'pending'
+      WHERE "is_active" = true
+        AND "email" NOT LIKE '%@migrated.jira.local'
+        AND "password_hash" IS NULL
+        AND "oauth_provider" IS NULL
+    `);
+
+    // Inactive users with real email → pending invite not yet accepted
     await queryRunner.query(`
       UPDATE "users"
       SET "invitation_status" = 'pending'
       WHERE "is_active" = false
         AND "email" NOT LIKE '%@migrated.jira.local'
-    `);
-
-    // Backfill Jira users with real email → 'pending'
-    // Worker sets is_active=true for ALL Jira users regardless of email type,
-    // but real-email Jira users still need to accept an invite (no password set).
-    await queryRunner.query(`
-      UPDATE "users"
-      SET "invitation_status" = 'pending'
-      WHERE "jira_account_id" IS NOT NULL
-        AND "email" NOT LIKE '%@migrated.jira.local'
-        AND "password_hash" IS NULL
     `);
 
     // Jira users with synthetic email → 'none' (no invite sent yet, awaiting real email from admin)
