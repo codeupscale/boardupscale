@@ -66,15 +66,18 @@ export class OrganizationsService {
       where: { organizationId },
       order: { createdAt: 'ASC' },
     });
-    // Merge: prefer membership users, add any legacy users not in the set
+    // Merge: prefer membership users, add any legacy users not in the set.
+    // Membership users are always included regardless of isActive — a pending-invite
+    // migrated user has isActive=false but a valid org_member row and must show up.
+    // Legacy users (no membership row) are filtered by isActive so old deactivations
+    // (which set isActive=false without deleting a row) still take effect.
     const users = memberships.map((m) => m.user).filter(Boolean);
     for (const u of legacyUsers) {
-      if (!memberUserIds.has(u.id)) {
+      if (!memberUserIds.has(u.id) && u.isActive !== false) {
         users.push(u);
       }
     }
-    // Exclude deactivated users — isActive: false means removed from org
-    return users.filter((u) => u.isActive !== false);
+    return users;
   }
 
   async inviteMember(
