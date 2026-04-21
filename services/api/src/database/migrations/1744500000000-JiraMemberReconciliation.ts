@@ -11,6 +11,28 @@ export class JiraMemberReconciliation1744500000000 implements MigrationInterface
         ADD COLUMN IF NOT EXISTS "jira_account_id" VARCHAR(255) NULL
     `);
 
+    // Existing data may have duplicate jira_account_id (e.g. reconciliation
+    // backfilled the same Jira account onto multiple rows). Keep one row per
+    // account: prefer real emails over @migrated.jira.local, then lowest id.
+    await queryRunner.query(`
+      WITH ranked AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            PARTITION BY "jira_account_id"
+            ORDER BY
+              CASE WHEN email LIKE '%@migrated.jira.local' THEN 1 ELSE 0 END,
+              id
+          ) AS rn
+        FROM "users"
+        WHERE "jira_account_id" IS NOT NULL
+      )
+      UPDATE "users" u
+      SET "jira_account_id" = NULL
+      FROM ranked r
+      WHERE u.id = r.id AND r.rn > 1
+    `);
+
     // Fast lookup of Jira placeholder users by accountId during merge.
     // Partial unique index: only enforced when jira_account_id is set.
     await queryRunner.query(`
