@@ -1,12 +1,7 @@
+import 'reflect-metadata';
+import '../load-env';
 import { DataSource } from 'typeorm';
-import * as dotenv from 'dotenv';
 import { join } from 'path';
-
-// In the monorepo, .env lives at the repo root (three levels up from this file:
-// src/database/ → src/ → services/api/ → repo root).
-// dotenv falls back gracefully if the file is not found (e.g. in CI where env
-// vars are injected directly).
-dotenv.config({ path: join(__dirname, '../../../../.env') });
 
 /**
  * AppDataSource is used exclusively by the TypeORM CLI for generating,
