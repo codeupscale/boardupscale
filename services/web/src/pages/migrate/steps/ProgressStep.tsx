@@ -425,6 +425,12 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
   return (
     <div className="space-y-5">
+      <style>{`
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(400%); }
+        }
+      `}</style>
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-foreground">Migration in Progress</h2>
@@ -452,20 +458,24 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
               'text-xs font-semibold px-2 py-0.5 rounded-full',
               isCompleted ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                 : isFailed ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                : 'bg-primary/10 text-primary dark:text-primary',
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
             )}>
               {isCompleted ? 'Complete' : isFailed ? 'Failed' : `${overallPct}%`}
             </span>
           </div>
         </div>
-        <div className="h-3 bg-muted rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden relative">
           <div
             className={cn(
-              'h-full rounded-full transition-all duration-700',
+              'h-full rounded-full transition-all duration-700 relative overflow-hidden',
               isFailed ? 'bg-red-500' : isCompleted ? 'bg-gradient-to-r from-green-500 to-emerald-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500',
             )}
             style={{ width: `${overallPct}%` }}
-          />
+          >
+            {isActive && (
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-[shimmer_1.8s_ease-in-out_infinite]" />
+            )}
+          </div>
         </div>
         {/* Stats row */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
