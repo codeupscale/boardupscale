@@ -561,25 +561,31 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {isRunning && total > 0 && (
-                          <span className="text-xs font-mono text-muted-foreground">
+                          <span className="text-[10px] font-mono text-muted-foreground">
                             {processed.toLocaleString()} / {total.toLocaleString()}
                           </span>
                         )}
                         {isDone && duration && (
-                          <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                             <Clock className="h-3 w-3" />{duration}
                           </span>
                         )}
                         {isDone && !duration && (
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">Done</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            Done
+                          </span>
                         )}
                         {isRunning && (
-                          <span className={cn('text-xs font-medium', phase.color.split(' ')[0])}>
-                            {total > 0 ? `${pct}%` : 'Running...'}
+                          <span className={cn(
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                            phase.bgColor,
+                            phase.color.split(' ')[0],
+                          )}>
+                            {total > 0 ? `${pct}%` : 'Running…'}
                           </span>
                         )}
                         {isPending && (
-                          <span className="text-xs text-muted-foreground/60">Pending</span>
+                          <span className="text-[10px] text-muted-foreground/40">Waiting</span>
                         )}
                       </div>
                     </div>
