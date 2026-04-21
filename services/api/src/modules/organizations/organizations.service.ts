@@ -71,7 +71,14 @@ export class OrganizationsService {
     // migrated user has isActive=false but a valid org_member row and must show up.
     // Legacy users (no membership row) are filtered by isActive so old deactivations
     // (which set isActive=false without deleting a row) still take effect.
-    const users = memberships.map((m) => m.user).filter(Boolean);
+    // IMPORTANT: role is per-org. Override user.role with the membership's role
+    // when present so the UI shows the correct role for THIS org (e.g. Admin in
+    // Org X but Member in Org Y for the same person).
+    const users: User[] = [];
+    for (const m of memberships) {
+      if (!m.user) continue;
+      users.push({ ...m.user, role: m.role } as User);
+    }
     for (const u of legacyUsers) {
       if (!memberUserIds.has(u.id) && u.isActive !== false) {
         users.push(u);
@@ -217,11 +224,20 @@ export class OrganizationsService {
     dto: { displayName?: string; avatarUrl?: string },
     actorId: string,
   ): Promise<User> {
-    const member = await this.userRepository.findOne({
-      where: { id: memberId, organizationId },
+    // Look up via organization_members first (multi-org), then fall back to the
+    // legacy users.organization_id. A user imported into THIS org via Jira may
+    // have users.organization_id pointing at a DIFFERENT "home" org, but still
+    // has a membership row here — the old `findOne({ id, organizationId })`
+    // missed them and returned "Member not found".
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
     });
-    if (!member) throw new NotFoundException('Member not found');
+    const member = await this.userRepository.findOne({ where: { id: memberId } });
+    if (!member || (!membership && member.organizationId !== organizationId)) {
+      throw new NotFoundException('Member not found');
+    }
 
+    // display_name and avatar_url are identity fields — shared across orgs.
     if (dto.displayName !== undefined) member.displayName = dto.displayName;
     if (dto.avatarUrl !== undefined) member.avatarUrl = dto.avatarUrl;
     const saved = await this.userRepository.save(member);
@@ -246,25 +262,57 @@ export class OrganizationsService {
     newRole: string,
     actorId: string,
   ): Promise<User> {
-    const member = await this.userRepository.findOne({
-      where: { id: memberId, organizationId },
+    // Membership-first lookup (see updateMemberInfo above).
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
     });
-    if (!member) {
+    const member = await this.userRepository.findOne({ where: { id: memberId } });
+    if (!member || (!membership && member.organizationId !== organizationId)) {
       throw new NotFoundException('Member not found');
     }
 
-    // Prevent removing the last owner
-    if (member.role === 'owner' && newRole !== 'owner') {
-      const ownerCount = await this.userRepository.count({
-        where: { organizationId, role: 'owner', isActive: true },
+    // The role THIS org sees — prefer the membership row (authoritative in the
+    // multi-org design); fall back to the legacy users.role for pre-migration rows.
+    const currentRole = membership?.role ?? member.role;
+
+    // Prevent removing the last owner IN THIS ORG.
+    if (currentRole === 'owner' && newRole !== 'owner') {
+      const ownerMembershipCount = await this.organizationMemberRepository.count({
+        where: { organizationId, role: 'owner' },
       });
-      if (ownerCount <= 1) {
+      // Include legacy-only owners (users with no membership row but
+      // users.organization_id = this org AND users.role = 'owner').
+      const legacyOwnerCount = await this.userRepository
+        .createQueryBuilder('u')
+        .leftJoin(
+          'organization_members',
+          'om',
+          'om.user_id = u.id AND om.organization_id = :orgId',
+          { orgId: organizationId },
+        )
+        .where('u.organization_id = :orgId', { orgId: organizationId })
+        .andWhere('u.role = :role', { role: 'owner' })
+        .andWhere('u.is_active = true')
+        .andWhere('om.user_id IS NULL')
+        .getCount();
+      if (ownerMembershipCount + legacyOwnerCount <= 1) {
         throw new BadRequestException('Cannot change role: this is the only owner');
       }
     }
 
-    member.role = newRole;
-    const saved = await this.userRepository.save(member);
+    // Write to the authoritative per-org row. Keep users.role in sync ONLY if
+    // this user's "home" org is the one being edited — otherwise we'd clobber
+    // their role in a different org.
+    if (membership) {
+      membership.role = newRole;
+      await this.organizationMemberRepository.save(membership);
+    }
+    if (member.organizationId === organizationId) {
+      member.role = newRole;
+      await this.userRepository.save(member);
+    }
+
+    const saved = await this.userRepository.findOne({ where: { id: memberId } });
 
     this.auditService.log(
       organizationId,
@@ -272,12 +320,12 @@ export class OrganizationsService {
       'organization.member.role_changed',
       'user',
       memberId,
-      { newRole, previousRole: member.role },
+      { newRole, previousRole: currentRole },
       null,
     );
 
     this.notifyOrgMembersChanged(organizationId);
-    return saved;
+    return saved!;
   }
 
   async deactivateMember(

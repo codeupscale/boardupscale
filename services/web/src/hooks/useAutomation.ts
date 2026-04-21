@@ -90,7 +90,7 @@ export function useCreateRule() {
       toast('Automation rule created')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create rule', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create rule', 'error'),
   })
 }
 
@@ -119,7 +119,7 @@ export function useUpdateRule() {
       toast('Automation rule updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update rule', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update rule', 'error'),
   })
 }
 
@@ -135,7 +135,7 @@ export function useDeleteRule() {
       toast('Automation rule deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete rule', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete rule', 'error'),
   })
 }
 
@@ -152,7 +152,7 @@ export function useToggleRule() {
       toast(rule.isActive ? 'Rule enabled' : 'Rule disabled')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to toggle rule', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to toggle rule', 'error'),
   })
 }
 
@@ -189,6 +189,6 @@ export function useTestRule() {
       }
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to test rule', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to test rule', 'error'),
   })
 }

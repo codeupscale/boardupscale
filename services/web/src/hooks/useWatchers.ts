@@ -26,6 +26,6 @@ export function useToggleWatch() {
       toast(result.watching ? 'Watching issue' : 'Stopped watching issue')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update watch status', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update watch status', 'error'),
   })
 }

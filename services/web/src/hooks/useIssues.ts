@@ -68,7 +68,7 @@ export function useCreateIssue() {
       toast('Issue created')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create issue', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create issue', 'error'),
   })
 }
 
@@ -117,7 +117,7 @@ export function useUpdateIssue() {
       if (context?.previous) {
         qc.setQueryData(['issue', context.id], context.previous)
       }
-      toast(err?.response?.data?.error?.message || 'Failed to update issue', 'error')
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update issue', 'error')
     },
   })
 }
@@ -141,7 +141,7 @@ export function useMoveIssueSprint() {
       qc.invalidateQueries({ queryKey: ['board'] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to move issue', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to move issue', 'error'),
   })
 }
 
@@ -158,7 +158,7 @@ export function useDeleteIssue() {
       toast('Issue deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete issue', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete issue', 'error'),
   })
 }
 
@@ -200,6 +200,6 @@ export function useAddWorkLog() {
       toast('Work logged')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to log work', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to log work', 'error'),
   })
 }

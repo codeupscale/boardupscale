@@ -40,7 +40,7 @@ export function useCreateComponent() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to create epic',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create epic',
         'error',
       ),
   })
@@ -69,7 +69,7 @@ export function useUpdateComponent() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update epic',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update epic',
         'error',
       ),
   })
@@ -96,7 +96,7 @@ export function useDeleteComponent() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to delete epic',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete epic',
         'error',
       ),
   })
@@ -134,7 +134,7 @@ export function useSetIssueComponents() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update epics',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update epics',
         'error',
       ),
   })

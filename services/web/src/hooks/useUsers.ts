@@ -71,7 +71,7 @@ export function useUpdateProfile() {
       toast('Profile updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update profile', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update profile', 'error'),
   })
 }
 
@@ -86,6 +86,6 @@ export function useChangePassword() {
     },
     onSuccess: () => toast('Password changed successfully'),
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to change password', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to change password', 'error'),
   })
 }

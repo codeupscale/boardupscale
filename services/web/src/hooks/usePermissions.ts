@@ -73,7 +73,7 @@ export function useCreateRole() {
       toast('Role created successfully')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create role', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create role', 'error'),
   })
 }
 
@@ -107,7 +107,7 @@ export function useUpdateRole() {
       toast('Role updated successfully')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update role', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update role', 'error'),
   })
 }
 
@@ -125,7 +125,7 @@ export function useDeleteRole() {
       toast('Role deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete role', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete role', 'error'),
   })
 }
 
@@ -155,6 +155,6 @@ export function useAssignRole() {
       toast('Role assigned successfully')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to assign role', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to assign role', 'error'),
   })
 }

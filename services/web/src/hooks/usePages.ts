@@ -107,7 +107,7 @@ export function useCreatePage() {
       qc.invalidateQueries({ queryKey: ['pages', 'tree', page.projectId] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create page', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create page', 'error'),
   })
 }
 
@@ -129,7 +129,7 @@ export function useUpdatePage() {
       qc.invalidateQueries({ queryKey: ['pages', 'tree', page.projectId] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to save page', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to save page', 'error'),
   })
 }
 
@@ -154,7 +154,7 @@ export function useMovePage() {
       qc.invalidateQueries({ queryKey: ['pages', 'tree', variables.projectId] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to move page', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to move page', 'error'),
   })
 }
 
@@ -173,6 +173,6 @@ export function useDeletePage() {
       toast('Page deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete page', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete page', 'error'),
   })
 }

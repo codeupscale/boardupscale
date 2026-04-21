@@ -39,7 +39,7 @@ export function useUploadJiraFile() {
       return data.data as { filePath: string }
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to upload file', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to upload file', 'error'),
   })
 }
 
@@ -50,7 +50,7 @@ export function useImportPreview() {
       return data.data as ImportPreview
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to preview import', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to preview import', 'error'),
   })
 }
 
@@ -65,7 +65,7 @@ export function useStartImport() {
       return data.data as { jobId: string }
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to start import', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to start import', 'error'),
   })
 }
 

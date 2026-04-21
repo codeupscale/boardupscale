@@ -25,7 +25,7 @@ export function useCreateComment() {
       qc.invalidateQueries({ queryKey: ['comments', comment.issueId] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to add comment', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to add comment', 'error'),
   })
 }
 
@@ -48,7 +48,7 @@ export function useUpdateComment() {
       qc.invalidateQueries({ queryKey: ['comments', comment.issueId] })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update comment', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update comment', 'error'),
   })
 }
 
@@ -64,6 +64,6 @@ export function useDeleteComment() {
       toast('Comment deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete comment', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete comment', 'error'),
   })
 }

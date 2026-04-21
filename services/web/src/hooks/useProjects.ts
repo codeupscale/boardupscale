@@ -84,7 +84,7 @@ export function useUpdateProject() {
       toast('Project updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update project', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update project', 'error'),
   })
 }
 
@@ -99,7 +99,7 @@ export function useDeleteProject() {
       toast('Project deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete project', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete project', 'error'),
   })
 }
 
@@ -134,7 +134,7 @@ export function useAddProjectMember() {
       toast('Member added')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to add member', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to add member', 'error'),
   })
 }
 
@@ -148,7 +148,9 @@ export function useRemoveProjectMember() {
       qc.invalidateQueries({ queryKey: ['project-members', projectId] })
       toast('Member removed')
     },
-    onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to remove member', 'error'),
+    onError: (err: any) => {
+      const d = err?.response?.data
+      toast(d?.message || d?.error?.message || 'Failed to remove member', 'error')
+    },
   })
 }

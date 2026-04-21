@@ -47,7 +47,7 @@ export function useCreateWebhook() {
       toast('Webhook created')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create webhook', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create webhook', 'error'),
   })
 }
 
@@ -76,7 +76,7 @@ export function useUpdateWebhook() {
       toast('Webhook updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update webhook', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update webhook', 'error'),
   })
 }
 
@@ -91,7 +91,7 @@ export function useDeleteWebhook() {
       toast('Webhook deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete webhook', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete webhook', 'error'),
   })
 }
 
@@ -105,7 +105,7 @@ export function useTestWebhook() {
       toast('Test webhook sent')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to send test webhook', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to send test webhook', 'error'),
   })
 }
 
@@ -137,6 +137,6 @@ export function useRetryDelivery() {
       toast('Delivery retry queued')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to retry delivery', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to retry delivery', 'error'),
   })
 }

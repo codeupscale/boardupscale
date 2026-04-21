@@ -62,7 +62,7 @@ export function useReorderIssues() {
       return data.data
     },
     onError: (err: any) => {
-      toast(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to reorder issues', 'error')
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to reorder issues', 'error')
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['board'] })
@@ -92,7 +92,7 @@ export function useCreateStatus() {
       toast('Status created')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create status', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create status', 'error'),
   })
 }
 
@@ -120,7 +120,7 @@ export function useUpdateStatus() {
       toast('Status updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update status', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update status', 'error'),
   })
 }
 
@@ -136,6 +136,6 @@ export function useDeleteStatus() {
       toast('Status deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete status', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete status', 'error'),
   })
 }

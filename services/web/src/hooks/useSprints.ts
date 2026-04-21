@@ -35,7 +35,7 @@ export function useCreateSprint() {
       toast('Sprint created')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to create sprint', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create sprint', 'error'),
   })
 }
 
@@ -62,7 +62,7 @@ export function useUpdateSprint() {
       toast('Sprint updated')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to update sprint', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update sprint', 'error'),
   })
 }
 
@@ -91,7 +91,7 @@ export function useStartSprint() {
       toast('Sprint started')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to start sprint', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to start sprint', 'error'),
   })
 }
 
@@ -118,7 +118,7 @@ export function useCompleteSprint() {
       toast('Sprint completed')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to complete sprint', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to complete sprint', 'error'),
   })
 }
 
@@ -135,6 +135,6 @@ export function useDeleteSprint() {
       toast('Sprint deleted')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete sprint', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete sprint', 'error'),
   })
 }

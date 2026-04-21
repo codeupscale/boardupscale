@@ -66,7 +66,7 @@ export function useConnectGithub() {
       toast('GitHub repository connected — webhook registered automatically')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to connect GitHub repository', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to connect GitHub repository', 'error'),
   })
 }
 
@@ -81,7 +81,7 @@ export function useDisconnectGithub() {
       toast('GitHub repository disconnected — webhook removed')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to disconnect GitHub repository', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to disconnect GitHub repository', 'error'),
   })
 }
 

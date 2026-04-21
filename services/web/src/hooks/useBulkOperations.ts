@@ -44,7 +44,7 @@ export function useBulkUpdate() {
       toast(`${result.affected} issue${result.affected !== 1 ? 's' : ''} updated`)
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to bulk update issues', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to bulk update issues', 'error'),
   })
 }
 
@@ -63,7 +63,7 @@ export function useBulkMove() {
       toast(`${result.affected} issue${result.affected !== 1 ? 's' : ''} moved`)
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to move issues', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to move issues', 'error'),
   })
 }
 
@@ -82,7 +82,7 @@ export function useBulkDelete() {
       toast(`${result.affected} issue${result.affected !== 1 ? 's' : ''} deleted`)
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to delete issues', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete issues', 'error'),
   })
 }
 
@@ -101,7 +101,7 @@ export function useBulkRestore() {
       toast(`${result.affected} issue${result.affected !== 1 ? 's' : ''} restored`)
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to restore issues', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to restore issues', 'error'),
   })
 }
 
@@ -120,6 +120,6 @@ export function useBulkTransition() {
       toast(`${result.affected} issue${result.affected !== 1 ? 's' : ''} transitioned`)
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to transition issues', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to transition issues', 'error'),
   })
 }

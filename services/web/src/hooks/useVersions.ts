@@ -39,7 +39,7 @@ export function useCreateVersion() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to create version',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create version',
         'error',
       ),
   })
@@ -68,7 +68,7 @@ export function useUpdateVersion() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update version',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update version',
         'error',
       ),
   })
@@ -93,7 +93,7 @@ export function useDeleteVersion() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to delete version',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete version',
         'error',
       ),
   })
@@ -118,7 +118,7 @@ export function useReleaseVersion() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to release version',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to release version',
         'error',
       ),
   })
@@ -170,7 +170,7 @@ export function useSetIssueVersions() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update versions',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update versions',
         'error',
       ),
   })

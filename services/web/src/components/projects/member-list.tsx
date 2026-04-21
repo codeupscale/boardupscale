@@ -62,7 +62,9 @@ export function MemberList({ projectId, members }: MemberListProps) {
               variant="ghost"
               size="icon-sm"
               onClick={() =>
-                removeMember.mutate({ projectId, memberId: member.id })
+                // Backend route is DELETE /projects/:id/members/:userId —
+                // pass the user's id, not the project_member row id.
+                removeMember.mutate({ projectId, memberId: member.userId })
               }
               className="text-muted-foreground hover:text-red-600"
             >

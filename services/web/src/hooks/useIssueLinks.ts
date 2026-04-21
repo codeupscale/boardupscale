@@ -37,7 +37,7 @@ export function useCreateIssueLink() {
       toast('Issue linked')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to link issue', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to link issue', 'error'),
   })
 }
 
@@ -59,6 +59,6 @@ export function useDeleteIssueLink() {
       toast('Link removed')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.error?.message || 'Failed to remove link', 'error'),
+      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to remove link', 'error'),
   })
 }

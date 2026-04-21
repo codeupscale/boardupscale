@@ -45,7 +45,7 @@ export function useCreateCustomField() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to create custom field',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create custom field',
         'error',
       ),
   })
@@ -76,7 +76,7 @@ export function useUpdateCustomField() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to update custom field',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update custom field',
         'error',
       ),
   })
@@ -94,7 +94,7 @@ export function useDeleteCustomField() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message || 'Failed to delete custom field',
+        err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to delete custom field',
         'error',
       ),
   })
@@ -133,7 +133,7 @@ export function useSetIssueCustomFields() {
     },
     onError: (err: any) =>
       toast(
-        err?.response?.data?.error?.message ||
+        err?.response?.data?.message || err?.response?.data?.error?.message ||
           'Failed to update custom fields',
         'error',
       ),
