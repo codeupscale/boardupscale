@@ -425,12 +425,6 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
 
   return (
     <div className="space-y-5">
-      <style>{`
-        @keyframes shimmer {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(400%); }
-        }
-      `}</style>
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-foreground">Migration in Progress</h2>
@@ -473,7 +467,7 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
             style={{ width: `${overallPct}%` }}
           >
             {isActive && (
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-[shimmer_1.8s_ease-in-out_infinite]" />
+              <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-[shimmer_1.8s_ease-in-out_infinite]" />
             )}
           </div>
         </div>
