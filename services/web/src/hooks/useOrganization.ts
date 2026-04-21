@@ -215,3 +215,27 @@ export function useRevokeInvitation() {
     },
   })
 }
+
+export function useRepairOrgMemberships() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/organizations/me/members/repair')
+      return data as { repairedOrgMembers: number; repairedProjectMembers: number }
+    },
+    onSuccess: (result) => {
+      // Invalidate all project-members queries so every open settings tab refreshes
+      qc.invalidateQueries({ queryKey: ['project-members'] })
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      const added = result.repairedProjectMembers
+      toast(
+        added > 0
+          ? `Sync complete — ${added} project membership${added === 1 ? '' : 's'} restored`
+          : 'All memberships are already up to date',
+      )
+    },
+    onError: (err: any) => {
+      toast(err?.response?.data?.message || 'Sync failed — please try again', 'error')
+    },
+  })
+}

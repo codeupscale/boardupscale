@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Plus, Trash2, Edit2, AlertTriangle, Shield, Globe,
   Settings, Users, GitBranch, SlidersHorizontal, Layers,
-  Tag, Sparkles, Github, Zap,
+  Tag, Sparkles, Github, Zap, RefreshCw,
 } from 'lucide-react'
 import { AutomationsContent } from '@/pages/ProjectAutomationsPage'
 import { TrashContent } from '@/pages/ProjectTrashPage'
@@ -15,6 +15,7 @@ import {
   useProjectMembers,
   useAddProjectMember,
 } from '@/hooks/useProjects'
+import { useRepairOrgMemberships } from '@/hooks/useOrganization'
 import { useBoard, useCreateStatus, useUpdateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useMe } from '@/hooks/useAuth'
@@ -112,6 +113,7 @@ export function ProjectSettingsPage() {
   const updateProject = useUpdateProject()
   const deleteProject = useDeleteProject()
   const addMember = useAddProjectMember()
+  const repairMemberships = useRepairOrgMemberships()
   const createStatus = useCreateStatus()
   const updateStatus = useUpdateStatus()
   const deleteStatus = useDeleteStatus()
@@ -265,12 +267,24 @@ export function ProjectSettingsPage() {
                   <h2 className="text-base font-semibold text-foreground">{t('projects.projectMembers')}</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">Add and manage who has access to this project.</p>
                 </div>
-                {hasPermission('member', 'create') && (
-                  <Button size="sm" onClick={() => setShowAddMember(true)}>
-                    <Plus className="h-4 w-4" />
-                    {t('projects.addMember')}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => repairMemberships.mutate()}
+                    disabled={repairMemberships.isPending}
+                    title="Sync project memberships from Jira-imported issue assignments"
+                  >
+                    <RefreshCw className={cn('h-4 w-4', repairMemberships.isPending && 'animate-spin')} />
+                    {repairMemberships.isPending ? 'Syncing…' : 'Sync Members'}
                   </Button>
-                )}
+                  {hasPermission('member', 'create') && (
+                    <Button size="sm" onClick={() => setShowAddMember(true)}>
+                      <Plus className="h-4 w-4" />
+                      {t('projects.addMember')}
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 <MemberList projectId={projectKey!} members={members || []} />
