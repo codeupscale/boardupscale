@@ -474,17 +474,23 @@ export function ProgressStep({ payload, onComplete, initialRunId, onReset }: Pro
         {/* Stats row */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {[
-            { label: 'Projects', val: liveCounts.processedProjects, total: liveCounts.totalProjects, icon: FolderOpen, color: 'text-primary' },
-            { label: 'Issues', val: liveCounts.processedIssues, total: liveCounts.totalIssues, icon: FileText, color: 'text-indigo-600 dark:text-indigo-400' },
-            { label: 'Members', val: liveCounts.processedMembers, total: liveCounts.totalMembers, icon: Users, color: 'text-violet-600 dark:text-violet-400' },
-            { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Comments', val: liveCounts.processedComments, total: liveCounts.totalComments, icon: MessageSquare, color: 'text-teal-600 dark:text-teal-400' },
-          ].map(({ label, val, total, icon: Icon, color }) => (
-            <div key={label} className="bg-muted/50 rounded-lg p-2 text-center">
-              <Icon className={cn('h-3.5 w-3.5 mx-auto mb-1', color)} />
-              <div className="text-sm font-bold text-foreground">{val.toLocaleString()}</div>
-              {total > 0 && <div className="text-[10px] text-muted-foreground">of {total.toLocaleString()}</div>}
-              <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+            { label: 'Projects', val: liveCounts.processedProjects, total: liveCounts.totalProjects, icon: FolderOpen, color: 'text-primary', iconBg: 'bg-primary/10' },
+            { label: 'Issues', val: liveCounts.processedIssues, total: liveCounts.totalIssues, icon: FileText, color: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+            { label: 'Members', val: liveCounts.processedMembers, total: liveCounts.totalMembers, icon: Users, color: 'text-violet-600 dark:text-violet-400', iconBg: 'bg-violet-50 dark:bg-violet-900/20' },
+            { label: 'Sprints', val: liveCounts.processedSprints, total: liveCounts.totalSprints, icon: Zap, color: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-50 dark:bg-amber-900/20' },
+            { label: 'Comments', val: liveCounts.processedComments, total: liveCounts.totalComments, icon: MessageSquare, color: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-50 dark:bg-teal-900/20' },
+          ].map(({ label, val, total, icon: Icon, color, iconBg }) => (
+            <div key={label} className="bg-muted/50 rounded-lg p-3 text-center">
+              <div className={cn('h-7 w-7 rounded-md flex items-center justify-center mx-auto mb-2', iconBg)}>
+                <Icon className={cn('h-3.5 w-3.5', color)} />
+              </div>
+              <div className="text-base font-bold text-foreground leading-none">
+                {val.toLocaleString()}
+                {total > 0 && (
+                  <span className="text-[10px] font-normal text-muted-foreground ml-1">/ {total.toLocaleString()}</span>
+                )}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-1">{label}</div>
             </div>
           ))}
         </div>
