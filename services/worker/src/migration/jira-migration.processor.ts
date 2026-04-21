@@ -430,6 +430,8 @@ async function updateRunProgress(
         totalSprints: state.totalSprints,
         processedComments: state.processedComments,
         totalComments: state.totalComments,
+        processedAttachments: state.processedAttachments,
+        totalAttachments: state.totalAttachments,
       },
     })).catch(() => {});
   }
