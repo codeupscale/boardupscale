@@ -333,6 +333,12 @@ export class OrganizationsService {
       throw new BadRequestException('Cannot revoke — user is already active. Use deactivate instead.');
     }
 
+    if (member.invitationStatus === 'none') {
+      throw new BadRequestException(
+        'Cannot revoke a Jira-migrated placeholder. Update their email address first.',
+      );
+    }
+
     await this.userRepository.remove(member);
 
     this.auditService.log(
@@ -573,6 +579,14 @@ export class OrganizationsService {
   }> {
     const placeholder = await this.userRepository.findOne({ where: { id: memberId } });
     if (!placeholder) throw new NotFoundException('Member not found');
+
+    // Verify placeholder belongs to this organization
+    const placeholderMembership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
+    });
+    if (!placeholderMembership && placeholder.organizationId !== organizationId) {
+      throw new NotFoundException('Member not found in this organization');
+    }
 
     const targetUser = await this.userRepository.findOne({ where: { email: targetEmail } });
 
