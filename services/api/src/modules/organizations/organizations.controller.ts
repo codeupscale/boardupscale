@@ -212,4 +212,42 @@ export class OrganizationsController {
     await this.organizationsService.deleteSamlConfig(organizationId, userId);
     return { message: 'SAML configuration removed successfully' };
   }
+
+  // ── Jira Member Reconciliation ──────────────────────────────────────────
+
+  @Post('me/members/repair')
+  @ApiOperation({
+    summary: 'Repair Jira member memberships — fixes users with missing org_members or project_members',
+    description:
+      'Idempotent. Re-syncs organization_members and project_members from issue assignees, reporters, ' +
+      'and comment authors. Call once after a Jira migration to heal any broken states.',
+  })
+  @Roles('admin', 'owner')
+  async repairOrgMemberships(@OrgId() organizationId: string) {
+    const result = await this.organizationsService.repairOrgMemberships(organizationId);
+    return { data: result };
+  }
+
+  @Post('me/members/bulk-invite')
+  @ApiOperation({
+    summary: 'Send invitation emails to all pending migrated members who have not yet been invited',
+    description:
+      'Finds all users in the org with invitation_status=pending and no valid token, then sends invite emails.',
+  })
+  @Roles('admin', 'owner')
+  async bulkInvitePending(@OrgId() organizationId: string) {
+    const result = await this.organizationsService.bulkInvitePending(organizationId);
+    return { data: result };
+  }
+
+  @Get('me/members/jira-orphans')
+  @ApiOperation({
+    summary: 'List Jira placeholder users still using synthetic @migrated.jira.local emails',
+    description: 'Returns synthetic placeholder users who need a real email assigned via the update-email endpoint.',
+  })
+  @Roles('admin', 'owner')
+  async getJiraOrphans(@OrgId() organizationId: string) {
+    const result = await this.organizationsService.getJiraOrphans(organizationId);
+    return { data: result };
+  }
 }
