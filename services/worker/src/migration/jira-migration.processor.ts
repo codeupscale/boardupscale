@@ -1716,7 +1716,7 @@ async function runIssuesPhase(
              ON CONFLICT (migration_run_id, jira_attachment_id) DO NOTHING`,
             stagingRows.flat(),
           ).catch((err: any) => {
-            addError(state, `attachment staging insert: ${err.message}`);
+            issueErrors.push(`attachment staging insert page ${proj.key}@page${pageNumber}: ${err.message}`);
           });
         }
       }
@@ -1995,16 +1995,18 @@ const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024; // 50 MB hard limit
 const ATTACHMENT_BATCH_SIZE = 20;
 
 function initMinIOClient(): S3Client {
+  const accessKeyId = process.env.MINIO_ACCESS_KEY;
+  const secretAccessKey = process.env.MINIO_SECRET_KEY;
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set for attachment import');
+  }
   const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
   const port = process.env.MINIO_PORT ?? '9000';
   const useSSL = process.env.MINIO_USE_SSL === 'true';
   return new S3Client({
     endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
     region: 'us-east-1',
-    credentials: {
-      accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
-      secretAccessKey: process.env.MINIO_SECRET_KEY ?? '',
-    },
+    credentials: { accessKeyId, secretAccessKey },
     forcePathStyle: true,
   });
 }
@@ -2018,7 +2020,11 @@ async function ensureMinIOBucket(s3: S3Client, bucket: string): Promise<void> {
 }
 
 function sanitizeStorageKey(runId: string, filename: string): string {
-  const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+  // Strip path separators and control chars only — MinIO supports UTF-8 keys natively
+  const safe = filename
+    .replace(/[/\\]/g, '_')           // path separators
+    .replace(/[\x00-\x1f\x7f]/g, '_') // control characters
+    .slice(0, 200);
   return `jira/${runId}/${randomUUID()}-${safe}`;
 }
 
