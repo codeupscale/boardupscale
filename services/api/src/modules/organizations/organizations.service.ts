@@ -448,8 +448,9 @@ export class OrganizationsService {
 
   /**
    * Merge a Jira-migrated placeholder user into an existing real user.
-   * Reassigns all data (issues, comments, activity, etc.) from the placeholder
-   * to the real user, adds the real user to this org, and sends an invitation.
+   * Reassigns all data (issues, comments, project memberships, work logs, watchers)
+   * from the placeholder to the real user, adds the real user to this org, and sends an invitation.
+   * Audit log entries are intentionally left as-is — they are an immutable audit trail.
    */
   private async mergeAndInviteExistingUser(
     organizationId: string,
@@ -484,11 +485,8 @@ export class OrganizationsService {
         [realUserId, placeholderId, organizationId],
       );
 
-      // Activity logs
-      await manager.query(
-        `UPDATE activity SET user_id = $1 WHERE user_id = $2 AND organization_id = $3`,
-        [realUserId, placeholderId, organizationId],
-      );
+      // NOTE: audit_logs are intentionally not reassigned — they are an immutable
+      // audit trail and the table is named audit_logs, not activity.
 
       // Work logs (scoped through issue's organization_id)
       await manager.query(
