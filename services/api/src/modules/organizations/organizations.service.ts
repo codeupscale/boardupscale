@@ -659,6 +659,75 @@ export class OrganizationsService {
     return this.mergeAndInviteExistingUser(organizationId, placeholder, targetUser, actorId);
   }
 
+  async repairOrgMemberships(
+    organizationId: string,
+  ): Promise<{ repairedOrgMembers: number; repairedProjectMembers: number }> {
+    // Step 1: Ensure every user who has project_members in this org also has organization_members
+    const orgMembersResult = await this.dataSource.query(
+      `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+       SELECT
+         gen_random_uuid(),
+         pm.user_id,
+         p.organization_id,
+         COALESCE(u.role, 'member'),
+         false,
+         NOW(),
+         NOW()
+       FROM project_members pm
+       JOIN projects p ON p.id = pm.project_id
+       JOIN users u ON u.id = pm.user_id
+       WHERE p.organization_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM organization_members om
+           WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
+         )
+       ON CONFLICT (user_id, organization_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 2a: Re-sync assignees → project_members
+    const assigneeResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW(), NOW()
+       FROM issues i
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE i.assignee_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 2b: Re-sync reporters → project_members
+    const reporterResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW(), NOW()
+       FROM issues i
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE i.reporter_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 3: Re-sync comment authors → project_members
+    const commentResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW(), NOW()
+       FROM comments c
+       JOIN issues i ON i.id = c.issue_id
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE c.author_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    const repairedOrgMembers = orgMembersResult?.rowCount ?? 0;
+    const repairedProjectMembers =
+      (assigneeResult?.rowCount ?? 0) +
+      (reporterResult?.rowCount ?? 0) +
+      (commentResult?.rowCount ?? 0);
+
+    return { repairedOrgMembers, repairedProjectMembers };
+  }
+
   // ── SAML SSO Configuration ─────────────────────────────────────────────
 
   async getSamlConfig(organizationId: string): Promise<{

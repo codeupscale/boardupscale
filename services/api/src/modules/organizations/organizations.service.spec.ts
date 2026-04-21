@@ -21,7 +21,10 @@ describe('OrganizationsService', () => {
   const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
   const mockAuditService = { log: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
-  const mockDataSource = { transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })) };
+  const mockDataSource = {
+    transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })),
+    query: jest.fn(),
+  };
 
   beforeEach(async () => {
     orgRepo = createMockRepository();
@@ -221,6 +224,29 @@ describe('OrganizationsService', () => {
       await service.deactivateMember(TEST_IDS.ORG_ID, 'other-user', TEST_IDS.USER_ID);
 
       expect(userRepo.update).toHaveBeenCalledWith('other-user', { isActive: false });
+    });
+  });
+
+  describe('repairOrgMemberships', () => {
+    it('should run all four repair SQL statements and return counts', async () => {
+      mockDataSource.query = jest.fn()
+        .mockResolvedValueOnce({ rowCount: 2 }) // org_members repair
+        .mockResolvedValueOnce({ rowCount: 3 }) // assignee project_members
+        .mockResolvedValueOnce({ rowCount: 1 }) // reporter project_members
+        .mockResolvedValueOnce({ rowCount: 0 }); // comment author project_members
+
+      const result = await service.repairOrgMemberships(TEST_IDS.ORG_ID);
+
+      expect(mockDataSource.query).toHaveBeenCalledTimes(4);
+      expect(result).toEqual({ repairedOrgMembers: 2, repairedProjectMembers: 4 });
+    });
+
+    it('should return zeros when nothing needs repair', async () => {
+      mockDataSource.query = jest.fn().mockResolvedValue({ rowCount: 0 });
+
+      const result = await service.repairOrgMemberships(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ repairedOrgMembers: 0, repairedProjectMembers: 0 });
     });
   });
 });
