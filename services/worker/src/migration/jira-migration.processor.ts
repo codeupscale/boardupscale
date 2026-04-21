@@ -2106,7 +2106,7 @@ async function downloadAttachmentBinary(
     });
 
     req.on('error', (err) => {
-      if (_attempt <= 3) {
+      if (_attempt <= 4) {
         setTimeout(() => {
           downloadAttachmentBinary(url, authHeader, maxBytes, _attempt + 1, originalHost)
             .then(resolve).catch(reject);
