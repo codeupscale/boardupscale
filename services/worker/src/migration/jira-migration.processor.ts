@@ -565,87 +565,168 @@ async function runMembersPhase(
     ? users.filter((u) => filterIds.has(u.accountId))
     : users;
 
+  // Build the list of rows-to-upsert, and DEDUPLICATE by email.
+  // Jira sometimes returns two accounts sharing one emailAddress (deactivated +
+  // active duplicates, or the same person with two Atlassian accounts). PostgreSQL
+  // rejects a bulk ON CONFLICT DO UPDATE that proposes the same conflict key
+  // twice ("cannot affect row a second time") — which previously dropped the
+  // entire chunk silently.
+  interface MemberRow {
+    email: string;
+    displayName: string;
+    role: 'admin' | 'manager' | 'member' | 'viewer';
+    accountId: string;
+    hasRealEmail: boolean;
+  }
+  const rowsByEmail = new Map<string, MemberRow>();
+  let emailDuplicates = 0;
+  for (const u of filteredUsers) {
+    const hasRealEmail = !!u.emailAddress;
+    const email = hasRealEmail
+      ? u.emailAddress!.toLowerCase()
+      : `jira-${u.accountId}@migrated.jira.local`;
+    const displayName = u.displayName || email.split('@')[0];
+    const roleMappingRecord = state.roleMapping ?? {};
+    const mapped = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
+    const role = (['admin', 'manager', 'member', 'viewer'] as const).includes(mapped as any)
+      ? (mapped as MemberRow['role'])
+      : 'member';
+    if (rowsByEmail.has(email)) {
+      emailDuplicates++;
+      // Keep the first one, but if the existing one has no displayName and the
+      // new one does, merge. accountId stays with the first (deterministic).
+      const prev = rowsByEmail.get(email)!;
+      if (!prev.displayName && displayName) prev.displayName = displayName;
+      continue;
+    }
+    rowsByEmail.set(email, { email, displayName, role, accountId: u.accountId, hasRealEmail });
+  }
+  if (emailDuplicates > 0) {
+    const msg = `Collapsed ${emailDuplicates} Jira users sharing an email (kept first per email)`;
+    console.log(`[Migration:${state.id}] ${msg}`);
+    addError(state, msg);
+  }
+  const dedupedRows = Array.from(rowsByEmail.values());
+
   await updateRunProgress(client, state.id, {
     status: 'processing',
     currentPhase: PHASE_MEMBERS,
-    totalMembers: filteredUsers.length,
+    totalMembers: dedupedRows.length,
   }, io);
 
   const MEMBER_CHUNK = 500;
   let processed = 0;
-  for (let ci = 0; ci < filteredUsers.length; ci += MEMBER_CHUNK) {
-    // Import ALL users — do NOT filter on emailAddress.
-    // Jira Cloud hides emails by default (GDPR). Users without an email get a
-    // synthetic address so the NOT NULL constraint on the users table is satisfied.
-    const chunk = filteredUsers.slice(ci, ci + MEMBER_CHUNK);
+  let insertFailures = 0;
+  for (let ci = 0; ci < dedupedRows.length; ci += MEMBER_CHUNK) {
+    const chunk = dedupedRows.slice(ci, ci + MEMBER_CHUNK);
     if (!chunk.length) continue;
 
     const placeholders: string[] = [];
     const params: unknown[] = [];
-    // Keep a parallel list so we can populate jiraAccountIdToLocalId after RETURNING.
     const chunkAccountIds: string[] = [];
 
-    chunk.forEach((u, j) => {
+    chunk.forEach((r, j) => {
       const b = j * 5;
-      // Use real email when available; fall back to a synthetic address keyed by accountId.
-      const email = u.emailAddress
-        ? u.emailAddress.toLowerCase()
-        : `jira-${u.accountId}@migrated.jira.local`;
-      const displayName = u.displayName || email.split('@')[0];
-      const roleMappingRecord = state.roleMapping ?? {};
-      const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
-      const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
-      const hasRealEmail = !!u.emailAddress;
       // Real-email users: is_active=false (need to accept invite), invitation_status='pending'
       // Synthetic-email users: is_active=true (appear in dropdowns), invitation_status='none'
-      const isActiveVal = hasRealEmail ? 'false' : 'true';
-      const invStatus = hasRealEmail ? 'pending' : 'none';
+      const isActiveVal = r.hasRealEmail ? 'false' : 'true';
+      const invStatus = r.hasRealEmail ? 'pending' : 'none';
       placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, ${isActiveVal}, false, $${b+4}::text, $${b+5}::text, '${invStatus}', NOW(), NOW())`);
-      params.push(email, displayName, state.organizationId, safeRole, u.accountId);
-      chunkAccountIds.push(u.accountId);
+      params.push(r.email, r.displayName, state.organizationId, r.role, r.accountId);
+      chunkAccountIds.push(r.accountId);
     });
 
-    const { rows } = await client.query<{ id: string; email: string }>(
-      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, invitation_status, created_at, updated_at)
-       VALUES ${placeholders.join(', ')}
-       ON CONFLICT (email) DO UPDATE SET
-         display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
-         jira_account_id = COALESCE(EXCLUDED.jira_account_id, users.jira_account_id),
-         updated_at = NOW()
-       RETURNING id, email`,
-      params,
-    ).catch((err: any) => { addError(state, `members bulk upsert: ${err.message}`); return { rows: [] as any[] }; });
+    const runBulkInsert = () =>
+      client.query<{ id: string; email: string }>(
+        `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, invitation_status, created_at, updated_at)
+         VALUES ${placeholders.join(', ')}
+         ON CONFLICT (email) DO UPDATE SET
+           display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
+           jira_account_id = COALESCE(EXCLUDED.jira_account_id, users.jira_account_id),
+           updated_at = NOW()
+         RETURNING id, email`,
+        params,
+      );
 
-    // Build both lookup maps from the RETURNING rows.
-    // The rows come back in INSERT order which matches chunkAccountIds order.
-    const returnedUserIds: string[] = [];
-    for (let ri = 0; ri < rows.length; ri++) {
-      const row = rows[ri];
-      state.jiraUserEmailToLocalId[row.email] = row.id;
-      returnedUserIds.push(row.id);
-      // Also index by accountId (more reliable for Jira Cloud where emails are hidden).
-      const accountId = chunkAccountIds[ri];
-      if (accountId) state.jiraAccountIdToLocalId[accountId] = row.id;
-      processed++;
+    let rows: Array<{ id: string; email: string }> = [];
+    try {
+      const res = await runBulkInsert();
+      rows = res.rows;
+    } catch (err: any) {
+      // Bulk insert failed (e.g. a weirder conflict). Log loudly and fall back
+      // to per-row inserts so one bad row doesn't drop the whole chunk.
+      const msg = `members bulk upsert failed: ${err.message} — falling back to per-row inserts`;
+      console.error(`[Migration:${state.id}] ${msg}`);
+      addError(state, msg);
+
+      for (const r of chunk) {
+        try {
+          const isActiveVal = r.hasRealEmail ? false : true;
+          const invStatus = r.hasRealEmail ? 'pending' : 'none';
+          const singleRes = await client.query<{ id: string; email: string }>(
+            `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, invitation_status, created_at, updated_at)
+             VALUES (gen_random_uuid(), $1, $2, $3::uuid, $4, false, $5, $6, $7, NOW(), NOW())
+             ON CONFLICT (email) DO UPDATE SET
+               display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
+               jira_account_id = COALESCE(EXCLUDED.jira_account_id, users.jira_account_id),
+               updated_at = NOW()
+             RETURNING id, email`,
+            [r.email, r.displayName, state.organizationId, isActiveVal, r.role, r.accountId, invStatus],
+          );
+          if (singleRes.rows[0]) rows.push(singleRes.rows[0]);
+        } catch (singleErr: any) {
+          insertFailures++;
+          const m = `member "${r.email}" skipped: ${singleErr.message}`;
+          console.error(`[Migration:${state.id}] ${m}`);
+          addError(state, m);
+        }
+      }
     }
 
-    // Dual-write: ensure organization_members rows exist for all upserted users
+    // Build lookup maps. Bulk-insert RETURNING order matches VALUES order, so
+    // we can index by chunk position. For the per-row fallback we can't —
+    // build a by-email map instead.
+    const emailToIdMap = new Map<string, string>();
+    for (const row of rows) emailToIdMap.set(row.email, row.id);
+
+    const returnedUserIds: string[] = [];
+    chunk.forEach((r) => {
+      const id = emailToIdMap.get(r.email);
+      if (!id) return;
+      state.jiraUserEmailToLocalId[r.email] = id;
+      state.jiraAccountIdToLocalId[r.accountId] = id;
+      returnedUserIds.push(id);
+      processed++;
+    });
+
+    // Dual-write: ensure organization_members rows exist for all upserted users.
+    // This also links users who ALREADY existed in another org to this one, so
+    // cross-org email conflicts don't leave the current org empty of members.
     if (returnedUserIds.length > 0) {
       await client.query(
         `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
          SELECT gen_random_uuid(), unnest($1::uuid[]), $2::uuid, 'member', false, NOW(), NOW()
          ON CONFLICT (user_id, organization_id) DO NOTHING`,
         [returnedUserIds, state.organizationId],
-      ).catch((err: any) => { addError(state, `members org_members upsert: ${err.message}`); });
+      ).catch((err: any) => {
+        console.error(`[Migration:${state.id}] members org_members upsert: ${err.message}`);
+        addError(state, `members org_members upsert: ${err.message}`);
+      });
     }
   }
 
+  // Flush errorLog so any warnings/failures above are visible on the migration run.
   await updateRunProgress(client, state.id, {
     processedMembers: processed,
     completedPhase: PHASE_MEMBERS,
+    errorLog: state.errorLog,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds != null && filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
+  const suffix =
+    filterIds != null && filterIds.size > 0
+      ? `${filterIds.size} selected out of ${users.length} total`
+      : `${users.length} fetched, ${emailDuplicates} deduped, ${insertFailures} failed`;
+  console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${dedupedRows.length} upserted (${suffix})`);
 }
 
 // ─── Phase 1b: Project Member Sync ────────────────────────────────────────────
