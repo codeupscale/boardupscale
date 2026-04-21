@@ -184,15 +184,12 @@ jobs:
             export BU_IMAGE_TAG="${IMAGE_TAG}"
 
             # ── 3. Run DB migrations before restarting the API ─────────────
-            # Nest compiles to dist/src/... (see services/api/Dockerfile).
-            # Use the bundled TypeORM CLI (no npx / no registry access).
+            # Use `docker compose run` (not raw `docker run --env-file`): a plain
+            # container sees DATABASE_URL=...@localhost from .env, but Postgres
+            # is reached via the compose network (e.g. hostname `postgres`).
+            # This reuses bu-api's image tag (BU_IMAGE_TAG) and env wiring.
             log "Running database migrations..."
-            docker run --rm \
-              --network infra_shared \
-              --env-file /home/ubuntu/infra/.env \
-              -e NODE_ENV=production \
-              -w /app \
-              "$API_IMAGE" \
+            docker compose run --rm --no-deps bu-api \
               node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js \
               || die "Database migrations failed — fix migrations or DB state before redeploying."
 
