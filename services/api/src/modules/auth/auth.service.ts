@@ -725,18 +725,36 @@ export class AuthService {
     const user = await this.usersService.findByEmailVerificationToken(tokenHash);
 
     if (!user) {
-      throw new BadRequestException('Invalid invitation token');
+      throw new BadRequestException({
+        message: 'This invite link is invalid or has already been used.',
+        code: 'INVITE_INVALID',
+      });
     }
 
-    if (user.isActive) {
-      throw new BadRequestException('This invitation has already been accepted');
+    if (user.invitationStatus === 'accepted') {
+      throw new BadRequestException({
+        message: 'Your account is already active.',
+        code: 'INVITE_ALREADY_ACCEPTED',
+      });
     }
 
+    if (user.invitationStatus === 'none') {
+      throw new BadRequestException({
+        message: "Your admin hasn't sent an invitation yet. Contact them to get access.",
+        code: 'INVITE_NOT_SENT',
+      });
+    }
+
+    // Check expiry — set status to expired if TTL has passed
     if (
       user.emailVerificationExpiry &&
       new Date(user.emailVerificationExpiry) < new Date()
     ) {
-      throw new BadRequestException('Invitation has expired. Please ask your admin to resend.');
+      await this.usersService.update(user.id, { invitationStatus: 'expired' } as any);
+      throw new BadRequestException({
+        message: 'This invite expired after 7 days. Ask your admin to resend it.',
+        code: 'INVITE_EXPIRED',
+      });
     }
 
     const org = await this.organizationRepository.findOne({
@@ -762,24 +780,41 @@ export class AuthService {
     const user = await this.usersService.findByEmailVerificationToken(tokenHash);
 
     if (!user) {
-      throw new BadRequestException('Invalid invitation token');
+      throw new BadRequestException({
+        message: 'This invite link is invalid or has already been used.',
+        code: 'INVITE_INVALID',
+      });
     }
 
-    if (user.isActive) {
-      throw new BadRequestException('This invitation has already been accepted');
+    if (user.invitationStatus === 'accepted') {
+      throw new BadRequestException({
+        message: 'Your account is already active.',
+        code: 'INVITE_ALREADY_ACCEPTED',
+      });
+    }
+
+    if (user.invitationStatus === 'none') {
+      throw new BadRequestException({
+        message: "Your admin hasn't sent an invitation yet. Contact them to get access.",
+        code: 'INVITE_NOT_SENT',
+      });
     }
 
     if (
       user.emailVerificationExpiry &&
       new Date(user.emailVerificationExpiry) < new Date()
     ) {
-      throw new BadRequestException('Invitation has expired. Please ask your admin to resend.');
+      await this.usersService.update(user.id, { invitationStatus: 'expired' } as any);
+      throw new BadRequestException({
+        message: 'This invite expired after 7 days. Ask your admin to resend it.',
+        code: 'INVITE_EXPIRED',
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
     await this.usersService.activateInvitedUser(user.id, passwordHash, displayName);
 
-    // Ensure organization_members row exists for the invited user
+    // Ensure organization_members row exists
     const existingMembership = await this.orgMemberRepository.findOne({
       where: { userId: user.id, organizationId: user.organizationId },
     });
