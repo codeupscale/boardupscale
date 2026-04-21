@@ -8,7 +8,10 @@ export class AddAttachmentStaging1744400000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "jira_migration_attachment_staging" (
         "id"                  UUID         NOT NULL DEFAULT gen_random_uuid(),
-        "migration_run_id"    VARCHAR(36)  NOT NULL,
+        "organization_id"     UUID         NOT NULL
+          REFERENCES "organizations"("id") ON DELETE CASCADE,
+        "migration_run_id"    UUID         NOT NULL
+          REFERENCES "jira_migration_runs"("id") ON DELETE CASCADE,
         "jira_attachment_id"  VARCHAR(100) NOT NULL,
         "jira_issue_key"      VARCHAR(50)  NOT NULL,
         "local_issue_id"      UUID         NOT NULL
@@ -20,6 +23,7 @@ export class AddAttachmentStaging1744400000000 implements MigrationInterface {
         "attempt_count"       SMALLINT     NOT NULL DEFAULT 0,
         "downloaded_at"       TIMESTAMPTZ,
         "error"               TEXT,
+        "created_at"          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
         CONSTRAINT "pk_jira_attachment_staging"
           PRIMARY KEY ("id"),
         CONSTRAINT "uq_jira_attachment_staging_run_att"
@@ -27,9 +31,15 @@ export class AddAttachmentStaging1744400000000 implements MigrationInterface {
       )
     `);
 
+    // Tenant isolation index
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_jira_attachment_staging_org"
+        ON "jira_migration_attachment_staging" ("organization_id")
+    `);
+
     // Partial index for Phase 6's batch SELECT — only pending rows
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "idx_jira_attachment_staging_pending"
+      CREATE INDEX IF NOT EXISTS "IDX_jira_attachment_staging_pending"
         ON "jira_migration_attachment_staging" ("migration_run_id", "downloaded_at")
         WHERE "downloaded_at" IS NULL
     `);
@@ -40,7 +50,7 @@ export class AddAttachmentStaging1744400000000 implements MigrationInterface {
         ADD COLUMN IF NOT EXISTS "jira_attachment_id" VARCHAR(100)
     `);
     await queryRunner.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "uidx_attachments_jira_id"
+      CREATE UNIQUE INDEX IF NOT EXISTS "IDX_attachments_jira_id"
         ON "attachments" ("jira_attachment_id")
         WHERE "jira_attachment_id" IS NOT NULL
     `);
@@ -56,9 +66,10 @@ export class AddAttachmentStaging1744400000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "jira_migration_runs" DROP COLUMN IF EXISTS "processed_attachments"`);
     await queryRunner.query(`ALTER TABLE "jira_migration_runs" DROP COLUMN IF EXISTS "total_attachments"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "uidx_attachments_jira_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_attachments_jira_id"`);
     await queryRunner.query(`ALTER TABLE "attachments" DROP COLUMN IF EXISTS "jira_attachment_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_jira_attachment_staging_pending"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_jira_attachment_staging_pending"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_jira_attachment_staging_org"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "jira_migration_attachment_staging"`);
   }
 }
