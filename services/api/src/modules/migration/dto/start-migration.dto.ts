@@ -96,6 +96,14 @@ export class StartMigrationDto {
   @ApiPropertyOptional()
   @IsOptional()
   options?: MigrationOptionsDto;
+
+  @ApiPropertyOptional({
+    description:
+      'When true, only run member import phases (1 + 1b). Skip projects, sprints, issues, comments, attachments.',
+  })
+  @IsBoolean()
+  @IsOptional()
+  membersOnly?: boolean;
 }
 
 export class PreviewMigrationDto {

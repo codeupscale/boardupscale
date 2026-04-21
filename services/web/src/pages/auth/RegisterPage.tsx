@@ -252,14 +252,23 @@ export function RegisterPage() {
                 </button>
               </div>
 
-              {register_.isError && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
-                  <p className="text-sm text-red-400">
-                    {(register_.error as any)?.response?.data?.error?.message ||
-                      t('auth.registrationFailed')}
-                  </p>
-                </div>
-              )}
+              {register_.isError && (() => {
+                const data = (register_.error as any)?.response?.data
+                const msg =
+                  (Array.isArray(data?.violations) && data.violations.length
+                    ? data.violations.join('. ')
+                    : undefined) ||
+                  (Array.isArray(data?.details) && data.details.length
+                    ? data.details.join('. ')
+                    : undefined) ||
+                  data?.message ||
+                  t('auth.registrationFailed')
+                return (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+                    <p className="text-sm text-red-400">{msg}</p>
+                  </div>
+                )
+              })()}
 
               <Button type="submit" className="w-full plasma-btn" size="lg" isLoading={register_.isPending}>
                 {t('auth.createAccount')}

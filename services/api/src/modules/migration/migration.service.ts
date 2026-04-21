@@ -297,6 +297,7 @@ export class MigrationService {
         // Pass selected member IDs so the worker can filter them.
         // null = import all (no selection made), [] = import none, [...ids] = specific selection.
         selectedMemberIds: dto.selectedMemberIds ?? null,
+        membersOnly: dto.membersOnly ?? false,
       },
       {
         jobId: `migration-${run.id}`,
@@ -428,6 +429,7 @@ export class MigrationService {
       select: [
         'id',
         'organizationId',
+        'connectionId',
         'status',
         'currentPhase',
         'totalProjects',

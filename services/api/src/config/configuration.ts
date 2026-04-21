@@ -35,6 +35,15 @@ export default () => ({
     secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     bucket: process.env.MINIO_BUCKET || 'boardupscale',
     useSSL: process.env.MINIO_USE_SSL === 'true',
+    // Optional: the endpoint the BROWSER uses to PUT/GET objects via presigned
+    // URLs. Internal compose networking uses `minio:9000` which isn't reachable
+    // from a user's browser — set this to the public host (e.g.
+    // `https://s3.boardupscale.com`) in prod. Falls back to the internal URL.
+    publicEndpoint: process.env.S3_PUBLIC_ENDPOINT || '',
+    // MinIO requires path-style (http://minio/bucket/key). Real AWS S3 prefers
+    // virtual-hosted-style (http://bucket.s3.amazonaws.com/key). Default=true
+    // keeps MinIO working; set to "false" when pointing at AWS S3.
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
   },
   oauth: {
     google: {

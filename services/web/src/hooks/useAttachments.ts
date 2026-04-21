@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Attachment } from '@/types'
+import { uploadFile } from '@/lib/uploadFile'
 
 export function useAttachments(issueId: string) {
   return useQuery({
@@ -24,13 +25,8 @@ export function useUploadAttachment() {
       file: File
       issueId: string
     }) => {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('issueId', issueId)
-      const { data } = await api.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      return data.data as Attachment
+      const attachment = await uploadFile(file, { issueId })
+      return attachment as unknown as Attachment
     },
     onSuccess: (_, { issueId }) => {
       qc.invalidateQueries({ queryKey: ['attachments', issueId] })

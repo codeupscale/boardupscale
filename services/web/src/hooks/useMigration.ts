@@ -61,6 +61,8 @@ export interface StartMigrationPayload {
   statusMapping?: Record<string, string>
   roleMapping?: Record<string, string>
   options?: MigrationOptions
+  /** When true, worker only imports members (Phase 1 + 1b) and skips the rest. */
+  membersOnly?: boolean
 }
 
 export interface MigrationStatus {
@@ -88,6 +90,7 @@ export interface MigrationStatus {
 
 export interface MigrationRun {
   id: string
+  connectionId: string | null
   status: string
   currentPhase: number
   totalProjects: number

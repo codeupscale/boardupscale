@@ -27,8 +27,11 @@ import IORedis from 'ioredis';
 import { createRedisConnection } from '../redis';
 import { config } from '../config';
 import { adfToText } from './adf-helpers';
-import { S3Client, PutObjectCommand, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { randomUUID } from 'crypto';
+import { PassThrough } from 'stream';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -56,6 +59,13 @@ interface MigrationJobData {
    * [...ids] = import only the specified Jira accountIds.
    */
   selectedMemberIds?: string[] | null;
+  /**
+   * When true, the worker exits after Phase 1 + Phase 1b (members + project
+   * member sync) and skips Phases 2–6. Used by the "Sync Members from Jira"
+   * button to pick up newly added Jira users without re-running the full
+   * migration.
+   */
+  membersOnly?: boolean;
 }
 
 interface JiraCredentials {
@@ -122,6 +132,8 @@ interface RunState {
    * [...ids] = import only the specified Jira accountIds.
    */
   selectedMemberIds: string[] | null;
+  /** When true, worker exits after Phase 1b. See MigrationJobData.membersOnly. */
+  membersOnly: boolean;
   /**
    * Issues where inline comments in Phase 4 were partial (comment.total > comment.maxResults).
    * Maps jiraKey → startAt for the next comment page to fetch in Phase 5.
@@ -242,6 +254,7 @@ async function loadRun(client: PoolClient, runId: string, organizationId: string
     jiraSprintIdToLocalId: {},
     projectStatusMap: {},
     selectedMemberIds: [],
+    membersOnly: false,
   };
 }
 
@@ -2003,20 +2016,55 @@ function initMinIOClient(): S3Client {
   const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
   const port = process.env.MINIO_PORT ?? '9000';
   const useSSL = process.env.MINIO_USE_SSL === 'true';
+  const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1';
+  const forcePathStyle = process.env.S3_FORCE_PATH_STYLE !== 'false';
   return new S3Client({
     endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
-    region: 'us-east-1',
+    region,
     credentials: { accessKeyId, secretAccessKey },
-    forcePathStyle: true,
+    forcePathStyle,
+    // Hard timeouts so a slow/unreachable MinIO fails the phase instead of
+    // hanging indefinitely (runPhaseWithRetry can only retry on thrown errors).
+    maxAttempts: 3,
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,   // 5s to establish TCP
+      requestTimeout: 60_000,     // 60s for the whole upload/response
+    }),
   });
 }
 
 async function ensureMinIOBucket(s3: S3Client, bucket: string): Promise<void> {
   try {
-    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    await withDeadline(
+      s3.send(new HeadBucketCommand({ Bucket: bucket })),
+      15_000,
+      `MinIO HeadBucket(${bucket})`,
+    );
   } catch {
-    await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+    await withDeadline(
+      s3.send(new CreateBucketCommand({ Bucket: bucket })),
+      15_000,
+      `MinIO CreateBucket(${bucket})`,
+    );
   }
+}
+
+/**
+ * Rejects with a clear error if `promise` does not settle within `ms`.
+ * Used to guarantee that slow/unreachable external services fail the phase
+ * instead of hanging the worker.
+ */
+function withDeadline<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
 }
 
 function sanitizeStorageKey(runId: string, filename: string): string {
@@ -2029,27 +2077,25 @@ function sanitizeStorageKey(runId: string, filename: string): string {
 }
 
 /**
- * Download a binary file from a URL with auth, redirect-following, size limit,
- * and exponential backoff on 429.
+ * Open an HTTP(S) stream to `url` with auth, redirect-following, and 429 backoff.
+ * Returns the response stream directly so callers can pipe it — no buffering.
  *
  * Security: auth header is stripped when following redirects to a different
  * hostname — prevents credential leakage to third-party CDNs.
  */
-async function downloadAttachmentBinary(
+async function openAttachmentStream(
   url: string,
   authHeader: string,
-  maxBytes: number,
   _attempt = 1,
   _originalHost = '',
-): Promise<Buffer> {
+): Promise<http.IncomingMessage> {
   const parsed = new URL(url);
   const isHttps = parsed.protocol === 'https:';
   const transport = isHttps ? https : http;
   const originalHost = _originalHost || parsed.hostname;
 
-  return new Promise<Buffer>((resolve, reject) => {
+  return new Promise<http.IncomingMessage>((resolve, reject) => {
     const headers: Record<string, string> = { Accept: '*/*' };
-    // Only send auth to the same origin — not to third-party CDN redirects
     if (parsed.hostname === originalHost && authHeader) {
       headers['Authorization'] = authHeader;
     }
@@ -2065,24 +2111,22 @@ async function downloadAttachmentBinary(
     const req = transport.request(options, (res) => {
       const status = res.statusCode ?? 0;
 
-      // Handle redirects (up to 5 hops)
       if (status === 301 || status === 302 || status === 307 || status === 308) {
         res.resume();
         if (_attempt > 5) { reject(new Error('Too many redirects')); return; }
         const location = res.headers['location'];
         if (!location) { reject(new Error('Redirect with no Location header')); return; }
         const nextUrl = new URL(location, url).toString();
-        downloadAttachmentBinary(nextUrl, authHeader, maxBytes, _attempt + 1, originalHost)
+        openAttachmentStream(nextUrl, authHeader, _attempt + 1, originalHost)
           .then(resolve).catch(reject);
         return;
       }
 
-      // Rate limited — exponential backoff and retry
       if (status === 429 && _attempt <= 4) {
         res.resume();
-        const backoff = Math.pow(2, _attempt - 1) * 500; // 500ms, 1s, 2s, 4s
+        const backoff = Math.pow(2, _attempt - 1) * 500;
         setTimeout(() => {
-          downloadAttachmentBinary(url, authHeader, maxBytes, _attempt + 1, originalHost)
+          openAttachmentStream(url, authHeader, _attempt + 1, originalHost)
             .then(resolve).catch(reject);
         }, backoff);
         return;
@@ -2094,27 +2138,13 @@ async function downloadAttachmentBinary(
         return;
       }
 
-      const chunks: Buffer[] = [];
-      let received = 0;
-
-      res.on('data', (chunk: Buffer) => {
-        received += chunk.length;
-        if (received > maxBytes) {
-          req.destroy();
-          reject(new Error(`Response exceeded ${Math.round(maxBytes / 1024 / 1024)}MB limit`));
-          return;
-        }
-        chunks.push(chunk);
-      });
-
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', reject);
+      resolve(res);
     });
 
     req.on('error', (err) => {
       if (_attempt <= 4) {
         setTimeout(() => {
-          downloadAttachmentBinary(url, authHeader, maxBytes, _attempt + 1, originalHost)
+          openAttachmentStream(url, authHeader, _attempt + 1, originalHost)
             .then(resolve).catch(reject);
         }, 1000);
       } else {
@@ -2122,13 +2152,70 @@ async function downloadAttachmentBinary(
       }
     });
 
-    req.setTimeout(30000, () => {
-      req.destroy();
-      reject(new Error('Download timed out (30s)'));
+    // Socket-idle timeout: if no bytes flow for 30s, abort.
+    // Total-deadline is enforced by the caller via withDeadline().
+    req.setTimeout(30_000, () => {
+      req.destroy(new Error('Stream idle for 30s'));
     });
 
     req.end();
   });
+}
+
+/**
+ * Stream a Jira attachment directly into S3/MinIO via multipart upload.
+ * - Zero buffering in worker memory (constant O(partSize) footprint).
+ * - Size limit enforced by counting bytes through a PassThrough.
+ * - Returns the number of bytes actually uploaded.
+ */
+async function streamAttachmentToS3(args: {
+  s3: S3Client;
+  bucket: string;
+  key: string;
+  contentType: string;
+  sourceUrl: string;
+  authHeader: string;
+  maxBytes: number;
+}): Promise<number> {
+  const source = await openAttachmentStream(args.sourceUrl, args.authHeader);
+
+  let bytesCounted = 0;
+  let oversized = false;
+  const passthrough = new PassThrough();
+
+  source.on('data', (chunk: Buffer) => {
+    bytesCounted += chunk.length;
+    if (bytesCounted > args.maxBytes) {
+      oversized = true;
+      source.destroy(new Error(
+        `Attachment exceeded ${Math.round(args.maxBytes / 1024 / 1024)}MB limit`,
+      ));
+    }
+  });
+  source.on('error', (err) => passthrough.destroy(err));
+  source.pipe(passthrough);
+
+  const upload = new Upload({
+    client: args.s3,
+    params: {
+      Bucket: args.bucket,
+      Key: args.key,
+      Body: passthrough,
+      ContentType: args.contentType,
+    },
+    queueSize: 4,          // 4 parts in flight
+    partSize: 5 * 1024 * 1024, // 5MB — S3 minimum
+    leavePartsOnError: false,
+  });
+
+  try {
+    await upload.done();
+  } catch (err: any) {
+    if (oversized) throw new Error(`Attachment exceeded size limit`);
+    throw err;
+  }
+
+  return bytesCounted;
 }
 
 // ─── Phase 6: Attachments ─────────────────────────────────────────────────────
@@ -2145,6 +2232,10 @@ async function runAttachmentsPhase(
     console.log(`[Migration:${state.id}] Attachments disabled — skipping`);
     return;
   }
+
+  // Emit the phase change up-front so the UI log shows "Syncing Attachments..."
+  // even if the MinIO check below hangs or fails.
+  await updateRunProgress(client, state.id, { currentPhase: PHASE_ATTACHMENTS }, io);
 
   // Verify MinIO is reachable before entering the loop (fail fast, phase is resumable)
   let s3: S3Client;
@@ -2172,11 +2263,31 @@ async function runAttachmentsPhase(
     currentPhase: PHASE_ATTACHMENTS,
   }, io);
 
-  // Build Jira auth header (same pattern as jiraGet)
-  const credentials = await loadCredentials(client, state.connectionId, state.organizationId);
-  const authHeader = credentials.email
-    ? `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`
-    : `Bearer ${credentials.apiToken}`;
+  // Jira OAuth tokens last 1 hour. The attachment phase can run for many hours,
+  // so we MUST refresh the Bearer token periodically or every download after
+  // ~60 min will 401. loadCredentials() internally refreshes if token is within
+  // 5 min of expiring — we just need to call it again periodically.
+  const buildAuthHeader = (c: JiraCredentials) =>
+    c.email
+      ? `Basic ${Buffer.from(`${c.email}:${c.apiToken}`).toString('base64')}`
+      : `Bearer ${c.apiToken}`;
+
+  let credentials = await loadCredentials(client, state.connectionId, state.organizationId);
+  let authHeader = buildAuthHeader(credentials);
+  let lastCredentialRefresh = Date.now();
+  const CRED_REFRESH_INTERVAL_MS = 30 * 60_000; // every 30 min — well before 1h TTL
+
+  const ensureFreshCredentials = async () => {
+    if (Date.now() - lastCredentialRefresh < CRED_REFRESH_INTERVAL_MS) return;
+    try {
+      credentials = await loadCredentials(client, state.connectionId, state.organizationId);
+      authHeader = buildAuthHeader(credentials);
+      lastCredentialRefresh = Date.now();
+      console.log(`[Migration:${state.id}] Refreshed Jira credentials (30-min tick)`);
+    } catch (err: any) {
+      console.warn(`[Migration:${state.id}] Credential refresh failed: ${err.message}`);
+    }
+  };
 
   console.log(
     `[Migration:${state.id}] Phase 6 — ${state.totalAttachments} attachments to download`,
@@ -2206,6 +2317,9 @@ async function runAttachmentsPhase(
 
     if (batch.length === 0) break;
 
+    // Refresh OAuth bearer token if it's been 30 minutes — prevents 401s mid-phase.
+    await ensureFreshCredentials();
+
     for (const row of batch) {
       // Increment attempt count first — crash mid-download still counts
       await client.query(
@@ -2228,32 +2342,40 @@ async function runAttachmentsPhase(
         continue;
       }
 
-      // Download from Jira
-      let buffer: Buffer;
-      try {
-        buffer = await downloadAttachmentBinary(row.download_url, authHeader, MAX_ATTACHMENT_BYTES);
-      } catch (err: any) {
-        const msg = `Download failed "${row.file_name}": ${err.message}`;
-        addError(state, msg);
-        await client.query(
-          `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
-          [msg, row.id],
-        );
-        continue;
-      }
-
-      // Upload to MinIO
+      // Stream Jira → S3/MinIO via multipart upload — constant memory, no buffering.
+      // 10-minute total deadline covers slow CDNs + slow MinIO for large files.
       const storageKey = sanitizeStorageKey(state.id, row.file_name);
+      let uploadedBytes = 0;
+      const doStreamUpload = () =>
+        withDeadline(
+          streamAttachmentToS3({
+            s3,
+            bucket: MINIO_BUCKET,
+            key: storageKey,
+            contentType: row.mime_type,
+            sourceUrl: row.download_url,
+            authHeader,
+            maxBytes: MAX_ATTACHMENT_BYTES,
+          }),
+          10 * 60_000,
+          `Stream-upload "${row.file_name}"`,
+        );
       try {
-        await s3.send(new PutObjectCommand({
-          Bucket: MINIO_BUCKET,
-          Key: storageKey,
-          Body: buffer,
-          ContentType: row.mime_type,
-          ContentLength: buffer.length,
-        }));
+        try {
+          uploadedBytes = await doStreamUpload();
+        } catch (e: any) {
+          // On 401, force a credential refresh and retry once — handles tokens
+          // that expired between the 30-min ticks.
+          if (/HTTP 401/.test(e?.message ?? '')) {
+            lastCredentialRefresh = 0;
+            await ensureFreshCredentials();
+            uploadedBytes = await doStreamUpload();
+          } else {
+            throw e;
+          }
+        }
       } catch (err: any) {
-        const msg = `MinIO upload failed "${row.file_name}": ${err.message}`;
+        const msg = `Attachment "${row.file_name}": ${err.message}`;
         addError(state, msg);
         await client.query(
           `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
@@ -2274,7 +2396,7 @@ async function runAttachmentsPhase(
           row.local_issue_id,
           state.triggeredById,
           row.file_name,
-          buffer.length,
+          uploadedBytes,
           row.mime_type,
           storageKey,
           MINIO_BUCKET,
@@ -2415,7 +2537,7 @@ async function processJob(
   io: IORedis | null,
 ): Promise<void> {
   // selectedMemberIds: null/undefined = import all, [] = import none, [...ids] = specific filter
-  const { runId, organizationId, connectionId, selectedMemberIds = null } = job.data;
+  const { runId, organizationId, connectionId, selectedMemberIds = null, membersOnly = false } = job.data;
 
   console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
@@ -2432,6 +2554,7 @@ async function processJob(
 
     // Propagate selectedMemberIds from the job payload into run state
     state.selectedMemberIds = selectedMemberIds;
+    state.membersOnly = membersOnly;
 
     const credentials = await loadCredentials(client, state.connectionId ?? connectionId, organizationId);
     await client.query('COMMIT');
@@ -2484,6 +2607,16 @@ async function processJob(
       }
 
       await checkCancelled(progressClient, runId);
+
+      // Members-only sync: exit cleanly after Phase 1 + 1b, skip Phases 2–6.
+      if (state.membersOnly) {
+        console.log(`[Migration:${runId}] Members-only run — completing after Phase 1b`);
+        await updateRunProgress(progressClient, runId, {
+          status: 'completed',
+          completedPhase: PHASE_PROJECT_MEMBER_SYNC,
+        }, io);
+        return;
+      }
 
       // ── Phase 2 — projects ───────────────────────────────────────────────────
       if (!completed.has(PHASE_PROJECTS)) {

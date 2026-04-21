@@ -40,16 +40,14 @@ export function getFileViewUrl(fileId: string): string {
 }
 
 async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
-  const formData = new FormData()
-  formData.append('file', file)
-  if (issueId) formData.append('issueId', issueId)
-
-  const { data: uploadData } = await api.post('/files/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  const attachment = uploadData.data ?? uploadData
-
-  return { id: attachment.id, url: getFileViewUrl(attachment.id), fileName: attachment.fileName, mimeType: attachment.mimeType ?? file.type }
+  const { uploadFile } = await import('@/lib/uploadFile')
+  const attachment = await uploadFile(file, { issueId })
+  return {
+    id: attachment.id,
+    url: getFileViewUrl(attachment.id),
+    fileName: attachment.fileName,
+    mimeType: attachment.mimeType ?? file.type,
+  }
 }
 
 // ──────────────────────────────────────────────

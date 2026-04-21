@@ -22,6 +22,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/upload-file.dto';
+import {
+  PresignUploadDto,
+  PresignUploadResponseDto,
+} from './dto/presign-upload.dto';
+import { ConfirmUploadDto } from './dto/confirm-upload.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -34,6 +39,31 @@ import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 @Controller('files')
 export class FilesController {
   constructor(private filesService: FilesService) {}
+
+  @Post('presign-upload')
+  @ApiOperation({
+    summary: 'Get a presigned PUT URL for direct browser → storage upload',
+    description:
+      'Client PUTs the file to `url` using the returned `headers`, then calls POST /files/confirm-upload. API server never sees the bytes.',
+  })
+  async presignUpload(
+    @Body() dto: PresignUploadDto,
+  ): Promise<{ data: PresignUploadResponseDto }> {
+    const result = await this.filesService.presignUpload(dto);
+    return { data: result };
+  }
+
+  @Post('confirm-upload')
+  @ApiOperation({
+    summary: 'Finalize a presigned upload and create the attachment record',
+  })
+  async confirmUpload(
+    @Body() dto: ConfirmUploadDto,
+    @CurrentUser() user: any,
+  ) {
+    const attachment = await this.filesService.confirmUpload(dto, user.id);
+    return { data: attachment };
+  }
 
   @Post('upload')
   @UseInterceptors(

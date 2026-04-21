@@ -1,13 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronRight, CheckCircle, AlertCircle } from 'lucide-react'
+import { ChevronRight, CheckCircle, AlertCircle, Users, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ConnectStep } from './steps/ConnectStep'
 import { PreviewStep } from './steps/PreviewStep'
 import { ConfigureStep } from './steps/ConfigureStep'
 import { ProgressStep } from './steps/ProgressStep'
 import { CompleteStep } from './steps/CompleteStep'
-import { ConnectJiraResult, PreviewProject, StartMigrationPayload } from '@/hooks/useMigration'
+import {
+  ConnectJiraResult,
+  PreviewProject,
+  StartMigrationPayload,
+  useMigrationHistory,
+  useStartMigration,
+  useMigrationStatus,
+} from '@/hooks/useMigration'
+import { toast } from '@/store/ui.store'
 
 type WizardStep = 1 | 2 | 3 | 4 | 5
 
@@ -194,6 +202,70 @@ export function JiraMigrationPage() {
     setStep(1)
   }
 
+  // ── Members-only sync (available on step 1 after a completed migration) ──
+  const { data: history } = useMigrationHistory(1, 1)
+  const startMigration = useStartMigration()
+  const [memberSyncRunId, setMemberSyncRunId] = useState<string | null>(null)
+  const { data: memberSyncStatus } = useMigrationStatus(memberSyncRunId)
+
+  const lastRun = history?.data?.[0]
+  const hasInProgressRun =
+    lastRun?.status === 'processing' || lastRun?.status === 'pending'
+  const canSyncMembers = useMemo(
+    () =>
+      step === 1 &&
+      !oauthError &&
+      !!lastRun &&
+      lastRun.status === 'completed' &&
+      !!lastRun.connectionId &&
+      !hasInProgressRun &&
+      !memberSyncRunId,
+    [step, oauthError, lastRun, hasInProgressRun, memberSyncRunId],
+  )
+
+  useEffect(() => {
+    if (!memberSyncStatus) return
+    if (memberSyncStatus.status === 'completed') {
+      toast(
+        `Members synced — ${memberSyncStatus.processedMembers} member${
+          memberSyncStatus.processedMembers === 1 ? '' : 's'
+        } updated`,
+        'success',
+      )
+      setMemberSyncRunId(null)
+    } else if (memberSyncStatus.status === 'failed') {
+      toast('Member sync failed. Check logs and try again.', 'error')
+      setMemberSyncRunId(null)
+    }
+  }, [memberSyncStatus])
+
+  async function handleSyncMembers() {
+    if (!lastRun) return
+    const runId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    try {
+      const res = await startMigration.mutateAsync({
+        runId,
+        projectKeys: [],
+        membersOnly: true,
+        selectedMemberIds: undefined,
+      })
+      setMemberSyncRunId(res.runId)
+      toast('Member sync started', 'success')
+    } catch {
+      // useStartMigration already toasts the error
+    }
+  }
+
+  const isMemberSyncRunning =
+    startMigration.isPending ||
+    (!!memberSyncRunId &&
+      (!memberSyncStatus ||
+        memberSyncStatus.status === 'pending' ||
+        memberSyncStatus.status === 'processing'))
+
   const isWideStep = WIDE_STEPS.includes(step)
 
   return (
@@ -223,6 +295,44 @@ export function JiraMigrationPage() {
             <span>
               <strong>Atlassian connection failed:</strong> {oauthError}. Please try again.
             </span>
+          </div>
+        )}
+
+        {/* Members-only sync card — only visible on Step 1 after a completed migration */}
+        {(canSyncMembers || isMemberSyncRunning) && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Users className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Sync Members from Jira
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isMemberSyncRunning
+                  ? memberSyncStatus
+                    ? `Syncing… ${memberSyncStatus.processedMembers}/${
+                        memberSyncStatus.totalMembers || '?'
+                      } members`
+                    : 'Starting sync…'
+                  : 'Pick up any Jira users added since your last migration. Projects and issues are not touched.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSyncMembers}
+              disabled={isMemberSyncRunning}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
+            >
+              {isMemberSyncRunning ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Syncing
+                </>
+              ) : (
+                'Sync Now'
+              )}
+            </button>
           </div>
         )}
 
