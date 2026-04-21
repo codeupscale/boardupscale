@@ -306,4 +306,34 @@ describe('OrganizationsService', () => {
       expect(result).toEqual({ sent: 0, skipped: 0 });
     });
   });
+
+  describe('getJiraOrphans', () => {
+    it('should return synthetic placeholder users with project count', async () => {
+      const orphanRows = [
+        {
+          id: 'orphan-1',
+          displayName: 'Shujaat Ali',
+          email: 'jira-abc123@migrated.jira.local',
+          jiraAccountId: 'abc123',
+          invitationStatus: 'none',
+          projectCount: 3,
+        },
+      ];
+      mockDataSource.query = jest.fn().mockResolvedValue(orphanRows);
+
+      const result = await service.getJiraOrphans(TEST_IDS.ORG_ID);
+
+      expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(orphanRows);
+      expect(result[0].projectCount).toBe(3);
+    });
+
+    it('should return empty array when no orphans exist', async () => {
+      mockDataSource.query = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getJiraOrphans(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual([]);
+    });
+  });
 });

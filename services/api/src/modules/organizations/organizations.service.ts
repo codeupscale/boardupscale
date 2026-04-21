@@ -759,6 +759,36 @@ export class OrganizationsService {
     return { sent: toInvite.length, skipped };
   }
 
+  async getJiraOrphans(
+    organizationId: string,
+  ): Promise<Array<{
+    id: string;
+    displayName: string;
+    email: string;
+    jiraAccountId: string | null;
+    invitationStatus: string;
+    projectCount: number;
+  }>> {
+    const rows = await this.dataSource.query(
+      `SELECT
+         u.id,
+         u.display_name AS "displayName",
+         u.email,
+         u.jira_account_id AS "jiraAccountId",
+         u.invitation_status AS "invitationStatus",
+         COUNT(DISTINCT pm.id)::int AS "projectCount"
+       FROM users u
+       JOIN organization_members om ON om.user_id = u.id AND om.organization_id = $1
+       LEFT JOIN project_members pm ON pm.user_id = u.id
+       LEFT JOIN projects p ON p.id = pm.project_id AND p.organization_id = $1
+       WHERE u.email LIKE '%@migrated.jira.local'
+       GROUP BY u.id
+       ORDER BY "projectCount" DESC`,
+      [organizationId],
+    );
+    return rows;
+  }
+
   // ── SAML SSO Configuration ─────────────────────────────────────────────
 
   async getSamlConfig(organizationId: string): Promise<{
