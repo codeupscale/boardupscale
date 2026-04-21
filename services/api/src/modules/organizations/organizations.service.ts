@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -129,6 +131,35 @@ export class OrganizationsService {
       );
 
       return existingUser;
+    }
+
+    // Guard: if org has Jira placeholder users (synthetic emails), the admin must either
+    // select a placeholder to merge with OR explicitly pass forceCreate:true.
+    // This prevents silently creating a fresh user that is disconnected from Jira history.
+    if (!dto.forceCreate) {
+      const placeholders = await this.userRepository.find({
+        where: { organizationId } as any,
+      });
+      const syntheticPlaceholders = placeholders.filter((u) =>
+        u.email.endsWith('@migrated.jira.local'),
+      );
+      if (syntheticPlaceholders.length > 0) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            code: 'JIRA_MERGE_REQUIRED',
+            message:
+              'This organisation has Jira placeholder users. Select a placeholder to merge with, ' +
+              'or pass forceCreate:true to add a genuinely new member.',
+            placeholders: syntheticPlaceholders.map((u) => ({
+              id: u.id,
+              displayName: u.displayName,
+              email: u.email,
+            })),
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
     }
 
     // Create user without password (invitation pending)
@@ -657,6 +688,141 @@ export class OrganizationsService {
     }
 
     return this.mergeAndInviteExistingUser(organizationId, placeholder, targetUser, actorId);
+  }
+
+  async repairOrgMemberships(
+    organizationId: string,
+  ): Promise<{ repairedOrgMembers: number; repairedProjectMembers: number }> {
+    // Steps 2a/2b/3 run first so that newly added project_members rows are visible
+    // when Step 1 backfills organization_members. Running Step 1 last ensures every
+    // user added by the three project_members inserts also gets an org membership row.
+
+    // Step 2a: Re-sync assignees → project_members
+    const assigneeResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW(), NOW()
+       FROM issues i
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE i.assignee_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 2b: Re-sync reporters → project_members
+    const reporterResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW(), NOW()
+       FROM issues i
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE i.reporter_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 3: Re-sync comment authors → project_members
+    const commentResult = await this.dataSource.query(
+      `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+       SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW(), NOW()
+       FROM comments c
+       JOIN issues i ON i.id = c.issue_id
+       JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+       WHERE c.author_id IS NOT NULL
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    // Step 1 (runs last): Ensure every user who has project_members in this org also has
+    // organization_members — including those just added above. Use literal 'member' since
+    // users.role is a system-level field and must not bleed into org membership role.
+    const orgMembersResult = await this.dataSource.query(
+      `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+       SELECT
+         gen_random_uuid(),
+         pm.user_id,
+         p.organization_id,
+         'member',
+         false,
+         NOW(),
+         NOW()
+       FROM project_members pm
+       JOIN projects p ON p.id = pm.project_id
+       WHERE p.organization_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM organization_members om
+           WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
+         )
+       ON CONFLICT (user_id, organization_id) DO NOTHING`,
+      [organizationId],
+    );
+
+    const repairedOrgMembers = orgMembersResult?.rowCount ?? 0;
+    const repairedProjectMembers =
+      (assigneeResult?.rowCount ?? 0) +
+      (reporterResult?.rowCount ?? 0) +
+      (commentResult?.rowCount ?? 0);
+
+    return { repairedOrgMembers, repairedProjectMembers };
+  }
+
+  async bulkInvitePending(
+    organizationId: string,
+  ): Promise<{ sent: number; skipped: number }> {
+    // Find all pending-status members in this org
+    const pendingUsers = await this.userRepository.find({
+      where: {
+        organizationId,
+        invitationStatus: 'pending',
+      } as any,
+    });
+
+    // Filter: skip synthetic emails and users with a still-valid token
+    const now = new Date();
+    const toInvite = pendingUsers.filter(
+      (u) =>
+        !u.email.endsWith('@migrated.jira.local') &&
+        (!u.emailVerificationToken ||
+          !u.emailVerificationExpiry ||
+          new Date(u.emailVerificationExpiry) < now),
+    );
+    const skipped = pendingUsers.length - toInvite.length;
+
+    for (const user of toInvite) {
+      // Pass organizationId as inviterId — system-level action, no human inviter.
+      // generateAndSendInvitation will resolve inviter to null → falls back to 'A team member'.
+      await this.generateAndSendInvitation(user, organizationId, organizationId);
+    }
+
+    return { sent: toInvite.length, skipped };
+  }
+
+  async getJiraOrphans(
+    organizationId: string,
+  ): Promise<Array<{
+    id: string;
+    displayName: string;
+    email: string;
+    jiraAccountId: string | null;
+    invitationStatus: string;
+    projectCount: number;
+  }>> {
+    const rows = await this.dataSource.query(
+      `SELECT
+         u.id,
+         u.display_name AS "displayName",
+         u.email,
+         u.jira_account_id AS "jiraAccountId",
+         u.invitation_status AS "invitationStatus",
+         COUNT(DISTINCT pm.id)::int AS "projectCount"
+       FROM users u
+       JOIN organization_members om ON om.user_id = u.id AND om.organization_id = $1
+       LEFT JOIN project_members pm ON pm.user_id = u.id
+       LEFT JOIN projects p ON p.id = pm.project_id AND p.organization_id = $1
+       WHERE u.email LIKE '%@migrated.jira.local'
+       GROUP BY u.id
+       ORDER BY "projectCount" DESC`,
+      [organizationId],
+    );
+    return rows;
   }
 
   // ── SAML SSO Configuration ─────────────────────────────────────────────

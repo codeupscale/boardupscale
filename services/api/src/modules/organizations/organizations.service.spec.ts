@@ -21,7 +21,10 @@ describe('OrganizationsService', () => {
   const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
   const mockAuditService = { log: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
-  const mockDataSource = { transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })) };
+  const mockDataSource = {
+    transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })),
+    query: jest.fn(),
+  };
 
   beforeEach(async () => {
     orgRepo = createMockRepository();
@@ -129,6 +132,7 @@ describe('OrganizationsService', () => {
       userRepo.findOne
         .mockResolvedValueOnce(null) // email check
         .mockResolvedValueOnce(mockUser({ id: inviterId })) // inviter lookup (generateAndSendInvitation)
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
       orgRepo.findOne.mockResolvedValue(mockOrganization());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ email: 'invited@example.com', role: 'member', isActive: false });
@@ -190,6 +194,7 @@ describe('OrganizationsService', () => {
       userRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockUser({ id: inviterId }));
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
       orgRepo.findOne.mockResolvedValue(mockOrganization());
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
       const newUser = mockUser({ role: 'member' });
@@ -202,6 +207,89 @@ describe('OrganizationsService', () => {
       expect(userRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ role: 'member' }),
       );
+    });
+
+    it('should return 409 JIRA_MERGE_REQUIRED when org has Jira placeholders and forceCreate is not set', async () => {
+      const placeholder = mockUser({
+        id: 'placeholder-id',
+        email: 'jira-abc@migrated.jira.local',
+        displayName: 'Shujaat Ali',
+      });
+
+      // No user exists with the invited email
+      userRepo.findOne.mockResolvedValueOnce(null);
+      // Synthetic placeholders exist in the org
+      userRepo.find.mockResolvedValueOnce([placeholder]);
+
+      await expect(
+        service.inviteMember(TEST_IDS.ORG_ID, { email: 'shujaat@example.com', role: 'member' }, inviterId),
+      ).rejects.toMatchObject({
+        status: 409,
+        response: expect.objectContaining({ code: 'JIRA_MERGE_REQUIRED' }),
+      });
+    });
+
+    it('should create a new user when forceCreate is true even with Jira placeholders', async () => {
+      const placeholder = mockUser({
+        id: 'placeholder-id',
+        email: 'jira-abc@migrated.jira.local',
+        displayName: 'Shujaat Ali',
+      });
+
+      userRepo.findOne
+        .mockResolvedValueOnce(null)   // email check — no existing user
+        .mockResolvedValueOnce(mockUser({ id: inviterId })); // inviter lookup in generateAndSendInvitation
+      userRepo.find.mockResolvedValueOnce([placeholder]); // synthetic placeholders
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      const newUser = mockUser({ email: 'shujaat@example.com', isActive: false });
+      userRepo.create.mockReturnValue(newUser);
+      userRepo.save.mockResolvedValue(newUser);
+      const qb = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({}),
+      };
+      orgMemberRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      const result = await service.inviteMember(
+        TEST_IDS.ORG_ID,
+        { email: 'shujaat@example.com', role: 'member', forceCreate: true },
+        inviterId,
+      );
+
+      expect(result).toEqual(newUser);
+      expect(userRepo.create).toHaveBeenCalled();
+    });
+
+    it('should proceed normally when no Jira placeholders exist', async () => {
+      userRepo.findOne
+        .mockResolvedValueOnce(null)  // email check
+        .mockResolvedValueOnce(mockUser({ id: inviterId })); // inviter
+      userRepo.find.mockResolvedValueOnce([]); // no synthetic placeholders
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      const newUser = mockUser({ email: 'fresh@example.com', isActive: false });
+      userRepo.create.mockReturnValue(newUser);
+      userRepo.save.mockResolvedValue(newUser);
+      const qb = {
+        insert: jest.fn().mockReturnThis(),
+        into: jest.fn().mockReturnThis(),
+        values: jest.fn().mockReturnThis(),
+        orIgnore: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue({}),
+      };
+      orgMemberRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      const result = await service.inviteMember(
+        TEST_IDS.ORG_ID,
+        { email: 'fresh@example.com', role: 'member' },
+        inviterId,
+      );
+
+      expect(result).toEqual(newUser);
     });
   });
 
@@ -221,6 +309,118 @@ describe('OrganizationsService', () => {
       await service.deactivateMember(TEST_IDS.ORG_ID, 'other-user', TEST_IDS.USER_ID);
 
       expect(userRepo.update).toHaveBeenCalledWith('other-user', { isActive: false });
+    });
+  });
+
+  describe('repairOrgMemberships', () => {
+    it('should run all four repair SQL statements and return counts', async () => {
+      // Steps 2a/2b/3 run first (project_members), then Step 1 (org_members) runs last
+      // so that org_members backfill covers users added by the project_members inserts.
+      mockDataSource.query = jest.fn()
+        .mockResolvedValueOnce({ rowCount: 3 }) // Step 2a: assignee project_members
+        .mockResolvedValueOnce({ rowCount: 1 }) // Step 2b: reporter project_members
+        .mockResolvedValueOnce({ rowCount: 0 }) // Step 3: comment author project_members
+        .mockResolvedValueOnce({ rowCount: 2 }); // Step 1 (last): org_members backfill
+
+      const result = await service.repairOrgMemberships(TEST_IDS.ORG_ID);
+
+      expect(mockDataSource.query).toHaveBeenCalledTimes(4);
+      expect(result).toEqual({ repairedOrgMembers: 2, repairedProjectMembers: 4 });
+    });
+
+    it('should return zeros when nothing needs repair', async () => {
+      mockDataSource.query = jest.fn().mockResolvedValue({ rowCount: 0 });
+
+      const result = await service.repairOrgMemberships(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ repairedOrgMembers: 0, repairedProjectMembers: 0 });
+    });
+  });
+
+  describe('bulkInvitePending', () => {
+    it('should send invitations to users with pending status and no valid token', async () => {
+      const pendingUser1 = mockUser({
+        id: 'pending-1',
+        email: 'p1@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: null,
+        emailVerificationExpiry: null,
+      });
+      const pendingUser2 = mockUser({
+        id: 'pending-2',
+        email: 'p2@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: null,
+        emailVerificationExpiry: null,
+      });
+
+      userRepo.find.mockResolvedValue([pendingUser1, pendingUser2]);
+      userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+      userRepo.findOne
+        .mockResolvedValueOnce(mockUser({ id: 'inviter-id' })) // inviter lookup for user1
+        .mockResolvedValueOnce(mockUser({ id: 'inviter-id' })); // inviter lookup for user2
+      orgRepo.findOne.mockResolvedValue(mockOrganization());
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 2, skipped: 0 });
+      expect(mockEmailService.sendInvitationEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('should skip users who already have a valid non-expired token', async () => {
+      const futureExpiry = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h from now
+      const alreadyInvited = mockUser({
+        id: 'already-invited',
+        email: 'invited@example.com',
+        invitationStatus: 'pending',
+        emailVerificationToken: 'existing-hash',
+        emailVerificationExpiry: futureExpiry,
+      });
+
+      userRepo.find.mockResolvedValue([alreadyInvited]);
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 0, skipped: 1 });
+      expect(mockEmailService.sendInvitationEmail).not.toHaveBeenCalled();
+    });
+
+    it('should return zeros when no pending users exist', async () => {
+      userRepo.find.mockResolvedValue([]);
+
+      const result = await service.bulkInvitePending(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual({ sent: 0, skipped: 0 });
+    });
+  });
+
+  describe('getJiraOrphans', () => {
+    it('should return synthetic placeholder users with project count', async () => {
+      const orphanRows = [
+        {
+          id: 'orphan-1',
+          displayName: 'Shujaat Ali',
+          email: 'jira-abc123@migrated.jira.local',
+          jiraAccountId: 'abc123',
+          invitationStatus: 'none',
+          projectCount: 3,
+        },
+      ];
+      mockDataSource.query = jest.fn().mockResolvedValue(orphanRows);
+
+      const result = await service.getJiraOrphans(TEST_IDS.ORG_ID);
+
+      expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(orphanRows);
+      expect(result[0].projectCount).toBe(3);
+    });
+
+    it('should return empty array when no orphans exist', async () => {
+      mockDataSource.query = jest.fn().mockResolvedValue([]);
+
+      const result = await service.getJiraOrphans(TEST_IDS.ORG_ID);
+
+      expect(result).toEqual([]);
     });
   });
 });

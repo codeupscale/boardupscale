@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSecret, generateURI, verify as otpVerify } from 'otplib';
 import * as QRCode from 'qrcode';
 import { UsersService } from '../users/users.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { PasswordPolicyService } from './password-policy.service';
 import { EmailService } from '../notifications/email.service';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -44,6 +45,7 @@ export class AuthService {
     @InjectQueue('email') private emailQueue: Queue,
     private auditService: AuditService,
     private posthogService: PosthogService,
+    private organizationsService: OrganizationsService,
   ) {}
 
   // ── Validate User (with account lockout) ──────────────────────────────────
@@ -826,6 +828,17 @@ export class AuthService {
           role: user.role || 'member',
           isDefault: true,
         }),
+      );
+    }
+
+    // Auto-repair project/org memberships for this user's organisation.
+    // Idempotent — ensures Jira-migrated users see all their projects immediately after accepting.
+    try {
+      await this.organizationsService.repairOrgMemberships(user.organizationId);
+    } catch (repairErr: unknown) {
+      // Non-fatal — log the warning but do not fail the invitation acceptance
+      console.warn(
+        `[acceptInvitation] repairOrgMemberships failed for org ${user.organizationId}: ${(repairErr as Error)?.message}`,
       );
     }
 
