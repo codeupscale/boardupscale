@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
+import { EventsGateway } from '../../websocket/events.gateway';
 import { createMockRepository } from '../../test/test-utils';
 import { mockOrganization, mockUser, TEST_IDS } from '../../test/mock-factories';
 
@@ -42,6 +43,7 @@ describe('OrganizationsService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: DataSource, useValue: mockDataSource },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
+        { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
       ],
     }).compile();
 
