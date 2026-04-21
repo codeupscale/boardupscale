@@ -184,28 +184,22 @@ jobs:
             export BU_IMAGE_TAG="${IMAGE_TAG}"
 
             # ── 3. Run DB migrations before restarting the API ─────────────
+            # Nest compiles to dist/src/... (see services/api/Dockerfile).
+            # Use the bundled TypeORM CLI (no npx / no registry access).
             log "Running database migrations..."
             docker run --rm \
               --network infra_shared \
               --env-file /home/ubuntu/infra/.env \
               -e NODE_ENV=production \
+              -w /app \
               "$API_IMAGE" \
-              node dist/cli/migrate.js run \
-            || {
-              log "Migration script not found, trying typeorm migration:run..."
-              docker run --rm \
-                --network infra_shared \
-                --env-file /home/ubuntu/infra/.env \
-                -e NODE_ENV=production \
-                "$API_IMAGE" \
-                sh -c 'npx typeorm migration:run -d dist/database/data-source.js' \
-              || log "WARNING: DB migration step returned non-zero. Continuing deploy — inspect manually if issues arise."
-            }
+              node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js \
+              || die "Database migrations failed — fix migrations or DB state before redeploying."
 
             # ── 4. Restart bu-api — verify health before proceeding ────────
             log "Restarting bu-api..."
             docker compose up -d --no-deps --force-recreate bu-api
-            wait_healthy bu-api 90 || {
+            wait_healthy bu-api 180 || {
               log "bu-api health check failed — rolling back..."
               rollback_service bu-api
               wait_healthy bu-api 60 || true
@@ -229,7 +223,7 @@ jobs:
             # via depends_on + healthcheck in docker-compose.yml.
             log "Restarting bu-web..."
             docker compose up -d --no-deps --force-recreate bu-web
-            wait_healthy bu-web 90 || {
+            wait_healthy bu-web 120 || {
               log "bu-web health check failed — rolling back..."
               rollback_service bu-web
               wait_healthy bu-web 60 || true
