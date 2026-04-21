@@ -77,7 +77,10 @@ export class OrganizationsService {
     const users: User[] = [];
     for (const m of memberships) {
       if (!m.user) continue;
-      users.push({ ...m.user, role: m.role } as User);
+      // Prefer the per-org role from the membership row. Fall back to the
+      // user's own role when the membership doesn't carry one (e.g. legacy
+      // rows created before the column existed, or mocked test data).
+      users.push({ ...m.user, role: m.role ?? m.user.role } as User);
     }
     for (const u of legacyUsers) {
       if (!memberUserIds.has(u.id) && u.isActive !== false) {
