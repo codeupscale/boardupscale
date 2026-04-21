@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
+import { getSocket } from '@/lib/socket'
 import { User, OrganizationMembership } from '@/types'
 
 export interface MergePreviewImpact {
@@ -239,4 +241,16 @@ export function useRepairOrgMemberships() {
       toast(err?.response?.data?.message || 'Sync failed — please try again', 'error')
     },
   })
+}
+
+export function useOrgMembersRealtime() {
+  const qc = useQueryClient()
+  useEffect(() => {
+    const socket = getSocket()
+    const handler = () => qc.invalidateQueries({ queryKey: ['org-members'] })
+    socket.on('org:members:changed', handler)
+    return () => {
+      socket.off('org:members:changed', handler)
+    }
+  }, [qc])
 }
