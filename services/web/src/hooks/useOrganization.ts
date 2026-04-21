@@ -4,6 +4,21 @@ import { toast } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { User, OrganizationMembership } from '@/types'
 
+export interface MergePreviewImpact {
+  issuesReassigned: number
+  commentsReassigned: number
+  projectMemberships: number
+  worklogsReassigned: number
+  watchersReassigned: number
+}
+
+export interface MergePreview {
+  placeholder: { id: string; displayName: string; email: string }
+  targetUser: { id: string; displayName: string; email: string } | null
+  impact: MergePreviewImpact
+  conflict: boolean
+}
+
 export function useMyMemberships() {
   return useQuery({
     queryKey: ['my-memberships'],
@@ -65,17 +80,43 @@ export function useInviteMember() {
 export function useUpdateMemberEmail() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ memberId, email }: { memberId: string; email: string }) => {
-      const { data } = await api.patch(`/organizations/me/members/${memberId}/email`, { email })
+    mutationFn: async ({
+      memberId,
+      email,
+      confirmMerge,
+    }: {
+      memberId: string
+      email: string
+      confirmMerge?: boolean
+    }) => {
+      const { data } = await api.patch(`/organizations/me/members/${memberId}/email`, {
+        email,
+        confirmMerge,
+      })
       return data.data as User
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['org-members'] })
-      toast('Email updated — invitation sent')
+      const msg = variables.confirmMerge
+        ? `Accounts merged. Invitation sent to ${variables.email}`
+        : 'Email updated — invitation sent'
+      toast(msg)
     },
-    onError: (err: any) => {
-      toast(err?.response?.data?.message || 'Failed to update email', 'error')
+    // No onError — callers handle errors themselves (409 triggers merge modal)
+  })
+}
+
+export function useMergePreview(memberId: string, email: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['merge-preview', memberId, email],
+    queryFn: async () => {
+      const { data } = await api.get(
+        `/organizations/me/members/${memberId}/merge-preview?email=${encodeURIComponent(email)}`,
+      )
+      return data.data as MergePreview
     },
+    enabled: enabled && !!memberId && !!email,
+    retry: false,
   })
 }
 
@@ -142,12 +183,14 @@ export function useDeactivateMember() {
 }
 
 export function useResendInvitation() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: async (memberId: string) => {
       const { data } = await api.post(`/organizations/me/members/${memberId}/resend-invite`)
       return data.data
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-members'] })
       toast('Invitation resent')
     },
     onError: (err: any) => {

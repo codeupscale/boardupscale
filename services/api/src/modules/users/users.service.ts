@@ -277,6 +277,7 @@ export class UsersService {
       passwordHash,
       displayName,
       isActive: true,
+      invitationStatus: 'accepted',
       emailVerified: true,
       emailVerificationToken: null,
       emailVerificationExpiry: null,

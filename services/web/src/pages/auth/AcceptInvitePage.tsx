@@ -23,6 +23,29 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+const ERROR_SCREENS: Record<string, { heading: string; body: string; cta: boolean }> = {
+  INVITE_ALREADY_ACCEPTED: {
+    heading: 'Already Accepted',
+    body: 'Your account is already active.',
+    cta: true,
+  },
+  INVITE_EXPIRED: {
+    heading: 'Invite Expired',
+    body: 'This invite expired after 7 days. Ask your admin to resend it.',
+    cta: true,
+  },
+  INVITE_INVALID: {
+    heading: 'Invalid Link',
+    body: 'This invite link is invalid or has already been used.',
+    cta: true,
+  },
+  INVITE_NOT_SENT: {
+    heading: 'No Invite Sent',
+    body: "Your admin hasn't sent an invitation yet. Contact them to get access.",
+    cta: false,
+  },
+}
+
 export function AcceptInvitePage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || ''
@@ -36,6 +59,7 @@ export function AcceptInvitePage() {
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [errorCode, setErrorCode] = useState('')
 
   const {
     register,
@@ -58,6 +82,11 @@ export function AcceptInvitePage() {
         setOrgName(data.data?.organizationName || data.organizationName || '')
       })
       .catch((err) => {
+        const code: string =
+          err?.response?.data?.code ||
+          err?.response?.data?.data?.code ||
+          'INVITE_INVALID'
+        setErrorCode(code)
         setError(
           err?.response?.data?.message ||
             err?.response?.data?.data?.message ||
@@ -80,6 +109,11 @@ export function AcceptInvitePage() {
       toast('Welcome! Your account is now active.')
       navigate('/')
     } catch (err: any) {
+      const code: string =
+        err?.response?.data?.code ||
+        err?.response?.data?.data?.code ||
+        'INVITE_INVALID'
+      setErrorCode(code)
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.violations?.join('. ') ||
@@ -101,23 +135,24 @@ export function AcceptInvitePage() {
     )
   }
 
-  if (error && !inviteEmail) {
+  if (!validating && (errorCode || error) && !inviteEmail) {
+    const screen = ERROR_SCREENS[errorCode] ?? ERROR_SCREENS['INVITE_INVALID']
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center">
           <div className="flex items-center justify-center h-12 w-12 bg-red-100 rounded-xl mx-auto mb-4">
             <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground mb-2">
-            Invalid Invitation
-          </h2>
-          <p className="text-sm text-muted-foreground mb-6">{error}</p>
-          <Link
-            to="/login"
-            className="text-primary hover:text-primary text-sm font-medium"
-          >
-            Go to Login
-          </Link>
+          <h2 className="text-lg font-semibold text-foreground mb-2">{screen.heading}</h2>
+          <p className="text-sm text-muted-foreground mb-6">{screen.body}</p>
+          {screen.cta && (
+            <Link
+              to="/login"
+              className="text-primary hover:text-primary text-sm font-medium"
+            >
+              Go to Login
+            </Link>
+          )}
         </div>
       </div>
     )

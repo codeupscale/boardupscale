@@ -82,7 +82,6 @@ export class OrganizationsService {
     });
 
     if (existingUser) {
-      // Check if user is already a member of THIS organization (via organization_members)
       const existingMembership = await this.organizationMemberRepository.findOne({
         where: { userId: existingUser.id, organizationId },
       });
@@ -91,7 +90,6 @@ export class OrganizationsService {
         throw new ConflictException('User is already a member of this organization');
       }
 
-      // User exists in another org -- add them to this org via organization_members
       await this.organizationMemberRepository
         .createQueryBuilder()
         .insert()
@@ -105,8 +103,20 @@ export class OrganizationsService {
         .orIgnore()
         .execute();
 
-      // Send invitation email
-      await this.generateAndSendInvitation(existingUser, inviterId, organizationId);
+      if (existingUser.invitationStatus === 'accepted') {
+        // User already has an active account — just notify them they were added
+        const org = await this.organizationRepository.findOne({ where: { id: organizationId } });
+        const inviter = await this.userRepository.findOne({ where: { id: inviterId } });
+        const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
+        await this.emailService.sendInvitationEmail(
+          existingUser.email,
+          inviter?.displayName || 'A team member',
+          org?.name || 'your organization',
+          `${frontendUrl}/login`,
+        );
+      } else {
+        await this.generateAndSendInvitation(existingUser, inviterId, organizationId);
+      }
 
       this.auditService.log(
         organizationId,
@@ -129,6 +139,7 @@ export class OrganizationsService {
       passwordHash: null,
       role: dto.role || 'member',
       isActive: false,
+      invitationStatus: 'pending',
       emailVerified: false,
     });
 
@@ -277,16 +288,26 @@ export class OrganizationsService {
     actorId: string,
   ): Promise<void> {
     const member = await this.userRepository.findOne({
-      where: { id: memberId, organizationId },
+      where: { id: memberId },
     });
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    if (member.isActive) {
-      throw new BadRequestException('User is already active — not a pending invitation');
+
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
+    });
+    if (!membership && member.organizationId !== organizationId) {
+      throw new NotFoundException('Member not found in this organization');
     }
 
-    await this.generateAndSendInvitation(member, actorId, organizationId);
+    if (!['pending', 'expired'].includes(member.invitationStatus)) {
+      throw new BadRequestException('Can only resend invite to members with pending or expired invitations');
+    }
+
+    await this.userRepository.update(memberId, { invitationStatus: 'pending' });
+    const updated = await this.userRepository.findOne({ where: { id: memberId } });
+    await this.generateAndSendInvitation(updated!, actorId, organizationId);
   }
 
   async revokeInvitation(
@@ -295,16 +316,29 @@ export class OrganizationsService {
     actorId: string,
   ): Promise<void> {
     const member = await this.userRepository.findOne({
-      where: { id: memberId, organizationId },
+      where: { id: memberId },
     });
     if (!member) {
       throw new NotFoundException('Member not found');
     }
-    if (member.isActive) {
-      throw new BadRequestException('Cannot revoke — user is already active');
+
+    const membership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
+    });
+    if (!membership && member.organizationId !== organizationId) {
+      throw new NotFoundException('Member not found in this organization');
     }
 
-    // Hard-delete the pending user record
+    if (member.invitationStatus === 'accepted') {
+      throw new BadRequestException('Cannot revoke — user is already active. Use deactivate instead.');
+    }
+
+    if (member.invitationStatus === 'none') {
+      throw new BadRequestException(
+        'Cannot revoke a Jira-migrated placeholder. Update their email address first.',
+      );
+    }
+
     await this.userRepository.remove(member);
 
     this.auditService.log(
@@ -348,21 +382,24 @@ export class OrganizationsService {
     });
 
     if (existingUser && existingUser.id !== memberId) {
-      // Email belongs to an existing user — merge the placeholder into that user
-      // and add the existing user to this organization
-      return this.mergeAndInviteExistingUser(
-        organizationId,
-        member,
-        existingUser,
-        actorId,
-      );
+      // Return 409 with merge preview — frontend must confirm before merge executes
+      const preview = await this.getMergePreview(organizationId, memberId, newEmail);
+      const conflict = new ConflictException('Email already belongs to an existing user');
+      (conflict as any).response = {
+        statusCode: 409,
+        message: 'Email already belongs to an existing user',
+        code: 'MERGE_REQUIRED',
+        preview,
+      };
+      throw conflict;
     }
 
     member.email = newEmail;
     member.emailVerified = false;
+    member.isActive = false;
+    member.invitationStatus = 'pending';
     const saved = await this.userRepository.save(member);
 
-    // Send invitation so the user can set up their account
     await this.generateAndSendInvitation(saved, actorId, organizationId);
 
     this.auditService.log(
@@ -489,6 +526,18 @@ export class OrganizationsService {
           [realUserId, organizationId],
         );
       }
+
+      // Set invitation status on target user if not already accepted
+      const targetStatusRows = await manager.query(
+        `SELECT invitation_status FROM users WHERE id = $1`,
+        [realUserId],
+      );
+      if (targetStatusRows[0]?.invitation_status !== 'accepted') {
+        await manager.query(
+          `UPDATE users SET is_active = false, invitation_status = 'pending' WHERE id = $1`,
+          [realUserId],
+        );
+      }
     });
 
     // Send invitation email to the existing user for this org
@@ -497,18 +546,117 @@ export class OrganizationsService {
     this.auditService.log(
       organizationId,
       actorId,
-      'organization.member.merged_and_invited',
+      'organization.member.merged',
       'user',
       existingUser.id,
       {
-        email: existingUser.email,
-        mergedFromPlaceholder: placeholder.id,
+        placeholderUserId: placeholder.id,
         placeholderEmail: placeholder.email,
+        targetUserId: existingUser.id,
+        targetEmail: existingUser.email,
       },
       null,
     );
 
     return existingUser;
+  }
+
+  async getMergePreview(
+    organizationId: string,
+    memberId: string,
+    targetEmail: string,
+  ): Promise<{
+    placeholder: { id: string; displayName: string; email: string };
+    targetUser: { id: string; displayName: string; email: string } | null;
+    impact: {
+      issuesReassigned: number;
+      commentsReassigned: number;
+      projectMemberships: number;
+      worklogsReassigned: number;
+      watchersReassigned: number;
+    };
+    conflict: boolean;
+  }> {
+    const placeholder = await this.userRepository.findOne({ where: { id: memberId } });
+    if (!placeholder) throw new NotFoundException('Member not found');
+
+    // Verify placeholder belongs to this organization
+    const placeholderMembership = await this.organizationMemberRepository.findOne({
+      where: { userId: memberId, organizationId },
+    });
+    if (!placeholderMembership && placeholder.organizationId !== organizationId) {
+      throw new NotFoundException('Member not found in this organization');
+    }
+
+    const targetUser = await this.userRepository.findOne({ where: { email: targetEmail } });
+
+    if (!targetUser) {
+      return {
+        placeholder: { id: placeholder.id, displayName: placeholder.displayName, email: placeholder.email },
+        targetUser: null,
+        impact: { issuesReassigned: 0, commentsReassigned: 0, projectMemberships: 0, worklogsReassigned: 0, watchersReassigned: 0 },
+        conflict: false,
+      };
+    }
+
+    const [issueCount, commentCount, projectCount, worklogCount, watcherCount] = await Promise.all([
+      this.dataSource.query(
+        `SELECT COUNT(*) FROM issues WHERE (assignee_id = $1 OR reporter_id = $1) AND organization_id = $2`,
+        [memberId, organizationId],
+      ),
+      this.dataSource.query(
+        `SELECT COUNT(*) FROM comments WHERE author_id = $1 AND issue_id IN (SELECT id FROM issues WHERE organization_id = $2)`,
+        [memberId, organizationId],
+      ),
+      this.dataSource.query(
+        `SELECT COUNT(*) FROM project_members WHERE user_id = $1 AND project_id IN (SELECT id FROM projects WHERE organization_id = $2)`,
+        [memberId, organizationId],
+      ),
+      this.dataSource.query(
+        `SELECT COUNT(*) FROM work_logs WHERE user_id = $1 AND issue_id IN (SELECT id FROM issues WHERE organization_id = $2)`,
+        [memberId, organizationId],
+      ),
+      this.dataSource.query(
+        `SELECT COUNT(*) FROM issue_watchers WHERE user_id = $1 AND issue_id IN (SELECT id FROM issues WHERE organization_id = $2)`,
+        [memberId, organizationId],
+      ),
+    ]);
+
+    const existingMembership = await this.organizationMemberRepository.findOne({
+      where: { userId: targetUser.id, organizationId },
+    });
+
+    return {
+      placeholder: { id: placeholder.id, displayName: placeholder.displayName, email: placeholder.email },
+      targetUser: { id: targetUser.id, displayName: targetUser.displayName, email: targetUser.email },
+      impact: {
+        issuesReassigned: parseInt(issueCount[0].count, 10),
+        commentsReassigned: parseInt(commentCount[0].count, 10),
+        projectMemberships: parseInt(projectCount[0].count, 10),
+        worklogsReassigned: parseInt(worklogCount[0].count, 10),
+        watchersReassigned: parseInt(watcherCount[0].count, 10),
+      },
+      conflict: !!existingMembership,
+    };
+  }
+
+  async confirmMergeAndInvite(
+    organizationId: string,
+    memberId: string,
+    targetEmail: string,
+    actorId: string,
+  ): Promise<User> {
+    const placeholder = await this.userRepository.findOne({ where: { id: memberId } });
+    if (!placeholder) throw new NotFoundException('Placeholder member not found');
+
+    const targetUser = await this.userRepository.findOne({ where: { email: targetEmail } });
+    if (!targetUser) throw new NotFoundException('Target user not found');
+
+    if (targetUser.id === actorId) {
+      throw new BadRequestException('Cannot merge placeholder into your own account');
+    }
+
+    return this.mergeAndInviteExistingUser(organizationId, placeholder, targetUser, actorId);
   }
 
   // ── SAML SSO Configuration ─────────────────────────────────────────────
@@ -595,6 +743,7 @@ export class OrganizationsService {
     await this.userRepository.update(user.id, {
       emailVerificationToken: tokenHash,
       emailVerificationExpiry: expiresAt,
+      invitationStatus: 'pending',
     });
 
     const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';

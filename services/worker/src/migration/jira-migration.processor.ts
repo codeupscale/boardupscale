@@ -36,6 +36,7 @@ const PHASE_SPRINTS = 3;
 const PHASE_ISSUES = 4;
 const PHASE_COMMENTS = 5;
 const PHASE_ATTACHMENTS = 6;
+const PHASE_PROJECT_MEMBER_SYNC = 15; // between phase 1 and 2; stored as integer
 
 const REQUEST_DELAY_MS = 100; // 10 req/s courtesy throttle
 const PROGRESS_FLUSH_MS = 5000; // DB write frequency
@@ -552,7 +553,6 @@ async function runMembersPhase(
 
     chunk.forEach((u, j) => {
       const b = j * 5;
-      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, true, false, $${b+4}::text, $${b+5}::text, NOW(), NOW())`);
       // Use real email when available; fall back to a synthetic address keyed by accountId.
       const email = u.emailAddress
         ? u.emailAddress.toLowerCase()
@@ -561,12 +561,18 @@ async function runMembersPhase(
       const roleMappingRecord = state.roleMapping ?? {};
       const mappedRole = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
       const safeRole = ['admin','manager','member','viewer'].includes(mappedRole) ? mappedRole : 'member';
+      const hasRealEmail = !!u.emailAddress;
+      // Real-email users: is_active=false (need to accept invite), invitation_status='pending'
+      // Synthetic-email users: is_active=true (appear in dropdowns), invitation_status='none'
+      const isActiveVal = hasRealEmail ? 'false' : 'true';
+      const invStatus = hasRealEmail ? 'pending' : 'none';
+      placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, ${isActiveVal}, false, $${b+4}::text, $${b+5}::text, '${invStatus}', NOW(), NOW())`);
       params.push(email, displayName, state.organizationId, safeRole, u.accountId);
       chunkAccountIds.push(u.accountId);
     });
 
     const { rows } = await client.query<{ id: string; email: string }>(
-      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, created_at, updated_at)
+      `INSERT INTO users (id, email, display_name, organization_id, is_active, email_verified, role, jira_account_id, invitation_status, created_at, updated_at)
        VALUES ${placeholders.join(', ')}
        ON CONFLICT (email) DO UPDATE SET
          display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), users.display_name),
@@ -606,6 +612,78 @@ async function runMembersPhase(
   }, io);
 
   console.log(`[Migration:${state.id}] Phase 1 done — ${processed}/${filteredUsers.length} members (${filterIds != null && filterIds.size > 0 ? `${filterIds.size} selected out of ${users.length} total` : `all ${users.length} imported`})`);
+}
+
+// ─── Phase 1b: Project Member Sync ────────────────────────────────────────────
+
+async function runProjectMemberSyncPhase(
+  client: PoolClient,
+  state: RunState,
+  io: IORedis | null,
+): Promise<void> {
+  console.log(`[Migration:${state.id}] Phase 1b — project member sync`);
+
+  const { rows: projects } = await client.query<{ id: string; key: string }>(
+    `SELECT id, key FROM projects WHERE organization_id = $1`,
+    [state.organizationId],
+  );
+
+  if (projects.length === 0) {
+    console.log(`[Migration:${state.id}] Phase 1b — no projects found, skipping`);
+    return;
+  }
+
+  let totalAssigned = 0;
+  let projectsProcessed = 0;
+
+  for (const project of projects) {
+    // Collect distinct local user IDs from assignee_id and reporter_id on issues
+    const { rows: directUserRows } = await client.query<{ user_id: string }>(
+      `SELECT DISTINCT user_id FROM (
+         SELECT assignee_id as user_id FROM issues WHERE project_id = $1 AND organization_id = $2 AND assignee_id IS NOT NULL
+         UNION
+         SELECT reporter_id as user_id FROM issues WHERE project_id = $1 AND organization_id = $2 AND reporter_id IS NOT NULL
+       ) combined
+       JOIN users u ON u.id = combined.user_id AND u.organization_id = $2`,
+      [project.id, state.organizationId],
+    ).catch(() => ({ rows: [] as any[] }));
+
+    const userIds = directUserRows.map((r) => r.user_id).filter(Boolean);
+
+    if (userIds.length === 0) {
+      projectsProcessed++;
+      continue;
+    }
+
+    for (const userId of userIds) {
+      const { rows: userRows } = await client.query<{ role: string }>(
+        `SELECT role FROM users WHERE id = $1`,
+        [userId],
+      );
+      const role = userRows[0]?.role || 'member';
+
+      await client.query(
+        `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW())
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [project.id, userId, role],
+      ).catch((err: any) => {
+        addError(state, `project_member_sync: project ${project.key} user ${userId}: ${err.message}`);
+      });
+
+      totalAssigned++;
+    }
+
+    projectsProcessed++;
+
+    await updateRunProgress(client, state.id, {
+      currentPhase: PHASE_PROJECT_MEMBER_SYNC,
+      processedProjects: projectsProcessed,
+      totalProjects: projects.length,
+    }, io);
+  }
+
+  console.log(`[Migration:${state.id}] Phase 1b done — ${totalAssigned} memberships across ${projectsProcessed} projects`);
 }
 
 // ─── Phase 2: Projects ────────────────────────────────────────────────────────
@@ -1976,6 +2054,16 @@ async function processJob(
       }
 
       // Cancel check after Phase 1
+      await checkCancelled(progressClient, runId);
+
+      // ── Phase 1b — project member sync ──────────────────────────────────────
+      if (!completed.has(PHASE_PROJECT_MEMBER_SYNC)) {
+        await runPhaseWithRetry('project_member_sync', state, () =>
+          runProjectMemberSyncPhase(progressClient, state, io),
+        );
+        state.completedPhases = [...(state.completedPhases ?? []), PHASE_PROJECT_MEMBER_SYNC];
+      }
+
       await checkCancelled(progressClient, runId);
 
       // ── Phase 2 — projects ───────────────────────────────────────────────────

@@ -49,6 +49,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let details: any[] | null = null;
     let errorName = 'Internal Server Error';
 
+    let extraFields: Record<string, any> = {};
+
     if (exception instanceof ThrottlerException) {
       status = HttpStatus.TOO_MANY_REQUESTS;
       message = 'Too many requests. Please try again later.';
@@ -59,14 +61,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object') {
-        const resp = exceptionResponse as any;
+      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+        const resp = exceptionResponse as Record<string, any>;
         if (Array.isArray(resp.message)) {
           // Validation pipe errors
           details = resp.message;
           message = 'Validation failed';
         } else {
           message = resp.message || resp.error || message;
+        }
+        // Collect any extra fields (e.g. code, preview) beyond the standard ones
+        for (const key of Object.keys(resp)) {
+          if (!['statusCode', 'message', 'error'].includes(key)) {
+            extraFields[key] = resp[key];
+          }
         }
       }
 
@@ -88,6 +96,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message,
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...extraFields,
     };
 
     if (details) {

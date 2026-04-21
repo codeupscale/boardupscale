@@ -46,6 +46,9 @@ export class User {
   @Column({ name: 'email_verified', type: 'boolean', default: false })
   emailVerified: boolean;
 
+  @Column({ name: 'invitation_status', type: 'varchar', length: 20, default: 'none' })
+  invitationStatus: string;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   timezone: string;
 

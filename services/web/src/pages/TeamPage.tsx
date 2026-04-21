@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import {
   Users,
   UserPlus,
-  MoreHorizontal,
   Mail,
   ShieldCheck,
   UserX,
@@ -18,6 +17,7 @@ import {
   CheckCircle2,
   Pencil,
   AtSign,
+  AlertTriangle,
 } from 'lucide-react'
 import { useMe } from '@/hooks/useAuth'
 import {
@@ -30,7 +30,10 @@ import {
   useResendInvitation,
   useRevokeInvitation,
 } from '@/hooks/useOrganization'
+import type { MergePreview } from '@/hooks/useOrganization'
+import { MergeConfirmationModal } from '@/components/MergeConfirmationModal'
 import { User, UserRole } from '@/types'
+import { toast } from '@/store/ui.store'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -300,6 +303,12 @@ export function TeamPage() {
   const [emailTarget, setEmailTarget] = useState<User | null>(null)
   const [newEmail, setNewEmail] = useState('')
 
+  // ── Merge confirmation modal ──────────────────────────────────────────────
+  const [mergeTarget, setMergeTarget] = useState<User | null>(null)
+  const [mergeEmail, setMergeEmail] = useState('')
+  const [mergePreview, setMergePreview] = useState<MergePreview | null>(null)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+
   // ── Confirmations ─────────────────────────────────────────────────────────
   const [deactivateTarget, setDeactivateTarget] = useState<User | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<User | null>(null)
@@ -313,8 +322,14 @@ export function TeamPage() {
 
   const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
 
-  const activeMembers = useMemo(() => members.filter((m) => m.isActive), [members])
-  const pendingMembers = useMemo(() => members.filter((m) => !m.isActive), [members])
+  const activeMembers = useMemo(
+    () => members.filter((m) => m.invitationStatus === 'accepted' || m.invitationStatus === 'none'),
+    [members],
+  )
+  const pendingMembers = useMemo(
+    () => members.filter((m) => m.invitationStatus === 'pending' || m.invitationStatus === 'expired'),
+    [members],
+  )
 
   const filteredActive = useMemo(() => {
     let list = activeMembers
@@ -392,12 +407,44 @@ export function TeamPage() {
     setNewEmail('')
   }
 
-  const handleEmailSave = () => {
+  const handleEmailSave = async () => {
     if (!emailTarget || !newEmail.trim()) return
-    updateMemberEmail.mutate(
-      { memberId: emailTarget.id, email: newEmail.trim() },
-      { onSuccess: () => { setEmailTarget(null); setNewEmail('') } },
-    )
+    try {
+      await updateMemberEmail.mutateAsync({ memberId: emailTarget.id, email: newEmail.trim() })
+      setEmailTarget(null)
+      setNewEmail('')
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        const preview: MergePreview | undefined =
+          err.response.data?.preview ?? err.response.data?.data?.preview
+        setMergeTarget(emailTarget)
+        setMergeEmail(newEmail.trim())
+        setMergePreview(preview ?? null)
+        setMergeError(null)
+        setEmailTarget(null)
+        setNewEmail('')
+      } else {
+        const msg = err?.response?.data?.message || 'Failed to update email'
+        toast(msg, 'error')
+      }
+    }
+  }
+
+  const handleConfirmMerge = async () => {
+    if (!mergeTarget) return
+    setMergeError(null)
+    try {
+      await updateMemberEmail.mutateAsync({
+        memberId: mergeTarget.id,
+        email: mergeEmail,
+        confirmMerge: true,
+      })
+      setMergeTarget(null)
+      setMergeEmail('')
+      setMergePreview(null)
+    } catch (err: any) {
+      setMergeError(err?.response?.data?.message || 'Merge failed')
+    }
   }
 
   if (isLoading) return <TeamSkeleton />
@@ -595,8 +642,16 @@ export function TeamPage() {
 
                     {/* Status */}
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">Active</span>
+                      {member.invitationStatus === 'none' ? (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 whitespace-nowrap">
+                          No Email
+                        </span>
+                      ) : (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground">Active</span>
+                        </>
+                      )}
                     </div>
 
                     {/* Actions — always visible, not hidden behind ... */}
@@ -668,6 +723,7 @@ export function TeamPage() {
               </p>
             </div>
 
+
             <div className="bg-card rounded-xl border border-border/60 overflow-hidden">
               {/* Table header */}
               <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 px-5 py-2.5 border-b border-border bg-amber-50/60 dark:bg-amber-900/10">
@@ -723,17 +779,24 @@ export function TeamPage() {
                       </span>
                     </div>
 
-                    {/* Pending badge */}
-                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 flex-shrink-0 whitespace-nowrap">
-                      Pending
-                    </span>
+                    {/* Status badge */}
+                    {member.invitationStatus === 'expired' ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700 flex-shrink-0 whitespace-nowrap">
+                        <AlertTriangle className="h-3 w-3" />
+                        Expired
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 flex-shrink-0 whitespace-nowrap">
+                        Pending
+                      </span>
+                    )}
 
-                    {/* Actions — explicit buttons */}
+                    {/* Actions */}
                     {isAdmin && (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => resendInvitation.mutate(member.id)}
-                          title="Resend invitation"
+                          title={member.invitationStatus === 'expired' ? 'Re-invite' : 'Resend invitation'}
                           className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors"
                         >
                           <RefreshCw className="h-3.5 w-3.5" />
@@ -1054,6 +1117,21 @@ export function TeamPage() {
         confirmLabel="Revoke"
         destructive
         isLoading={revokeInvitation.isPending}
+      />
+
+      {/* Merge accounts confirmation */}
+      <MergeConfirmationModal
+        open={!!mergeTarget}
+        preview={mergePreview}
+        loading={updateMemberEmail.isPending}
+        error={mergeError}
+        onConfirm={handleConfirmMerge}
+        onCancel={() => {
+          setMergeTarget(null)
+          setMergeEmail('')
+          setMergePreview(null)
+          setMergeError(null)
+        }}
       />
     </div>
   )

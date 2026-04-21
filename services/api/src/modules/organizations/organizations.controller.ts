@@ -7,7 +7,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationsService } from './organizations.service';
@@ -82,8 +84,23 @@ export class OrganizationsController {
     return this.organizationsService.updateMemberInfo(organizationId, memberId, dto, userId);
   }
 
+  @Get('me/members/:memberId/merge-preview')
+  @ApiOperation({ summary: 'Preview the impact of merging a Jira placeholder with an existing user' })
+  @Roles('admin', 'owner')
+  async getMergePreview(
+    @OrgId() organizationId: string,
+    @Param('memberId') memberId: string,
+    @Query('email') email: string,
+  ) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('email query parameter is required and must be a valid email address');
+    }
+    const preview = await this.organizationsService.getMergePreview(organizationId, memberId, email);
+    return { data: preview };
+  }
+
   @Patch('me/members/:memberId/email')
-  @ApiOperation({ summary: 'Set real email for a Jira-migrated member (synthetic email only)' })
+  @ApiOperation({ summary: 'Set real email for a Jira-migrated member. Returns 409 with preview if email is taken; resend with confirmMerge=true to proceed.' })
   @Roles('admin', 'owner')
   async updateMemberEmail(
     @OrgId() organizationId: string,
@@ -91,6 +108,16 @@ export class OrganizationsController {
     @Param('memberId') memberId: string,
     @Body() dto: UpdateMemberEmailDto,
   ) {
+    if (dto.confirmMerge === true) {
+      const merged = await this.organizationsService.confirmMergeAndInvite(
+        organizationId,
+        memberId,
+        dto.email,
+        userId,
+      );
+      return { data: merged };
+    }
+
     const updated = await this.organizationsService.updateMigratedMemberEmail(
       organizationId,
       memberId,
