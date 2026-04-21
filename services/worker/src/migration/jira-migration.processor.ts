@@ -2309,6 +2309,73 @@ async function runAttachmentsPhase(
   }, io);
 }
 
+async function runRepairPhase(
+  client: PoolClient,
+  state: RunState,
+): Promise<void> {
+  const orgId = state.organizationId;
+  console.log(`[Migration:${state.id}] Phase 7 — membership repair (orgId=${orgId})`);
+
+  // Step 1: Ensure organization_members rows for all project_members users
+  await client.query(
+    `INSERT INTO organization_members (id, user_id, organization_id, role, is_default, created_at, updated_at)
+     SELECT
+       gen_random_uuid(),
+       pm.user_id,
+       p.organization_id,
+       COALESCE(u.role, 'member'),
+       false,
+       NOW(),
+       NOW()
+     FROM project_members pm
+     JOIN projects p ON p.id = pm.project_id
+     JOIN users u ON u.id = pm.user_id
+     WHERE p.organization_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM organization_members om
+         WHERE om.user_id = pm.user_id AND om.organization_id = p.organization_id
+       )
+     ON CONFLICT (user_id, organization_id) DO NOTHING`,
+    [orgId],
+  );
+
+  // Step 2a: Re-sync issue assignees → project_members
+  await client.query(
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+     SELECT gen_random_uuid(), i.project_id, i.assignee_id, 'member', NOW(), NOW()
+     FROM issues i
+     JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+     WHERE i.assignee_id IS NOT NULL
+     ON CONFLICT (project_id, user_id) DO NOTHING`,
+    [orgId],
+  );
+
+  // Step 2b: Re-sync issue reporters → project_members
+  await client.query(
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+     SELECT gen_random_uuid(), i.project_id, i.reporter_id, 'member', NOW(), NOW()
+     FROM issues i
+     JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+     WHERE i.reporter_id IS NOT NULL
+     ON CONFLICT (project_id, user_id) DO NOTHING`,
+    [orgId],
+  );
+
+  // Step 3: Re-sync comment authors → project_members
+  await client.query(
+    `INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+     SELECT gen_random_uuid(), i.project_id, c.author_id, 'member', NOW(), NOW()
+     FROM comments c
+     JOIN issues i ON i.id = c.issue_id
+     JOIN projects p ON p.id = i.project_id AND p.organization_id = $1
+     WHERE c.author_id IS NOT NULL
+     ON CONFLICT (project_id, user_id) DO NOTHING`,
+    [orgId],
+  );
+
+  console.log(`[Migration:${state.id}] Phase 7 — membership repair complete`);
+}
+
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
 
 function mapIssueType(name?: string): string {
@@ -2505,6 +2572,13 @@ async function processJob(
           runAttachmentsPhase(progressClient, state, io),
         );
         state.completedPhases = [...(state.completedPhases ?? []), PHASE_ATTACHMENTS];
+      }
+
+      // ── Phase 7 — membership repair (non-fatal) ──────────────────────────────
+      try {
+        await runRepairPhase(progressClient, state);
+      } catch (repairErr: any) {
+        console.warn(`[Migration:${state.id}] Phase 7 repair failed (non-fatal): ${repairErr?.message}`);
       }
 
       // ── Write final result summary (read fresh counts from DB) ──────────────
