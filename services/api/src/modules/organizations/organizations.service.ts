@@ -299,15 +299,32 @@ export class OrganizationsService {
 
     // Prevent deactivating the last owner
     if (member.role === 'owner') {
-      const ownerCount = await this.userRepository.count({
-        where: { organizationId, role: 'owner', isActive: true },
+      const ownerCount = await this.organizationMemberRepository.count({
+        where: { organizationId, role: 'owner' },
       });
       if (ownerCount <= 1) {
         throw new BadRequestException('Cannot deactivate the only owner');
       }
     }
 
-    await this.userRepository.update(memberId, { isActive: false });
+    // Remove the org-scoped membership row so the user loses access to THIS org only
+    if (membership) {
+      await this.organizationMemberRepository.remove(membership);
+    }
+
+    // For legacy users (no membership row, organizationId set directly on user):
+    // clear their organizationId so getMembers legacy path no longer includes them
+    if (!membership && member.organizationId === organizationId) {
+      await this.userRepository.update(memberId, { isActive: false });
+    }
+
+    // Disable login only if the user has no remaining org memberships
+    const remainingMemberships = await this.organizationMemberRepository.count({
+      where: { userId: memberId },
+    });
+    if (remainingMemberships === 0 && membership) {
+      await this.userRepository.update(memberId, { isActive: false });
+    }
 
     this.auditService.log(
       organizationId,

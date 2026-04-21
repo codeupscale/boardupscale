@@ -304,13 +304,33 @@ describe('OrganizationsService', () => {
 
     it('should deactivate a member', async () => {
       const member = mockUser({ id: 'other-user', role: 'member' });
-      orgMemberRepo.findOne.mockResolvedValue({ userId: 'other-user', organizationId: TEST_IDS.ORG_ID });
+      const membership = { userId: 'other-user', organizationId: TEST_IDS.ORG_ID };
+      orgMemberRepo.findOne.mockResolvedValue(membership);
+      orgMemberRepo.remove.mockResolvedValue(membership);
+      // No remaining memberships after removal → user account disabled
+      orgMemberRepo.count.mockResolvedValue(0);
       userRepo.findOne.mockResolvedValue(member);
       userRepo.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
       await service.deactivateMember(TEST_IDS.ORG_ID, 'other-user', TEST_IDS.USER_ID);
 
+      expect(orgMemberRepo.remove).toHaveBeenCalledWith(membership);
       expect(userRepo.update).toHaveBeenCalledWith('other-user', { isActive: false });
+    });
+
+    it('should not disable login if member belongs to another org', async () => {
+      const member = mockUser({ id: 'other-user', role: 'member' });
+      const membership = { userId: 'other-user', organizationId: TEST_IDS.ORG_ID };
+      orgMemberRepo.findOne.mockResolvedValue(membership);
+      orgMemberRepo.remove.mockResolvedValue(membership);
+      // Still has membership in another org
+      orgMemberRepo.count.mockResolvedValue(1);
+      userRepo.findOne.mockResolvedValue(member);
+
+      await service.deactivateMember(TEST_IDS.ORG_ID, 'other-user', TEST_IDS.USER_ID);
+
+      expect(orgMemberRepo.remove).toHaveBeenCalledWith(membership);
+      expect(userRepo.update).not.toHaveBeenCalled();
     });
   });
 
