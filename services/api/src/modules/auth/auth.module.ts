@@ -18,6 +18,7 @@ import { GithubStrategy } from './strategies/github.strategy';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 
 // Conditionally include OAuth strategies only when credentials are configured
 function getOAuthProviders(): any[] {
@@ -47,6 +48,7 @@ function getOAuthProviders(): any[] {
     UsersModule,
     NotificationsModule,
     TelemetryModule,
+    OrganizationsModule,
   ],
   controllers: [AuthController],
   providers: [

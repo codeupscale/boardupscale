@@ -23,6 +23,7 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { createMockRepository, createMockConfigService, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../test/mock-factories';
 
@@ -92,6 +93,7 @@ describe('AuthService', () => {
         { provide: getQueueToken('email'), useValue: emailQueue },
         { provide: AuditService, useValue: { log: jest.fn() } },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
+        { provide: OrganizationsService, useValue: { repairOrgMemberships: jest.fn().mockResolvedValue({ repairedOrgMembers: 0, repairedProjectMembers: 0 }) } },
       ],
     }).compile();
 
