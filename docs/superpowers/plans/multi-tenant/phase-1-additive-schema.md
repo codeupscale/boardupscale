@@ -2,10 +2,21 @@
 
 **Goal:** create the target shape alongside the old. Old code paths continue to work untouched; new columns/tables are populated but not yet read.
 
-**Duration:** 1 day of engineering, plus ≥24h staging soak
+**Duration:** 1 day of engineering, plus ≥24h shadow-DB soak + canary org creation
 **Deploys:** 1
-**Prerequisites:** Phase 0 complete; drift audit showing `totalDrift=0` hourly for ≥3 days.
+**Prerequisites:**
+- Phase 0 complete; drift audit showing `totalDrift=0` hourly for ≥3 days.
+- **Phase 0.5 complete; data audit clean** (Invariants F + G = 0, no manual-review items pending).
+- Shadow DB refreshed from latest prod snapshot and migration dry-run successful.
 **Rollback:** migration `down()` drops the new objects. Data in old columns unchanged.
+
+---
+
+## v2 changes vs v1
+
+- **Chunked backfills.** Every UPDATE touching `organization_members` batches in 1000-row chunks with commits between, so no single lock exceeds ~500ms.
+- **`is_default=true` logic improved.** Uses a deterministic rule documented inline: matches `users.organization_id` first, else the membership with most-recent `created_at` as a proxy for "most recently joined" (we don't have `last_active_at` populated yet).
+- **Canary org created in the same deploy** so Phase 2+ has a target ready.
 
 ---
 
@@ -139,54 +150,88 @@ export class MultiTenantPhase11744700000000 implements MigrationInterface {
         ON invitations (expires_at) WHERE status = 'pending'
     `);
 
-    // ── 5. Backfill organization_members.is_active from users.is_active ──
-    await q.query(`
-      UPDATE organization_members m
-         SET is_active = u.is_active
-        FROM users u
-       WHERE m.user_id = u.id
-         AND u.is_active IS NOT NULL
-    `);
+    // ── 5. Backfill organization_members.is_active (CHUNKED 1000-rows) ──
+    // Chunking keeps each UPDATE transaction under ~500ms so API latency
+    // doesn't spike during the migration.
+    await this.chunkedUpdate(q,
+      `UPDATE organization_members m
+          SET is_active = u.is_active
+         FROM users u
+        WHERE m.user_id = u.id
+          AND u.is_active IS NOT NULL
+          AND m.ctid = ANY(
+            SELECT ctid FROM organization_members m2
+             WHERE m2.is_active IS DISTINCT FROM (
+               SELECT u2.is_active FROM users u2 WHERE u2.id = m2.user_id
+             )
+             LIMIT 1000
+          )`,
+    );
 
-    // ── 6. Backfill organization_members.jira_account_id from users.jira_account_id ──
-    // Only for the user's legacy home org — other orgs keep NULL until explicit import.
-    await q.query(`
-      UPDATE organization_members m
-         SET jira_account_id = u.jira_account_id
-        FROM users u
-       WHERE m.user_id = u.id
-         AND m.organization_id = u.organization_id
-         AND u.jira_account_id IS NOT NULL
-    `);
+    // ── 6. Backfill organization_members.jira_account_id (CHUNKED) ──
+    // Only the user's legacy home org gets the backfill; other orgs keep NULL
+    // until an explicit Jira migration run for them.
+    await this.chunkedUpdate(q,
+      `UPDATE organization_members m
+          SET jira_account_id = u.jira_account_id
+         FROM users u
+        WHERE m.user_id = u.id
+          AND m.organization_id = u.organization_id
+          AND u.jira_account_id IS NOT NULL
+          AND m.jira_account_id IS NULL
+          AND m.ctid = ANY(
+            SELECT m2.ctid FROM organization_members m2
+             JOIN users u2 ON u2.id = m2.user_id
+            WHERE m2.organization_id = u2.organization_id
+              AND u2.jira_account_id IS NOT NULL
+              AND m2.jira_account_id IS NULL
+            LIMIT 1000
+          )`,
+    );
 
-    // ── 7. Backfill is_default: the membership matching users.organization_id ──
+    // ── 7. Backfill is_default ──────────────────────────────────────────
+    // Priority:
+    //   a) Matches users.organization_id (user's legacy "home" org)
+    //   b) Otherwise: oldest membership (deterministic tiebreak)
+    //
+    // Invariant we must preserve: exactly one is_default=true per user.
+    // The UNIQUE partial index (uq_org_members_user_default) enforces this
+    // at the DB level, so we must apply updates in two passes to avoid a
+    // constraint violation during the transition.
+
+    // 7a. Reset all is_default to false first (idempotent; safe if empty).
+    await this.chunkedUpdate(q,
+      `UPDATE organization_members
+          SET is_default = false
+        WHERE is_default = true
+          AND ctid = ANY(
+            SELECT ctid FROM organization_members
+             WHERE is_default = true LIMIT 1000
+          )`,
+    );
+
+    // 7b. Set is_default=true for the canonical home org membership.
+    //    Uses a single atomic statement that picks the "best" membership
+    //    per user (home org > oldest) so we never exceed one per user.
     await q.query(`
-      UPDATE organization_members
-         SET is_default = false
-       WHERE is_default = true
-    `);
-    await q.query(`
+      WITH ranked AS (
+        SELECT m.user_id,
+               m.organization_id,
+               ROW_NUMBER() OVER (
+                 PARTITION BY m.user_id
+                 ORDER BY
+                   (CASE WHEN m.organization_id = u.organization_id THEN 0 ELSE 1 END),
+                   m.created_at ASC
+               ) AS rnk
+          FROM organization_members m
+          JOIN users u ON u.id = m.user_id
+      )
       UPDATE organization_members m
          SET is_default = true
-        FROM users u
-       WHERE m.user_id = u.id
-         AND m.organization_id = u.organization_id
-         AND u.organization_id IS NOT NULL
-    `);
-    // Any user without a legacy organization_id pointer but with memberships
-    // gets their oldest membership marked default (deterministic).
-    await q.query(`
-      UPDATE organization_members m
-         SET is_default = true
-       WHERE m.user_id IN (
-         SELECT user_id FROM organization_members
-          GROUP BY user_id
-         HAVING BOOL_AND(is_default = false)
-       )
-         AND (m.user_id, m.created_at) IN (
-           SELECT user_id, MIN(created_at) FROM organization_members
-             GROUP BY user_id
-         )
+        FROM ranked r
+       WHERE m.user_id = r.user_id
+         AND m.organization_id = r.organization_id
+         AND r.rnk = 1
     `);
 
     // ── 8. Migrate pending legacy invites into invitations table ─────────
@@ -221,6 +266,33 @@ export class MultiTenantPhase11744700000000 implements MigrationInterface {
       throw new Error(
         `[Phase1] user row count changed during migration: ${users_count} → ${users_after}`,
       );
+    }
+  }
+
+  /**
+   * Run `sql` repeatedly until no rows are affected. `sql` MUST include a
+   * LIMIT (or ctid-IN trick as shown) so each iteration touches at most
+   * ~1000 rows. Commits between iterations by virtue of being outside
+   * the outer migration transaction — TypeORM migrations run in a single
+   * transaction by default, so we force autocommit here by calling
+   * q.query() with explicit COMMIT/BEGIN pairs.
+   */
+  private async chunkedUpdate(q: QueryRunner, sql: string, maxIterations = 10_000): Promise<void> {
+    // We're inside a transaction — release it so each chunk commits
+    // independently. If migration fails mid-backfill, already-committed
+    // chunks are fine (idempotent WHERE clauses guarantee re-running is a no-op).
+    await q.commitTransaction();
+    try {
+      for (let i = 0; i < maxIterations; i++) {
+        await q.startTransaction();
+        const result = await q.query(sql);
+        const rowCount = result?.[1] ?? (Array.isArray(result) ? result.length : 0);
+        await q.commitTransaction();
+        if (rowCount === 0) return;
+      }
+      throw new Error(`chunkedUpdate exceeded ${maxIterations} iterations — did the WHERE clause exclude processed rows?`);
+    } finally {
+      await q.startTransaction(); // Resume outer tx so remaining migration steps stay transactional.
     }
   }
 

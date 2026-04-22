@@ -9,6 +9,24 @@
 
 ---
 
+## Phase 4.5 — Forced re-auth checkpoint (runs first, same deploy)
+
+Before dropping columns, ensure NO session is holding a JWT that still embeds `users.role` as its authoritative role claim. Do this 1 hour before the drop migration runs:
+
+```sql
+-- Invalidate every refresh token — forces users to log in again.
+UPDATE refresh_tokens
+   SET revoked_at = NOW(),
+       revoke_reason = 'multi-tenant-phase-5-cutover'
+ WHERE revoked_at IS NULL;
+```
+
+Users experience: brief "please sign in again" on their next request. JWTs issued after this point will be purely from the new shape.
+
+Schedule this for a low-traffic window (e.g., 3 AM UTC). Announce to customers via in-app banner 24h in advance.
+
+---
+
 ## Pre-flight checklist
 
 - [ ] **DB snapshot #2 taken.** Same procedure as Phase 1. Verify restore on staging. Name this one `snapshot_phase_5_pre_drop_<timestamp>`.

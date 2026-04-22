@@ -9,23 +9,36 @@
 
 ---
 
-## Subphase order
+## Subphase order (v2 — re-ordered for risk)
 
-The order is deliberate — dependencies first, riskiest last.
+The order is deliberate — lowest risk first to build confidence in the dual-write plumbing, highest-risk (session-invalidating) last with extra soak.
 
-| # | Name | Flag | Files touched | Risk |
-|---|---|---|---|---|
-| 3a | RBAC guard | `READ_NEW_RBAC` | `permissions.service.ts`, `roles.guard.ts` | Low (already partly flipped in hotfix) |
-| 3b | `getMembers` member list | `READ_NEW_GET_MEMBERS` | `organizations.service.ts` | Low |
-| 3c | Invitation validate/accept | `READ_NEW_INVITATIONS` | `auth.service.ts`, `auth.controller.ts`, `invitations.service.ts` | Medium |
-| 3d | Invite email org name | `READ_NEW_INVITE_EMAIL` | `organizations.service.ts` → `generateAndSendInvitation` | Low |
-| 3e | Jira migration `jira_account_id` | `READ_NEW_JIRA` | `jira-migration.processor.ts` phases 4–6 | Medium |
-| 3f | Deactivation / reactivation | `READ_NEW_DEACTIVATION` | `organizations.service.ts`, `auth.service.ts` (login check) | Medium |
-| 3g | JWT `membership_version` | `READ_NEW_JWT` | `auth.service.ts` (generateTokens), JWT strategy, middleware | High |
-| 3h | `/me` endpoint split | `READ_NEW_ME` | `users.controller.ts`, new `/me/memberships` | Low |
-| 3i | Audit log consumer | `READ_NEW_AUDIT` | `audit-logs.service.ts` | Low |
+| # | Name | Flag | Risk | Canary soak | Global soak |
+|---|---|---|---|---|---|
+| 3a | RBAC guard (remove legacy fallback) | `READ_NEW_RBAC` | Low | 6h | 24h |
+| 3b | `getMembers` member list | `READ_NEW_GET_MEMBERS` | Low | 6h | 24h |
+| 3c | Invitation validate/accept | `READ_NEW_INVITATIONS` | Medium | 12h | 24h |
+| 3d | Invite email org name | `READ_NEW_INVITE_EMAIL` | Low | 6h | 24h |
+| 3e | Jira migration `jira_account_id` | `READ_NEW_JIRA` | Medium | 12h | 24h |
+| 3f | Deactivation / reactivation | `READ_NEW_DEACTIVATION` | Medium | 12h | 24h |
+| 3h | `/me` endpoint split | `READ_NEW_ME` | Low | 6h | 24h |
+| 3i | Audit log consumer | `READ_NEW_AUDIT` | Low | 6h | 24h |
+| **3g** | **JWT `membership_version`** | **`READ_NEW_JWT`** | **High** | **72h + load test** | **72h** |
 
-Each subphase: open PR → merge → flip flag in prod `.env` → 24h soak → next subphase. If drift spikes or error rate regresses, flip flag back, investigate.
+### Why 3g is moved to last
+
+3g is the one subphase whose bug blast radius is "every authenticated request" — if it misbehaves, nobody can log in. Moving it last means:
+
+1. All other subphases have already proven the dual-write invariant is holding.
+2. The `organization_members.version` column has been receiving writes for weeks via the role-change and deactivation paths (3a, 3f) so its history is real.
+3. A failure in 3g can be rolled back without cascading into any other subphase.
+
+Additionally, 3g gets:
+- **72h canary soak** (vs 6–12h for others)
+- **Mandatory k6 load test** (1000 concurrent sessions) before global flip
+- **Grace period**: for the first 24h after global flip, the server accepts JWTs with NO `mv` claim as valid (legacy JWTs issued pre-3g) and silently upgrades them on refresh. After 24h, missing `mv` → 401 forcing re-auth.
+
+Each subphase: open PR → merge → canary flag flip → canary soak → global flag flip → global soak → next subphase. If drift spikes or error rate regresses, flip flag back, investigate.
 
 ---
 
@@ -256,9 +269,44 @@ if (this.flags.readFromNewShape.deactivation) {
 
 ---
 
-## Subphase 3g — JWT `membership_version`
+## Subphase 3g — JWT `membership_version` (HIGH RISK)
 
-Add `mv` claim to the JWT; compare against DB on every request.
+**Canary soak: 72h. Load test MANDATORY before global flip.**
+
+Add `mv` claim to the JWT; compare against DB on every request. See above for why this is the final and most sensitive subphase.
+
+### Grace period for legacy tokens
+
+During the first 24h after global flip, the server MUST accept JWTs with no `mv` claim (tokens issued before this subphase). The JWT strategy upgrades them transparently on the next request.
+
+```typescript
+// JWT strategy.validate with grace handling:
+if (payload.mv === undefined) {
+  // Legacy token issued pre-3g. Upgrade by re-reading membership.
+  // Do NOT reject — the user had a valid session before this subphase.
+  const membership = await this.orgMemberRepository.findOne({
+    where: { userId: payload.sub, organizationId: payload.organizationId },
+  });
+  if (!membership?.isActive) throw new UnauthorizedException({ code: 'MEMBERSHIP_REVOKED' });
+  // Optionally: trigger a silent refresh so the next JWT has mv
+  return { id: payload.sub, email: payload.email, organizationId: payload.organizationId, role: membership.role };
+}
+
+// After the grace window (24h), add the mv enforcement:
+if (Number(membership.version) !== Number(payload.mv)) {
+  throw new UnauthorizedException({ code: 'SESSION_STALE' });
+}
+```
+
+The 24h grace is controlled by a timestamp in the config:
+
+```typescript
+flags: {
+  jwtMvEnforcementStartsAt: process.env.JWT_MV_ENFORCEMENT_STARTS_AT,  // ISO timestamp
+}
+```
+
+Operator sets this to `now + 24h` at the moment of global flip. Before the timestamp: grace mode. After: strict mode. This gives us a clean, auditable window.
 
 **`services/api/src/modules/auth/auth.service.ts` (generateTokens):**
 

@@ -15,6 +15,9 @@
 2. `GET /admin/audit/multi-tenant-drift` — admin-only endpoint returning the latest audit result.
 3. BullMQ repeatable job running the audit hourly, logging results and alerting on non-zero drift.
 4. PostHog event + Slack webhook on drift > 0.
+5. **Performance baseline capture** (new in v2): k6 script `scripts/load/multi-tenant-baseline.js` run against prod during a low-traffic window; results committed to `docs/superpowers/plans/multi-tenant/baselines/`.
+6. **Shadow DB provisioned** (new in v2): `boardupscale_shadow` database populated from the latest `pg_dump`, on a sibling host or the same host with a different `datname`. Every subsequent migration dry-runs here first.
+7. **`drill-log.md` initialized** (new in v2): empty log file; each phase appends its rollback drill results here.
 
 ---
 
