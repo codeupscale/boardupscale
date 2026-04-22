@@ -14,6 +14,11 @@ The `users` table today conflates **identity** (email, password, 2FA, avatar) wi
 4. **Re-invite after deactivate.** If you deactivate someone and try to re-invite them in the same org (or a different one), the global flag blocks it until a manual cleanup.
 5. **Jira migration hard-reject on duplicate emails.** One person with two Atlassian accounts → one collides on `UNIQUE (email)`, the other silently drops. Worked around with dedup in the short-term fix; the right fix is per-org membership rows so both can coexist without sharing an identity row.
 6. **Invitation revoke fails on FK.** Revoking invitation tries to `DELETE FROM users` and hits `FK_issues_reporter_id` when the invited user was already a Jira reporter. Should revoke the MEMBERSHIP, not the identity.
+7. **Concurrent invites silently collide.** Invitation state (`email_verification_token`, `email_verification_expiry`, `pending_invite_organization_id`) lives on the `users` row — a single slot. If Admin-X invites `alice@foo.com` and Admin-Y invites her before she clicks, Admin-Y's invite overwrites Admin-X's token. Alice's first email link becomes a dead "invalid or already used" page with no warning to either admin. Only the most-recent invite is redeemable.
+
+## Out-of-scope for this doc but related
+
+A proper fix to (7) is a separate `invitations` table keyed by `(user_id, organization_id)` so each org owns its own pending invite, with its own token and expiry. This is a natural companion to the per-org-membership model below but is a distinct change — see the "Invitations table" section.
 
 ## Target schema
 
@@ -154,6 +159,34 @@ This is a sizable data migration — do it in four phases across multiple deploy
 | JWT includes stale role after org switch | Invalidate JWT on org switch; session cookie stores `orgId`, role re-fetched each request |
 | Long-running migrations in Phase 1 backfill | Run backfill in chunks of 1000 rows with commits between |
 | Rollback mid-Phase 3 | Each flip PR is independently revertible; Phase 2 dual-write keeps `users` valid |
+
+## Invitations table (companion change)
+
+Problem (7) in the list above cannot be solved by moving columns — it requires a distinct table. Design:
+
+```
+invitations
+  user_id          uuid (FK users.id ON DELETE CASCADE)
+  organization_id  uuid (FK organizations.id ON DELETE CASCADE)
+  PRIMARY KEY (user_id, organization_id)
+  token_hash       varchar(64) NOT NULL          ← SHA-256 of the raw token
+  expires_at       timestamptz NOT NULL
+  status           varchar(20) NOT NULL DEFAULT 'pending' ← pending | accepted | revoked | expired
+  invited_by       uuid (FK users.id ON DELETE SET NULL)
+  invited_at       timestamptz NOT NULL DEFAULT NOW()
+  accepted_at      timestamptz
+  UNIQUE (token_hash)
+  INDEX (organization_id, status)
+```
+
+Consequences:
+- `users.email_verification_token`, `email_verification_expiry`, and the transient `pending_invite_organization_id` column I added as a short-term fix all move here and get dropped from `users`.
+- Each org owns its own pending invite for a given user. Admin-X and Admin-Y can invite Alice independently — she can accept either, both, or neither. No silent collision.
+- `validateInvitation` looks up by `token_hash` → returns the `organization_id` directly.
+- `acceptInvitation` updates the matching row to `status='accepted'` and materialises the `organization_members` row. Other pending invites for the same user in other orgs stay pending.
+- Email uniqueness check in `inviteMember` flips from "is there a pending invite token on the user?" to "is there a `(user_id, this_org)` invitation with `status='pending'` and not expired?" — per-org.
+
+Do this alongside Phase 1 of the member redesign — the migration shape is similar (additive table, backfill, dual-write, flip reads, drop old columns on `users`).
 
 ## Out of scope (for this design)
 
