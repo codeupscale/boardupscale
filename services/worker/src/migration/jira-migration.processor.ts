@@ -675,6 +675,29 @@ async function runMembersPhase(
           );
           if (singleRes.rows[0]) rows.push(singleRes.rows[0]);
         } catch (singleErr: any) {
+          // Composite collision: a user with this (org, jira_account_id) already
+          // exists under a different email. Typical path: they accepted an
+          // invite after a prior migration, their synthetic email was renamed
+          // to their real email, but jira_account_id stayed set. Re-migration
+          // proposes the synthetic email again — ON CONFLICT (email) doesn't
+          // match the renamed row, the fresh INSERT hits the composite index.
+          // Reuse the existing user instead of losing them from the map.
+          if (/IDX_users_org_jira_account_id/.test(singleErr.message) && r.accountId) {
+            try {
+              const existing = await client.query<{ id: string; email: string }>(
+                `SELECT id, email FROM users
+                 WHERE organization_id = $1::uuid AND jira_account_id = $2
+                 LIMIT 1`,
+                [state.organizationId, r.accountId],
+              );
+              if (existing.rows[0]) {
+                rows.push(existing.rows[0]);
+                continue;
+              }
+            } catch {
+              // fall through to the failure path below
+            }
+          }
           insertFailures++;
           const m = `member "${r.email}" skipped: ${singleErr.message}`;
           console.error(`[Migration:${state.id}] ${m}`);
