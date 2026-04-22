@@ -1,0 +1,63 @@
+name: Ops — Tail worker logs
+
+# Read-only: fetches recent bu-worker logs from prod and prints them into the
+# Actions run. Useful for diagnosing migration/attachment issues without
+# handing out production SSH access.
+
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: 'How many recent log lines to pull (before filtering).'
+        required: true
+        default: '500'
+        type: string
+      grep_pattern:
+        description: 'Optional regex to filter with (grep -E). Leave blank for all lines.'
+        required: false
+        default: 'Attachment|status=|Phase|Migration:|error|ERROR|WARN'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops-tail-worker-logs
+  cancel-in-progress: true  # safe — it's read-only
+
+jobs:
+  run:
+    name: Tail bu-worker logs from prod
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Fetch logs via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          LINES: ${{ inputs.lines }}
+          GREP_PATTERN: ${{ inputs.grep_pattern }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: LINES,GREP_PATTERN
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            echo "[ops] Tailing last ${LINES} lines of infra-bu-worker-1"
+            if [ -n "${GREP_PATTERN}" ]; then
+              echo "[ops] Filter: ${GREP_PATTERN}"
+            else
+              echo "[ops] Filter: (none)"
+            fi
+            echo "─────────────────────────────────────────────"
+
+            if [ -n "${GREP_PATTERN}" ]; then
+              # "|| true" — grep exits 1 when no matches, which would fail the job
+              docker logs --tail "${LINES}" infra-bu-worker-1 2>&1 \
+                | grep -E "${GREP_PATTERN}" || echo "(no matching lines in last ${LINES})"
+            else
+              docker logs --tail "${LINES}" infra-bu-worker-1 2>&1
+            fi
