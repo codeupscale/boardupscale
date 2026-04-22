@@ -818,17 +818,47 @@ export class AuthService {
     // The invite was for THIS org — not necessarily the user's legacy home org.
     const inviteOrgId = user.pendingInviteOrganizationId || user.organizationId;
 
+    // First-time activation: the user existed only as a placeholder (no
+    // password). Any organization_members rows they carry are Jira-migration
+    // stubs — NOT workspaces they actually joined. After activation we scope
+    // them to only the org they accepted, otherwise their workspace switcher
+    // would show every Jira source workspace they were ever imported into.
+    const isFirstActivation = !user.passwordHash;
+
     const passwordHash = await bcrypt.hash(password, 12);
     await this.usersService.activateInvitedUser(user.id, passwordHash, displayName);
+
+    if (isFirstActivation) {
+      // Strip stub memberships from prior Jira migrations. The user's
+      // identity row stays (issues still reference them as reporter), they
+      // just lose access/visibility to orgs they never explicitly joined.
+      await this.orgMemberRepository
+        .createQueryBuilder()
+        .delete()
+        .where('user_id = :userId AND organization_id != :inviteOrgId', {
+          userId: user.id,
+          inviteOrgId,
+        })
+        .execute();
+
+      // Make the invited org the user's "home" org. users.organization_id is
+      // still consulted in several legacy code paths, and by default the JWT
+      // embeds it as the session org. Stale Jira-source home orgs would land
+      // the user in the wrong workspace on first login.
+      await this.usersService.update(user.id, {
+        organizationId: inviteOrgId,
+      } as any);
+    }
 
     // Ensure organization_members row exists FOR THE INVITED ORG.
     const existingMembership = await this.orgMemberRepository.findOne({
       where: { userId: user.id, organizationId: inviteOrgId },
     });
     if (!existingMembership) {
-      // Only mark as default if the user has no other memberships yet —
-      // otherwise we'd silently change which workspace the user lands in on
-      // login.
+      // Only mark as default if the user has no other ACTIVE memberships
+      // (isFirstActivation above cleared any stubs, so this will be true for
+      // new users and only false when a returning user accepts an invite to
+      // an additional workspace).
       const otherMembershipsCount = await this.orgMemberRepository.count({
         where: { userId: user.id },
       });
