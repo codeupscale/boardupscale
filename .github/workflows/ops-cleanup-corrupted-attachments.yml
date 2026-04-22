@@ -1,0 +1,60 @@
+name: Ops — Cleanup corrupted attachments
+
+# One-shot ops tool. Removes attachments rows where jira_attachment_id IS NOT NULL
+# AND file_size = 0 (the 0-byte "ghost" rows produced by migrations before the
+# Phase 1/6 validation fix). Also deletes the orphan MinIO objects.
+#
+# Runs inside the existing bu-worker container on prod — no extra image build,
+# reuses the same DB + MinIO env that's already wired up there.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (preview only — no writes). Default true for safety.'
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops-cleanup-attachments
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run cleanup script on prod
+    runs-on: ubuntu-latest
+    environment: production  # reuses the same approval gate as deploys
+
+    steps:
+      - name: Execute cleanup via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: DRY_RUN
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /home/ubuntu/infra
+
+            FLAG=""
+            if [ "$DRY_RUN" = "true" ]; then
+              FLAG="--dry-run"
+              echo "[ops] Mode: DRY-RUN"
+            else
+              echo "[ops] Mode: LIVE — will delete matching rows + MinIO objects"
+            fi
+
+            # Run inside the already-running bu-worker container: it has the
+            # compiled script at dist/scripts/ and the full DB + MinIO env.
+            docker compose exec -T bu-worker \
+              node dist/scripts/cleanup-corrupted-attachments.js $FLAG
