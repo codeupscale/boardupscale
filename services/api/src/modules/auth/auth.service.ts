@@ -758,9 +758,12 @@ export class AuthService {
       });
     }
 
-    const org = await this.organizationRepository.findOne({
-      where: { id: user.organizationId },
-    });
+    // Prefer the per-invite target org. Fall back to the user's legacy
+    // organization_id only if the pending-invite column is missing (old rows).
+    const inviteOrgId = user.pendingInviteOrganizationId || user.organizationId;
+    const org = inviteOrgId
+      ? await this.organizationRepository.findOne({ where: { id: inviteOrgId } })
+      : null;
 
     return {
       email: user.email,
@@ -812,32 +815,46 @@ export class AuthService {
       });
     }
 
+    // The invite was for THIS org — not necessarily the user's legacy home org.
+    const inviteOrgId = user.pendingInviteOrganizationId || user.organizationId;
+
     const passwordHash = await bcrypt.hash(password, 12);
     await this.usersService.activateInvitedUser(user.id, passwordHash, displayName);
 
-    // Ensure organization_members row exists
+    // Ensure organization_members row exists FOR THE INVITED ORG.
     const existingMembership = await this.orgMemberRepository.findOne({
-      where: { userId: user.id, organizationId: user.organizationId },
+      where: { userId: user.id, organizationId: inviteOrgId },
     });
     if (!existingMembership) {
+      // Only mark as default if the user has no other memberships yet —
+      // otherwise we'd silently change which workspace the user lands in on
+      // login.
+      const otherMembershipsCount = await this.orgMemberRepository.count({
+        where: { userId: user.id },
+      });
       await this.orgMemberRepository.save(
         this.orgMemberRepository.create({
           userId: user.id,
-          organizationId: user.organizationId,
+          organizationId: inviteOrgId,
           role: user.role || 'member',
-          isDefault: true,
+          isDefault: otherMembershipsCount === 0,
         }),
       );
     }
 
-    // Auto-repair project/org memberships for this user's organisation.
+    // Clear the pending-invite marker now that it's been accepted.
+    await this.usersService.update(user.id, {
+      pendingInviteOrganizationId: null,
+    } as any);
+
+    // Auto-repair project/org memberships for the invited org.
     // Idempotent — ensures Jira-migrated users see all their projects immediately after accepting.
     try {
-      await this.organizationsService.repairOrgMemberships(user.organizationId);
+      await this.organizationsService.repairOrgMemberships(inviteOrgId);
     } catch (repairErr: unknown) {
       // Non-fatal — log the warning but do not fail the invitation acceptance
       console.warn(
-        `[acceptInvitation] repairOrgMemberships failed for org ${user.organizationId}: ${(repairErr as Error)?.message}`,
+        `[acceptInvitation] repairOrgMemberships failed for org ${inviteOrgId}: ${(repairErr as Error)?.message}`,
       );
     }
 
@@ -845,7 +862,7 @@ export class AuthService {
     const tokens = await this.generateTokens(activatedUser, ipAddress, userAgent);
 
     this.auditService.log(
-      activatedUser.organizationId,
+      inviteOrgId,
       activatedUser.id,
       'auth.invitation_accepted',
       'user',

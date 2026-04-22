@@ -1049,6 +1049,10 @@ export class OrganizationsService {
       emailVerificationToken: tokenHash,
       emailVerificationExpiry: expiresAt,
       invitationStatus: 'pending',
+      // Bind the invite to THIS org. users.organization_id is the legacy
+      // "home" org and may point elsewhere (e.g. the user was Jira-migrated
+      // into a different workspace before this invite).
+      pendingInviteOrganizationId: organizationId,
     });
 
     const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';

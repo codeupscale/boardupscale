@@ -49,6 +49,16 @@ export class User {
   @Column({ name: 'invitation_status', type: 'varchar', length: 20, default: 'none' })
   invitationStatus: string;
 
+  /**
+   * The organization_id a pending invitation is for. Set by
+   * generateAndSendInvitation, read by validateInvitation / acceptInvitation.
+   * Required because users.organization_id is the legacy "home" org and doesn't
+   * reflect cross-org invites (e.g. a user imported into Org A can later be
+   * invited to Org B; without this column we'd accept them back into A).
+   */
+  @Column({ name: 'pending_invite_organization_id', type: 'uuid', nullable: true })
+  pendingInviteOrganizationId: string | null;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   timezone: string;
 
