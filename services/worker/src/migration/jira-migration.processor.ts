@@ -2159,6 +2159,12 @@ function withDeadline<T>(promise: Promise<T>, ms: number, label: string): Promis
   }) as Promise<T>;
 }
 
+// Safely extract the hostname from a URL for diagnostic logging. We never
+// log the query string — Jira/AWS redirect targets contain signed auth tokens.
+function safeUrlHost(rawUrl: string): string {
+  try { return new URL(rawUrl).host; } catch { return 'unparseable'; }
+}
+
 function sanitizeStorageKey(runId: string, filename: string): string {
   // Strip path separators and control chars only — MinIO supports UTF-8 keys natively
   const safe = filename
@@ -2203,7 +2209,11 @@ async function openAttachmentStream(
     const req = transport.request(options, (res) => {
       const status = res.statusCode ?? 0;
 
-      if (status === 301 || status === 302 || status === 307 || status === 308) {
+      // Follow 3xx redirects. 303 (See Other) is included — some Jira Cloud
+      // tenants return 303 from /rest/api/3/attachment/content/{id} to the
+      // pre-signed AWS URL; not following it would silently read an empty
+      // body from the redirect response itself and produce 0-byte uploads.
+      if (status === 301 || status === 302 || status === 303 || status === 307 || status === 308) {
         res.resume();
         if (_attempt > 5) { reject(new Error('Too many redirects')); return; }
         const location = res.headers['location'];
@@ -2230,6 +2240,14 @@ async function openAttachmentStream(
         return;
       }
 
+      // Stamp final-response metadata onto the stream so callers can diagnose
+      // a 0-byte body (was it status 200 with Content-Length: 0? a 303 we
+      // didn't follow? an unexpected 204?). Without this, empty downloads
+      // produce indistinguishable "0 bytes" logs.
+      (res as any).__finalUrl = url;
+      (res as any).__finalStatus = status;
+      (res as any).__finalContentLength = res.headers['content-length'] ?? null;
+      (res as any).__finalContentType = res.headers['content-type'] ?? null;
       resolve(res);
     });
 
@@ -2260,6 +2278,14 @@ async function openAttachmentStream(
  * - Size limit enforced by counting bytes through a PassThrough.
  * - Returns the number of bytes actually uploaded.
  */
+interface StreamUploadResult {
+  bytes: number;
+  finalUrl: string;
+  finalStatus: number;
+  finalContentLength: string | null;
+  finalContentType: string | null;
+}
+
 async function streamAttachmentToS3(args: {
   s3: S3Client;
   bucket: string;
@@ -2268,7 +2294,7 @@ async function streamAttachmentToS3(args: {
   sourceUrl: string;
   authHeader: string;
   maxBytes: number;
-}): Promise<number> {
+}): Promise<StreamUploadResult> {
   const source = await openAttachmentStream(args.sourceUrl, args.authHeader);
 
   let bytesCounted = 0;
@@ -2307,7 +2333,13 @@ async function streamAttachmentToS3(args: {
     throw err;
   }
 
-  return bytesCounted;
+  return {
+    bytes: bytesCounted,
+    finalUrl: (source as any).__finalUrl ?? args.sourceUrl,
+    finalStatus: (source as any).__finalStatus ?? 0,
+    finalContentLength: (source as any).__finalContentLength ?? null,
+    finalContentType: (source as any).__finalContentType ?? null,
+  };
 }
 
 // ─── Phase 6: Attachments ─────────────────────────────────────────────────────
@@ -2437,7 +2469,10 @@ async function runAttachmentsPhase(
       // Stream Jira → S3/MinIO via multipart upload — constant memory, no buffering.
       // 10-minute total deadline covers slow CDNs + slow MinIO for large files.
       const storageKey = sanitizeStorageKey(state.id, row.file_name);
-      let uploadedBytes = 0;
+      let uploadResult: StreamUploadResult = {
+        bytes: 0, finalUrl: row.download_url, finalStatus: 0,
+        finalContentLength: null, finalContentType: null,
+      };
       const doStreamUpload = () =>
         withDeadline(
           streamAttachmentToS3({
@@ -2454,14 +2489,14 @@ async function runAttachmentsPhase(
         );
       try {
         try {
-          uploadedBytes = await doStreamUpload();
+          uploadResult = await doStreamUpload();
         } catch (e: any) {
           // On 401, force a credential refresh and retry once — handles tokens
           // that expired between the 30-min ticks.
           if (/HTTP 401/.test(e?.message ?? '')) {
             lastCredentialRefresh = 0;
             await ensureFreshCredentials();
-            uploadedBytes = await doStreamUpload();
+            uploadResult = await doStreamUpload();
           } else {
             throw e;
           }
@@ -2487,6 +2522,7 @@ async function runAttachmentsPhase(
       //      row pending so attempt_count<3 retry loop picks it up. Falls
       //      through to terminal on final attempt.
       const expectedSize = parseInt(row.file_size, 10);
+      const uploadedBytes = uploadResult.bytes;
       const sizeMismatch = expectedSize > 0 && uploadedBytes !== expectedSize;
 
       if (uploadedBytes === 0 || sizeMismatch) {
@@ -2500,8 +2536,23 @@ async function runAttachmentsPhase(
           );
         });
 
+        // Diagnostic detail — useful when "everything is 0 bytes" points to a
+        // pipeline-wide failure (bad redirect handling, auth mismatch, etc.)
+        // rather than genuinely empty files on Jira's side.
+        const diag =
+          `[status=${uploadResult.finalStatus} ` +
+          `content-length=${uploadResult.finalContentLength ?? 'unset'} ` +
+          `content-type=${uploadResult.finalContentType ?? 'unset'} ` +
+          `final-url-host=${safeUrlHost(uploadResult.finalUrl)}]`;
+
         if (uploadedBytes === 0) {
-          const msg = `Attachment "${row.file_name}": empty body from Jira — skipping ghost/stub`;
+          const cause =
+            uploadResult.finalStatus === 200 &&
+            (uploadResult.finalContentLength === '0' || uploadResult.finalContentLength === null)
+              ? 'empty body from Jira (likely ghost/stub)'
+              : `unexpected 0-byte response ${diag}`;
+          const msg = `Attachment "${row.file_name}": ${cause}`;
+          console.warn(`[Migration:${state.id}] ${msg} ${diag}`);
           addError(state, msg);
           // Terminal: mark downloaded_at so the batch loop stops picking it up.
           await client.query(
@@ -2511,7 +2562,8 @@ async function runAttachmentsPhase(
             [msg, row.id],
           );
         } else {
-          const msg = `Attachment "${row.file_name}": size mismatch — Jira reported ${expectedSize} bytes, got ${uploadedBytes}`;
+          const msg = `Attachment "${row.file_name}": size mismatch — Jira reported ${expectedSize} bytes, got ${uploadedBytes} ${diag}`;
+          console.warn(`[Migration:${state.id}] ${msg}`);
           addError(state, msg);
           // Transient: leave downloaded_at NULL; attempt_count gate caps retries.
           await client.query(
