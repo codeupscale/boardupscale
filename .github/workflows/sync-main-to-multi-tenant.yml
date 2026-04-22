@@ -1,0 +1,105 @@
+name: Sync main into feat/multi-tenant-v2
+
+# Keeps the long-running architecture branch fresh with every merge to main.
+# Runs on every push to main, and also daily as a safety net.
+#
+# Strategy: merge main → feat/multi-tenant-v2. Fast-forwards if possible,
+# creates a merge commit if not. If there's a conflict, the workflow fails
+# and opens an issue so the operator knows manual resolution is needed.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily
+  workflow_dispatch:
+
+concurrency:
+  group: sync-main-to-multi-tenant
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge main into feat/multi-tenant-v2
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Checkout feat/multi-tenant-v2
+        uses: actions/checkout@v4
+        with:
+          ref: feat/multi-tenant-v2
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch main
+        run: git fetch origin main
+
+      - name: Rebuild consolidated PLAN.md
+        # Regenerate PLAN.md every sync so it always reflects the latest
+        # individual phase files (including any edits made on main).
+        run: |
+          set -e
+          # Fetch main's versions of the individual plan files into the
+          # workspace, then regenerate PLAN.md from them.
+          git checkout origin/main -- docs/superpowers/plans/multi-tenant/ docs/superpowers/specs/2026-04-22-multi-tenant-architecture.md || true
+          bash scripts/rebuild-plan.sh
+
+      - name: Attempt merge
+        id: merge
+        run: |
+          set -e
+          if git merge --no-edit origin/main; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            git merge --abort || true
+            exit 0
+          fi
+
+      - name: Push updated branch
+        if: steps.merge.outputs.merged == 'true'
+        run: git push origin feat/multi-tenant-v2
+
+      - name: Open issue on merge conflict
+        if: steps.merge.outputs.merged == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'feat/multi-tenant-v2 sync: merge conflict with main';
+            const body = [
+              '`feat/multi-tenant-v2` could not auto-merge `main`.',
+              '',
+              'Resolve manually:',
+              '',
+              '```bash',
+              'git fetch origin',
+              'git checkout feat/multi-tenant-v2',
+              'git merge origin/main',
+              '# resolve conflicts, commit',
+              'git push origin feat/multi-tenant-v2',
+              '```',
+              '',
+              'This issue will be closed automatically on the next successful sync.',
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'sync-conflict',
+            });
+            if (issues.some(i => i.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['sync-conflict'],
+            });
