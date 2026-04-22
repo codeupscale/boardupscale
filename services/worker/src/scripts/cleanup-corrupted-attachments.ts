@@ -61,7 +61,6 @@ function warn(msg: string) { console.warn(`[cleanup-attachments] ⚠  ${msg}`); 
 
 interface CorruptRow {
   id: string;
-  organization_id: string;
   issue_id: string;
   file_name: string;
   storage_bucket: string;
@@ -81,7 +80,7 @@ async function main() {
 
   try {
     const { rows } = await db.query<CorruptRow>(
-      `SELECT id, organization_id, issue_id, file_name,
+      `SELECT id, issue_id, file_name,
               storage_bucket, storage_key, jira_attachment_id
        FROM attachments
        WHERE jira_attachment_id IS NOT NULL
