@@ -47,17 +47,19 @@ export class RolesGuard implements CanActivate {
     );
 
     if (requiredPermission) {
-      // Extract projectId from route params, query, or body
+      // Extract projectId from route params, query, or body. Note the param
+      // may still be a slug at guard time — ResolveProjectPipe runs later.
       const projectId =
         request.params?.projectId ||
         request.query?.projectId ||
         request.body?.projectId;
 
       if (!projectId) {
-        // No projectId (e.g. creating a project) — check the user's org-level
-        // role against the system role permission matrix.
+        // No project context — check org-level role (per-org via membership,
+        // legacy fallback to users.role).
         const allowed = await this.permissionsService.checkOrgLevelPermission(
-          user.role,
+          user.id,
+          user.organizationId,
           requiredPermission.resource,
           requiredPermission.action,
         );

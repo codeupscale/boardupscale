@@ -10,6 +10,7 @@ import { Permission } from './entities/permission.entity';
 import { Role } from './entities/role.entity';
 import { ProjectMember } from '../projects/entities/project-member.entity';
 import { User } from '../users/entities/user.entity';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 
 @Injectable()
 export class PermissionsService {
@@ -22,7 +23,28 @@ export class PermissionsService {
     private projectMemberRepo: Repository<ProjectMember>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    @InjectRepository(OrganizationMember)
+    private orgMemberRepo: Repository<OrganizationMember>,
   ) {}
+
+  /**
+   * True if the user is an admin or owner **in the given organization**.
+   * Reads from organization_members first (per-org role, authoritative in
+   * the multi-org design) and falls back to users.role (legacy) only when
+   * the user has no membership row — so pre-migration data still works.
+   */
+  private async isOrgAdminOrOwner(userId: string, organizationId: string): Promise<boolean> {
+    if (!userId || !organizationId) return false;
+    const membership = await this.orgMemberRepo.findOne({
+      where: { userId, organizationId },
+    });
+    if (membership) {
+      return membership.role === 'admin' || membership.role === 'owner';
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.organizationId !== organizationId) return false;
+    return user.role === 'admin' || user.role === 'owner';
+  }
 
   /**
    * List all available permissions.
@@ -169,18 +191,49 @@ export class PermissionsService {
 
   /**
    * Check an org-level permission when no project context exists (e.g. project
-   * creation).  Maps the user's org role string to the corresponding system role
-   * and checks the permission matrix.
+   * creation, column reordering on a project-scoped route that uses a slug
+   * param the guard can't yet resolve).
+   *
+   * Uses the per-org role from organization_members first; falls back to
+   * users.role for legacy rows. The first param used to be the legacy role
+   * string — keeping old callers compatible via the `isLegacyRoleSignature`
+   * branch below.
    */
   async checkOrgLevelPermission(
-    orgRole: string,
-    resource: string,
-    action: string,
+    userIdOrRole: string,
+    organizationIdOrResource: string,
+    resourceOrAction: string,
+    action?: string,
   ): Promise<boolean> {
-    // Admin and owner always have full access
-    if (orgRole === 'admin' || orgRole === 'owner') return true;
+    // Legacy callers: checkOrgLevelPermission(role, resource, action)
+    // New callers:    checkOrgLevelPermission(userId, orgId, resource, action)
+    const isNewSignature = typeof action === 'string';
+    const resource = isNewSignature ? resourceOrAction : organizationIdOrResource;
+    const act = isNewSignature ? (action as string) : resourceOrAction;
 
-    const systemRoleName = this.mapLegacyRole(orgRole);
+    let effectiveRole: string | null = null;
+    if (isNewSignature) {
+      const userId = userIdOrRole;
+      const organizationId = organizationIdOrResource;
+      if (await this.isOrgAdminOrOwner(userId, organizationId)) return true;
+      // Determine the user's role in THIS org for non-admin checks.
+      const membership = await this.orgMemberRepo.findOne({
+        where: { userId, organizationId },
+      });
+      if (membership) {
+        effectiveRole = membership.role;
+      } else {
+        const user = await this.userRepo.findOne({ where: { id: userId } });
+        if (user && user.organizationId === organizationId) effectiveRole = user.role;
+      }
+    } else {
+      effectiveRole = userIdOrRole;
+      if (effectiveRole === 'admin' || effectiveRole === 'owner') return true;
+    }
+
+    if (!effectiveRole) return false;
+
+    const systemRoleName = this.mapLegacyRole(effectiveRole);
     if (!systemRoleName) return false;
 
     const systemRole = await this.roleRepo.findOne({
@@ -195,7 +248,7 @@ export class PermissionsService {
     if (!systemRole) return false;
 
     return systemRole.permissions.some(
-      (p) => p.resource === resource && p.action === action,
+      (p) => p.resource === resource && p.action === act,
     );
   }
 
@@ -215,12 +268,40 @@ export class PermissionsService {
     resource: string,
     action: string,
   ): Promise<boolean> {
-    // 1. Check org-level admin/owner shortcut
+    // 1. Check org-level admin/owner shortcut.
+    //    We look up the project's org and check the user's per-org role first
+    //    (users.role is legacy/global and can diverge from the per-org role —
+    //    e.g. a user whose "home" org is elsewhere is an admin here only via
+    //    organization_members.role).
+    //    projectId may arrive as a UUID (after pipe) or as a slug (from the
+    //    guard, pre-pipe). Support both by catching the UUID syntax error.
+    let projectOrgId: string | null = null;
+    try {
+      const row = await this.projectMemberRepo.manager
+        .getRepository('Project')
+        .createQueryBuilder('p')
+        .select('p.organization_id', 'organization_id')
+        .where('p.id = :projectId OR p.key = :projectId', { projectId })
+        .getRawOne<{ organization_id: string }>();
+      projectOrgId = row?.organization_id ?? null;
+    } catch {
+      projectOrgId = null;
+    }
+    if (projectOrgId && (await this.isOrgAdminOrOwner(userId, projectOrgId))) {
+      return true;
+    }
+
+    // Legacy fallback: users.role (global) is admin/owner.
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return false;
     if (user.role === 'admin' || user.role === 'owner') return true;
 
-    // 2. Find the project membership
+    // 2. Find the project membership.
+    //    Guard against the slug-as-UUID case — if projectId isn't a UUID,
+    //    skip the direct lookup (admin already short-circuited above; non-admin
+    //    users with no membership row just get denied).
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
+    if (!looksLikeUuid) return false;
     const member = await this.projectMemberRepo.findOne({
       where: { projectId, userId },
       relations: ['assignedRole', 'assignedRole.permissions'],
