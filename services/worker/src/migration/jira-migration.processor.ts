@@ -27,7 +27,7 @@ import IORedis from 'ioredis';
 import { createRedisConnection } from '../redis';
 import { config } from '../config';
 import { adfToText } from './adf-helpers';
-import { S3Client, HeadBucketCommand, CreateBucketCommand } from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, CreateBucketCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { randomUUID } from 'crypto';
@@ -1781,6 +1781,17 @@ async function runIssuesPhase(
           const localId = state.jiraIssueKeyToLocalId[issue.key];
           if (!localId) continue;
           for (const att of (issue.fields?.attachment ?? []) as JiraApiAttachment[]) {
+            // Skip ghost/stub attachments — Jira sometimes exposes entries with
+            // size=0 (orphan ADF media refs, failed uploads, re-upload collisions
+            // renamed to "name (uuid).ext"). Downloading them yields empty files
+            // that render as broken thumbnails. Nothing useful to migrate.
+            if (!att.size || att.size <= 0) {
+              console.log(
+                `[Migration:${state.id}] Skipping 0-byte Jira attachment ` +
+                `"${att.filename}" (id=${att.id}) on ${issue.key}`,
+              );
+              continue;
+            }
             stagingRows.push([
               state.id,          // migration_run_id
               state.organizationId, // organization_id
@@ -2462,6 +2473,52 @@ async function runAttachmentsPhase(
           `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
           [msg, row.id],
         );
+        continue;
+      }
+
+      // Validate the upload actually produced bytes that match Jira's reported
+      // size. Protects against two failure modes that previously produced
+      // "corrupted" attachment rows (0 B, broken thumbnails) in the UI:
+      //   1. Terminal — Jira returned an empty stream (0 bytes downloaded).
+      //      Ghost/stub attachment; don't retry, delete the empty MinIO object,
+      //      mark staging row complete so it stops requeueing.
+      //   2. Transient — bytes were transferred but fewer than expected (network
+      //      truncation, CDN hiccup). Delete the partial object, leave staging
+      //      row pending so attempt_count<3 retry loop picks it up. Falls
+      //      through to terminal on final attempt.
+      const expectedSize = parseInt(row.file_size, 10);
+      const sizeMismatch = expectedSize > 0 && uploadedBytes !== expectedSize;
+
+      if (uploadedBytes === 0 || sizeMismatch) {
+        // Best-effort: remove the (empty or partial) MinIO object — avoid leaks.
+        await s3.send(
+          new DeleteObjectCommand({ Bucket: MINIO_BUCKET, Key: storageKey }),
+        ).catch((e: any) => {
+          console.warn(
+            `[Migration:${state.id}] Could not delete orphan MinIO object ` +
+            `${storageKey}: ${e?.message ?? e}`,
+          );
+        });
+
+        if (uploadedBytes === 0) {
+          const msg = `Attachment "${row.file_name}": empty body from Jira — skipping ghost/stub`;
+          addError(state, msg);
+          // Terminal: mark downloaded_at so the batch loop stops picking it up.
+          await client.query(
+            `UPDATE jira_migration_attachment_staging
+               SET error = $1, downloaded_at = NOW()
+             WHERE id = $2`,
+            [msg, row.id],
+          );
+        } else {
+          const msg = `Attachment "${row.file_name}": size mismatch — Jira reported ${expectedSize} bytes, got ${uploadedBytes}`;
+          addError(state, msg);
+          // Transient: leave downloaded_at NULL; attempt_count gate caps retries.
+          await client.query(
+            `UPDATE jira_migration_attachment_staging SET error = $1 WHERE id = $2`,
+            [msg, row.id],
+          );
+        }
         continue;
       }
 
