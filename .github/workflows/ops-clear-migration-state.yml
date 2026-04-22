@@ -1,0 +1,71 @@
+name: Ops — Clear migration state for an org
+
+# Wipes Jira migration state for the org that owns the given member email:
+#   - jira_migration_runs (+ cascading attachment_staging rows)
+#   - jira_connections
+#   - BullMQ jobs / retry keys for the affected runs
+#
+# Use when you want to delete a Boardupscale project and re-migrate from Jira
+# cleanly — without leftover staging rows or queued retry jobs from the old run.
+# Dry-run defaults to true for safety.
+#
+# Does NOT delete:
+#   - issues / attachments / comments (delete the project via the UI first)
+#   - users or organization memberships
+#   - the attachments rows already written (run ops-cleanup-corrupted-attachments
+#     for 0-byte ghosts; normal user-uploaded files stay)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_email:
+        description: 'Email of a member of the target org (used to locate organization_id).'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run (preview counts only — no writes). Default true.'
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ops-clear-migration-state
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Clear migration state on prod
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Execute clear-migration-data via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          TARGET_EMAIL: ${{ inputs.target_email }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: DRY_RUN,TARGET_EMAIL
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+            cd /home/ubuntu/infra
+
+            FLAG=""
+            if [ "$DRY_RUN" = "true" ]; then
+              FLAG="--dry-run"
+              echo "[ops] Mode: DRY-RUN for ${TARGET_EMAIL}"
+            else
+              echo "[ops] Mode: LIVE — will wipe migration state for ${TARGET_EMAIL}"
+            fi
+
+            docker compose exec -T bu-worker \
+              node dist/scripts/clear-migration-data.js "$TARGET_EMAIL" $FLAG

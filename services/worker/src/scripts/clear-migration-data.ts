@@ -25,7 +25,10 @@ import { Queue } from 'bullmq';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const TARGET_EMAIL = process.argv[2] ?? 'info@codeupscale.com';
+// Filter --dry-run out of positional args so it doesn't get treated as email.
+const positional = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const TARGET_EMAIL = positional[0] ?? 'info@codeupscale.com';
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const DB_URL =
   process.env.DATABASE_URL ?? 'postgresql://copilot:copilot@localhost:5433/boardupscale';
@@ -50,6 +53,7 @@ function success(msg: string) {
 
 async function main() {
   log(`Target email: ${TARGET_EMAIL}`);
+  log(`Mode:  ${DRY_RUN ? 'DRY-RUN (no writes)' : 'LIVE'}`);
   log(`DB:    ${DB_URL}`);
   log(`Redis: ${REDIS_URL}`);
   log('─'.repeat(60));
@@ -106,7 +110,10 @@ async function main() {
 
   const queue = new Queue(QUEUE_NAME, { connection: redis as any });
 
-  if (runRows.length) {
+  if (runRows.length && DRY_RUN) {
+    log('[dry-run] would remove BullMQ jobs + retry keys for each run above');
+  }
+  if (runRows.length && !DRY_RUN) {
     log('Removing BullMQ jobs from Redis…');
     for (const run of runRows) {
       // Primary job ID pattern: migration-{runId}
@@ -150,49 +157,71 @@ async function main() {
 
   // Also drain the entire queue of any waiting/delayed jobs for this org
   // (catches any jobs that don't match the run ID pattern above)
-  try {
-    const waitingJobs = await queue.getWaiting(0, 200);
-    const delayedJobs = await queue.getDelayed(0, 200);
-    const allPending = [...waitingJobs, ...delayedJobs];
-    const orgRunIds = new Set(runRows.map((r) => r.id));
+  if (!DRY_RUN) {
+    try {
+      const waitingJobs = await queue.getWaiting(0, 200);
+      const delayedJobs = await queue.getDelayed(0, 200);
+      const allPending = [...waitingJobs, ...delayedJobs];
+      const orgRunIds = new Set(runRows.map((r) => r.id));
 
-    for (const job of allPending) {
-      const jobRunId = (job.data as any)?.runId;
-      if (jobRunId && orgRunIds.has(jobRunId)) {
-        await job.remove();
-        success(`  Removed pending/delayed job ${job.id} (runId=${jobRunId})`);
+      for (const job of allPending) {
+        const jobRunId = (job.data as any)?.runId;
+        if (jobRunId && orgRunIds.has(jobRunId)) {
+          await job.remove();
+          success(`  Removed pending/delayed job ${job.id} (runId=${jobRunId})`);
+        }
       }
+    } catch (err: any) {
+      warn(`Could not scan pending/delayed jobs: ${err.message}`);
     }
-  } catch (err: any) {
-    warn(`Could not scan pending/delayed jobs: ${err.message}`);
   }
 
   await queue.close();
   await redis.quit();
-  success('Redis cleanup done.');
+  if (!DRY_RUN) success('Redis cleanup done.');
 
   // ── 5. Delete DB rows ─────────────────────────────────────────────────────
-  log('Deleting DB rows…');
+  if (DRY_RUN) {
+    // Count what would go — staging cascades from jira_migration_runs via FK.
+    const stagingRes = await client.query(
+      `SELECT COUNT(*)::text AS c FROM jira_migration_attachment_staging
+       WHERE organization_id = $1`,
+      [orgId],
+    );
+    const connRes = await client.query(
+      `SELECT COUNT(*)::text AS c FROM jira_connections WHERE organization_id = $1`,
+      [orgId],
+    );
+    const stagingCount = (stagingRes.rows[0] as { c: string } | undefined)?.c ?? '0';
+    const connCount = (connRes.rows[0] as { c: string } | undefined)?.c ?? '0';
+    log(`[dry-run] would DELETE ${runRows.length} jira_migration_runs row(s)`);
+    log(`[dry-run]   + ${stagingCount} jira_migration_attachment_staging row(s) (FK cascade)`);
+    log(`[dry-run]   + ${connCount} jira_connections row(s)`);
+  } else {
+    log('Deleting DB rows…');
 
-  // Delete migration runs
-  const { rowCount: runsDeleted } = await client.query(
-    `DELETE FROM jira_migration_runs WHERE organization_id = $1`,
-    [orgId],
-  );
-  success(`Deleted ${runsDeleted ?? 0} row(s) from jira_migration_runs.`);
+    const { rowCount: runsDeleted } = await client.query(
+      `DELETE FROM jira_migration_runs WHERE organization_id = $1`,
+      [orgId],
+    );
+    success(`Deleted ${runsDeleted ?? 0} row(s) from jira_migration_runs.`);
 
-  // Delete Jira connections
-  const { rowCount: connsDeleted } = await client.query(
-    `DELETE FROM jira_connections WHERE organization_id = $1`,
-    [orgId],
-  );
-  success(`Deleted ${connsDeleted ?? 0} row(s) from jira_connections.`);
+    const { rowCount: connsDeleted } = await client.query(
+      `DELETE FROM jira_connections WHERE organization_id = $1`,
+      [orgId],
+    );
+    success(`Deleted ${connsDeleted ?? 0} row(s) from jira_connections.`);
+  }
 
   client.release();
   await db.end();
 
   log('─'.repeat(60));
-  success(`All migration data cleared for org ${orgId} (${TARGET_EMAIL}).`);
+  if (DRY_RUN) {
+    success(`Dry-run complete for org ${orgId} (${TARGET_EMAIL}) — nothing changed.`);
+  } else {
+    success(`All migration data cleared for org ${orgId} (${TARGET_EMAIL}).`);
+  }
 }
 
 main().catch((err) => {
