@@ -202,7 +202,7 @@ async function main() {
     WHERE schemaname = 'public'
     ORDER BY tablename
   `);
-  const existingTables = new Set(existingRows.map((r) => r.tablename));
+  const existingTables = new Set(existingRows.map((r: any) => r.tablename));
 
   const tablesToTruncate = DATA_TABLES.filter((t) => existingTables.has(t));
   const skippedTables = DATA_TABLES.filter((t) => !existingTables.has(t));
@@ -216,8 +216,8 @@ async function main() {
 
   // Warn about any unknown tables that are not in our list or preserved set
   const unknownTables = existingRows
-    .map((r) => r.tablename)
-    .filter((t) => !PRESERVED_TABLES.has(t) && !DATA_TABLES.includes(t));
+    .map((r: any) => r.tablename)
+    .filter((t: string) => !PRESERVED_TABLES.has(t) && !DATA_TABLES.includes(t));
 
   if (unknownTables.length > 0) {
     warn(

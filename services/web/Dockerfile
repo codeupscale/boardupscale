@@ -1,5 +1,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+ARG VITE_POSTHOG_KEY=
+ARG VITE_POSTHOG_HOST=https://us.i.posthog.com
+ENV VITE_POSTHOG_KEY=$VITE_POSTHOG_KEY
+ENV VITE_POSTHOG_HOST=$VITE_POSTHOG_HOST
+
 COPY package*.json ./
 RUN npm ci
 COPY . .
