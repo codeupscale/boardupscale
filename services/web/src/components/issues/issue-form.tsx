@@ -171,6 +171,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         label={t('common.title')}
         placeholder={t('issues.issueTitle')}
         error={errors.title?.message}
+        required
         {...register('title')}
       />
 
@@ -206,6 +207,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               label={t('common.type')}
               value={field.value}
               onChange={(val) => field.onChange(val)}
+              required
             />
           )}
         />

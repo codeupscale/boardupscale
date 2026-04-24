@@ -323,7 +323,7 @@ export function RoleManagementPage() {
               {editingRole ? 'Edit Role' : 'Create Role'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-5">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Role Name"

@@ -228,27 +228,27 @@ export function ProjectsPage() {
               aria-label="Projects list"
             >
               {/* List header */}
-              <div className="flex items-center gap-4 px-4 py-2.5 bg-muted border-b border-border">
-                <div className="w-8 flex-shrink-0" />
-                <div className="w-48 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <div className="grid grid-cols-[36px_176px_100px_1fr_140px_88px_160px] items-center px-4 py-2.5 bg-muted border-b border-border">
+                <div />
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pr-3">
                   Project
                 </div>
-                <div className="w-24 flex-shrink-0 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pr-3">
                   Type
                 </div>
-                <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3">
                   Description
                 </div>
-                <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-shrink-0">
-                  <span className="flex items-center gap-1">
-                    <Layers className="h-3.5 w-3.5" />
-                    Issues
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <User className="h-3.5 w-3.5" />
-                    Members
-                  </span>
-                  <span>Updated</span>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Layers className="h-3.5 w-3.5" />
+                  Issues
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center flex items-center justify-center gap-1">
+                  <User className="h-3.5 w-3.5" />
+                  Members
+                </div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">
+                  Updated
                 </div>
               </div>
               <div role="rowgroup">

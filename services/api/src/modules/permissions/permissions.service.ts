@@ -253,6 +253,40 @@ export class PermissionsService {
   }
 
   /**
+   * Resolves a project identifier (UUID or slug key) to its canonical UUID
+   * and organization UUID in a single safe query. Never passes a non-UUID
+   * value into a UUID column — builds the WHERE clause conditionally.
+   *
+   * Returns null when the project does not exist.
+   */
+  private async resolveProject(
+    projectIdOrKey: string,
+  ): Promise<{ id: string; organizationId: string } | null> {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        projectIdOrKey,
+      );
+    try {
+      const qb = this.projectMemberRepo.manager
+        .getRepository('Project')
+        .createQueryBuilder('p')
+        .select('p.id', 'id')
+        .addSelect('p.organization_id', 'organizationId');
+
+      if (isUuid) {
+        qb.where('p.id = :v', { v: projectIdOrKey });
+      } else {
+        qb.where('p.key = :v', { v: projectIdOrKey });
+      }
+
+      const row = await qb.getRawOne<{ id: string; organizationId: string }>();
+      return row ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Core permission check: does the user have a specific resource+action
    * within a given project?
    *
@@ -268,66 +302,40 @@ export class PermissionsService {
     resource: string,
     action: string,
   ): Promise<boolean> {
-    // 1. Check org-level admin/owner shortcut.
-    //    We look up the project's org and check the user's per-org role first
-    //    (users.role is legacy/global and can diverge from the per-org role —
-    //    e.g. a user whose "home" org is elsewhere is an admin here only via
-    //    organization_members.role).
-    //    projectId may arrive as a UUID (after pipe) or as a slug (from the
-    //    guard, pre-pipe). Support both by catching the UUID syntax error.
-    let projectOrgId: string | null = null;
-    try {
-      const row = await this.projectMemberRepo.manager
-        .getRepository('Project')
-        .createQueryBuilder('p')
-        .select('p.organization_id', 'organization_id')
-        .where('p.id = :projectId OR p.key = :projectId', { projectId })
-        .getRawOne<{ organization_id: string }>();
-      projectOrgId = row?.organization_id ?? null;
-    } catch {
-      projectOrgId = null;
-    }
-    if (projectOrgId && (await this.isOrgAdminOrOwner(userId, projectOrgId))) {
-      return true;
-    }
+    // 1. Resolve slug/UUID → canonical project row (single query, type-safe).
+    const project = await this.resolveProject(projectId);
+    if (!project) return false;
 
-    // Legacy fallback: users.role (global) is admin/owner.
+    // 2. Org admin/owner shortcut.
+    if (await this.isOrgAdminOrOwner(userId, project.organizationId)) return true;
+
+    // Legacy global role fallback.
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return false;
     if (user.role === 'admin' || user.role === 'owner') return true;
 
-    // 2. Find the project membership.
-    //    Guard against the slug-as-UUID case — if projectId isn't a UUID,
-    //    skip the direct lookup (admin already short-circuited above; non-admin
-    //    users with no membership row just get denied).
-    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);
-    if (!looksLikeUuid) return false;
+    // 3. Find the project membership using the resolved UUID.
     const member = await this.projectMemberRepo.findOne({
-      where: { projectId, userId },
+      where: { projectId: project.id, userId },
       relations: ['assignedRole', 'assignedRole.permissions'],
     });
     if (!member) return false;
 
-    // 3. If member has an explicit role_id, check those permissions
-    if (member.assignedRole && member.assignedRole.permissions) {
+    // 4. If member has an explicit role_id, check those permissions.
+    if (member.assignedRole?.permissions) {
       return member.assignedRole.permissions.some(
         (p) => p.resource === resource && p.action === action,
       );
     }
 
-    // 4. Fallback: match legacy role string to system role name
+    // 5. Fallback: match legacy role string to system role name.
     const legacyRoleName = this.mapLegacyRole(member.role);
     if (!legacyRoleName) return false;
 
     const systemRole = await this.roleRepo.findOne({
-      where: {
-        name: legacyRoleName,
-        isSystem: true,
-        organizationId: IsNull(),
-      },
+      where: { name: legacyRoleName, isSystem: true, organizationId: IsNull() },
       relations: ['permissions'],
     });
-
     if (!systemRole) return false;
 
     return systemRole.permissions.some(
@@ -352,8 +360,11 @@ export class PermissionsService {
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
 
+    const project = await this.resolveProject(projectId);
+    if (!project) return [];
+
     const member = await this.projectMemberRepo.findOne({
-      where: { projectId, userId },
+      where: { projectId: project.id, userId },
       relations: ['assignedRole', 'assignedRole.permissions'],
     });
     if (!member) return [];

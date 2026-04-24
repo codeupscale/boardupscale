@@ -112,13 +112,20 @@ export class SeedData1741651200001 implements MigrationInterface {
     // organization_id = NULL marks a global system role shared across all
     // tenants.  Custom per-org roles are scoped with a non-null organization_id.
 
+    // NULL organization_id = system/global role. PostgreSQL unique indexes treat
+    // NULLs as distinct so ON CONFLICT (organization_id, name) never fires for
+    // NULL rows. Use WHERE NOT EXISTS to stay idempotent instead.
     await queryRunner.query(`
-      INSERT INTO "roles" ("organization_id", "name", "description", "is_system") VALUES
-        (NULL, 'Admin',   'Full access to all resources and settings',             TRUE),
-        (NULL, 'Manager', 'Manage projects, issues, sprints, and members',         TRUE),
-        (NULL, 'Member',  'Create and manage own issues, comments, and work logs', TRUE),
-        (NULL, 'Viewer',  'Read-only access to all resources',                     TRUE)
-      ON CONFLICT ("organization_id", "name") DO NOTHING
+      INSERT INTO "roles" ("organization_id", "name", "description", "is_system")
+      SELECT NULL, name, description, TRUE FROM (VALUES
+        ('Admin',   'Full access to all resources and settings'),
+        ('Manager', 'Manage projects, issues, sprints, and members'),
+        ('Member',  'Create and manage own issues, comments, and work logs'),
+        ('Viewer',  'Read-only access to all resources')
+      ) AS v(name, description)
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "roles" r WHERE r.name = v.name AND r.organization_id IS NULL AND r.is_system = TRUE
+      )
     `);
 
     // ── Role → Permission Grants ──────────────────────────────────────────────

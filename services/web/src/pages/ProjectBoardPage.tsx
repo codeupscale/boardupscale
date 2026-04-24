@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select'
 import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
+import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue, IssueStatusCategory } from '@/types'
 import { toast } from '@/store/ui.store'
 
 const CATEGORY_OPTIONS = [
@@ -255,7 +255,7 @@ export function ProjectBoardPage() {
       ).then(() => {
         qc.invalidateQueries({ queryKey: ['board', projectKey] })
       }).catch(() => {
-        toast('Failed to reorder columns', 'error')
+        toast('Insufficient permissions to reorder columns', 'error')
         qc.invalidateQueries({ queryKey: ['board', projectKey] })
       })
       return
@@ -614,7 +614,9 @@ export function ProjectBoardPage() {
                 type: i.type,
               }))}
               users={orgUsers || []}
-              defaultValues={{ statusId: createStatusId }}
+              defaultValues={{
+                statusId: createStatusId ?? board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
+              }}
               onSubmit={(values) => {
                 createIssue.mutate(
                   { ...values, projectId: project?.id || projectKey! } as any,
