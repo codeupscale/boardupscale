@@ -67,6 +67,7 @@ import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
+import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 
 /* ------------------------------------------------------------------ */
 /*  Draggable Issue Row                                                */
@@ -138,7 +139,7 @@ function DraggableIssueRow({
               onClick={(e) => e.stopPropagation()}
             >
               <IssueTypeIcon type={issue.type} />
-              <span className="text-xs font-mono text-primary font-medium">{issue.key}</span>
+              <CopyTicketLink issueKey={issue.key} issueId={issue.id} className="text-xs font-mono text-primary font-medium" />
             </Link>
           </td>
 

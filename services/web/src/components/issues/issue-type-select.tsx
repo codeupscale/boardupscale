@@ -17,6 +17,7 @@ interface IssueTypeSelectProps {
   onChange: (value: string) => void
   options?: string[]
   label?: string
+  required?: boolean
   className?: string
   disabled?: boolean
 }
@@ -26,6 +27,7 @@ export function IssueTypeSelect({
   onChange,
   options,
   label,
+  required,
   className,
   disabled,
 }: IssueTypeSelectProps) {
@@ -74,6 +76,9 @@ export function IssueTypeSelect({
       {label && (
         <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {label}
+          {required && (
+            <span className="text-destructive ml-0.5" aria-hidden="true">*</span>
+          )}
         </label>
       )}
       <div className="relative">

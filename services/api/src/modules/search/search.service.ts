@@ -6,6 +6,7 @@ import { Repository, IsNull } from 'typeorm';
 import { Queue } from 'bullmq';
 import { Client } from '@elastic/elasticsearch';
 import { Issue } from '../issues/entities/issue.entity';
+import { ProjectMember } from '../projects/entities/project-member.entity';
 
 const ISSUES_INDEX = 'boardupscale-issues';
 
@@ -44,6 +45,8 @@ export class SearchService implements OnModuleInit {
   constructor(
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
+    @InjectRepository(ProjectMember)
+    private projectMemberRepository: Repository<ProjectMember>,
     @InjectQueue('search-index')
     private searchIndexQueue: Queue,
     private configService: ConfigService,
@@ -80,9 +83,24 @@ export class SearchService implements OnModuleInit {
     }
   }
 
+  private readonly ADMIN_ROLES = new Set(['owner', 'admin', 'manager']);
+
+  private async getAccessibleProjectIds(
+    userId: string,
+    organizationId: string,
+  ): Promise<string[]> {
+    const memberships = await this.projectMemberRepository.find({
+      where: { userId },
+      select: ['projectId'],
+    });
+    return memberships.map((m) => m.projectId);
+  }
+
   async search(params: {
     q: string;
     organizationId: string;
+    userId?: string;
+    orgRole?: string;
     projectId?: string;
     type?: string;
     priority?: string;
@@ -96,10 +114,21 @@ export class SearchService implements OnModuleInit {
       return { items: [], total: 0, source: 'postgresql' };
     }
 
+    // Resolve accessible project IDs for non-admin users
+    let resolvedParams = { ...params };
+    const isOrgAdmin = params.orgRole && this.ADMIN_ROLES.has(params.orgRole);
+    if (!isOrgAdmin && params.userId && !params.projectId) {
+      const accessibleProjectIds = await this.getAccessibleProjectIds(
+        params.userId,
+        organizationId,
+      );
+      resolvedParams = { ...resolvedParams, _accessibleProjectIds: accessibleProjectIds } as any;
+    }
+
     // Try Elasticsearch first
     if (this.esAvailable && this.esClient) {
       try {
-        const esResult = await this.searchElasticsearch(params);
+        const esResult = await this.searchElasticsearch(resolvedParams as any);
         // If ES returned results, use them; otherwise fall back to PG
         // (handles case where ES is running but index is empty/not populated)
         if (esResult.items.length > 0) {
@@ -118,7 +147,7 @@ export class SearchService implements OnModuleInit {
     }
 
     // Fallback to PostgreSQL ILIKE
-    return this.searchPostgresql(params);
+    return this.searchPostgresql(resolvedParams as any);
   }
 
   private async searchElasticsearch(params: {
@@ -130,8 +159,9 @@ export class SearchService implements OnModuleInit {
     statusName?: string;
     assigneeId?: string;
     limit?: number;
+    _accessibleProjectIds?: string[];
   }): Promise<SearchResult> {
-    const { q, organizationId, projectId, type, priority, statusName, limit = 20 } = params;
+    const { q, organizationId, projectId, type, priority, statusName, limit = 20, _accessibleProjectIds } = params;
 
     // Build bool query
     const must: any[] = [
@@ -151,6 +181,11 @@ export class SearchService implements OnModuleInit {
 
     if (projectId) {
       filter.push({ term: { projectId } });
+    } else if (_accessibleProjectIds) {
+      if (_accessibleProjectIds.length === 0) {
+        return { items: [], total: 0, source: 'elasticsearch' };
+      }
+      filter.push({ terms: { projectId: _accessibleProjectIds } });
     }
     if (type) {
       filter.push({ term: { type } });
@@ -232,8 +267,9 @@ export class SearchService implements OnModuleInit {
     statusName?: string;
     assigneeId?: string;
     limit?: number;
+    _accessibleProjectIds?: string[];
   }): Promise<SearchResult> {
-    const { q, organizationId, projectId, type, limit = 20 } = params;
+    const { q, organizationId, projectId, type, limit = 20, _accessibleProjectIds } = params;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
@@ -249,6 +285,13 @@ export class SearchService implements OnModuleInit {
 
     if (projectId) {
       qb.andWhere('issue.project_id = :projectId', { projectId });
+    } else if (_accessibleProjectIds) {
+      if (_accessibleProjectIds.length === 0) {
+        return { items: [], total: 0, source: 'postgresql' };
+      }
+      qb.andWhere('issue.project_id IN (:...accessibleProjectIds)', {
+        accessibleProjectIds: _accessibleProjectIds,
+      });
     }
 
     if (type) {

@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import { Draggable } from '@hello-pangea/dnd'
-import { Issue, IssuePriority } from '@/types'
+import { Issue, IssuePriority, IssueStatusCategory } from '@/types'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { PriorityBadge } from '@/components/issues/priority-badge'
+import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 
 interface BoardCardProps {
   issue: Issue
@@ -45,9 +46,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="text-[10px] font-mono font-medium text-primary tracking-wide">
-                  {issue.key}
-                </span>
+                <CopyTicketLink issueKey={issue.key} issueId={issue.id} done={issue.status?.category === IssueStatusCategory.DONE} />
               </div>
               <PriorityBadge priority={issue.priority} showLabel={false} />
             </div>

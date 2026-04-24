@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { StatusBadge } from '@/components/issues/status-badge'
+import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 
 const LINK_TYPES: { value: IssueLinkType; label: string }[] = [
   { value: 'blocks', label: 'Blocks' },
@@ -39,9 +40,7 @@ function LinkItem({
         to={`/issues/${link.issue.id}`}
         className="flex items-center gap-2 min-w-0 flex-1 hover:text-primary"
       >
-        <span className="text-xs font-mono text-primary flex-shrink-0">
-          {link.issue.key}
-        </span>
+        <CopyTicketLink issueKey={link.issue.key} issueId={link.issue.id} className="text-xs font-mono text-primary flex-shrink-0" />
         <span className="text-sm text-foreground/80 truncate">{link.issue.title}</span>
       </Link>
       {link.issue.status && <StatusBadge status={link.issue.status} />}

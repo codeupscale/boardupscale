@@ -4,6 +4,7 @@ import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
 @ApiTags('search')
@@ -23,6 +24,7 @@ export class SearchController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async search(
     @OrgId() organizationId: string,
+    @CurrentUser() currentUser: any,
     @Query('q') q: string,
     @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('type') type?: string,
@@ -33,6 +35,8 @@ export class SearchController {
     const result = await this.searchService.search({
       q,
       organizationId,
+      userId: currentUser.id,
+      orgRole: currentUser.role,
       projectId,
       type,
       priority,
