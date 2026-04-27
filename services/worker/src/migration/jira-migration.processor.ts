@@ -738,6 +738,22 @@ async function runMembersPhase(
     }
   }
 
+  // Reload ALL org users into lookup maps — covers the case where selectedMemberIds=[]
+  // caused filteredUsers to be empty (no upserts ran) but existing DB users must still
+  // be available for Phase 4 assignee/reporter resolution.
+  try {
+    const { rows: existingUsers } = await client.query<{ id: string; email: string; jira_account_id: string | null }>(
+      `SELECT id, email, jira_account_id FROM users WHERE organization_id = $1`,
+      [state.organizationId],
+    );
+    for (const u of existingUsers) {
+      state.jiraUserEmailToLocalId[u.email.toLowerCase()] = u.id;
+      if (u.jira_account_id) state.jiraAccountIdToLocalId[u.jira_account_id] = u.id;
+    }
+  } catch (err: any) {
+    console.warn(`[Migration:${state.id}] Failed to reload user maps from DB: ${err.message}`);
+  }
+
   // Flush errorLog so any warnings/failures above are visible on the migration run.
   await updateRunProgress(client, state.id, {
     processedMembers: processed,
@@ -1780,18 +1796,20 @@ async function runIssuesPhase(
               ?? state.triggeredById;
             if (!authorId) continue;
             const body = extractDescription(comment.body) ?? '';
+            const jiraCommentId: string | null = comment.id ?? null;
             const j = commentPlaceholders.length;
             commentPlaceholders.push(
-              `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+              `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
             );
-            commentParams.push(body, localIssueId, authorId, comment.created ?? null);
+            commentParams.push(body, localIssueId, authorId, comment.created ?? null, jiraCommentId);
           }
         }
         if (commentPlaceholders.length > 0) {
           await client.query(
-            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${commentPlaceholders.join(', ')}
-             ON CONFLICT DO NOTHING`,
+             ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
             commentParams,
           ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
         }
@@ -2082,17 +2100,19 @@ async function runCommentsPhase(
           // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment.
           if (!authorId) continue;
           const body = extractDescription(comment.body) ?? '';
+          const jiraCommentId: string | null = comment.id ?? null;
           const j = placeholders.length;
           placeholders.push(
-            `(gen_random_uuid(), $${j*4+1}::text, $${j*4+2}::uuid, $${j*4+3}::uuid, COALESCE($${j*4+4}::timestamptz, NOW()), NOW())`,
+            `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
           );
-          params.push(body, item.localIssueId, authorId, comment.created ?? null);
+          params.push(body, item.localIssueId, authorId, comment.created ?? null, jiraCommentId);
         }
         if (placeholders.length > 0) {
           await client.query(
-            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at)
+            `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${placeholders.join(', ')}
-             ON CONFLICT DO NOTHING`,
+             ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
             params,
           ).catch((err: any) => addError(state, `comments bulk insert ${item.jiraKey}: ${err.message}`));
           processedComments += placeholders.length;

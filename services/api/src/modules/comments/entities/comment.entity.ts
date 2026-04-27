@@ -38,6 +38,9 @@ export class Comment {
   @Column({ name: 'edited_at', type: 'timestamp', nullable: true })
   editedAt: Date;
 
+  @Column({ name: 'jira_comment_id', type: 'varchar', length: 100, nullable: true })
+  jiraCommentId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
