@@ -173,14 +173,44 @@ describe('ProjectsService', () => {
   });
 
   describe('archive', () => {
-    it('should set project status to archived', async () => {
+    it('should soft-delete issues and comments then mark the project archived', async () => {
       const project = mockProject();
       projectRepo.findOne.mockResolvedValue(project);
-      projectRepo.update.mockResolvedValue(mockUpdateResult());
 
       await service.archive(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
-      expect(projectRepo.update).toHaveBeenCalledWith(project.id, { status: 'archived' });
+      // A transaction must be opened on the repository's entity manager
+      expect(projectRepo.manager.transaction).toHaveBeenCalledTimes(1);
+
+      // Retrieve the em mock that was passed into the callback
+      const transactionCb = (projectRepo.manager.transaction as jest.Mock).mock.calls[0][0];
+      const em = { query: jest.fn().mockResolvedValue({}) };
+      await transactionCb(em);
+
+      // Three queries must fire inside the transaction, in order:
+      // 1. soft-delete comments, 2. soft-delete issues, 3. archive project
+      expect(em.query).toHaveBeenCalledTimes(3);
+
+      // Comment soft-delete targets issues of this project
+      expect(em.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('UPDATE comments'),
+        expect.arrayContaining([project.id]),
+      );
+
+      // Issue soft-delete scoped to the project
+      expect(em.query).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('UPDATE issues'),
+        expect.arrayContaining([project.id]),
+      );
+
+      // Project status set to archived
+      expect(em.query).toHaveBeenNthCalledWith(
+        3,
+        expect.stringContaining("status = 'archived'"),
+        expect.arrayContaining([project.id]),
+      );
     });
   });
 
