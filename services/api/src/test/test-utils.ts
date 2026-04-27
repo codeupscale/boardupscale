@@ -9,8 +9,16 @@ export function mockUpdateResult(affected = 1): UpdateResult {
 
 /**
  * Creates a mock TypeORM repository with all common methods mocked.
+ * The `manager` property includes a `transaction` helper that executes the
+ * callback synchronously with a fresh `em` mock — this mirrors what TypeORM
+ * does and lets service tests that use `repo.manager.transaction(...)` run
+ * without a real database.
  */
 export function createMockRepository<T = any>(): jest.Mocked<Repository<T>> {
+  const mockEntityManager = {
+    query: jest.fn().mockResolvedValue({}),
+  };
+
   return {
     find: jest.fn(),
     findOne: jest.fn(),
@@ -37,6 +45,13 @@ export function createMockRepository<T = any>(): jest.Mocked<Repository<T>> {
     softRemove: jest.fn(),
     restore: jest.fn(),
     recover: jest.fn(),
+    manager: {
+      ...mockEntityManager,
+      transaction: jest.fn().mockImplementation(async (cb: (em: typeof mockEntityManager) => Promise<any>) => {
+        const em = { query: jest.fn().mockResolvedValue({}) };
+        return cb(em);
+      }),
+    },
   } as any;
 }
 

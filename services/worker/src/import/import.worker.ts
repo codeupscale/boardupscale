@@ -1163,15 +1163,20 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
 
     // ── 4e. Import issues (upsert via jira_key) ──────────────────────────────
     const jiraKeyToBsId: Record<string, string> = {};
+    // Tracks issues that exist in the DB but were soft-deleted (archived project).
+    // On re-import we restore them and re-create their comments as fresh rows.
+    const jiraKeyWasDeleted: Record<string, boolean> = {};
 
-    // Pre-load any already-imported issues for this project (idempotency)
+    // Pre-load any already-imported issues for this project (idempotency).
+    // Include soft-deleted rows so a re-import after archive restores them.
     try {
       const existing = await db.query(
-        'SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key IS NOT NULL',
+        'SELECT id, jira_key, deleted_at FROM issues WHERE project_id = $1 AND jira_key IS NOT NULL',
         [bsProjectId],
       );
       for (const row of existing.rows) {
         jiraKeyToBsId[row.jira_key] = row.id;
+        jiraKeyWasDeleted[row.jira_key] = row.deleted_at !== null;
       }
     } catch {}
 
@@ -1211,17 +1216,42 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
 
           // Get next issue number atomically (only needed for new rows — existing uses ON CONFLICT UPDATE)
           if (jiraKeyToBsId[jiraIssue.key]) {
-            // Already imported — update in place
+            const existingIssueId = jiraKeyToBsId[jiraIssue.key];
+            const wasDeleted = jiraKeyWasDeleted[jiraIssue.key];
+
+            // Already imported — update in place.
+            // deleted_at = NULL restores the issue when re-importing an archived project.
             await db.query(
               `UPDATE issues SET
                  status_id = $1, assignee_id = $2, title = $3, description = $4,
                  type = $5, priority = $6, story_points = $7, time_estimate = $8,
-                 time_spent = $9, labels = $10, updated_at = $11
+                 time_spent = $9, labels = $10, updated_at = $11,
+                 deleted_at = NULL
                WHERE id = $12`,
               [statusId, assigneeId, fields.summary || jiraIssue.key, description,
                type, priority, storyPoints, timeEstimate, timeSpent, labels, updatedAt,
-               jiraKeyToBsId[jiraIssue.key]],
+               existingIssueId],
             );
+
+            // Re-import comments only when restoring a previously archived issue.
+            // On a normal live-sync we skip comments to avoid duplicates.
+            if (wasDeleted && Array.isArray(fields.comment?.comments)) {
+              for (const comment of fields.comment.comments) {
+                try {
+                  const authorEmail = comment.author?.emailAddress?.toLowerCase();
+                  const authorId = authorEmail ? (emailToUserId[authorEmail] || userId) : userId;
+                  const commentBody = extractDescriptionText(comment.body) || (typeof comment.body === 'string' ? comment.body : '');
+                  const commentCreatedAt = comment.created ? new Date(comment.created) : new Date();
+                  await db.query(
+                    `INSERT INTO comments (issue_id, author_id, content, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $4)
+                     ON CONFLICT DO NOTHING`,
+                    [existingIssueId, authorId, commentBody, commentCreatedAt],
+                  );
+                } catch {}
+              }
+            }
+
             processedIssues++;
           } else {
             // New issue
@@ -1251,7 +1281,8 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
                  time_estimate = EXCLUDED.time_estimate,
                  time_spent = EXCLUDED.time_spent,
                  labels = EXCLUDED.labels,
-                 updated_at = EXCLUDED.updated_at
+                 updated_at = EXCLUDED.updated_at,
+                 deleted_at = NULL
                RETURNING id`,
               [
                 organizationId, bsProjectId, statusId, reporterId, assigneeId,
