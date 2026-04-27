@@ -1,10 +1,10 @@
 export const config = {
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6380',
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
 
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://copilot:copilot@localhost:5433/boardupscale',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/boardupscale_db_temp',
   },
 
   elasticsearch: {

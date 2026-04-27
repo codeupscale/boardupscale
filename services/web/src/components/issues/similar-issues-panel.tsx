@@ -4,6 +4,7 @@ import { useSimilarIssues, SearchResultItem } from '@/hooks/useSearch'
 import { IssueTypeIcon } from './issue-type-icon'
 import { IssueType } from '@/types'
 import { cn } from '@/lib/utils'
+import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 
 interface SimilarIssuesPanelProps {
   title: string
@@ -64,9 +65,7 @@ function SimilarIssueItem({ item }: { item: SearchResultItem }) {
       className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-card border border-amber-100 dark:border-amber-800/50 hover:border-amber-300 dark:hover:border-amber-600 transition-colors group"
     >
       <IssueTypeIcon type={item.type as IssueType} />
-      <span className="text-xs font-mono text-primary font-medium flex-shrink-0">
-        {item.key}
-      </span>
+      <CopyTicketLink issueKey={item.key} issueId={item.id} className="text-xs font-mono text-primary font-medium flex-shrink-0" />
       <span className="text-xs text-foreground truncate flex-1">
         {item.title}
       </span>

@@ -65,7 +65,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
         role="row"
         onClick={() => navigate(`/projects/${project.key}/board`)}
         className={cn(
-          'flex items-center gap-4 px-4 py-3 cursor-pointer transition-colors',
+          'grid grid-cols-[36px_176px_100px_1fr_140px_88px_160px] items-center px-4 py-3 cursor-pointer transition-colors',
           'hover:bg-primary/5',
           'border-b border-border last:border-0',
         )}
@@ -73,7 +73,7 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
         {/* Avatar */}
         <div
           className={cn(
-            'h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-xs flex-shrink-0 bg-gradient-to-br',
+            'h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br',
             gradient,
           )}
           aria-hidden="true"
@@ -82,8 +82,8 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
         </div>
 
         {/* Name + key */}
-        <div className="w-48 flex-shrink-0 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary">
+        <div className="min-w-0 pr-3">
+          <p className="text-sm font-semibold text-foreground truncate hover:text-primary transition-colors">
             {project.name}
           </p>
           <span className="font-mono text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
@@ -92,31 +92,45 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
         </div>
 
         {/* Type badge */}
-        <div className="w-24 flex-shrink-0">
+        <div className="pr-3">
           <TypeBadge type={project.type} />
         </div>
 
         {/* Description */}
-        <p className="flex-1 text-sm text-muted-foreground truncate min-w-0">
-          {project.description || <span className="italic">No description</span>}
+        <p className="min-w-0 text-sm text-muted-foreground truncate px-3">
+          {project.description
+            ? project.description
+            : <span className="italic">No description</span>}
         </p>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
-          {issueCount !== undefined && (
+        {/* Issues */}
+        <div className="text-xs text-muted-foreground">
+          {issueCount !== undefined ? (
             <span className="flex items-center gap-1">
               <Layers className="h-3.5 w-3.5" />
               {issueCount}
             </span>
+          ) : (
+            <span className="text-muted-foreground/40">—</span>
           )}
-          {memberCount !== undefined && (
-            <span className="flex items-center gap-1">
+        </div>
+
+        {/* Members */}
+        <div className="text-xs text-muted-foreground text-center">
+          {memberCount !== undefined ? (
+            <span className="flex items-center justify-center gap-1">
               <Users className="h-3.5 w-3.5" />
               {memberCount}
             </span>
+          ) : (
+            <span className="text-muted-foreground/40">—</span>
           )}
-          <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
+        </div>
+
+        {/* Updated */}
+        <div className="text-xs text-muted-foreground text-right">
+          <span className="flex items-center justify-end gap-1">
+            <Clock className="h-3.5 w-3.5 flex-shrink-0" />
             {formatRelativeTime(project.updatedAt)}
           </span>
         </div>
