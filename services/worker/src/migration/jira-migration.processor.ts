@@ -1623,7 +1623,8 @@ async function runIssuesPhase(
              time_estimate = EXCLUDED.time_estimate,
              time_spent    = EXCLUDED.time_spent,
              due_date      = EXCLUDED.due_date,
-             updated_at    = EXCLUDED.updated_at
+             updated_at    = EXCLUDED.updated_at,
+             deleted_at    = NULL
            RETURNING id, jira_key`;
 
         let bulkInsertFailed = false;
@@ -1680,7 +1681,8 @@ async function runIssuesPhase(
                    time_estimate = EXCLUDED.time_estimate,
                    time_spent    = EXCLUDED.time_spent,
                    due_date      = EXCLUDED.due_date,
-                   updated_at    = EXCLUDED.updated_at
+                   updated_at    = EXCLUDED.updated_at,
+                   deleted_at    = NULL
                  RETURNING id, jira_key`,
                 [
                   projectId, state.organizationId,
@@ -1809,7 +1811,7 @@ async function runIssuesPhase(
             `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${commentPlaceholders.join(', ')}
              ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
-             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW(), deleted_at = NULL`,
             commentParams,
           ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
         }
@@ -2112,7 +2114,7 @@ async function runCommentsPhase(
             `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${placeholders.join(', ')}
              ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
-             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW(), deleted_at = NULL`,
             params,
           ).catch((err: any) => addError(state, `comments bulk insert ${item.jiraKey}: ${err.message}`));
           processedComments += placeholders.length;
