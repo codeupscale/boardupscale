@@ -4,6 +4,7 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 import { SearchService } from './search.service';
 import { Issue } from '../issues/entities/issue.entity';
+import { ProjectMember } from '../projects/entities/project-member.entity';
 import { createMockRepository, createMockQueryBuilder } from '../../test/test-utils';
 import { mockIssue, TEST_IDS } from '../../test/mock-factories';
 
@@ -20,6 +21,7 @@ describe('SearchService', () => {
       providers: [
         SearchService,
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
+        { provide: getRepositoryToken(ProjectMember), useValue: createMockRepository() },
         { provide: getQueueToken('search-index'), useValue: mockSearchQueue },
         {
           provide: ConfigService,
