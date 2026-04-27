@@ -741,15 +741,23 @@ async function runMembersPhase(
   // Reload ALL org users into lookup maps — covers the case where selectedMemberIds=[]
   // caused filteredUsers to be empty (no upserts ran) but existing DB users must still
   // be available for Phase 4 assignee/reporter resolution.
+  //
+  // We query via organization_members (not users.organization_id) so that users whose
+  // primary tenant differs from this org (e.g. migrated from another workspace and then
+  // added as members) are still included in the accountId / email lookup maps.
   try {
     const { rows: existingUsers } = await client.query<{ id: string; email: string; jira_account_id: string | null }>(
-      `SELECT id, email, jira_account_id FROM users WHERE organization_id = $1`,
+      `SELECT DISTINCT u.id, u.email, u.jira_account_id
+       FROM users u
+       WHERE u.organization_id = $1
+          OR u.id IN (SELECT user_id FROM organization_members WHERE organization_id = $1)`,
       [state.organizationId],
     );
     for (const u of existingUsers) {
       state.jiraUserEmailToLocalId[u.email.toLowerCase()] = u.id;
       if (u.jira_account_id) state.jiraAccountIdToLocalId[u.jira_account_id] = u.id;
     }
+    console.log(`[Migration:${state.id}] Loaded ${existingUsers.length} org users into lookup maps`);
   } catch (err: any) {
     console.warn(`[Migration:${state.id}] Failed to reload user maps from DB: ${err.message}`);
   }
