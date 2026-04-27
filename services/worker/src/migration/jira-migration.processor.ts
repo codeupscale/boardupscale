@@ -1243,41 +1243,63 @@ async function runSprintsPhase(
 
       for (const sprint of sprints) {
         try {
-          // sprints table: id, project_id, name, goal, status, start_date, end_date, completed_at, created_at, updated_at
           const sprintStatus = sprint.state === 'active' ? 'active' : sprint.state === 'closed' ? 'completed' : 'planned';
-          // completed_at: use endDate when available for closed sprints, otherwise NOW()
           const completedAt = sprintStatus === 'completed'
             ? (sprint.endDate ?? 'NOW()')
             : null;
-          const { rows } = await client.query<{ id: string }>(
-            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-             SELECT gen_random_uuid(), $1::text, $2::text, $3::text,
-                    $4::date, $5::date,
-                    $6::timestamp,
-                    $7::uuid, NOW(), NOW()
-             WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1::text)
-             RETURNING id`,
-            [
-              sprint.name,
-              sprintStatus,
-              sprint.goal ?? null,
-              sprint.startDate ? sprint.startDate.substring(0, 10) : null,
-              sprint.endDate ? sprint.endDate.substring(0, 10) : null,
-              completedAt,
-              projectId,
-            ],
+          const sprintParams = [
+            sprint.id,   // $1 jira_sprint_id (int)
+            sprintStatus,
+            sprint.goal ?? null,
+            sprint.startDate ? sprint.startDate.substring(0, 10) : null,
+            sprint.endDate ? sprint.endDate.substring(0, 10) : null,
+            completedAt,
+            projectId,
+            sprint.name,
+          ];
+
+          // Step A: backfill legacy rows (no jira_sprint_id) matched by name, updating
+          // all metadata so a re-migration after archive refreshes sprint state/dates.
+          const { rows: backfilled } = await client.query<{ id: string }>(
+            `UPDATE sprints
+                SET jira_sprint_id = $1::int,
+                    status         = $2::text,
+                    goal           = $3::text,
+                    start_date     = $4::date,
+                    end_date       = $5::date,
+                    completed_at   = $6::timestamp,
+                    updated_at     = NOW()
+              WHERE project_id    = $7::uuid
+                AND name          = $8::text
+                AND jira_sprint_id IS NULL
+              RETURNING id`,
+            sprintParams,
           );
 
-          if (rows[0]) {
-            state.jiraSprintIdToLocalId[String(sprint.id)] = rows[0].id;
-            processedSprints++;
-          } else {
-            // Sprint already exists — look up its ID
-            const { rows: existing } = await client.query<{ id: string }>(
-              `SELECT id FROM sprints WHERE project_id = $1 AND name = $2 LIMIT 1`,
-              [projectId, sprint.name],
+          let sprintLocalId: string | undefined = backfilled[0]?.id;
+
+          if (!sprintLocalId) {
+            // Step B: true upsert by jira_sprint_id — covers first import (INSERT) and
+            // subsequent re-migrations (ON CONFLICT → DO UPDATE refreshes metadata).
+            const { rows } = await client.query<{ id: string }>(
+              `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, jira_sprint_id, created_at, updated_at)
+               VALUES (gen_random_uuid(), $8::text, $2::text, $3::text, $4::date, $5::date, $6::timestamp, $7::uuid, $1::int, NOW(), NOW())
+               ON CONFLICT (project_id, jira_sprint_id) WHERE jira_sprint_id IS NOT NULL DO UPDATE SET
+                 name         = EXCLUDED.name,
+                 status       = EXCLUDED.status,
+                 goal         = EXCLUDED.goal,
+                 start_date   = EXCLUDED.start_date,
+                 end_date     = EXCLUDED.end_date,
+                 completed_at = EXCLUDED.completed_at,
+                 updated_at   = NOW()
+               RETURNING id`,
+              sprintParams,
             );
-            if (existing[0]) state.jiraSprintIdToLocalId[String(sprint.id)] = existing[0].id;
+            sprintLocalId = rows[0]?.id;
+          }
+
+          if (sprintLocalId) {
+            state.jiraSprintIdToLocalId[String(sprint.id)] = sprintLocalId;
             processedSprints++;
           }
         } catch (err: any) {
@@ -1408,49 +1430,79 @@ async function runIssuesPhase(
 
       if (newSprintsById.size > 0) {
         const sprintEntries = [...newSprintsById.entries()];
-        const spPlaceholders: string[] = [];
-        const spParams: unknown[] = [projectId];
-        sprintEntries.forEach(([, sp], j) => {
-          const b = j * 6 + 2;
-          const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
-          const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
-          spPlaceholders.push(`($${b}::text, $${b+1}::text, $${b+2}::text, $${b+3}::date, $${b+4}::date, $${b+5}::timestamp)`);
-          spParams.push(
-            sp.name, spStatus, sp.goal ?? null,
-            sp.startDate ? sp.startDate.substring(0, 10) : null,
-            sp.endDate ? sp.endDate.substring(0, 10) : null,
-            completedAt,
-          );
+
+        // ── Step A: backfill legacy rows (jira_sprint_id IS NULL) matched by name ──
+        // Handles the transition from the old name-dedup approach; also updates
+        // sprint metadata (status/dates) so re-migration after archive reflects
+        // the current Jira state.
+        const bfPlaceholders: string[] = [];
+        const bfParams: unknown[] = [projectId];
+        sprintEntries.forEach(([jiraId, sp], j) => {
+          const b = j * 2 + 2;
+          bfPlaceholders.push(`($${b}::int, $${b+1}::text)`);
+          bfParams.push(Number(jiraId), sp.name);
         });
 
-        const { rows: insertedSprints } = await client.query<{ id: string; name: string }>(
-          `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-           SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, NOW(), NOW()
-           FROM (VALUES ${spPlaceholders.join(', ')}) AS v(name, status, goal, start_date, end_date, completed_at)
-           WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $1::uuid AND name = v.name)
-           RETURNING id, name`,
-          spParams,
-        ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+        const { rows: backfilled } = await client.query<{ id: string; jira_sprint_id: number }>(
+          `UPDATE sprints s
+              SET jira_sprint_id = v.jira_sprint_id
+             FROM (VALUES ${bfPlaceholders.join(', ')}) AS v(jira_sprint_id, name)
+            WHERE s.project_id    = $1::uuid
+              AND s.name          = v.name
+              AND s.jira_sprint_id IS NULL
+           RETURNING s.id, s.jira_sprint_id`,
+          bfParams,
+        ).catch(() => ({ rows: [] as any[] }));
 
-        inlineSprintsCreated += insertedSprints.length;
-
-        const nameToId = new Map<string, string>(insertedSprints.map(r => [r.name, r.id] as [string, string]));
-
-        // Fetch IDs for sprints that already existed (not returned by INSERT)
-        const insertedNames = new Set(insertedSprints.map(r => r.name));
-        const existingNames = sprintEntries.map(([, sp]) => sp.name).filter(n => !insertedNames.has(n));
-        if (existingNames.length > 0) {
-          const { rows: existingSprints } = await client.query<{ id: string; name: string }>(
-            `SELECT id, name FROM sprints WHERE project_id = $1 AND name = ANY($2::text[])`,
-            [projectId, existingNames],
-          ).catch(() => ({ rows: [] as any[] }));
-          for (const r of existingSprints) nameToId.set(r.name, r.id);
+        const backfilledJiraIds = new Set<string>();
+        for (const r of backfilled) {
+          const jiraId = String(r.jira_sprint_id);
+          state.jiraSprintIdToLocalId[jiraId] = r.id;
+          backfilledJiraIds.add(jiraId);
         }
 
-        for (const [jiraId, sp] of sprintEntries) {
-          const localId = nameToId.get(sp.name) ?? undefined;
-          if (localId) state.jiraSprintIdToLocalId[jiraId] = localId;
+        // ── Step B: upsert remaining sprints by jira_sprint_id ───────────────────
+        // Covers first import (INSERT new row) and re-migrations where jira_sprint_id
+        // is already set (ON CONFLICT → DO UPDATE refreshes status/dates/goal).
+        const remainingEntries = sprintEntries.filter(([jiraId]) => !backfilledJiraIds.has(jiraId));
+        if (remainingEntries.length > 0) {
+          const spPlaceholders: string[] = [];
+          const spParams: unknown[] = [projectId];
+          remainingEntries.forEach(([jiraId, sp], j) => {
+            const b = j * 7 + 2;
+            const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
+            const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
+            spPlaceholders.push(`($${b}::int, $${b+1}::text, $${b+2}::text, $${b+3}::text, $${b+4}::date, $${b+5}::date, $${b+6}::timestamp)`);
+            spParams.push(
+              Number(jiraId), sp.name, spStatus, sp.goal ?? null,
+              sp.startDate ? sp.startDate.substring(0, 10) : null,
+              sp.endDate ? sp.endDate.substring(0, 10) : null,
+              completedAt,
+            );
+          });
+
+          const { rows: upsertedSprints } = await client.query<{ id: string; jira_sprint_id: number }>(
+            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, jira_sprint_id, created_at, updated_at)
+             SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, v.jira_sprint_id, NOW(), NOW()
+             FROM (VALUES ${spPlaceholders.join(', ')}) AS v(jira_sprint_id, name, status, goal, start_date, end_date, completed_at)
+             ON CONFLICT (project_id, jira_sprint_id) WHERE jira_sprint_id IS NOT NULL DO UPDATE SET
+               name         = EXCLUDED.name,
+               status       = EXCLUDED.status,
+               goal         = EXCLUDED.goal,
+               start_date   = EXCLUDED.start_date,
+               end_date     = EXCLUDED.end_date,
+               completed_at = EXCLUDED.completed_at,
+               updated_at   = NOW()
+             RETURNING id, jira_sprint_id`,
+            spParams,
+          ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+
+          for (const r of upsertedSprints) {
+            state.jiraSprintIdToLocalId[String(r.jira_sprint_id)] = r.id;
+          }
+          inlineSprintsCreated += upsertedSprints.length;
         }
+        inlineSprintsCreated += backfilled.length;
       }
 
       // ── Bulk-insert all issues in this page ──────────────────────────────────
