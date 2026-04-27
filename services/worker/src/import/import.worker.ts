@@ -173,6 +173,35 @@ async function updateStatus(
   }
 }
 
+// ─── Shared helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Bulk-add every user that appeared as assignee/reporter into project_members
+ * so the project is visible to them and their names resolve in the UI.
+ * The triggering user was already inserted as admin; everyone else gets 'member'.
+ * Uses ON CONFLICT DO NOTHING so re-imports are safe.
+ */
+async function ensureProjectMemberships(
+  db: Pool,
+  projectId: string,
+  userIds: Set<string>,
+): Promise<void> {
+  if (userIds.size === 0) return;
+  let added = 0;
+  for (const uid of userIds) {
+    try {
+      await db.query(
+        `INSERT INTO project_members (project_id, user_id, role, created_at)
+         VALUES ($1, $2, 'member', NOW())
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, uid],
+      );
+      added++;
+    } catch {}
+  }
+  console.log(`[ImportWorker] Ensured ${added} additional project member(s) for project ${projectId}`);
+}
+
 // ─── Core import logic ──────────────────────────────────────────────────────
 
 async function processJiraImport(job: Job, db: Pool): Promise<void> {
@@ -367,6 +396,9 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
   const errors: string[] = [];
   // Map Jira key -> Boardupscale issue ID (for parent/subtask linking)
   const jiraKeyToIssueId: Record<string, string> = {};
+  // Collect every org-user ID referenced as assignee/reporter so we can add
+  // them all to project_members at the end (Gap 1 fix).
+  const usedUserIds = new Set<string>();
 
   for (let i = 0; i < jiraData.issues.length; i += BATCH_SIZE) {
     const batch = jiraData.issues.slice(i, i + BATCH_SIZE);
@@ -396,6 +428,10 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
         const reporterId = reporterEmail
           ? emailToUserId[reporterEmail] || userId
           : userId;
+
+        // Track every matched user so we can add them to project_members later
+        if (assigneeId) usedUserIds.add(assigneeId);
+        if (reporterId) usedUserIds.add(reporterId);
 
         // Story points
         const storyPoints =
@@ -539,6 +575,9 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
   }
 
   console.log(`[ImportWorker] Created ${linksCreated} parent/subtask links`);
+
+  // ── 6b. Add all referenced users as project members ───────────────────────
+  await ensureProjectMemberships(db, projectId, usedUserIds);
 
   // ── 7. Finalize ──────────────────────────────────────────────────────────
   const finalStatus: Partial<ImportStatus> = {
@@ -1166,6 +1205,9 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
     // Tracks issues that exist in the DB but were soft-deleted (archived project).
     // On re-import we restore them and re-create their comments as fresh rows.
     const jiraKeyWasDeleted: Record<string, boolean> = {};
+    // Collect every org-user ID referenced as assignee/reporter so we can add
+    // them all to project_members at the end (Gap 1 fix).
+    const usedUserIds = new Set<string>();
 
     // Pre-load any already-imported issues for this project (idempotency).
     // Include soft-deleted rows so a re-import after archive restores them.
@@ -1200,6 +1242,10 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
           const reporterEmail = fields.reporter?.emailAddress?.toLowerCase();
           const assigneeId = assigneeEmail ? (emailToUserId[assigneeEmail] || null) : null;
           const reporterId = reporterEmail ? (emailToUserId[reporterEmail] || userId) : userId;
+
+          // Track every matched user so we can add them to project_members later
+          if (assigneeId) usedUserIds.add(assigneeId);
+          if (reporterId) usedUserIds.add(reporterId);
 
           const storyPoints = typeof fields.customfield_10016 === 'number' ? fields.customfield_10016 : null;
           const timeEstimate = fields.timetracking?.originalEstimateSeconds != null
@@ -1352,6 +1398,9 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
       }
     }
     console.log(`[ImportWorker]   ${projectKey}: ${linksCreated} parent links created`);
+
+    // ── 4g. Add all referenced users as project members ──────────────────────
+    await ensureProjectMemberships(db, bsProjectId, usedUserIds);
   }
 
   // ── 5. Finalize ──────────────────────────────────────────────────────────────
