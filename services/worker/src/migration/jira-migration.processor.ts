@@ -820,50 +820,53 @@ async function runMembersPhase(
   // selectedMemberIds filters out some Jira users, native users with matching emails
   // never receive their jira_account_id. Run a bulk UPDATE against ALL Jira users
   // (not just filteredUsers) to fill the gap.
-  if (users.length > 0) {
-    const backfillPlaceholders: string[] = [];
-    const backfillParams: unknown[] = [];
-    users.forEach((u, idx) => {
-      if (!u.emailAddress || !u.accountId) return;
-      const b = idx * 2 + 1;
-      backfillPlaceholders.push(`($${b}::text, $${b+1}::text)`);
-      backfillParams.push(u.emailAddress.toLowerCase(), u.accountId);
-    });
-    if (backfillPlaceholders.length > 0) {
+  //
+  // Uses unnest($1::text[], $2::text[]) to avoid PostgreSQL's "could not determine
+  // data type of parameter $N" error that occurs with VALUES-derived tables.
+  {
+    const backfillEmails: string[] = [];
+    const backfillAccountIds: string[] = [];
+    for (const u of users) {
+      if (!u.emailAddress || !u.accountId) continue;
+      backfillEmails.push(u.emailAddress.toLowerCase());
+      backfillAccountIds.push(u.accountId);
+    }
+    if (backfillEmails.length > 0) {
       await client.query(
         `UPDATE users u
-            SET jira_account_id = v.account_id, updated_at = NOW()
-           FROM (VALUES ${backfillPlaceholders.join(', ')}) AS v(email, account_id)
-          WHERE u.email = v.email
+            SET jira_account_id = v.account_id,
+                updated_at      = NOW()
+           FROM unnest($1::text[], $2::text[]) AS v(email, account_id)
+          WHERE u.email            = v.email
             AND u.jira_account_id IS NULL`,
-        backfillParams,
+        [backfillEmails, backfillAccountIds],
       ).catch((err: any) => {
         console.warn(`[Migration:${state.id}] jira_account_id backfill: ${err.message}`);
       });
-      console.log(`[Migration:${state.id}] jira_account_id backfill attempted for ${backfillPlaceholders.length} Jira users`);
+      console.log(`[Migration:${state.id}] jira_account_id backfill attempted for ${backfillEmails.length} Jira users`);
     }
   }
 
   // W-4 (U-15): Sync email changes — when a Jira user changed their email after the
   // last migration, our DB has a stale email. Find users by jira_account_id and update
   // their email so lookup maps stay accurate.
-  if (users.length > 0) {
-    const emailSyncPlaceholders: string[] = [];
-    const emailSyncParams: unknown[] = [];
-    users.forEach((u, idx) => {
-      if (!u.emailAddress || !u.accountId) return;
-      const b = idx * 2 + 1;
-      emailSyncPlaceholders.push(`($${b}::text, $${b+1}::text)`);
-      emailSyncParams.push(u.accountId, u.emailAddress.toLowerCase());
-    });
-    if (emailSyncPlaceholders.length > 0) {
+  {
+    const syncAccountIds: string[] = [];
+    const syncEmails: string[] = [];
+    for (const u of users) {
+      if (!u.emailAddress || !u.accountId) continue;
+      syncAccountIds.push(u.accountId);
+      syncEmails.push(u.emailAddress.toLowerCase());
+    }
+    if (syncAccountIds.length > 0) {
       await client.query(
         `UPDATE users u
-            SET email = v.new_email, updated_at = NOW()
-           FROM (VALUES ${emailSyncPlaceholders.join(', ')}) AS v(account_id, new_email)
+            SET email      = v.new_email,
+                updated_at = NOW()
+           FROM unnest($1::text[], $2::text[]) AS v(account_id, new_email)
           WHERE u.jira_account_id = v.account_id
-            AND u.email != v.new_email`,
-        emailSyncParams,
+            AND u.email           != v.new_email`,
+        [syncAccountIds, syncEmails],
       ).catch((err: any) => {
         console.warn(`[Migration:${state.id}] email sync: ${err.message}`);
       });
