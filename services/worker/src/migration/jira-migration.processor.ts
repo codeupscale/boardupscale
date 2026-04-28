@@ -2891,13 +2891,14 @@ async function runAttachmentsPhase(
         continue;
       }
 
-      // Insert attachment record (ON CONFLICT DO NOTHING = last-resort dedup)
+      // Insert attachment record — dedup is per-issue so the same Jira attachment
+      // ID can legitimately exist for different orgs (multi-tenant safe).
       await client.query(
         `INSERT INTO attachments
            (id, issue_id, uploaded_by, file_name, file_size, mime_type,
             storage_key, storage_bucket, jira_attachment_id)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (jira_attachment_id) WHERE jira_attachment_id IS NOT NULL DO NOTHING`,
+         ON CONFLICT (issue_id, jira_attachment_id) WHERE jira_attachment_id IS NOT NULL DO NOTHING`,
         [
           randomUUID(),
           row.local_issue_id,
