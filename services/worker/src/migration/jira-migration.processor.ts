@@ -66,6 +66,14 @@ interface MigrationJobData {
    * migration.
    */
   membersOnly?: boolean;
+  /**
+   * When true, the worker runs Phase 0 before Phase 1: hard-deletes all
+   * existing Jira-sourced projects (scoped to the selected project keys) and
+   * their cascaded data (issues, comments, sprints, attachments, statuses).
+   * Native projects are never touched. Gives a guaranteed clean slate so
+   * comments and attachments are re-imported with proper dedup IDs.
+   */
+  resetBeforeImport?: boolean;
 }
 
 interface JiraCredentials {
@@ -3068,7 +3076,14 @@ async function processJob(
   io: IORedis | null,
 ): Promise<void> {
   // selectedMemberIds: null/undefined = import all, [] = import none, [...ids] = specific filter
-  const { runId, organizationId, connectionId, selectedMemberIds = null, membersOnly = false } = job.data;
+  const {
+    runId,
+    organizationId,
+    connectionId,
+    selectedMemberIds = null,
+    membersOnly = false,
+    resetBeforeImport = false,
+  } = job.data;
 
   console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
@@ -3105,6 +3120,31 @@ async function processJob(
       // deleted, fall back to an org admin / any org member so FK constraints
       // don't abort phases.
       await resolveSafeTriggeredById(progressClient, state);
+
+      // ── Phase 0 — reset (optional) ───────────────────────────────────────────
+      // Hard-deletes existing Jira-sourced projects for the selected keys before
+      // re-importing, giving a guaranteed clean slate. All child data (issues,
+      // comments, sprints, attachments, statuses) is removed via FK CASCADE.
+      // Native projects (jira_project_key IS NULL) are never touched.
+      // Only runs when resetBeforeImport = true AND Phase 1 hasn't completed yet
+      // (idempotent: no double-delete on retry after Phase 1 completes).
+      if (resetBeforeImport && !completed.has(PHASE_MEMBERS)) {
+        const selectedKeys = (state.selectedProjects ?? []).map((p) => p.key);
+        if (selectedKeys.length > 0) {
+          const { rowCount } = await progressClient.query(
+            `DELETE FROM projects
+             WHERE organization_id = $1
+               AND jira_project_key = ANY($2::text[])`,
+            [organizationId, selectedKeys],
+          );
+          console.log(
+            `[Migration:${runId}] Phase 0 — reset: hard-deleted ${rowCount ?? 0} Jira project(s) ` +
+            `(${selectedKeys.join(', ')}) and all cascaded data`,
+          );
+        } else {
+          console.log(`[Migration:${runId}] Phase 0 — reset: no projects selected, skipping`);
+        }
+      }
 
       // ── Phase 1 — members ────────────────────────────────────────────────────
       if (!completed.has(PHASE_MEMBERS)) {

@@ -30,7 +30,7 @@ import { OrgId } from '../../common/decorators/org-id.decorator';
 
 import { MigrationService } from './migration.service';
 import { ConnectJiraDto } from './dto/connect-jira.dto';
-import { PreviewMigrationDto, StartMigrationDto } from './dto/start-migration.dto';
+import { PreviewMigrationDto, StartMigrationDto, ResetJiraDataDto } from './dto/start-migration.dto';
 
 @ApiTags('migration')
 @ApiBearerAuth()
@@ -231,6 +231,26 @@ export class MigrationController {
   ) {
     const data = await this.migrationService.getMigrationMembers(connectionId, organizationId);
     return { status: true, message: 'OK', data };
+  }
+
+  /**
+   * POST /api/migration/jira/reset
+   * Hard-delete all (or selected) Jira-sourced projects and their data for this org.
+   * Scoped reset: provide projectKeys to delete specific projects only.
+   * Full reset: omit projectKeys to delete ALL Jira-imported projects.
+   * Native (non-Jira) projects are never touched.
+   * Blocked if a migration is currently running.
+   */
+  @Post('reset')
+  @ApiOperation({ summary: 'Hard-delete Jira-sourced projects for a clean re-migration' })
+  @ApiResponse({ status: 201, description: 'Projects deleted — ready for fresh migration' })
+  @ApiResponse({ status: 400, description: 'Migration in progress — cancel it first' })
+  async resetJiraData(
+    @Body() dto: ResetJiraDataDto,
+    @OrgId() organizationId: string,
+  ) {
+    const result = await this.migrationService.resetJiraData(organizationId, dto);
+    return { status: true, message: result.message, data: { deletedProjects: result.deletedProjects } };
   }
 
   /**

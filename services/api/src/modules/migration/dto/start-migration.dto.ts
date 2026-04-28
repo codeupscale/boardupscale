@@ -28,6 +28,29 @@ export class MigrationOptionsDto {
   @IsBoolean()
   @IsOptional()
   inviteMembers?: boolean = true;
+
+  /**
+   * When true, the worker runs a Phase 0 hard-delete of all existing Jira-sourced
+   * data for the selected projects before importing. This gives a clean slate:
+   * - Projects, issues, sprints, comments, attachments, statuses are hard-deleted
+   * - Native (non-Jira) projects in the org are untouched
+   * - After import, all comments get jira_comment_id so future re-runs are idempotent
+   */
+  @ApiPropertyOptional({ default: false, description: 'Hard-delete existing Jira data before importing (clean slate re-migration)' })
+  @IsBoolean()
+  @IsOptional()
+  resetBeforeImport?: boolean = false;
+}
+
+export class ResetJiraDataDto {
+  @ApiPropertyOptional({
+    description: 'Specific Jira project keys to reset. Omit to reset ALL Jira-sourced projects in the org.',
+    example: ['PROJ', 'BACK'],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  projectKeys?: string[];
 }
 
 export class SelectedProjectDto {

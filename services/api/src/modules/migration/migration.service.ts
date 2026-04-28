@@ -23,7 +23,7 @@ import { JiraApiService } from '../import/jira-api.service';
 import { encrypt } from '../import/crypto.util';
 
 import { ConnectJiraDto } from './dto/connect-jira.dto';
-import { StartMigrationDto, PreviewMigrationDto } from './dto/start-migration.dto';
+import { StartMigrationDto, PreviewMigrationDto, ResetJiraDataDto } from './dto/start-migration.dto';
 
 export interface ConnectResult {
   runId: string;
@@ -298,6 +298,7 @@ export class MigrationService {
         // null = import all (no selection made), [] = import none, [...ids] = specific selection.
         selectedMemberIds: dto.selectedMemberIds ?? null,
         membersOnly: dto.membersOnly ?? false,
+        resetBeforeImport: dto.options?.resetBeforeImport ?? false,
       },
       {
         jobId: `migration-${run.id}`,
@@ -449,7 +450,64 @@ export class MigrationService {
     return { data, total, page, limit };
   }
 
-  // ── 8. System metrics for the migration dashboard ──────────────────────────
+  // ── 8. Reset Jira data ────────────────────────────────────────────────────
+  /**
+   * Hard-delete all Jira-sourced projects (and their cascaded data) for this org.
+   * Scoped to `projectKeys` when provided; otherwise deletes ALL Jira projects.
+   * Native projects (jira_project_key IS NULL) are never touched.
+   *
+   * Returns the count of projects deleted and a breakdown of cascaded rows.
+   */
+  async resetJiraData(
+    organizationId: string,
+    dto: ResetJiraDataDto,
+  ): Promise<{ deletedProjects: number; message: string }> {
+    // Guard: reject if any migration is currently running for this org
+    const active = await this.runRepository.findOne({
+      where: { organizationId, status: 'processing' as any },
+    });
+    if (active) {
+      throw new BadRequestException(
+        'A migration is currently in progress — cancel it before resetting',
+      );
+    }
+
+    let deletedProjects: number;
+
+    if (dto.projectKeys && dto.projectKeys.length > 0) {
+      // Scoped reset — only delete the specified Jira project keys
+      const result = await this.runRepository.query(
+        `DELETE FROM projects
+         WHERE organization_id = $1
+           AND jira_project_key = ANY($2::text[])
+         RETURNING id`,
+        [organizationId, dto.projectKeys],
+      );
+      deletedProjects = result.length;
+    } else {
+      // Full reset — delete ALL Jira-sourced projects for this org
+      const result = await this.runRepository.query(
+        `DELETE FROM projects
+         WHERE organization_id = $1
+           AND jira_project_key IS NOT NULL
+         RETURNING id`,
+        [organizationId],
+      );
+      deletedProjects = result.length;
+    }
+
+    this.logger.log(
+      `[Reset] org=${organizationId} — hard-deleted ${deletedProjects} Jira project(s) ` +
+      `(keys: ${dto.projectKeys?.join(', ') ?? 'ALL'})`,
+    );
+
+    return {
+      deletedProjects,
+      message: `${deletedProjects} Jira project(s) and all their data have been permanently deleted. You can now run a fresh migration.`,
+    };
+  }
+
+  // ── 9. System metrics for the migration dashboard ──────────────────────────
 
   async getSystemMetrics(runId: string, organizationId: string) {
     const run = await this.findRun(runId, organizationId);
