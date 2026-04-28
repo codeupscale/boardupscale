@@ -141,6 +141,12 @@ interface RunState {
    * If the worker restarts, Phase 5 falls back to fetching all issues (isResume path).
    */
   issuesNeedingCommentPagination?: Map<string, number>;
+  /**
+   * Total inline comments processed during Phase 4 (not persisted — in-memory only).
+   * Carried forward to Phase 5 so its final counter update adds to, rather than
+   * overwrites, the Phase 4 count.  Zero on resume (Phase 5 re-fetches everything).
+   */
+  inlineCommentsInserted?: number;
 }
 
 // ─── Jira HTTP client (no axios) ─────────────────────────────────────────────
@@ -1495,6 +1501,9 @@ async function runIssuesPhase(
   let failedIssues = 0;
   // Count sprints created inline (Phase 3 may have been skipped due to 401 from Agile API).
   let inlineSprintsCreated = 0;
+  // Running count of inline comments inserted/updated during Phase 4.
+  // Passed to Phase 5 so the final counter update does not reset it to 0.
+  let inlineCommentCount = 0;
   // Dedicated issue error log — never evicted by comment errors in the shared 100-slot ring buffer.
   const issueErrors: string[] = [];
 
@@ -2032,6 +2041,8 @@ async function runIssuesPhase(
              DO UPDATE SET content = EXCLUDED.content, updated_at = NOW(), deleted_at = NULL`,
             commentParams,
           ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
+          // Track for counter — counts both INSERT and ON CONFLICT DO UPDATE rows.
+          inlineCommentCount += commentPlaceholders.length;
         }
       }
 
@@ -2150,16 +2161,22 @@ async function runIssuesPhase(
     );
   }
 
+  // Persist the inline comment count so Phase 5 can add to it rather than reset.
+  state.inlineCommentsInserted = inlineCommentCount;
+
   await updateRunProgress(client, state.id, {
     totalIssues,
     processedIssues,
     failedIssues,
     processedSprints: inlineSprintsCreated,
     totalSprints: inlineSprintsCreated,
+    // Seed comment counters with inline totals — Phase 5 will add overflow counts on top.
+    totalComments: inlineCommentCount,
+    processedComments: inlineCommentCount,
     completedPhase: PHASE_ISSUES,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints`);
+  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints, ${inlineCommentCount} inline comments`);
 }
 
 async function linkParentIssues(
@@ -2270,21 +2287,44 @@ async function runCommentsPhase(
     }
   }
 
+  // When Phase 4 ran in this process but produced an empty worklist (no overflow issues)
+  // AND no inline comments were found at all, Jira likely did not include the `comment`
+  // field in its JQL response (common in some Jira Cloud configurations). In that case
+  // fall back to fetching comments for every issue individually, just like the resume path.
+  const jiraOmittedInlineComments =
+    !isResume &&
+    workList.length === 0 &&
+    (state.inlineCommentsInserted ?? 0) === 0 &&
+    Object.keys(state.jiraIssueKeyToLocalId).length > 0;
+
+  if (jiraOmittedInlineComments) {
+    for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+      workList.push({ jiraKey, localIssueId, startAt: 0 });
+    }
+  }
+
   if (isResume) {
     console.log(
       `[Migration:${state.id}] Phase 5 — RESUME path: re-fetching ALL ${workList.length} issues from startAt=0 ` +
       `(Phase 4 ran in a previous process; in-memory issuesNeedingCommentPagination was lost)`,
     );
+  } else if (jiraOmittedInlineComments) {
+    console.log(
+      `[Migration:${state.id}] Phase 5 — FALLBACK path: Jira did not return inline comment data in JQL response; ` +
+      `re-fetching comments for all ${workList.length} issues individually`,
+    );
   } else {
     const overflowCount = state.issuesNeedingCommentPagination?.size ?? 0;
     console.log(
       `[Migration:${state.id}] Phase 5 — normal path: paginating ${overflowCount} issues with overflow comments ` +
-      `(${workList.length} total in worklist)`,
+      `(${workList.length} total in worklist), ${state.inlineCommentsInserted ?? 0} already inserted inline`,
     );
   }
 
-  let totalComments = 0;
-  let processedComments = 0;
+  // Seed from Phase 4's inline count so we don't overwrite it with 0 at the end.
+  // On resume (worker restart), inlineCommentsInserted is undefined — start from 0.
+  let totalComments = state.inlineCommentsInserted ?? 0;
+  let processedComments = state.inlineCommentsInserted ?? 0;
   const COMMENT_PAGE = 100;
   const FLUSH_EVERY = 10;
 
