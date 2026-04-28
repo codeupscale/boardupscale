@@ -387,6 +387,38 @@ export class IssuesService {
 
     await this.issueRepository.save(issue);
 
+    // Track manually-edited fields so the Jira migration worker does not
+    // overwrite them during re-migration (locked_fields CASE WHEN pattern).
+    // Only applies to Jira-sourced issues (jiraKey is set).
+    const LOCKABLE_FIELD_MAP: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      type: 'type',
+      priority: 'priority',
+      statusId: 'status_id',
+      assigneeId: 'assignee_id',
+      sprintId: 'sprint_id',
+      dueDate: 'due_date',
+      storyPoints: 'story_points',
+      timeEstimate: 'time_estimate',
+      labels: 'labels',
+    };
+    if (issue.jiraKey) {
+      const newLockedFields = Object.keys(dto)
+        .filter((k) => LOCKABLE_FIELD_MAP[k])
+        .map((k) => LOCKABLE_FIELD_MAP[k]);
+      if (newLockedFields.length > 0) {
+        await this.issueRepository.query(
+          `UPDATE issues
+              SET locked_fields = ARRAY(
+                SELECT DISTINCT unnest(locked_fields || $1::text[])
+              )
+            WHERE id = $2`,
+          [newLockedFields, issue.id],
+        );
+      }
+    }
+
     // Auto-add new assignee as watcher
     if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
       await this.addWatcherSilent(id, dto.assigneeId);

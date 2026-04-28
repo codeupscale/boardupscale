@@ -494,6 +494,79 @@ async function checkCancelled(client: PoolClient, runId: string): Promise<void> 
 }
 
 /**
+ * Ensure state.triggeredById resolves to a real, existing user in the org.
+ *
+ * If the user who triggered the migration has since been deleted, all FK
+ * references to triggeredById (activities, attachments, project members, etc.)
+ * would throw a foreign-key constraint violation and abort the phase.
+ *
+ * Fallback chain:
+ *   1. The original triggeredById exists in users + is org member → keep it.
+ *   2. Fall back to any 'admin' in the org.
+ *   3. Fall back to any org member at all.
+ *   4. Leave as-is (will fail at the FK — at least the error is explicit).
+ */
+async function resolveSafeTriggeredById(
+  client: PoolClient,
+  state: RunState,
+): Promise<void> {
+  if (!state.triggeredById) return;
+
+  const { rows: existing } = await client.query<{ id: string }>(
+    `SELECT u.id FROM users u
+     WHERE u.id = $1
+       AND (u.organization_id = $2
+            OR EXISTS (SELECT 1 FROM organization_members om
+                       WHERE om.user_id = u.id AND om.organization_id = $2))
+     LIMIT 1`,
+    [state.triggeredById, state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (existing[0]) return; // still valid
+
+  // Attempt fallback to an admin in the org
+  const { rows: admins } = await client.query<{ id: string }>(
+    `SELECT u.id FROM users u
+     JOIN organization_members om ON om.user_id = u.id
+     WHERE om.organization_id = $1 AND u.role = 'admin'
+     ORDER BY u.created_at
+     LIMIT 1`,
+    [state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (admins[0]) {
+    console.warn(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found in org — ` +
+      `falling back to admin ${admins[0].id}`,
+    );
+    state.triggeredById = admins[0].id;
+    return;
+  }
+
+  // Final fallback: any org member
+  const { rows: anyMember } = await client.query<{ id: string }>(
+    `SELECT user_id AS id FROM organization_members
+     WHERE organization_id = $1
+     ORDER BY created_at
+     LIMIT 1`,
+    [state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (anyMember[0]) {
+    console.warn(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found — ` +
+      `falling back to first org member ${anyMember[0].id}`,
+    );
+    state.triggeredById = anyMember[0].id;
+  } else {
+    console.error(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found and no org members exist — ` +
+      `FK violations may occur during migration`,
+    );
+  }
+}
+
+/**
  * Retry a phase function up to MAX_PHASE_RETRIES times with exponential backoff.
  * If the phase still fails after all retries the error is recorded but execution
  * continues to the next phase — a single failing phase must not abort the whole job.
@@ -544,7 +617,7 @@ async function runMembersPhase(
     while (hasMore) {
       const page = await jiraGet<typeof users>(
         credentials,
-        `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=false`,
+        `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=true`,
       );
       if (!Array.isArray(page) || page.length === 0) { hasMore = false; break; }
       users.push(...page);
@@ -577,6 +650,8 @@ async function runMembersPhase(
     role: 'admin' | 'manager' | 'member' | 'viewer';
     accountId: string;
     hasRealEmail: boolean;
+    /** true = active in Jira; false = deactivated/inactive in Jira */
+    isJiraActive: boolean;
   }
   const rowsByEmail = new Map<string, MemberRow>();
   let emailDuplicates = 0;
@@ -591,6 +666,8 @@ async function runMembersPhase(
     const role = (['admin', 'manager', 'member', 'viewer'] as const).includes(mapped as any)
       ? (mapped as MemberRow['role'])
       : 'member';
+    // `active` field is present on Jira Cloud user objects; absent = assume active
+    const isJiraActive = (u as any).active !== false;
     if (rowsByEmail.has(email)) {
       emailDuplicates++;
       // Keep the first one, but if the existing one has no displayName and the
@@ -599,7 +676,7 @@ async function runMembersPhase(
       if (!prev.displayName && displayName) prev.displayName = displayName;
       continue;
     }
-    rowsByEmail.set(email, { email, displayName, role, accountId: u.accountId, hasRealEmail });
+    rowsByEmail.set(email, { email, displayName, role, accountId: u.accountId, hasRealEmail, isJiraActive });
   }
   if (emailDuplicates > 0) {
     const msg = `Collapsed ${emailDuplicates} Jira users sharing an email (kept first per email)`;
@@ -627,8 +704,8 @@ async function runMembersPhase(
 
     chunk.forEach((r, j) => {
       const b = j * 5;
-      // Real-email users: is_active=false (need to accept invite), invitation_status='pending'
-      // Synthetic-email users: is_active=true (appear in dropdowns), invitation_status='none'
+      // Real-email + active/inactive in Jira: is_active=false (invite still needed), invitation_status='pending'
+      // Synthetic-email (GDPR-obscured): is_active=true so they appear in dropdowns, invitation_status='none'
       const isActiveVal = r.hasRealEmail ? 'false' : 'true';
       const invStatus = r.hasRealEmail ? 'pending' : 'none';
       placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, ${isActiveVal}, false, $${b+4}::text, $${b+5}::text, '${invStatus}', NOW(), NOW())`);
@@ -738,6 +815,61 @@ async function runMembersPhase(
     }
   }
 
+  // W-3 (U-06): Backfill jira_account_id on native users who were already in the org
+  // before this migration run. The bulk upsert above handles filteredUsers, but when
+  // selectedMemberIds filters out some Jira users, native users with matching emails
+  // never receive their jira_account_id. Run a bulk UPDATE against ALL Jira users
+  // (not just filteredUsers) to fill the gap.
+  if (users.length > 0) {
+    const backfillPlaceholders: string[] = [];
+    const backfillParams: unknown[] = [];
+    users.forEach((u, idx) => {
+      if (!u.emailAddress || !u.accountId) return;
+      const b = idx * 2 + 1;
+      backfillPlaceholders.push(`($${b}::text, $${b+1}::text)`);
+      backfillParams.push(u.emailAddress.toLowerCase(), u.accountId);
+    });
+    if (backfillPlaceholders.length > 0) {
+      await client.query(
+        `UPDATE users u
+            SET jira_account_id = v.account_id, updated_at = NOW()
+           FROM (VALUES ${backfillPlaceholders.join(', ')}) AS v(email, account_id)
+          WHERE u.email = v.email
+            AND u.jira_account_id IS NULL`,
+        backfillParams,
+      ).catch((err: any) => {
+        console.warn(`[Migration:${state.id}] jira_account_id backfill: ${err.message}`);
+      });
+      console.log(`[Migration:${state.id}] jira_account_id backfill attempted for ${backfillPlaceholders.length} Jira users`);
+    }
+  }
+
+  // W-4 (U-15): Sync email changes — when a Jira user changed their email after the
+  // last migration, our DB has a stale email. Find users by jira_account_id and update
+  // their email so lookup maps stay accurate.
+  if (users.length > 0) {
+    const emailSyncPlaceholders: string[] = [];
+    const emailSyncParams: unknown[] = [];
+    users.forEach((u, idx) => {
+      if (!u.emailAddress || !u.accountId) return;
+      const b = idx * 2 + 1;
+      emailSyncPlaceholders.push(`($${b}::text, $${b+1}::text)`);
+      emailSyncParams.push(u.accountId, u.emailAddress.toLowerCase());
+    });
+    if (emailSyncPlaceholders.length > 0) {
+      await client.query(
+        `UPDATE users u
+            SET email = v.new_email, updated_at = NOW()
+           FROM (VALUES ${emailSyncPlaceholders.join(', ')}) AS v(account_id, new_email)
+          WHERE u.jira_account_id = v.account_id
+            AND u.email != v.new_email`,
+        emailSyncParams,
+      ).catch((err: any) => {
+        console.warn(`[Migration:${state.id}] email sync: ${err.message}`);
+      });
+    }
+  }
+
   // Reload ALL org users into lookup maps — covers the case where selectedMemberIds=[]
   // caused filteredUsers to be empty (no upserts ran) but existing DB users must still
   // be available for Phase 4 assignee/reporter resolution.
@@ -818,17 +950,13 @@ async function runProjectMemberSyncPhase(
     }
 
     for (const userId of userIds) {
-      const { rows: userRows } = await client.query<{ role: string }>(
-        `SELECT role FROM users WHERE id = $1`,
-        [userId],
-      );
-      const role = userRows[0]?.role || 'member';
-
+      // Always use 'member' as the project role — users.role is a system-level
+      // role (admin/manager/member/viewer) and must not bleed into project membership.
       await client.query(
         `INSERT INTO project_members (id, project_id, user_id, role, created_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, NOW())
+         VALUES (gen_random_uuid(), $1, $2, 'member', NOW())
          ON CONFLICT (project_id, user_id) DO NOTHING`,
-        [project.id, userId, role],
+        [project.id, userId],
       ).catch((err: any) => {
         addError(state, `project_member_sync: project ${project.key} user ${userId}: ${err.message}`);
       });
@@ -928,8 +1056,8 @@ async function runProjectsPhase(
 
       // Step 1 — INSERT (ignore conflict on org+key)
       await client.query(
-        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, type, color, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, 'scrum', $5, NOW(), NOW())
+        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, type, color, jira_project_key, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, 'scrum', $5, $2, NOW(), NOW())
          ON CONFLICT (organization_id, key) DO NOTHING`,
         [proj.name || proj.key, proj.key, state.organizationId, state.triggeredById, projectColor],
       ).catch((err: any) => addError(state, `project insert ${proj.key}: ${err.message}`));
@@ -946,13 +1074,18 @@ async function runProjectsPhase(
         continue;
       }
 
-      // Step 3 — Patch name, color, and status on the existing row.
+      // Step 3 — Patch name, color, status, and jira_project_key on the existing row.
       // Always reset status to 'active' so previously-archived projects become visible again.
+      // Set jira_project_key so native projects that were merged with a Jira project get tagged.
       await client.query(
         `UPDATE projects
-            SET name = $1, color = COALESCE(color, $2::varchar), status = 'active', updated_at = NOW()
+            SET name             = $1,
+                color            = COALESCE(color, $2::varchar),
+                status           = 'active',
+                jira_project_key = $4,
+                updated_at       = NOW()
           WHERE id = $3::uuid`,
-        [proj.name || proj.key, projectColor, projectId],
+        [proj.name || proj.key, projectColor, projectId, proj.key],
       ).catch((err: any) => addError(state, `project patch ${proj.key}: ${err.message}`));
 
       // Step 4 — Ensure the migration owner is a project member so they can see it.
@@ -1528,13 +1661,29 @@ async function runIssuesPhase(
           const projectStatuses = state.projectStatusMap[projectId] ?? {};
           const statusMapping = state.statusMapping ?? {};
           const mappedStatusName = (statusMapping[jiraStatusName] ?? jiraStatusName).trim();
+          // Level 1: exact name match (Jira name or user-mapped name)
           let statusId = projectStatuses[jiraStatusName] ?? projectStatuses[mappedStatusName] ?? null;
           if (!statusId) {
+            // Level 2: any 'todo' category status for this project
             const { rows: fallbackRows } = await client.query<{ id: string }>(
               `SELECT id FROM issue_statuses WHERE project_id = $1 AND category = 'todo' ORDER BY position LIMIT 1`,
               [projectId],
             );
             statusId = fallbackRows[0]?.id ?? null;
+          }
+          if (!statusId) {
+            // Level 3: any status for this project (catch-all)
+            const { rows: anyStatusRows } = await client.query<{ id: string }>(
+              `SELECT id FROM issue_statuses WHERE project_id = $1 ORDER BY position LIMIT 1`,
+              [projectId],
+            );
+            statusId = anyStatusRows[0]?.id ?? null;
+          }
+          if (!statusId) {
+            // Level 4: no statuses at all for this project — skip the issue and log loudly
+            addError(state, `issue ${issue.key}: no statuses found for project ${projectId} — skipping`);
+            failedIssues++;
+            continue;
           }
 
           const assigneeAccountId = fields.assignee?.accountId;
@@ -1670,19 +1819,19 @@ async function runIssuesPhase(
              FROM incoming
            ) i
            ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
-             title         = EXCLUDED.title,
-             description   = EXCLUDED.description,
-             type          = EXCLUDED.type,
-             priority      = EXCLUDED.priority,
-             status_id     = EXCLUDED.status_id,
-             assignee_id   = EXCLUDED.assignee_id,
-             reporter_id   = EXCLUDED.reporter_id,
-             sprint_id     = EXCLUDED.sprint_id,
-             labels        = EXCLUDED.labels,
-             story_points  = EXCLUDED.story_points,
-             time_estimate = EXCLUDED.time_estimate,
+             title         = CASE WHEN 'title'         = ANY(issues.locked_fields) THEN issues.title         ELSE EXCLUDED.title         END,
+             description   = CASE WHEN 'description'   = ANY(issues.locked_fields) THEN issues.description   ELSE EXCLUDED.description   END,
+             type          = CASE WHEN 'type'           = ANY(issues.locked_fields) THEN issues.type           ELSE EXCLUDED.type           END,
+             priority      = CASE WHEN 'priority'       = ANY(issues.locked_fields) THEN issues.priority       ELSE EXCLUDED.priority       END,
+             status_id     = CASE WHEN 'status_id'      = ANY(issues.locked_fields) THEN issues.status_id      ELSE EXCLUDED.status_id      END,
+             assignee_id   = CASE WHEN 'assignee_id'    = ANY(issues.locked_fields) THEN issues.assignee_id    ELSE EXCLUDED.assignee_id    END,
+             reporter_id   = CASE WHEN 'reporter_id'    = ANY(issues.locked_fields) THEN issues.reporter_id    ELSE EXCLUDED.reporter_id    END,
+             sprint_id     = CASE WHEN 'sprint_id'      = ANY(issues.locked_fields) THEN issues.sprint_id      ELSE EXCLUDED.sprint_id      END,
+             labels        = CASE WHEN 'labels'         = ANY(issues.locked_fields) THEN issues.labels         ELSE EXCLUDED.labels         END,
+             story_points  = CASE WHEN 'story_points'   = ANY(issues.locked_fields) THEN issues.story_points   ELSE EXCLUDED.story_points   END,
+             time_estimate = CASE WHEN 'time_estimate'  = ANY(issues.locked_fields) THEN issues.time_estimate  ELSE EXCLUDED.time_estimate  END,
              time_spent    = EXCLUDED.time_spent,
-             due_date      = EXCLUDED.due_date,
+             due_date      = CASE WHEN 'due_date'       = ANY(issues.locked_fields) THEN issues.due_date       ELSE EXCLUDED.due_date       END,
              updated_at    = EXCLUDED.updated_at,
              deleted_at    = NULL
            RETURNING id, jira_key`;
@@ -1728,19 +1877,19 @@ async function runIssuesPhase(
                    $11::text, $12::text[], $13::numeric, $14::int, $15::int,
                    COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW()), $18::date
                  ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
-                   title         = EXCLUDED.title,
-                   description   = EXCLUDED.description,
-                   type          = EXCLUDED.type,
-                   priority      = EXCLUDED.priority,
-                   status_id     = EXCLUDED.status_id,
-                   assignee_id   = EXCLUDED.assignee_id,
-                   reporter_id   = EXCLUDED.reporter_id,
-                   sprint_id     = EXCLUDED.sprint_id,
-                   labels        = EXCLUDED.labels,
-                   story_points  = EXCLUDED.story_points,
-                   time_estimate = EXCLUDED.time_estimate,
+                   title         = CASE WHEN 'title'         = ANY(issues.locked_fields) THEN issues.title         ELSE EXCLUDED.title         END,
+                   description   = CASE WHEN 'description'   = ANY(issues.locked_fields) THEN issues.description   ELSE EXCLUDED.description   END,
+                   type          = CASE WHEN 'type'           = ANY(issues.locked_fields) THEN issues.type           ELSE EXCLUDED.type           END,
+                   priority      = CASE WHEN 'priority'       = ANY(issues.locked_fields) THEN issues.priority       ELSE EXCLUDED.priority       END,
+                   status_id     = CASE WHEN 'status_id'      = ANY(issues.locked_fields) THEN issues.status_id      ELSE EXCLUDED.status_id      END,
+                   assignee_id   = CASE WHEN 'assignee_id'    = ANY(issues.locked_fields) THEN issues.assignee_id    ELSE EXCLUDED.assignee_id    END,
+                   reporter_id   = CASE WHEN 'reporter_id'    = ANY(issues.locked_fields) THEN issues.reporter_id    ELSE EXCLUDED.reporter_id    END,
+                   sprint_id     = CASE WHEN 'sprint_id'      = ANY(issues.locked_fields) THEN issues.sprint_id      ELSE EXCLUDED.sprint_id      END,
+                   labels        = CASE WHEN 'labels'         = ANY(issues.locked_fields) THEN issues.labels         ELSE EXCLUDED.labels         END,
+                   story_points  = CASE WHEN 'story_points'   = ANY(issues.locked_fields) THEN issues.story_points   ELSE EXCLUDED.story_points   END,
+                   time_estimate = CASE WHEN 'time_estimate'  = ANY(issues.locked_fields) THEN issues.time_estimate  ELSE EXCLUDED.time_estimate  END,
                    time_spent    = EXCLUDED.time_spent,
-                   due_date      = EXCLUDED.due_date,
+                   due_date      = CASE WHEN 'due_date'       = ANY(issues.locked_fields) THEN issues.due_date       ELSE EXCLUDED.due_date       END,
                    updated_at    = EXCLUDED.updated_at,
                    deleted_at    = NULL
                  RETURNING id, jira_key`,
@@ -1856,9 +2005,15 @@ async function runIssuesPhase(
             const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
               ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
               ?? state.triggeredById;
-            if (!authorId) continue;
+            // W-7 (C-07): log when all author lookups exhaust — don't silently discard
+            if (!authorId) {
+              addError(state, `inline comment on ${issue.key} (author=${authorAccountId ?? authorEmail ?? 'unknown'}) skipped: author not found in org`);
+              continue;
+            }
             const body = extractDescription(comment.body) ?? '';
-            const jiraCommentId: string | null = comment.id ?? null;
+            // W-8 (C-08): use syntheticCommentId when Jira omits comment.id (old Server)
+            const jiraCommentId: string =
+              comment.id ?? syntheticCommentId(issue.key, comment.created ?? null, authorId);
             const j = commentPlaceholders.length;
             commentPlaceholders.push(
               `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
@@ -2112,9 +2267,18 @@ async function runCommentsPhase(
     }
   }
 
-  console.log(
-    `[Migration:${state.id}] Phase 5 — ${workList.length} issues to paginate (resume=${isResume})`,
-  );
+  if (isResume) {
+    console.log(
+      `[Migration:${state.id}] Phase 5 — RESUME path: re-fetching ALL ${workList.length} issues from startAt=0 ` +
+      `(Phase 4 ran in a previous process; in-memory issuesNeedingCommentPagination was lost)`,
+    );
+  } else {
+    const overflowCount = state.issuesNeedingCommentPagination?.size ?? 0;
+    console.log(
+      `[Migration:${state.id}] Phase 5 — normal path: paginating ${overflowCount} issues with overflow comments ` +
+      `(${workList.length} total in worklist)`,
+    );
+  }
 
   let totalComments = 0;
   let processedComments = 0;
@@ -2159,10 +2323,15 @@ async function runCommentsPhase(
           const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
             ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
             ?? state.triggeredById;
-          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment.
-          if (!authorId) continue;
+          // W-7 (C-07): log when all fallbacks are exhausted — don't silently discard
+          if (!authorId) {
+            addError(state, `comment on ${item.jiraKey} (author=${authorAccountId ?? authorEmail ?? 'unknown'}) skipped: author not found in org`);
+            continue;
+          }
           const body = extractDescription(comment.body) ?? '';
-          const jiraCommentId: string | null = comment.id ?? null;
+          // W-8 (C-08): use syntheticCommentId when Jira omits comment.id (old Server)
+          const jiraCommentId: string =
+            comment.id ?? syntheticCommentId(item.jiraKey, comment.created ?? null, authorId);
           const j = placeholders.length;
           placeholders.push(
             `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
@@ -2794,6 +2963,29 @@ async function runRepairPhase(
   console.log(`[Migration:${state.id}] Phase 7 — membership repair complete`);
 }
 
+// ─── Comment helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Returns a deterministic comment ID for upsert purposes.
+ *
+ * Some old Jira Server instances omit the comment `id` field entirely.
+ * Without an ID the ON CONFLICT (issue_id, jira_comment_id) WHERE NOT NULL
+ * clause never fires, so re-migration duplicates every such comment.
+ *
+ * We derive a stable synthetic ID from issueKey + createdAt + authorId so
+ * re-imports produce the same ID and the ON CONFLICT hits correctly.
+ * The "synthetic_" prefix prevents collisions with real Jira numeric IDs.
+ */
+function syntheticCommentId(
+  issueKey: string,
+  createdAt: string | null | undefined,
+  authorId: string,
+): string {
+  const raw = `${issueKey}|${createdAt ?? ''}|${authorId}`;
+  const hash = crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16);
+  return `synthetic_${hash}`;
+}
+
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
 
 function mapIssueType(name?: string): string {
@@ -2863,6 +3055,12 @@ async function processJob(
       }, io);
 
       const completed = new Set<number>(state.completedPhases ?? []);
+
+      // ── Resolve triggeredById before any phase runs ──────────────────────────
+      // Ensures the user who triggered the migration still exists. If they were
+      // deleted, fall back to an org admin / any org member so FK constraints
+      // don't abort phases.
+      await resolveSafeTriggeredById(progressClient, state);
 
       // ── Phase 1 — members ────────────────────────────────────────────────────
       if (!completed.has(PHASE_MEMBERS)) {
