@@ -124,19 +124,6 @@ export function ProjectBoardPage() {
   const completeSprint = useCompleteSprint()
   const createSprintMutation = useCreateSprint()
 
-  // Auto-apply active sprint filter on first load if no sprintId is in the URL
-  useEffect(() => {
-    if (!sprints || filters.sprintId) return
-    const active = sprints.find((s) => s.status === 'active')
-    if (active) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.set('sprintId', active.id)
-        return next
-      }, { replace: true })
-    }
-  }, [sprints, filters.sprintId, setSearchParams])
-
   const { data: board, isLoading } = useBoard(projectKey!, filters)
 
   const handleLoadMore = useCallback(
