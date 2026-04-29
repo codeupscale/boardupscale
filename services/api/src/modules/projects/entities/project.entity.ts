@@ -54,6 +54,15 @@ export class Project {
   @Column({ name: 'next_issue_number', type: 'int', default: 1 })
   nextIssueNumber: number;
 
+  /**
+   * The original Jira project key (e.g. 'MYPROJ') for projects imported from
+   * Jira. NULL for native Boardupscale projects.
+   * Set by the migration worker on first import; used on re-migration to locate
+   * the existing project and update it instead of creating a duplicate.
+   */
+  @Column({ name: 'jira_project_key', type: 'varchar', length: 20, nullable: true })
+  jiraProjectKey: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   settings: Record<string, any>;
 

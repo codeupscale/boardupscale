@@ -109,6 +109,15 @@ export class Issue {
   @Column({ name: 'jira_key', type: 'varchar', length: 100, nullable: true })
   jiraKey: string;
 
+  /**
+   * Fields that have been manually edited by a user after a Jira import.
+   * The migration worker honours this list and skips overwriting these fields
+   * on re-migration, preserving intentional changes made inside Boardupscale.
+   * Example values: ['title', 'description', 'priority', 'assignee_id']
+   */
+  @Column({ name: 'locked_fields', type: 'text', array: true, default: () => `'{}'` })
+  lockedFields: string[];
+
   @Column({ type: 'float', default: 0 })
   position: number;
 

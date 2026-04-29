@@ -199,7 +199,35 @@ export class ProjectsService {
 
   async archive(id: string, organizationId: string, userId?: string): Promise<void> {
     const project = await this.findById(id, organizationId);
-    await this.projectRepository.update(project.id, { status: 'archived' });
+    const now = new Date();
+
+    // Run in a transaction so the archive is atomic — if any step fails the
+    // project stays active and no partial soft-deletes are persisted.
+    await this.projectRepository.manager.transaction(async (em) => {
+      // 1. Soft-delete all comments whose parent issue belongs to this project
+      await em.query(
+        `UPDATE comments
+            SET deleted_at = $1
+          WHERE deleted_at IS NULL
+            AND issue_id IN (SELECT id FROM issues WHERE project_id = $2)`,
+        [now, project.id],
+      );
+
+      // 2. Soft-delete all issues in this project
+      await em.query(
+        `UPDATE issues
+            SET deleted_at = $1
+          WHERE project_id = $2
+            AND deleted_at IS NULL`,
+        [now, project.id],
+      );
+
+      // 3. Mark the project archived
+      await em.query(
+        `UPDATE projects SET status = 'archived', updated_at = $1 WHERE id = $2`,
+        [now, project.id],
+      );
+    });
 
     // Audit log for project archival
     this.auditService.log(organizationId, userId || null, 'project.archived', 'project', id, {

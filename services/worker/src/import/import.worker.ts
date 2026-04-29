@@ -173,6 +173,35 @@ async function updateStatus(
   }
 }
 
+// ─── Shared helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Bulk-add every user that appeared as assignee/reporter into project_members
+ * so the project is visible to them and their names resolve in the UI.
+ * The triggering user was already inserted as admin; everyone else gets 'member'.
+ * Uses ON CONFLICT DO NOTHING so re-imports are safe.
+ */
+async function ensureProjectMemberships(
+  db: Pool,
+  projectId: string,
+  userIds: Set<string>,
+): Promise<void> {
+  if (userIds.size === 0) return;
+  let added = 0;
+  for (const uid of userIds) {
+    try {
+      await db.query(
+        `INSERT INTO project_members (project_id, user_id, role, created_at)
+         VALUES ($1, $2, 'member', NOW())
+         ON CONFLICT (project_id, user_id) DO NOTHING`,
+        [projectId, uid],
+      );
+      added++;
+    } catch {}
+  }
+  console.log(`[ImportWorker] Ensured ${added} additional project member(s) for project ${projectId}`);
+}
+
 // ─── Core import logic ──────────────────────────────────────────────────────
 
 async function processJiraImport(job: Job, db: Pool): Promise<void> {
@@ -367,6 +396,9 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
   const errors: string[] = [];
   // Map Jira key -> Boardupscale issue ID (for parent/subtask linking)
   const jiraKeyToIssueId: Record<string, string> = {};
+  // Collect every org-user ID referenced as assignee/reporter so we can add
+  // them all to project_members at the end (Gap 1 fix).
+  const usedUserIds = new Set<string>();
 
   for (let i = 0; i < jiraData.issues.length; i += BATCH_SIZE) {
     const batch = jiraData.issues.slice(i, i + BATCH_SIZE);
@@ -396,6 +428,10 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
         const reporterId = reporterEmail
           ? emailToUserId[reporterEmail] || userId
           : userId;
+
+        // Track every matched user so we can add them to project_members later
+        if (assigneeId) usedUserIds.add(assigneeId);
+        if (reporterId) usedUserIds.add(reporterId);
 
         // Story points
         const storyPoints =
@@ -539,6 +575,9 @@ async function processJiraImport(job: Job, db: Pool): Promise<void> {
   }
 
   console.log(`[ImportWorker] Created ${linksCreated} parent/subtask links`);
+
+  // ── 6b. Add all referenced users as project members ───────────────────────
+  await ensureProjectMemberships(db, projectId, usedUserIds);
 
   // ── 7. Finalize ──────────────────────────────────────────────────────────
   const finalStatus: Partial<ImportStatus> = {
@@ -1163,15 +1202,23 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
 
     // ── 4e. Import issues (upsert via jira_key) ──────────────────────────────
     const jiraKeyToBsId: Record<string, string> = {};
+    // Tracks issues that exist in the DB but were soft-deleted (archived project).
+    // On re-import we restore them and re-create their comments as fresh rows.
+    const jiraKeyWasDeleted: Record<string, boolean> = {};
+    // Collect every org-user ID referenced as assignee/reporter so we can add
+    // them all to project_members at the end (Gap 1 fix).
+    const usedUserIds = new Set<string>();
 
-    // Pre-load any already-imported issues for this project (idempotency)
+    // Pre-load any already-imported issues for this project (idempotency).
+    // Include soft-deleted rows so a re-import after archive restores them.
     try {
       const existing = await db.query(
-        'SELECT id, jira_key FROM issues WHERE project_id = $1 AND jira_key IS NOT NULL',
+        'SELECT id, jira_key, deleted_at FROM issues WHERE project_id = $1 AND jira_key IS NOT NULL',
         [bsProjectId],
       );
       for (const row of existing.rows) {
         jiraKeyToBsId[row.jira_key] = row.id;
+        jiraKeyWasDeleted[row.jira_key] = row.deleted_at !== null;
       }
     } catch {}
 
@@ -1196,6 +1243,10 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
           const assigneeId = assigneeEmail ? (emailToUserId[assigneeEmail] || null) : null;
           const reporterId = reporterEmail ? (emailToUserId[reporterEmail] || userId) : userId;
 
+          // Track every matched user so we can add them to project_members later
+          if (assigneeId) usedUserIds.add(assigneeId);
+          if (reporterId) usedUserIds.add(reporterId);
+
           const storyPoints = typeof fields.customfield_10016 === 'number' ? fields.customfield_10016 : null;
           const timeEstimate = fields.timetracking?.originalEstimateSeconds != null
             ? fields.timetracking.originalEstimateSeconds
@@ -1211,17 +1262,42 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
 
           // Get next issue number atomically (only needed for new rows — existing uses ON CONFLICT UPDATE)
           if (jiraKeyToBsId[jiraIssue.key]) {
-            // Already imported — update in place
+            const existingIssueId = jiraKeyToBsId[jiraIssue.key];
+            const wasDeleted = jiraKeyWasDeleted[jiraIssue.key];
+
+            // Already imported — update in place.
+            // deleted_at = NULL restores the issue when re-importing an archived project.
             await db.query(
               `UPDATE issues SET
                  status_id = $1, assignee_id = $2, title = $3, description = $4,
                  type = $5, priority = $6, story_points = $7, time_estimate = $8,
-                 time_spent = $9, labels = $10, updated_at = $11
+                 time_spent = $9, labels = $10, updated_at = $11,
+                 deleted_at = NULL
                WHERE id = $12`,
               [statusId, assigneeId, fields.summary || jiraIssue.key, description,
                type, priority, storyPoints, timeEstimate, timeSpent, labels, updatedAt,
-               jiraKeyToBsId[jiraIssue.key]],
+               existingIssueId],
             );
+
+            // Re-import comments only when restoring a previously archived issue.
+            // On a normal live-sync we skip comments to avoid duplicates.
+            if (wasDeleted && Array.isArray(fields.comment?.comments)) {
+              for (const comment of fields.comment.comments) {
+                try {
+                  const authorEmail = comment.author?.emailAddress?.toLowerCase();
+                  const authorId = authorEmail ? (emailToUserId[authorEmail] || userId) : userId;
+                  const commentBody = extractDescriptionText(comment.body) || (typeof comment.body === 'string' ? comment.body : '');
+                  const commentCreatedAt = comment.created ? new Date(comment.created) : new Date();
+                  await db.query(
+                    `INSERT INTO comments (issue_id, author_id, content, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $4)
+                     ON CONFLICT DO NOTHING`,
+                    [existingIssueId, authorId, commentBody, commentCreatedAt],
+                  );
+                } catch {}
+              }
+            }
+
             processedIssues++;
           } else {
             // New issue
@@ -1251,7 +1327,8 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
                  time_estimate = EXCLUDED.time_estimate,
                  time_spent = EXCLUDED.time_spent,
                  labels = EXCLUDED.labels,
-                 updated_at = EXCLUDED.updated_at
+                 updated_at = EXCLUDED.updated_at,
+                 deleted_at = NULL
                RETURNING id`,
               [
                 organizationId, bsProjectId, statusId, reporterId, assigneeId,
@@ -1321,6 +1398,9 @@ async function processJiraApiImport(job: Job, db: Pool): Promise<void> {
       }
     }
     console.log(`[ImportWorker]   ${projectKey}: ${linksCreated} parent links created`);
+
+    // ── 4g. Add all referenced users as project members ──────────────────────
+    await ensureProjectMemberships(db, bsProjectId, usedUserIds);
   }
 
   // ── 5. Finalize ──────────────────────────────────────────────────────────────
