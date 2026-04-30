@@ -607,27 +607,27 @@ function AppearanceTab() {
           </div>
         </div>
 
-        {/* Color theme selector */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">Light Theme</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {resolved === 'dark' ? 'Preview shows selected theme (visible in light mode)' : 'Active color scheme for light mode'}
-              </p>
+        {/* Color theme selector — only relevant in light mode */}
+        {resolved !== 'dark' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Light Theme</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Active color scheme for light mode</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {COLOR_THEMES.map((t) => (
+                <ThemeCard
+                  key={t.id}
+                  theme={t}
+                  isActive={colorTheme === t.id}
+                  onSelect={() => setColorTheme(t.id)}
+                />
+              ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {COLOR_THEMES.map((t) => (
-              <ThemeCard
-                key={t.id}
-                theme={t}
-                isActive={colorTheme === t.id}
-                onSelect={() => setColorTheme(t.id)}
-              />
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </>
   )

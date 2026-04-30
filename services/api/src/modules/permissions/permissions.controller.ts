@@ -97,10 +97,13 @@ export class PermissionsController {
     @Param('projectId', ResolveProjectPipe) projectId: string,
     @Param('memberId', ParseUUIDPipe) memberId: string,
     @Body() dto: AssignRoleDto,
+    @CurrentUser() user: any,
   ) {
     const member = await this.permissionsService.assignRoleToMember(
+      projectId,
       memberId,
       dto.roleId,
+      user.id,
     );
     return { data: member };
   }

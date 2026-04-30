@@ -69,7 +69,7 @@ export function Sidebar() {
   const settingsSubNav = [
     { icon: UserCircle, label: 'Profile', href: '/settings' },
     ...(isAdmin ? [{ icon: UsersRound, label: 'Team', href: '/settings/team' }] : []),
-    { icon: CreditCard, label: 'Billing', href: '/settings/billing' },
+    ...(isAdmin ? [{ icon: CreditCard, label: 'Billing', href: '/settings/billing' }] : []),
     ...(isAdmin ? [{ icon: ShieldCheck, label: 'Roles', href: '/settings/roles' }] : []),
     ...(isAdmin ? [{ icon: Upload, label: 'Import', href: '/import' }] : []),
     ...(isAdmin ? [{ icon: ArrowLeftRight, label: 'Migrate from Jira', href: '/settings/migrate/jira' }] : []),

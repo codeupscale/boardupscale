@@ -66,6 +66,14 @@ interface MigrationJobData {
    * migration.
    */
   membersOnly?: boolean;
+  /**
+   * When true, the worker runs Phase 0 before Phase 1: hard-deletes all
+   * existing Jira-sourced projects (scoped to the selected project keys) and
+   * their cascaded data (issues, comments, sprints, attachments, statuses).
+   * Native projects are never touched. Gives a guaranteed clean slate so
+   * comments and attachments are re-imported with proper dedup IDs.
+   */
+  resetBeforeImport?: boolean;
 }
 
 interface JiraCredentials {
@@ -141,6 +149,12 @@ interface RunState {
    * If the worker restarts, Phase 5 falls back to fetching all issues (isResume path).
    */
   issuesNeedingCommentPagination?: Map<string, number>;
+  /**
+   * Total inline comments processed during Phase 4 (not persisted — in-memory only).
+   * Carried forward to Phase 5 so its final counter update adds to, rather than
+   * overwrites, the Phase 4 count.  Zero on resume (Phase 5 re-fetches everything).
+   */
+  inlineCommentsInserted?: number;
 }
 
 // ─── Jira HTTP client (no axios) ─────────────────────────────────────────────
@@ -494,6 +508,79 @@ async function checkCancelled(client: PoolClient, runId: string): Promise<void> 
 }
 
 /**
+ * Ensure state.triggeredById resolves to a real, existing user in the org.
+ *
+ * If the user who triggered the migration has since been deleted, all FK
+ * references to triggeredById (activities, attachments, project members, etc.)
+ * would throw a foreign-key constraint violation and abort the phase.
+ *
+ * Fallback chain:
+ *   1. The original triggeredById exists in users + is org member → keep it.
+ *   2. Fall back to any 'admin' in the org.
+ *   3. Fall back to any org member at all.
+ *   4. Leave as-is (will fail at the FK — at least the error is explicit).
+ */
+async function resolveSafeTriggeredById(
+  client: PoolClient,
+  state: RunState,
+): Promise<void> {
+  if (!state.triggeredById) return;
+
+  const { rows: existing } = await client.query<{ id: string }>(
+    `SELECT u.id FROM users u
+     WHERE u.id = $1
+       AND (u.organization_id = $2
+            OR EXISTS (SELECT 1 FROM organization_members om
+                       WHERE om.user_id = u.id AND om.organization_id = $2))
+     LIMIT 1`,
+    [state.triggeredById, state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (existing[0]) return; // still valid
+
+  // Attempt fallback to an admin in the org
+  const { rows: admins } = await client.query<{ id: string }>(
+    `SELECT u.id FROM users u
+     JOIN organization_members om ON om.user_id = u.id
+     WHERE om.organization_id = $1 AND u.role = 'admin'
+     ORDER BY u.created_at
+     LIMIT 1`,
+    [state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (admins[0]) {
+    console.warn(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found in org — ` +
+      `falling back to admin ${admins[0].id}`,
+    );
+    state.triggeredById = admins[0].id;
+    return;
+  }
+
+  // Final fallback: any org member
+  const { rows: anyMember } = await client.query<{ id: string }>(
+    `SELECT user_id AS id FROM organization_members
+     WHERE organization_id = $1
+     ORDER BY created_at
+     LIMIT 1`,
+    [state.organizationId],
+  ).catch(() => ({ rows: [] as Array<{ id: string }> }));
+
+  if (anyMember[0]) {
+    console.warn(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found — ` +
+      `falling back to first org member ${anyMember[0].id}`,
+    );
+    state.triggeredById = anyMember[0].id;
+  } else {
+    console.error(
+      `[Migration:${state.id}] triggeredById ${state.triggeredById} not found and no org members exist — ` +
+      `FK violations may occur during migration`,
+    );
+  }
+}
+
+/**
  * Retry a phase function up to MAX_PHASE_RETRIES times with exponential backoff.
  * If the phase still fails after all retries the error is recorded but execution
  * continues to the next phase — a single failing phase must not abort the whole job.
@@ -544,7 +631,7 @@ async function runMembersPhase(
     while (hasMore) {
       const page = await jiraGet<typeof users>(
         credentials,
-        `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=false`,
+        `/rest/api/3/users/search?startAt=${startAt}&maxResults=${PAGE_SIZE}&includeInactive=true`,
       );
       if (!Array.isArray(page) || page.length === 0) { hasMore = false; break; }
       users.push(...page);
@@ -577,6 +664,8 @@ async function runMembersPhase(
     role: 'admin' | 'manager' | 'member' | 'viewer';
     accountId: string;
     hasRealEmail: boolean;
+    /** true = active in Jira; false = deactivated/inactive in Jira */
+    isJiraActive: boolean;
   }
   const rowsByEmail = new Map<string, MemberRow>();
   let emailDuplicates = 0;
@@ -591,6 +680,8 @@ async function runMembersPhase(
     const role = (['admin', 'manager', 'member', 'viewer'] as const).includes(mapped as any)
       ? (mapped as MemberRow['role'])
       : 'member';
+    // `active` field is present on Jira Cloud user objects; absent = assume active
+    const isJiraActive = (u as any).active !== false;
     if (rowsByEmail.has(email)) {
       emailDuplicates++;
       // Keep the first one, but if the existing one has no displayName and the
@@ -599,7 +690,7 @@ async function runMembersPhase(
       if (!prev.displayName && displayName) prev.displayName = displayName;
       continue;
     }
-    rowsByEmail.set(email, { email, displayName, role, accountId: u.accountId, hasRealEmail });
+    rowsByEmail.set(email, { email, displayName, role, accountId: u.accountId, hasRealEmail, isJiraActive });
   }
   if (emailDuplicates > 0) {
     const msg = `Collapsed ${emailDuplicates} Jira users sharing an email (kept first per email)`;
@@ -627,8 +718,8 @@ async function runMembersPhase(
 
     chunk.forEach((r, j) => {
       const b = j * 5;
-      // Real-email users: is_active=false (need to accept invite), invitation_status='pending'
-      // Synthetic-email users: is_active=true (appear in dropdowns), invitation_status='none'
+      // Real-email + active/inactive in Jira: is_active=false (invite still needed), invitation_status='pending'
+      // Synthetic-email (GDPR-obscured): is_active=true so they appear in dropdowns, invitation_status='none'
       const isActiveVal = r.hasRealEmail ? 'false' : 'true';
       const invStatus = r.hasRealEmail ? 'pending' : 'none';
       placeholders.push(`(gen_random_uuid(), $${b+1}::text, $${b+2}::text, $${b+3}::uuid, ${isActiveVal}, false, $${b+4}::text, $${b+5}::text, '${invStatus}', NOW(), NOW())`);
@@ -738,18 +829,84 @@ async function runMembersPhase(
     }
   }
 
+  // W-3 (U-06): Backfill jira_account_id on native users who were already in the org
+  // before this migration run. The bulk upsert above handles filteredUsers, but when
+  // selectedMemberIds filters out some Jira users, native users with matching emails
+  // never receive their jira_account_id. Run a bulk UPDATE against ALL Jira users
+  // (not just filteredUsers) to fill the gap.
+  //
+  // Uses unnest($1::text[], $2::text[]) to avoid PostgreSQL's "could not determine
+  // data type of parameter $N" error that occurs with VALUES-derived tables.
+  {
+    const backfillEmails: string[] = [];
+    const backfillAccountIds: string[] = [];
+    for (const u of users) {
+      if (!u.emailAddress || !u.accountId) continue;
+      backfillEmails.push(u.emailAddress.toLowerCase());
+      backfillAccountIds.push(u.accountId);
+    }
+    if (backfillEmails.length > 0) {
+      await client.query(
+        `UPDATE users u
+            SET jira_account_id = v.account_id,
+                updated_at      = NOW()
+           FROM unnest($1::text[], $2::text[]) AS v(email, account_id)
+          WHERE u.email            = v.email
+            AND u.jira_account_id IS NULL`,
+        [backfillEmails, backfillAccountIds],
+      ).catch((err: any) => {
+        console.warn(`[Migration:${state.id}] jira_account_id backfill: ${err.message}`);
+      });
+      console.log(`[Migration:${state.id}] jira_account_id backfill attempted for ${backfillEmails.length} Jira users`);
+    }
+  }
+
+  // W-4 (U-15): Sync email changes — when a Jira user changed their email after the
+  // last migration, our DB has a stale email. Find users by jira_account_id and update
+  // their email so lookup maps stay accurate.
+  {
+    const syncAccountIds: string[] = [];
+    const syncEmails: string[] = [];
+    for (const u of users) {
+      if (!u.emailAddress || !u.accountId) continue;
+      syncAccountIds.push(u.accountId);
+      syncEmails.push(u.emailAddress.toLowerCase());
+    }
+    if (syncAccountIds.length > 0) {
+      await client.query(
+        `UPDATE users u
+            SET email      = v.new_email,
+                updated_at = NOW()
+           FROM unnest($1::text[], $2::text[]) AS v(account_id, new_email)
+          WHERE u.jira_account_id = v.account_id
+            AND u.email           != v.new_email`,
+        [syncAccountIds, syncEmails],
+      ).catch((err: any) => {
+        console.warn(`[Migration:${state.id}] email sync: ${err.message}`);
+      });
+    }
+  }
+
   // Reload ALL org users into lookup maps — covers the case where selectedMemberIds=[]
   // caused filteredUsers to be empty (no upserts ran) but existing DB users must still
   // be available for Phase 4 assignee/reporter resolution.
+  //
+  // We query via organization_members (not users.organization_id) so that users whose
+  // primary tenant differs from this org (e.g. migrated from another workspace and then
+  // added as members) are still included in the accountId / email lookup maps.
   try {
     const { rows: existingUsers } = await client.query<{ id: string; email: string; jira_account_id: string | null }>(
-      `SELECT id, email, jira_account_id FROM users WHERE organization_id = $1`,
+      `SELECT DISTINCT u.id, u.email, u.jira_account_id
+       FROM users u
+       WHERE u.organization_id = $1
+          OR u.id IN (SELECT user_id FROM organization_members WHERE organization_id = $1)`,
       [state.organizationId],
     );
     for (const u of existingUsers) {
       state.jiraUserEmailToLocalId[u.email.toLowerCase()] = u.id;
       if (u.jira_account_id) state.jiraAccountIdToLocalId[u.jira_account_id] = u.id;
     }
+    console.log(`[Migration:${state.id}] Loaded ${existingUsers.length} org users into lookup maps`);
   } catch (err: any) {
     console.warn(`[Migration:${state.id}] Failed to reload user maps from DB: ${err.message}`);
   }
@@ -810,17 +967,13 @@ async function runProjectMemberSyncPhase(
     }
 
     for (const userId of userIds) {
-      const { rows: userRows } = await client.query<{ role: string }>(
-        `SELECT role FROM users WHERE id = $1`,
-        [userId],
-      );
-      const role = userRows[0]?.role || 'member';
-
+      // Always use 'member' as the project role — users.role is a system-level
+      // role (admin/manager/member/viewer) and must not bleed into project membership.
       await client.query(
         `INSERT INTO project_members (id, project_id, user_id, role, created_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, NOW())
+         VALUES (gen_random_uuid(), $1, $2, 'member', NOW())
          ON CONFLICT (project_id, user_id) DO NOTHING`,
-        [project.id, userId, role],
+        [project.id, userId],
       ).catch((err: any) => {
         addError(state, `project_member_sync: project ${project.key} user ${userId}: ${err.message}`);
       });
@@ -920,8 +1073,8 @@ async function runProjectsPhase(
 
       // Step 1 — INSERT (ignore conflict on org+key)
       await client.query(
-        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, type, color, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, 'scrum', $5, NOW(), NOW())
+        `INSERT INTO projects (id, name, key, description, organization_id, owner_id, type, color, jira_project_key, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, '', $3, $4, 'scrum', $5, $2, NOW(), NOW())
          ON CONFLICT (organization_id, key) DO NOTHING`,
         [proj.name || proj.key, proj.key, state.organizationId, state.triggeredById, projectColor],
       ).catch((err: any) => addError(state, `project insert ${proj.key}: ${err.message}`));
@@ -938,13 +1091,18 @@ async function runProjectsPhase(
         continue;
       }
 
-      // Step 3 — Patch name, color, and status on the existing row.
+      // Step 3 — Patch name, color, status, and jira_project_key on the existing row.
       // Always reset status to 'active' so previously-archived projects become visible again.
+      // Set jira_project_key so native projects that were merged with a Jira project get tagged.
       await client.query(
         `UPDATE projects
-            SET name = $1, color = COALESCE(color, $2::varchar), status = 'active', updated_at = NOW()
+            SET name             = $1,
+                color            = COALESCE(color, $2::varchar),
+                status           = 'active',
+                jira_project_key = $4,
+                updated_at       = NOW()
           WHERE id = $3::uuid`,
-        [proj.name || proj.key, projectColor, projectId],
+        [proj.name || proj.key, projectColor, projectId, proj.key],
       ).catch((err: any) => addError(state, `project patch ${proj.key}: ${err.message}`));
 
       // Step 4 — Ensure the migration owner is a project member so they can see it.
@@ -1235,41 +1393,63 @@ async function runSprintsPhase(
 
       for (const sprint of sprints) {
         try {
-          // sprints table: id, project_id, name, goal, status, start_date, end_date, completed_at, created_at, updated_at
           const sprintStatus = sprint.state === 'active' ? 'active' : sprint.state === 'closed' ? 'completed' : 'planned';
-          // completed_at: use endDate when available for closed sprints, otherwise NOW()
           const completedAt = sprintStatus === 'completed'
             ? (sprint.endDate ?? 'NOW()')
             : null;
-          const { rows } = await client.query<{ id: string }>(
-            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-             SELECT gen_random_uuid(), $1::text, $2::text, $3::text,
-                    $4::date, $5::date,
-                    $6::timestamp,
-                    $7::uuid, NOW(), NOW()
-             WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $7::uuid AND name = $1::text)
-             RETURNING id`,
-            [
-              sprint.name,
-              sprintStatus,
-              sprint.goal ?? null,
-              sprint.startDate ? sprint.startDate.substring(0, 10) : null,
-              sprint.endDate ? sprint.endDate.substring(0, 10) : null,
-              completedAt,
-              projectId,
-            ],
+          const sprintParams = [
+            sprint.id,   // $1 jira_sprint_id (int)
+            sprintStatus,
+            sprint.goal ?? null,
+            sprint.startDate ? sprint.startDate.substring(0, 10) : null,
+            sprint.endDate ? sprint.endDate.substring(0, 10) : null,
+            completedAt,
+            projectId,
+            sprint.name,
+          ];
+
+          // Step A: backfill legacy rows (no jira_sprint_id) matched by name, updating
+          // all metadata so a re-migration after archive refreshes sprint state/dates.
+          const { rows: backfilled } = await client.query<{ id: string }>(
+            `UPDATE sprints
+                SET jira_sprint_id = $1::int,
+                    status         = $2::text,
+                    goal           = $3::text,
+                    start_date     = $4::date,
+                    end_date       = $5::date,
+                    completed_at   = $6::timestamp,
+                    updated_at     = NOW()
+              WHERE project_id    = $7::uuid
+                AND name          = $8::text
+                AND jira_sprint_id IS NULL
+              RETURNING id`,
+            sprintParams,
           );
 
-          if (rows[0]) {
-            state.jiraSprintIdToLocalId[String(sprint.id)] = rows[0].id;
-            processedSprints++;
-          } else {
-            // Sprint already exists — look up its ID
-            const { rows: existing } = await client.query<{ id: string }>(
-              `SELECT id FROM sprints WHERE project_id = $1 AND name = $2 LIMIT 1`,
-              [projectId, sprint.name],
+          let sprintLocalId: string | undefined = backfilled[0]?.id;
+
+          if (!sprintLocalId) {
+            // Step B: true upsert by jira_sprint_id — covers first import (INSERT) and
+            // subsequent re-migrations (ON CONFLICT → DO UPDATE refreshes metadata).
+            const { rows } = await client.query<{ id: string }>(
+              `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, jira_sprint_id, created_at, updated_at)
+               VALUES (gen_random_uuid(), $8::text, $2::text, $3::text, $4::date, $5::date, $6::timestamp, $7::uuid, $1::int, NOW(), NOW())
+               ON CONFLICT (project_id, jira_sprint_id) WHERE jira_sprint_id IS NOT NULL DO UPDATE SET
+                 name         = EXCLUDED.name,
+                 status       = EXCLUDED.status,
+                 goal         = EXCLUDED.goal,
+                 start_date   = EXCLUDED.start_date,
+                 end_date     = EXCLUDED.end_date,
+                 completed_at = EXCLUDED.completed_at,
+                 updated_at   = NOW()
+               RETURNING id`,
+              sprintParams,
             );
-            if (existing[0]) state.jiraSprintIdToLocalId[String(sprint.id)] = existing[0].id;
+            sprintLocalId = rows[0]?.id;
+          }
+
+          if (sprintLocalId) {
+            state.jiraSprintIdToLocalId[String(sprint.id)] = sprintLocalId;
             processedSprints++;
           }
         } catch (err: any) {
@@ -1329,6 +1509,9 @@ async function runIssuesPhase(
   let failedIssues = 0;
   // Count sprints created inline (Phase 3 may have been skipped due to 401 from Agile API).
   let inlineSprintsCreated = 0;
+  // Running count of inline comments inserted/updated during Phase 4.
+  // Passed to Phase 5 so the final counter update does not reset it to 0.
+  let inlineCommentCount = 0;
   // Dedicated issue error log — never evicted by comment errors in the shared 100-slot ring buffer.
   const issueErrors: string[] = [];
 
@@ -1400,49 +1583,79 @@ async function runIssuesPhase(
 
       if (newSprintsById.size > 0) {
         const sprintEntries = [...newSprintsById.entries()];
-        const spPlaceholders: string[] = [];
-        const spParams: unknown[] = [projectId];
-        sprintEntries.forEach(([, sp], j) => {
-          const b = j * 6 + 2;
-          const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
-          const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
-          spPlaceholders.push(`($${b}::text, $${b+1}::text, $${b+2}::text, $${b+3}::date, $${b+4}::date, $${b+5}::timestamp)`);
-          spParams.push(
-            sp.name, spStatus, sp.goal ?? null,
-            sp.startDate ? sp.startDate.substring(0, 10) : null,
-            sp.endDate ? sp.endDate.substring(0, 10) : null,
-            completedAt,
-          );
+
+        // ── Step A: backfill legacy rows (jira_sprint_id IS NULL) matched by name ──
+        // Handles the transition from the old name-dedup approach; also updates
+        // sprint metadata (status/dates) so re-migration after archive reflects
+        // the current Jira state.
+        const bfPlaceholders: string[] = [];
+        const bfParams: unknown[] = [projectId];
+        sprintEntries.forEach(([jiraId, sp], j) => {
+          const b = j * 2 + 2;
+          bfPlaceholders.push(`($${b}::int, $${b+1}::text)`);
+          bfParams.push(Number(jiraId), sp.name);
         });
 
-        const { rows: insertedSprints } = await client.query<{ id: string; name: string }>(
-          `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, created_at, updated_at)
-           SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, NOW(), NOW()
-           FROM (VALUES ${spPlaceholders.join(', ')}) AS v(name, status, goal, start_date, end_date, completed_at)
-           WHERE NOT EXISTS (SELECT 1 FROM sprints WHERE project_id = $1::uuid AND name = v.name)
-           RETURNING id, name`,
-          spParams,
-        ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+        const { rows: backfilled } = await client.query<{ id: string; jira_sprint_id: number }>(
+          `UPDATE sprints s
+              SET jira_sprint_id = v.jira_sprint_id
+             FROM (VALUES ${bfPlaceholders.join(', ')}) AS v(jira_sprint_id, name)
+            WHERE s.project_id    = $1::uuid
+              AND s.name          = v.name
+              AND s.jira_sprint_id IS NULL
+           RETURNING s.id, s.jira_sprint_id`,
+          bfParams,
+        ).catch(() => ({ rows: [] as any[] }));
 
-        inlineSprintsCreated += insertedSprints.length;
-
-        const nameToId = new Map<string, string>(insertedSprints.map(r => [r.name, r.id] as [string, string]));
-
-        // Fetch IDs for sprints that already existed (not returned by INSERT)
-        const insertedNames = new Set(insertedSprints.map(r => r.name));
-        const existingNames = sprintEntries.map(([, sp]) => sp.name).filter(n => !insertedNames.has(n));
-        if (existingNames.length > 0) {
-          const { rows: existingSprints } = await client.query<{ id: string; name: string }>(
-            `SELECT id, name FROM sprints WHERE project_id = $1 AND name = ANY($2::text[])`,
-            [projectId, existingNames],
-          ).catch(() => ({ rows: [] as any[] }));
-          for (const r of existingSprints) nameToId.set(r.name, r.id);
+        const backfilledJiraIds = new Set<string>();
+        for (const r of backfilled) {
+          const jiraId = String(r.jira_sprint_id);
+          state.jiraSprintIdToLocalId[jiraId] = r.id;
+          backfilledJiraIds.add(jiraId);
         }
 
-        for (const [jiraId, sp] of sprintEntries) {
-          const localId = nameToId.get(sp.name) ?? undefined;
-          if (localId) state.jiraSprintIdToLocalId[jiraId] = localId;
+        // ── Step B: upsert remaining sprints by jira_sprint_id ───────────────────
+        // Covers first import (INSERT new row) and re-migrations where jira_sprint_id
+        // is already set (ON CONFLICT → DO UPDATE refreshes status/dates/goal).
+        const remainingEntries = sprintEntries.filter(([jiraId]) => !backfilledJiraIds.has(jiraId));
+        if (remainingEntries.length > 0) {
+          const spPlaceholders: string[] = [];
+          const spParams: unknown[] = [projectId];
+          remainingEntries.forEach(([jiraId, sp], j) => {
+            const b = j * 7 + 2;
+            const spStatus = sp.state === 'active' ? 'active' : sp.state === 'closed' ? 'completed' : 'planned';
+            const completedAt = spStatus === 'completed' ? (sp.endDate ? sp.endDate.substring(0, 10) : null) : null;
+            spPlaceholders.push(`($${b}::int, $${b+1}::text, $${b+2}::text, $${b+3}::text, $${b+4}::date, $${b+5}::date, $${b+6}::timestamp)`);
+            spParams.push(
+              Number(jiraId), sp.name, spStatus, sp.goal ?? null,
+              sp.startDate ? sp.startDate.substring(0, 10) : null,
+              sp.endDate ? sp.endDate.substring(0, 10) : null,
+              completedAt,
+            );
+          });
+
+          const { rows: upsertedSprints } = await client.query<{ id: string; jira_sprint_id: number }>(
+            `INSERT INTO sprints (id, name, status, goal, start_date, end_date, completed_at, project_id, jira_sprint_id, created_at, updated_at)
+             SELECT gen_random_uuid(), v.name, v.status, v.goal, v.start_date, v.end_date, v.completed_at, $1::uuid, v.jira_sprint_id, NOW(), NOW()
+             FROM (VALUES ${spPlaceholders.join(', ')}) AS v(jira_sprint_id, name, status, goal, start_date, end_date, completed_at)
+             ON CONFLICT (project_id, jira_sprint_id) WHERE jira_sprint_id IS NOT NULL DO UPDATE SET
+               name         = EXCLUDED.name,
+               status       = EXCLUDED.status,
+               goal         = EXCLUDED.goal,
+               start_date   = EXCLUDED.start_date,
+               end_date     = EXCLUDED.end_date,
+               completed_at = EXCLUDED.completed_at,
+               updated_at   = NOW()
+             RETURNING id, jira_sprint_id`,
+            spParams,
+          ).catch((err: any) => { addError(state, `sprints bulk insert: ${err.message}`); return { rows: [] as any[] }; });
+
+          for (const r of upsertedSprints) {
+            state.jiraSprintIdToLocalId[String(r.jira_sprint_id)] = r.id;
+          }
+          inlineSprintsCreated += upsertedSprints.length;
         }
+        inlineSprintsCreated += backfilled.length;
       }
 
       // ── Bulk-insert all issues in this page ──────────────────────────────────
@@ -1468,13 +1681,29 @@ async function runIssuesPhase(
           const projectStatuses = state.projectStatusMap[projectId] ?? {};
           const statusMapping = state.statusMapping ?? {};
           const mappedStatusName = (statusMapping[jiraStatusName] ?? jiraStatusName).trim();
+          // Level 1: exact name match (Jira name or user-mapped name)
           let statusId = projectStatuses[jiraStatusName] ?? projectStatuses[mappedStatusName] ?? null;
           if (!statusId) {
+            // Level 2: any 'todo' category status for this project
             const { rows: fallbackRows } = await client.query<{ id: string }>(
               `SELECT id FROM issue_statuses WHERE project_id = $1 AND category = 'todo' ORDER BY position LIMIT 1`,
               [projectId],
             );
             statusId = fallbackRows[0]?.id ?? null;
+          }
+          if (!statusId) {
+            // Level 3: any status for this project (catch-all)
+            const { rows: anyStatusRows } = await client.query<{ id: string }>(
+              `SELECT id FROM issue_statuses WHERE project_id = $1 ORDER BY position LIMIT 1`,
+              [projectId],
+            );
+            statusId = anyStatusRows[0]?.id ?? null;
+          }
+          if (!statusId) {
+            // Level 4: no statuses at all for this project — skip the issue and log loudly
+            addError(state, `issue ${issue.key}: no statuses found for project ${projectId} — skipping`);
+            failedIssues++;
+            continue;
           }
 
           const assigneeAccountId = fields.assignee?.accountId;
@@ -1610,20 +1839,21 @@ async function runIssuesPhase(
              FROM incoming
            ) i
            ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
-             title         = EXCLUDED.title,
-             description   = EXCLUDED.description,
-             type          = EXCLUDED.type,
-             priority      = EXCLUDED.priority,
-             status_id     = EXCLUDED.status_id,
-             assignee_id   = EXCLUDED.assignee_id,
-             reporter_id   = EXCLUDED.reporter_id,
-             sprint_id     = EXCLUDED.sprint_id,
-             labels        = EXCLUDED.labels,
-             story_points  = EXCLUDED.story_points,
-             time_estimate = EXCLUDED.time_estimate,
+             title         = CASE WHEN 'title'         = ANY(issues.locked_fields) THEN issues.title         ELSE EXCLUDED.title         END,
+             description   = CASE WHEN 'description'   = ANY(issues.locked_fields) THEN issues.description   ELSE EXCLUDED.description   END,
+             type          = CASE WHEN 'type'           = ANY(issues.locked_fields) THEN issues.type           ELSE EXCLUDED.type           END,
+             priority      = CASE WHEN 'priority'       = ANY(issues.locked_fields) THEN issues.priority       ELSE EXCLUDED.priority       END,
+             status_id     = CASE WHEN 'status_id'      = ANY(issues.locked_fields) THEN issues.status_id      ELSE EXCLUDED.status_id      END,
+             assignee_id   = CASE WHEN 'assignee_id'    = ANY(issues.locked_fields) THEN issues.assignee_id    ELSE EXCLUDED.assignee_id    END,
+             reporter_id   = CASE WHEN 'reporter_id'    = ANY(issues.locked_fields) THEN issues.reporter_id    ELSE EXCLUDED.reporter_id    END,
+             sprint_id     = CASE WHEN 'sprint_id'      = ANY(issues.locked_fields) THEN issues.sprint_id      ELSE EXCLUDED.sprint_id      END,
+             labels        = CASE WHEN 'labels'         = ANY(issues.locked_fields) THEN issues.labels         ELSE EXCLUDED.labels         END,
+             story_points  = CASE WHEN 'story_points'   = ANY(issues.locked_fields) THEN issues.story_points   ELSE EXCLUDED.story_points   END,
+             time_estimate = CASE WHEN 'time_estimate'  = ANY(issues.locked_fields) THEN issues.time_estimate  ELSE EXCLUDED.time_estimate  END,
              time_spent    = EXCLUDED.time_spent,
-             due_date      = EXCLUDED.due_date,
-             updated_at    = EXCLUDED.updated_at
+             due_date      = CASE WHEN 'due_date'       = ANY(issues.locked_fields) THEN issues.due_date       ELSE EXCLUDED.due_date       END,
+             updated_at    = EXCLUDED.updated_at,
+             deleted_at    = NULL
            RETURNING id, jira_key`;
 
         let bulkInsertFailed = false;
@@ -1667,20 +1897,21 @@ async function runIssuesPhase(
                    $11::text, $12::text[], $13::numeric, $14::int, $15::int,
                    COALESCE($16::timestamptz, NOW()), COALESCE($17::timestamptz, NOW()), $18::date
                  ON CONFLICT (project_id, jira_key) WHERE jira_key IS NOT NULL DO UPDATE SET
-                   title         = EXCLUDED.title,
-                   description   = EXCLUDED.description,
-                   type          = EXCLUDED.type,
-                   priority      = EXCLUDED.priority,
-                   status_id     = EXCLUDED.status_id,
-                   assignee_id   = EXCLUDED.assignee_id,
-                   reporter_id   = EXCLUDED.reporter_id,
-                   sprint_id     = EXCLUDED.sprint_id,
-                   labels        = EXCLUDED.labels,
-                   story_points  = EXCLUDED.story_points,
-                   time_estimate = EXCLUDED.time_estimate,
+                   title         = CASE WHEN 'title'         = ANY(issues.locked_fields) THEN issues.title         ELSE EXCLUDED.title         END,
+                   description   = CASE WHEN 'description'   = ANY(issues.locked_fields) THEN issues.description   ELSE EXCLUDED.description   END,
+                   type          = CASE WHEN 'type'           = ANY(issues.locked_fields) THEN issues.type           ELSE EXCLUDED.type           END,
+                   priority      = CASE WHEN 'priority'       = ANY(issues.locked_fields) THEN issues.priority       ELSE EXCLUDED.priority       END,
+                   status_id     = CASE WHEN 'status_id'      = ANY(issues.locked_fields) THEN issues.status_id      ELSE EXCLUDED.status_id      END,
+                   assignee_id   = CASE WHEN 'assignee_id'    = ANY(issues.locked_fields) THEN issues.assignee_id    ELSE EXCLUDED.assignee_id    END,
+                   reporter_id   = CASE WHEN 'reporter_id'    = ANY(issues.locked_fields) THEN issues.reporter_id    ELSE EXCLUDED.reporter_id    END,
+                   sprint_id     = CASE WHEN 'sprint_id'      = ANY(issues.locked_fields) THEN issues.sprint_id      ELSE EXCLUDED.sprint_id      END,
+                   labels        = CASE WHEN 'labels'         = ANY(issues.locked_fields) THEN issues.labels         ELSE EXCLUDED.labels         END,
+                   story_points  = CASE WHEN 'story_points'   = ANY(issues.locked_fields) THEN issues.story_points   ELSE EXCLUDED.story_points   END,
+                   time_estimate = CASE WHEN 'time_estimate'  = ANY(issues.locked_fields) THEN issues.time_estimate  ELSE EXCLUDED.time_estimate  END,
                    time_spent    = EXCLUDED.time_spent,
-                   due_date      = EXCLUDED.due_date,
-                   updated_at    = EXCLUDED.updated_at
+                   due_date      = CASE WHEN 'due_date'       = ANY(issues.locked_fields) THEN issues.due_date       ELSE EXCLUDED.due_date       END,
+                   updated_at    = EXCLUDED.updated_at,
+                   deleted_at    = NULL
                  RETURNING id, jira_key`,
                 [
                   projectId, state.organizationId,
@@ -1794,9 +2025,15 @@ async function runIssuesPhase(
             const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
               ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
               ?? state.triggeredById;
-            if (!authorId) continue;
+            // W-7 (C-07): log when all author lookups exhaust — don't silently discard
+            if (!authorId) {
+              addError(state, `inline comment on ${issue.key} (author=${authorAccountId ?? authorEmail ?? 'unknown'}) skipped: author not found in org`);
+              continue;
+            }
             const body = extractDescription(comment.body) ?? '';
-            const jiraCommentId: string | null = comment.id ?? null;
+            // W-8 (C-08): use syntheticCommentId when Jira omits comment.id (old Server)
+            const jiraCommentId: string =
+              comment.id ?? syntheticCommentId(issue.key, comment.created ?? null, authorId);
             const j = commentPlaceholders.length;
             commentPlaceholders.push(
               `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
@@ -1809,9 +2046,11 @@ async function runIssuesPhase(
             `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${commentPlaceholders.join(', ')}
              ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
-             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW(), deleted_at = NULL`,
             commentParams,
           ).catch((err: any) => addError(state, `inline comments bulk insert page ${proj.key}@page${pageNumber}: ${err.message}`));
+          // Track for counter — counts both INSERT and ON CONFLICT DO UPDATE rows.
+          inlineCommentCount += commentPlaceholders.length;
         }
       }
 
@@ -1930,16 +2169,22 @@ async function runIssuesPhase(
     );
   }
 
+  // Persist the inline comment count so Phase 5 can add to it rather than reset.
+  state.inlineCommentsInserted = inlineCommentCount;
+
   await updateRunProgress(client, state.id, {
     totalIssues,
     processedIssues,
     failedIssues,
     processedSprints: inlineSprintsCreated,
     totalSprints: inlineSprintsCreated,
+    // Seed comment counters with inline totals — Phase 5 will add overflow counts on top.
+    totalComments: inlineCommentCount,
+    processedComments: inlineCommentCount,
     completedPhase: PHASE_ISSUES,
   }, io);
 
-  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints`);
+  console.log(`[Migration:${state.id}] Phase 4 done — ${processedIssues}/${totalIssues} issues, ${failedIssues} failed, ${inlineSprintsCreated} inline sprints, ${inlineCommentCount} inline comments`);
 }
 
 async function linkParentIssues(
@@ -2050,12 +2295,44 @@ async function runCommentsPhase(
     }
   }
 
-  console.log(
-    `[Migration:${state.id}] Phase 5 — ${workList.length} issues to paginate (resume=${isResume})`,
-  );
+  // When Phase 4 ran in this process but produced an empty worklist (no overflow issues)
+  // AND no inline comments were found at all, Jira likely did not include the `comment`
+  // field in its JQL response (common in some Jira Cloud configurations). In that case
+  // fall back to fetching comments for every issue individually, just like the resume path.
+  const jiraOmittedInlineComments =
+    !isResume &&
+    workList.length === 0 &&
+    (state.inlineCommentsInserted ?? 0) === 0 &&
+    Object.keys(state.jiraIssueKeyToLocalId).length > 0;
 
-  let totalComments = 0;
-  let processedComments = 0;
+  if (jiraOmittedInlineComments) {
+    for (const [jiraKey, localIssueId] of Object.entries(state.jiraIssueKeyToLocalId)) {
+      workList.push({ jiraKey, localIssueId, startAt: 0 });
+    }
+  }
+
+  if (isResume) {
+    console.log(
+      `[Migration:${state.id}] Phase 5 — RESUME path: re-fetching ALL ${workList.length} issues from startAt=0 ` +
+      `(Phase 4 ran in a previous process; in-memory issuesNeedingCommentPagination was lost)`,
+    );
+  } else if (jiraOmittedInlineComments) {
+    console.log(
+      `[Migration:${state.id}] Phase 5 — FALLBACK path: Jira did not return inline comment data in JQL response; ` +
+      `re-fetching comments for all ${workList.length} issues individually`,
+    );
+  } else {
+    const overflowCount = state.issuesNeedingCommentPagination?.size ?? 0;
+    console.log(
+      `[Migration:${state.id}] Phase 5 — normal path: paginating ${overflowCount} issues with overflow comments ` +
+      `(${workList.length} total in worklist), ${state.inlineCommentsInserted ?? 0} already inserted inline`,
+    );
+  }
+
+  // Seed from Phase 4's inline count so we don't overwrite it with 0 at the end.
+  // On resume (worker restart), inlineCommentsInserted is undefined — start from 0.
+  let totalComments = state.inlineCommentsInserted ?? 0;
+  let processedComments = state.inlineCommentsInserted ?? 0;
   const COMMENT_PAGE = 100;
   const FLUSH_EVERY = 10;
 
@@ -2097,10 +2374,15 @@ async function runCommentsPhase(
           const authorId = (authorAccountId && state.jiraAccountIdToLocalId[authorAccountId])
             ?? (authorEmail && state.jiraUserEmailToLocalId[authorEmail])
             ?? state.triggeredById;
-          // Safety net: if all fallbacks are exhausted (triggeredById somehow null), skip this comment.
-          if (!authorId) continue;
+          // W-7 (C-07): log when all fallbacks are exhausted — don't silently discard
+          if (!authorId) {
+            addError(state, `comment on ${item.jiraKey} (author=${authorAccountId ?? authorEmail ?? 'unknown'}) skipped: author not found in org`);
+            continue;
+          }
           const body = extractDescription(comment.body) ?? '';
-          const jiraCommentId: string | null = comment.id ?? null;
+          // W-8 (C-08): use syntheticCommentId when Jira omits comment.id (old Server)
+          const jiraCommentId: string =
+            comment.id ?? syntheticCommentId(item.jiraKey, comment.created ?? null, authorId);
           const j = placeholders.length;
           placeholders.push(
             `(gen_random_uuid(), $${j*5+1}::text, $${j*5+2}::uuid, $${j*5+3}::uuid, COALESCE($${j*5+4}::timestamptz, NOW()), NOW(), $${j*5+5}::varchar)`,
@@ -2112,7 +2394,7 @@ async function runCommentsPhase(
             `INSERT INTO comments (id, content, issue_id, author_id, created_at, updated_at, jira_comment_id)
              VALUES ${placeholders.join(', ')}
              ON CONFLICT (issue_id, jira_comment_id) WHERE jira_comment_id IS NOT NULL
-             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()`,
+             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW(), deleted_at = NULL`,
             params,
           ).catch((err: any) => addError(state, `comments bulk insert ${item.jiraKey}: ${err.message}`));
           processedComments += placeholders.length;
@@ -2617,13 +2899,14 @@ async function runAttachmentsPhase(
         continue;
       }
 
-      // Insert attachment record (ON CONFLICT DO NOTHING = last-resort dedup)
+      // Insert attachment record — dedup is per-issue so the same Jira attachment
+      // ID can legitimately exist for different orgs (multi-tenant safe).
       await client.query(
         `INSERT INTO attachments
            (id, issue_id, uploaded_by, file_name, file_size, mime_type,
             storage_key, storage_bucket, jira_attachment_id)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (jira_attachment_id) WHERE jira_attachment_id IS NOT NULL DO NOTHING`,
+         ON CONFLICT (issue_id, jira_attachment_id) WHERE jira_attachment_id IS NOT NULL DO NOTHING`,
         [
           randomUUID(),
           row.local_issue_id,
@@ -2732,6 +3015,29 @@ async function runRepairPhase(
   console.log(`[Migration:${state.id}] Phase 7 — membership repair complete`);
 }
 
+// ─── Comment helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Returns a deterministic comment ID for upsert purposes.
+ *
+ * Some old Jira Server instances omit the comment `id` field entirely.
+ * Without an ID the ON CONFLICT (issue_id, jira_comment_id) WHERE NOT NULL
+ * clause never fires, so re-migration duplicates every such comment.
+ *
+ * We derive a stable synthetic ID from issueKey + createdAt + authorId so
+ * re-imports produce the same ID and the ON CONFLICT hits correctly.
+ * The "synthetic_" prefix prevents collisions with real Jira numeric IDs.
+ */
+function syntheticCommentId(
+  issueKey: string,
+  createdAt: string | null | undefined,
+  authorId: string,
+): string {
+  const raw = `${issueKey}|${createdAt ?? ''}|${authorId}`;
+  const hash = crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16);
+  return `synthetic_${hash}`;
+}
+
 // ─── Mapping helpers ──────────────────────────────────────────────────────────
 
 function mapIssueType(name?: string): string {
@@ -2770,7 +3076,14 @@ async function processJob(
   io: IORedis | null,
 ): Promise<void> {
   // selectedMemberIds: null/undefined = import all, [] = import none, [...ids] = specific filter
-  const { runId, organizationId, connectionId, selectedMemberIds = null, membersOnly = false } = job.data;
+  const {
+    runId,
+    organizationId,
+    connectionId,
+    selectedMemberIds = null,
+    membersOnly = false,
+    resetBeforeImport = false,
+  } = job.data;
 
   console.log(`[Migration] Starting job for run ${runId} (attempt ${(job.attemptsMade ?? 0) + 1})`);
 
@@ -2801,6 +3114,37 @@ async function processJob(
       }, io);
 
       const completed = new Set<number>(state.completedPhases ?? []);
+
+      // ── Resolve triggeredById before any phase runs ──────────────────────────
+      // Ensures the user who triggered the migration still exists. If they were
+      // deleted, fall back to an org admin / any org member so FK constraints
+      // don't abort phases.
+      await resolveSafeTriggeredById(progressClient, state);
+
+      // ── Phase 0 — reset (optional) ───────────────────────────────────────────
+      // Hard-deletes existing Jira-sourced projects for the selected keys before
+      // re-importing, giving a guaranteed clean slate. All child data (issues,
+      // comments, sprints, attachments, statuses) is removed via FK CASCADE.
+      // Native projects (jira_project_key IS NULL) are never touched.
+      // Only runs when resetBeforeImport = true AND Phase 1 hasn't completed yet
+      // (idempotent: no double-delete on retry after Phase 1 completes).
+      if (resetBeforeImport && !completed.has(PHASE_MEMBERS)) {
+        const selectedKeys = (state.selectedProjects ?? []).map((p) => p.key);
+        if (selectedKeys.length > 0) {
+          const { rowCount } = await progressClient.query(
+            `DELETE FROM projects
+             WHERE organization_id = $1
+               AND jira_project_key = ANY($2::text[])`,
+            [organizationId, selectedKeys],
+          );
+          console.log(
+            `[Migration:${runId}] Phase 0 — reset: hard-deleted ${rowCount ?? 0} Jira project(s) ` +
+            `(${selectedKeys.join(', ')}) and all cascaded data`,
+          );
+        } else {
+          console.log(`[Migration:${runId}] Phase 0 — reset: no projects selected, skipping`);
+        }
+      }
 
       // ── Phase 1 — members ────────────────────────────────────────────────────
       if (!completed.has(PHASE_MEMBERS)) {

@@ -10,7 +10,7 @@ import { LoadingPage } from '@/components/ui/spinner'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { Toaster } from '@/components/ui/sonner'
-import { CommandPalette } from './command-palette'
+import { SearchModal } from './search-modal'
 import { ProjectChat } from '@/components/chat/ProjectChat'
 import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
 import { MessagingToggleButton } from '@/components/messaging/MessagingToggleButton'
@@ -71,7 +71,7 @@ export function AppLayout() {
         </main>
       </div>
       <Toaster position="bottom-right" richColors />
-      <CommandPalette />
+      <SearchModal />
       <ProjectChat />
       <HelpSupportPanel />
       <MessagingToggleButton />

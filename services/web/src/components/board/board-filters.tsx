@@ -59,8 +59,9 @@ export function BoardQuickFilters({
     if (filters.search) count++
     if (filters.sprintId) count++
     if (filters.label) count++
+    if (groupBy !== 'none') count++
     return count
-  }, [filters])
+  }, [filters, groupBy])
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -98,7 +99,8 @@ export function BoardQuickFilters({
   const clearAllFilters = useCallback(() => {
     setSearchValue('')
     onFiltersChange({})
-  }, [onFiltersChange])
+    onGroupByChange('none')
+  }, [onFiltersChange, onGroupByChange])
 
   const setFilter = useCallback(
     (key: keyof BoardFilters, value: string | undefined) => {

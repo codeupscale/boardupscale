@@ -46,6 +46,19 @@ export class PermissionsService {
     return user.role === 'admin' || user.role === 'owner';
   }
 
+  private async isOrgOwner(userId: string, organizationId: string): Promise<boolean> {
+    if (!userId || !organizationId) return false;
+    const membership = await this.orgMemberRepo.findOne({
+      where: { userId, organizationId },
+    });
+    if (membership) {
+      return membership.role === 'owner';
+    }
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.organizationId !== organizationId) return false;
+    return user.role === 'owner';
+  }
+
   /**
    * List all available permissions.
    */
@@ -171,15 +184,44 @@ export class PermissionsService {
    * Assign a role to a project member.
    */
   async assignRoleToMember(
+    projectId: string,
     projectMemberId: string,
     roleId: string,
+    actorUserId?: string,
   ): Promise<ProjectMember> {
+    const project = await this.resolveProject(projectId);
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const actorIsAdminOrOwner = actorUserId
+      ? await this.isOrgAdminOrOwner(actorUserId, project.organizationId)
+      : false;
+    if (!actorIsAdminOrOwner) {
+      throw new ForbiddenException('Only organization admins can change roles');
+    }
+
     const member = await this.projectMemberRepo.findOne({
       where: { id: projectMemberId },
       relations: ['user', 'assignedRole'],
     });
     if (!member) {
       throw new NotFoundException('Project member not found');
+    }
+    if (member.projectId !== project.id) {
+      throw new ForbiddenException('Project member does not belong to this project');
+    }
+    if (actorUserId && member.userId === actorUserId) {
+      throw new ForbiddenException('Cannot change your own role');
+    }
+    const targetIsOwner = await this.isOrgOwner(member.userId, project.organizationId);
+    if (targetIsOwner) {
+      const actorIsOwner = actorUserId
+        ? await this.isOrgOwner(actorUserId, project.organizationId)
+        : false;
+      if (!actorIsOwner) {
+        throw new ForbiddenException('Cannot change organization owner role');
+      }
     }
 
     const role = await this.getRoleById(roleId);

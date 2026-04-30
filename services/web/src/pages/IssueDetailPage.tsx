@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { getSocket } from '@/lib/socket'
 import {
@@ -9,6 +9,7 @@ import {
   Plus,
   X,
   ChevronRight,
+  ChevronLeft,
   MessageSquare,
   History,
   ListTree,
@@ -309,6 +310,7 @@ function SectionHeader({
 export function IssueDetailPage() {
   const { t } = useTranslation()
   const { id: issueId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
   const qc = useQueryClient()
 
@@ -419,6 +421,20 @@ export function IssueDetailPage() {
     <ContentFade className="h-full"><div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
       <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1)
+              return
+            }
+            navigate(issue.projectId ? `/projects/${issue.projectId}/board` : '/projects')
+          }}
+          aria-label={t('common.back', 'Back')}
+          className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
         <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">
           {t('nav.projects')}
         </Link>

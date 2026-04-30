@@ -19,9 +19,10 @@ import {
   Pencil,
   Check,
   X,
+  User as UserIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useProject, useProjects } from '@/hooks/useProjects'
+import { useProject, useProjects, useProjectMembers } from '@/hooks/useProjects'
 import {
   useSprints,
   useCreateSprint,
@@ -35,7 +36,7 @@ import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { useSelectionStore } from '@/store/selection.store'
-import { SprintStatus, Issue } from '@/types'
+import { SprintStatus, Issue, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,13 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import { DatePicker } from '@/components/ui/date-picker'
 import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -79,16 +87,23 @@ function DraggableIssueRow({
   selectable,
   statuses,
   onUpdateIssue,
+  members,
+  inlineEdit = false,
 }: {
   issue: Issue
   index: number
   selectable?: boolean
   statuses?: Array<{ id: string; name: string }>
   onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
+  members?: User[]
+  inlineEdit?: boolean
 }) {
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
   const isSelected = selectedIssueIds.has(issue.id)
+  const selectedAssignee = issue.assigneeId
+    ? (issue.assignee ?? members?.find((m) => m.id === issue.assigneeId) ?? null)
+    : null
 
   return (
     <Draggable draggableId={issue.id} index={index}>
@@ -161,7 +176,7 @@ function DraggableIssueRow({
 
           {/* Status — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
-            {statuses && onUpdateIssue ? (
+            {inlineEdit && statuses && onUpdateIssue ? (
               <Select
                 value={issue.statusId || ''}
                 onValueChange={(v) => onUpdateIssue(issue.id, { statusId: v })}
@@ -169,7 +184,7 @@ function DraggableIssueRow({
                 <SelectTrigger className="text-xs py-1 h-auto">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="min-w-[200px]">
                   {statuses.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -182,7 +197,7 @@ function DraggableIssueRow({
 
           {/* Due Date — inline editable */}
           <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
-            {onUpdateIssue ? (
+            {inlineEdit && onUpdateIssue ? (
               <DatePicker
                 value={issue.dueDate ? String(issue.dueDate).slice(0, 10) : undefined}
                 onChange={(date) => onUpdateIssue(issue.id, { dueDate: date ?? null })}
@@ -197,8 +212,51 @@ function DraggableIssueRow({
           </td>
 
           {/* Assignee */}
-          <td className="px-3 py-3 w-12">
-            {issue.assignee ? (
+          <td className="px-3 py-3 w-12" onClick={(e) => e.stopPropagation()}>
+            {members && onUpdateIssue ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'h-7 w-7 p-0 border-0 rounded-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                      selectedAssignee
+                        ? 'bg-transparent hover:bg-muted'
+                        : 'bg-muted/60 hover:bg-muted',
+                    )}
+                  >
+                    {selectedAssignee ? (
+                      <Avatar user={selectedAssignee} size="xs" />
+                    ) : (
+                      <div className="h-6 w-6 rounded-full bg-muted/80 border border-dashed border-border flex items-center justify-center">
+                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground/70" />
+                      </div>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="min-w-[200px]" align="start">
+                  <DropdownMenuItem
+                    onClick={() => onUpdateIssue(issue.id, { assigneeId: null })}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="text-muted-foreground">Unassigned</span>
+                    {issue.assigneeId == null && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {members.map((member) => (
+                    <DropdownMenuItem
+                      key={member.id}
+                      onClick={() => onUpdateIssue(issue.id, { assigneeId: member.id })}
+                      className="flex items-center gap-2"
+                    >
+                      <Avatar user={member} size="xs" />
+                      <span className="truncate">{member.displayName}</span>
+                      {issue.assigneeId === member.id && <Check className="h-4 w-4 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : issue.assignee ? (
               <Avatar user={issue.assignee} size="xs" />
             ) : (
               <div className="h-6 w-6 rounded-full bg-muted border border-dashed border-border" />
@@ -212,7 +270,7 @@ function DraggableIssueRow({
                 {issue.storyPoints}
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground/60">--</span>
+              <span className="text-xs text-muted-foreground/60">No SP</span>
             )}
           </td>
         </tr>
@@ -231,12 +289,14 @@ function SprintSection({
   projectId,
   statuses,
   onUpdateIssue,
+  members,
 }: {
   sprint: any
   issues: Issue[]
   projectId: string
   statuses?: Array<{ id: string; name: string }>
   onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
+  members?: User[]
 }) {
   const { t } = useTranslation()
   const { hasPermission } = useHasPermission(projectId)
@@ -457,7 +517,7 @@ function SprintSection({
                   </thead>
                   <tbody>
                     {issues.map((issue, index) => (
-                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} />
+                      <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} members={members} inlineEdit />
                     ))}
                   </tbody>
                 </table>
@@ -652,11 +712,13 @@ function BacklogSection({
   onCreateIssue,
   statuses,
   onUpdateIssue,
+  members,
 }: {
   issues: Issue[]
   onCreateIssue: () => void
   statuses?: Array<{ id: string; name: string }>
   onUpdateIssue?: (id: string, updates: Record<string, unknown>) => void
+  members?: User[]
 }) {
   const { t } = useTranslation()
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
@@ -725,7 +787,7 @@ function BacklogSection({
                 </thead>
                 <tbody>
                   {issues.map((issue, index) => (
-                    <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable />
+                    <DraggableIssueRow key={issue.id} issue={issue} index={index} selectable statuses={statuses} onUpdateIssue={onUpdateIssue} members={members} />
                   ))}
                 </tbody>
               </table>
@@ -759,6 +821,7 @@ export function ProjectBacklogPage() {
   const [sprintGoal, setSprintGoal] = useState('')
 
   const { data: project } = useProject(projectKey!)
+  const { data: projectMembers = [] } = useProjectMembers(project?.id || projectKey!)
   const { hasPermission } = useHasPermission(projectKey)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
@@ -795,6 +858,11 @@ export function ProjectBacklogPage() {
   const boardStatuses = useMemo(
     () => board?.statuses?.map((s) => ({ id: s.id, name: s.name })) || [],
     [board],
+  )
+
+  const memberUsers = useMemo(
+    () => projectMembers.map((m) => m.user).sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    [projectMembers],
   )
 
   const handleInlineUpdate = useCallback(
@@ -880,7 +948,7 @@ export function ProjectBacklogPage() {
 
       <ProjectTabNav projectKey={projectKey!} />
 
-      {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade>
+      {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade className="flex-1 min-h-0 flex flex-col">
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
@@ -910,6 +978,7 @@ export function ProjectBacklogPage() {
               projectId={projectKey!}
               statuses={boardStatuses}
               onUpdateIssue={handleInlineUpdate}
+              members={memberUsers}
             />
           ))}
 
@@ -919,6 +988,7 @@ export function ProjectBacklogPage() {
             onCreateIssue={() => setShowCreateIssue(true)}
             statuses={boardStatuses}
             onUpdateIssue={handleInlineUpdate}
+            members={memberUsers}
           />
         </div>
       </DragDropContext>
