@@ -1,4 +1,4 @@
-import { ElementType, useState } from 'react'
+import { ElementType, useMemo, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Plus, Trash2, Edit2, AlertTriangle, Shield, Globe,
@@ -15,7 +15,7 @@ import {
   useProjectMembers,
   useAddProjectMember,
 } from '@/hooks/useProjects'
-import { useRepairOrgMemberships } from '@/hooks/useOrganization'
+import { useOrgMembers, useRepairOrgMemberships } from '@/hooks/useOrganization'
 import { useBoard, useCreateStatus, useUpdateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useMe } from '@/hooks/useAuth'
@@ -637,7 +637,15 @@ function MemberRoleList({ projectId }: { projectId: string }) {
   const { data: me } = useMe()
   const { data: members = [] } = useProjectMembers(projectId)
   const { data: roles = [] } = useRoles(me?.organizationId)
+  const { data: orgMembers = [] } = useOrgMembers()
   const assignRole = useAssignRole()
+  const selfId = me?.id
+  const orgRoleByUserId = useMemo(
+    () => new Map(orgMembers.map((member) => [member.id, member.role])),
+    [orgMembers],
+  )
+  const selfOrgRole = selfId ? orgRoleByUserId.get(selfId) : undefined
+  const canAssignRoles = selfOrgRole === 'admin' || selfOrgRole === 'owner'
 
   if (members.length === 0) {
     return (
@@ -649,47 +657,63 @@ function MemberRoleList({ projectId }: { projectId: string }) {
 
   return (
     <>
-      {members.map((member) => (
-        <div key={member.id} className="flex items-center gap-3 px-4 py-3">
-          <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-foreground">
-              {member.user?.displayName || member.userId}
-            </span>
-            <span className="text-xs text-muted-foreground ml-2">
-              {member.user?.email}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{member.role}</Badge>
-            <div className="w-40">
-              <Select
-                value={member.roleId ?? ''}
-                onValueChange={(v) => {
-                  if (v) {
-                    assignRole.mutate({
-                      projectId,
-                      memberId: member.id,
-                      roleId: v,
-                    })
-                  }
-                }}
-                disabled={assignRole.isPending}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Assign role..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}{r.isSystem ? ' (system)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {members.map((member) => {
+        const isSelf = member.userId === selfId
+        const isOwner = orgRoleByUserId.get(member.userId) === 'owner'
+        const isLocked = !canAssignRoles || isSelf || isOwner
+        return (
+          <div key={member.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium text-foreground">
+                {member.user?.displayName || member.userId}
+              </span>
+              <span className="text-xs text-muted-foreground ml-2">
+                {member.user?.email}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{member.role}</Badge>
+              <div className="w-40">
+                <Select
+                  value={member.roleId ?? ''}
+                  onValueChange={(v) => {
+                    if (v && !isLocked) {
+                      assignRole.mutate({
+                        projectId,
+                        memberId: member.id,
+                        roleId: v,
+                      })
+                    }
+                  }}
+                  disabled={assignRole.isPending || isLocked}
+                >
+                  <SelectTrigger
+                    className="text-xs"
+                    title={
+                      !canAssignRoles
+                        ? 'Only organization admins can change roles'
+                        : isSelf
+                          ? 'You cannot change your own role'
+                          : isOwner
+                            ? 'Organization owner role cannot be changed'
+                            : undefined
+                    }
+                  >
+                    <SelectValue placeholder="Assign role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}{r.isSystem ? ' (system)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </>
   )
 }
