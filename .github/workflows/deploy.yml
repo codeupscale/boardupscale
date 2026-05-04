@@ -175,11 +175,16 @@ jobs:
               return 1
             }
 
-            # ── Helper: rollback a single service to the 'main' tag ────────
+            # ── Helper: rollback a single service using snapshotted digest ──
             rollback_service() {
-              local svc="$1"
-              log "Rolling back $svc to :main tag..."
+              local svc="$1" digest="$2"
+              log "Rolling back $svc..."
               cd "$COMPOSE_DIR"
+              if [ -n "$digest" ]; then
+                local img="${IMAGE_PREFIX}-${svc}:main"
+                docker pull "$digest" 2>/dev/null || true
+                docker tag "$digest" "$img" 2>/dev/null || true
+              fi
               IMAGE_TAG=main docker compose up -d --no-deps --force-recreate "$svc" || true
             }
 
@@ -195,6 +200,12 @@ jobs:
 
             cd "$COMPOSE_DIR"
             export BU_IMAGE_TAG="${IMAGE_TAG}"
+
+            # ── 2.5. Snapshot old digests for safe rollback ────────────────
+            OLD_API_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_PREFIX}-api:main" 2>/dev/null || echo "")
+            OLD_WEB_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_PREFIX}-web:main" 2>/dev/null || echo "")
+            OLD_WORKER_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_PREFIX}-worker:main" 2>/dev/null || echo "")
+            log "Digest snapshots — API: ${OLD_API_DIGEST:-none} | WEB: ${OLD_WEB_DIGEST:-none} | WORKER: ${OLD_WORKER_DIGEST:-none}"
 
             # ── 3. Run DB migrations before restarting the API ─────────────
             # Use `docker compose run` (not raw `docker run --env-file`): a plain
@@ -212,80 +223,92 @@ jobs:
             # to the new image. nginx's resolver (127.0.0.11 valid=10s) will
             # pick up the canary as soon as it joins the network with the
             # 'api' alias, ensuring zero traffic gap during the swap.
-            log "Starting bu-api canary container..."
+            # Falls back to direct start if no old container is running (cold start).
+            log "Starting bu-api deploy..."
 
             # Detect compose network and running container name
             OLD_API_CTR=$(docker ps --filter "name=infra-bu-api" --format "{{.Names}}" | head -1 || true)
-            COMPOSE_NETWORK=$(docker inspect "$OLD_API_CTR" \
-              --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' \
-              2>/dev/null || echo "infra_boardupscale")
 
-            # Dump env from running container so canary has identical config
-            docker inspect "$OLD_API_CTR" \
-              --format '{{range .Config.Env}}{{println .}}{{end}}' \
-              > /tmp/bu-api-canary.env 2>/dev/null || true
+            if [ -z "$OLD_API_CTR" ]; then
+              log "No running bu-api container found — cold start, skipping canary"
+              docker compose up -d --no-deps bu-api
+              wait_healthy bu-api 180 || {
+                log "bu-api failed to start — rolling back..."
+                rollback_service bu-api "$OLD_API_DIGEST"
+                die "Deploy aborted: bu-api failed to become healthy on cold start."
+              }
+            else
+              log "Found running container: $OLD_API_CTR — using canary strategy"
+              COMPOSE_NETWORK=$(docker inspect "$OLD_API_CTR" \
+                --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' \
+                2>/dev/null | awk '{print $1}')
+              COMPOSE_NETWORK="${COMPOSE_NETWORK:-infra_production}"
 
-            # Start canary on the compose network (so it can reach Postgres/Redis)
-            # but WITHOUT the 'api' DNS alias yet — nginx ignores it during warmup
-            docker run -d \
-              --name bu-api-canary \
-              --network "$COMPOSE_NETWORK" \
-              --env-file /tmp/bu-api-canary.env \
-              "$API_IMAGE" \
-              || die "Failed to start bu-api-canary"
+              # Dump env from running container so canary has identical config
+              docker inspect "$OLD_API_CTR" \
+                --format '{{range .Config.Env}}{{println .}}{{end}}' \
+                > /tmp/bu-api-canary.env 2>/dev/null || true
 
-            # Wait for canary to be fully healthy before touching live traffic
-            if ! wait_healthy_named bu-api-canary 180; then
+              # Clean up any stale canary from a previous failed deploy
+              docker stop bu-api-canary 2>/dev/null || true
+              docker rm   bu-api-canary 2>/dev/null || true
+
+              # Start canary on the compose network WITHOUT the 'api' alias yet
+              docker run -d \
+                --name bu-api-canary \
+                --network "$COMPOSE_NETWORK" \
+                --env-file /tmp/bu-api-canary.env \
+                "$API_IMAGE" \
+                || die "Failed to start bu-api-canary"
+
+              # Wait for canary to be fully healthy before touching live traffic
+              if ! wait_healthy_named bu-api-canary 180; then
+                docker stop bu-api-canary 2>/dev/null || true
+                docker rm   bu-api-canary 2>/dev/null || true
+                rm -f /tmp/bu-api-canary.env
+                die "bu-api-canary failed health check — aborting to preserve running container"
+              fi
+
+              # Canary is healthy: add 'api' alias so nginx picks it up
+              docker network connect --alias api "$COMPOSE_NETWORK" bu-api-canary || true
+              log "Canary joined network as 'api' — waiting for nginx DNS TTL (12s)..."
+              sleep 12
+
+              # Gracefully drain and remove old container
+              log "Draining old bu-api container (30s grace period)..."
+              docker stop --time=30 "$OLD_API_CTR" 2>/dev/null || true
+              docker rm "$OLD_API_CTR" 2>/dev/null || true
+
+              # Bring up compose-managed container with new image
+              log "Starting compose-managed bu-api..."
+              docker compose up -d --no-deps bu-api
+              wait_healthy bu-api 180 || {
+                log "bu-api health check failed — rolling back..."
+                rollback_service bu-api "$OLD_API_DIGEST"
+                wait_healthy bu-api 60 || true
+                docker stop bu-api-canary 2>/dev/null || true
+                docker rm   bu-api-canary 2>/dev/null || true
+                rm -f /tmp/bu-api-canary.env
+                die "Deploy aborted: bu-api failed to become healthy after restart."
+              }
+
+              # Compose container is healthy — remove the canary
+              log "Removing bu-api-canary..."
               docker stop bu-api-canary 2>/dev/null || true
               docker rm   bu-api-canary 2>/dev/null || true
               rm -f /tmp/bu-api-canary.env
-              die "bu-api-canary failed health check — aborting to preserve running container"
             fi
-
-            # Canary is healthy: add the 'api' alias so nginx's DNS TTL picks it up
-            # and starts load-balancing new requests to the canary
-            docker network connect --alias api "$COMPOSE_NETWORK" bu-api-canary || true
-            log "Canary joined network as 'api' — waiting for nginx DNS TTL (12s)..."
-            sleep 12
-
-            # Gracefully drain and remove the old container
-            # nginx will route 100% of traffic to the canary during this gap
-            log "Draining old bu-api container (30s grace period)..."
-            docker stop --time=30 "$OLD_API_CTR" 2>/dev/null || true
-            docker rm "$OLD_API_CTR" 2>/dev/null || true
-
-            # Bring up the compose-managed container with the new image tag
-            log "Starting compose-managed bu-api..."
-            docker compose up -d --no-deps bu-api
-            wait_healthy bu-api 180 || {
-              log "bu-api health check failed — rolling back..."
-              rollback_service bu-api
-              wait_healthy bu-api 60 || true
-              docker stop bu-api-canary 2>/dev/null || true
-              docker rm   bu-api-canary 2>/dev/null || true
-              rm -f /tmp/bu-api-canary.env
-              die "Deploy aborted: bu-api failed to become healthy after restart."
-            }
-
-            # Compose container is healthy — remove the canary
-            log "Removing bu-api-canary..."
-            docker stop bu-api-canary 2>/dev/null || true
-            docker rm   bu-api-canary 2>/dev/null || true
-            rm -f /tmp/bu-api-canary.env
 
             # ── 5. Restart bu-worker ───────────────────────────────────────
             # Worker has a 60s stop_grace_period so in-flight BullMQ jobs can
             # finish cleanly. New worker picks up queue from Redis on start.
             log "Restarting bu-worker..."
             docker compose up -d --no-deps --force-recreate bu-worker
-            # Non-fatal: worker has no HTTP healthcheck; check it started cleanly
-            sleep 10
-            if ! docker ps --filter "name=infra-bu-worker-1" --filter "status=running" -q | grep -q .; then
-              log "WARNING: bu-worker does not appear to be running — check logs:"
+            wait_healthy bu-worker 90 || {
+              log "WARNING: bu-worker did not become healthy within 90s — check logs:"
               docker logs --tail=50 infra-bu-worker-1 2>/dev/null || true
-            else
-              log "bu-worker is running ✓"
-            fi
+              rollback_service bu-worker "$OLD_WORKER_DIGEST"
+            }
 
             # ── 6. Restart bu-web ──────────────────────────────────────────
             # Nginx (or the load balancer) continues to route to the old container
@@ -295,7 +318,7 @@ jobs:
             docker compose up -d --no-deps --force-recreate bu-web
             wait_healthy bu-web 120 || {
               log "bu-web health check failed — rolling back..."
-              rollback_service bu-web
+              rollback_service bu-web "$OLD_WEB_DIGEST"
               wait_healthy bu-web 60 || true
               die "Deploy aborted: bu-web failed to become healthy after restart."
             }
@@ -315,16 +338,32 @@ jobs:
               die "One or more critical services are not healthy after deploy."
             fi
 
-            # ── 8. Verify privacy page is reachable ────────────────────────
-            log "Verifying /privacy route..."
-            PRIVACY_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "https://app.boardupscale.com/privacy" || echo "000")
+            # ── 8. Smoke test via localhost (avoids DNS propagation issues) ──
+            log "Smoke testing /privacy route via localhost..."
+            PRIVACY_STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "http://localhost:3000/privacy" 2>/dev/null || echo "000")
             if [ "$PRIVACY_STATUS" = "200" ]; then
               log "/privacy is reachable (HTTP 200) ✓"
             else
-              log "WARNING: /privacy returned HTTP ${PRIVACY_STATUS} — check nginx SPA fallback config."
+              log "WARNING: /privacy returned HTTP ${PRIVACY_STATUS} — check SPA fallback config."
             fi
 
             # ── 9. Prune old image layers ──────────────────────────────────
             docker image prune -f
 
             log "Deploy of ${IMAGE_TAG} completed successfully ✓"
+
+      - name: Notify Slack on failure
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"🚨 *BoardUpscale deploy FAILED* — tag \`${{ steps.tag.outputs.value }}\`\nTriggered by: ${{ github.actor }}\nSee: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            2>/dev/null || true
+
+      - name: Notify Slack on success
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"✅ *BoardUpscale deployed successfully* — tag \`${{ steps.tag.outputs.value }}\`\nTriggered by: ${{ github.actor }}\"}" \
+            2>/dev/null || true
