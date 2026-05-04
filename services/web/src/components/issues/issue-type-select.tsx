@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
 import { IssueType } from '@/types'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
@@ -32,21 +33,43 @@ export function IssueTypeSelect({
   disabled,
 }: IssueTypeSelectProps) {
   const [open, setOpen] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({})
   const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   const typeOptions = options || Object.values(IssueType)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        !(document.getElementById('issue-type-portal')?.contains(target))
+      ) {
         setOpen(false)
       }
     }
     if (open) {
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect()
+        const estimatedHeight = typeOptions.length * 36 + 8
+        const spaceBelow = window.innerHeight - rect.bottom
+        const openUpward = spaceBelow < estimatedHeight
+
+        setMenuStyle({
+          position: 'fixed',
+          width: rect.width,
+          left: rect.left,
+          ...(openUpward
+            ? { bottom: window.innerHeight - rect.top + 4 }
+            : { top: rect.bottom + 4 }),
+          zIndex: 9999,
+        })
+      }
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [open])
+  }, [open, typeOptions.length])
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -89,6 +112,7 @@ export function IssueTypeSelect({
           aria-haspopup="listbox"
           aria-label={label || 'Select issue type'}
           disabled={disabled}
+          ref={buttonRef}
           className={cn(
             'flex items-center gap-2 w-full rounded-lg border border-input',
             'bg-card text-foreground px-3 py-2 text-sm',
@@ -104,12 +128,14 @@ export function IssueTypeSelect({
           <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </button>
 
-        {open && (
+        {open && createPortal(
           <ul
+            id="issue-type-portal"
             role="listbox"
             aria-label="Issue types"
+            style={menuStyle}
             className={cn(
-              'absolute z-50 mt-1 w-full rounded-lg border border-border',
+              'rounded-lg border border-border',
               'bg-card shadow-lg py-1 max-h-60 overflow-auto',
             )}
           >
@@ -132,7 +158,8 @@ export function IssueTypeSelect({
                 <span>{TYPE_LABELS[type] || type}</span>
               </li>
             ))}
-          </ul>
+          </ul>,
+          document.body,
         )}
       </div>
     </div>

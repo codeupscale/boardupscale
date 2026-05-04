@@ -270,7 +270,7 @@ function DraggableIssueRow({
                 {issue.storyPoints}
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground/60">No SP</span>
+              <span className="text-xs text-muted-foreground/60">--</span>
             )}
           </td>
         </tr>
@@ -512,7 +512,13 @@ function SprintSection({
                           className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                         />
                       </th>
-                      <th colSpan={6} />
+                      <th className="px-3 py-1 w-28 text-left text-sm font-bold text-muted-foreground uppercase tracking-wide">Key</th>
+                      <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                      <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
+                      <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
+                      <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Date</th>
+                      <th className="px-3 py-1 w-12 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Assignee</th>
+                      <th className="px-3 py-1 w-14 text-center text-xs font-bold text-muted-foreground uppercase tracking-wide">SP</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -782,7 +788,13 @@ function BacklogSection({
                         className="h-4 w-4 rounded border-border text-primary focus:ring-ring cursor-pointer"
                       />
                     </th>
-                    <th colSpan={6} />
+                    <th className="px-3 py-1 w-28 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Key</th>
+                    <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                    <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
+                    <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
+                    <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Date</th>
+                    <th className="px-3 py-1 w-12 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Assignee</th>
+                    <th className="px-3 py-1 w-14 text-center text-xs font-bold text-muted-foreground uppercase tracking-wide">SP</th>
                   </tr>
                 </thead>
                 <tbody>
