@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useEditor, EditorContent, Extension } from '@tiptap/react'
+import { useEditor, EditorContent, Extension, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
+import type { NodeViewProps } from '@tiptap/core'
 import { Plugin as PmPlugin, PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -28,7 +29,46 @@ import {
   ImagePlus,
   Paperclip,
   Loader2,
+  X,
 } from 'lucide-react'
+
+// ──────────────────────────────────────────────
+// Custom Image NodeView (adds a delete button)
+// ──────────────────────────────────────────────
+function ImageNodeView({ node, deleteNode, selected }: NodeViewProps) {
+  const { src, alt, title, width } = node.attrs
+  return (
+    <NodeViewWrapper>
+      <div className="relative inline-block my-2">
+        <img
+          src={src || ''}
+          alt={alt || ''}
+          title={title || undefined}
+          width={width || undefined}
+          className={cn(
+            'editor-image max-w-full h-auto rounded-lg block',
+            selected && 'outline outline-2 outline-indigo-500 outline-offset-2',
+          )}
+          loading="lazy"
+        />
+        <button
+          type="button"
+          contentEditable={false}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            deleteNode()
+          }}
+          className="absolute top-1 right-1 p-1 rounded-full bg-background/80 text-destructive hover:bg-destructive hover:text-destructive-foreground shadow transition-colors z-10 cursor-pointer"
+          title="Remove image"
+          aria-label="Remove image"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </NodeViewWrapper>
+  )
+}
 
 // ──────────────────────────────────────────────
 // File upload helper
@@ -361,6 +401,9 @@ export function RichTextEditor({
         },
         renderHTML({ HTMLAttributes }) {
           return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)]
+        },
+        addNodeView() {
+          return ReactNodeViewRenderer(ImageNodeView)
         },
       }).configure({
         inline: false,

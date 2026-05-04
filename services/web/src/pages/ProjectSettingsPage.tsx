@@ -19,6 +19,7 @@ import { useOrgMembers, useRepairOrgMemberships } from '@/hooks/useOrganization'
 import { useBoard, useCreateStatus, useUpdateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useMe } from '@/hooks/useAuth'
+import { useAuthStore } from '@/store/auth.store'
 import { useRoles, useAssignRole } from '@/hooks/usePermissions'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { IssueStatusCategory, UserRole } from '@/types'
@@ -107,6 +108,8 @@ export function ProjectSettingsPage() {
   const { data: board } = useBoard(projectKey!)
   const { data: members } = useProjectMembers(projectKey!)
   const { hasPermission } = useHasPermission(projectKey)
+  const currentUser = useAuthStore((s) => s.user)
+  const canManageOrgRoles = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMIN
   const { data: usersResult } = useUsers()
   const users = usersResult?.data
 
@@ -350,12 +353,14 @@ export function ProjectSettingsPage() {
                   <h2 className="text-base font-semibold text-foreground">Roles & Permissions</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">Assign roles to project members and manage access levels.</p>
                 </div>
-                <Link to="/settings/roles">
-                  <Button size="sm" variant="outline">
-                    <Shield className="h-4 w-4" />
-                    Manage Roles
-                  </Button>
-                </Link>
+                {canManageOrgRoles && (
+                  <Link to="/settings/roles">
+                    <Button size="sm" variant="outline">
+                      <Shield className="h-4 w-4" />
+                      Manage Roles
+                    </Button>
+                  </Link>
+                )}
               </div>
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 <MemberRoleList projectId={projectKey!} />

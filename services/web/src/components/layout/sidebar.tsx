@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutGrid,
@@ -23,6 +23,26 @@ import {
   History,
   ArrowLeftRight,
 } from 'lucide-react'
+/* ── Recent-project localStorage helpers ─────────────────────────── */
+const RECENT_PROJECTS_KEY = 'boardupscale:recent-projects'
+
+type RecentProject = { key: string; name: string }
+
+function readRecentProjects(): RecentProject[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_PROJECTS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function pushRecentProject(project: RecentProject) {
+  const list = readRecentProjects().filter((p) => p.key !== project.key)
+  list.unshift(project)
+  localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(list.slice(0, 5)))
+}
+/* ────────────────────────────────────────────────────────────────── */
+
 import { Logo } from '@/components/Logo'
 import { OrgSwitcher } from '@/components/layout/org-switcher'
 import { useTranslation } from 'react-i18next'
@@ -42,6 +62,9 @@ export function Sidebar() {
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
 
+  // Recently visited projects (localStorage)
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(readRecentProjects)
+
   // Close sidebar on mobile on initial mount
   useEffect(() => {
     if (window.innerWidth < 768) {
@@ -55,6 +78,17 @@ export function Sidebar() {
       setSidebarOpen(false)
     }
   }, [location.pathname, setSidebarOpen])
+
+  // Track last-visited project on every navigation
+  useEffect(() => {
+    const match = location.pathname.match(/^\/projects\/([^/]+)/)
+    if (!match) return
+    const key = match[1]
+    const project = projects?.find((p) => p.key === key)
+    if (!project) return
+    pushRecentProject({ key: project.key, name: project.name })
+    setRecentProjects(readRecentProjects())
+  }, [location.pathname, projects])
 
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
 
@@ -262,7 +296,7 @@ export function Sidebar() {
         )}
 
         {/* Recent Projects */}
-        {isSidebarOpen && projects && projects.length > 0 && (
+        {isSidebarOpen && recentProjects.length > 0 && (
           <>
             <div className="sidebar-divider" />
             <div className="px-3">
@@ -270,11 +304,11 @@ export function Sidebar() {
                 {t('nav.recentProjects')}
               </div>
               <div className="space-y-0.5 pl-1">
-                {projects.slice(0, 5).map((project) => {
+                {recentProjects.map((project) => {
                   const isProjectActive = location.pathname.includes(project.key)
                   return (
                     <Link
-                      key={project.id}
+                      key={project.key}
                       to={`/projects/${project.key}/board`}
                       className={cn(
                         'flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150 sidebar-nav-hover',

@@ -323,6 +323,10 @@ export function TeamPage() {
   const [activePage, setActivePage] = useState(1)
 
   const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
+  const isOwner = me?.role === UserRole.OWNER
+
+  // The roles an admin/owner is allowed to assign when inviting or changing roles
+  const assignableRoles = ROLE_CONFIG.filter((r) => isOwner || r.value !== 'owner')
 
   const activeMembers = useMemo(
     () => members.filter((m) => m.invitationStatus === 'accepted' || m.invitationStatus === 'none'),
@@ -677,20 +681,24 @@ export function TeamPage() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              onClick={() => openRoleDialog(member)}
-                              title="Change role"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                            >
-                              <ShieldCheck className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setDeactivateTarget(member)}
-                              title="Remove member"
-                              className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            >
-                              <UserX className="h-3.5 w-3.5" />
-                            </button>
+                            {(isOwner || member.role !== UserRole.OWNER) && (
+                              <>
+                                <button
+                                  onClick={() => openRoleDialog(member)}
+                                  title="Change role"
+                                  className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                                >
+                                  <ShieldCheck className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setDeactivateTarget(member)}
+                                  title="Remove member"
+                                  className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                  <UserX className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
                           </>
                         ) : (
                           <span className="text-xs text-muted-foreground px-2">—</span>
@@ -881,7 +889,7 @@ export function TeamPage() {
                 Role
               </label>
               <div className="space-y-2">
-                {ROLE_CONFIG.map((conf) => (
+                {assignableRoles.map((conf) => (
                   <RoleCard
                     key={conf.value}
                     config={conf}
@@ -1006,7 +1014,7 @@ export function TeamPage() {
                 New role
               </label>
               <div className="space-y-2">
-                {ROLE_CONFIG.map((conf) => (
+                {assignableRoles.map((conf) => (
                   <RoleCard
                     key={conf.value}
                     config={conf}

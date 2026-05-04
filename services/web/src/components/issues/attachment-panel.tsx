@@ -350,7 +350,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
                 />
                 <button
                   onClick={() => deleteAttachment.mutate({ id: attachment.id, issueId })}
-                  className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/40 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                  className="absolute top-1.5 right-1.5 p-1 rounded-md bg-background/80 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors z-10 shadow-sm"
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -381,7 +381,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
                 />
                 <button
                   onClick={() => deleteAttachment.mutate({ id: attachment.id, issueId })}
-                  className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/40 hover:bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+                  className="absolute top-1.5 right-1.5 p-1 rounded-md bg-background/80 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors z-10 shadow-sm"
                   title="Delete"
                 >
                   <Trash2 className="h-3 w-3" />
