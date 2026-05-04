@@ -353,7 +353,7 @@ jobs:
             log "Deploy of ${IMAGE_TAG} completed successfully ✓"
 
       - name: Notify Slack on failure
-        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        if: failure()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
@@ -364,7 +364,7 @@ jobs:
             2>/dev/null || true
 
       - name: Notify Slack on success
-        if: success() && secrets.SLACK_WEBHOOK_URL != ''
+        if: success()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
@@ -373,3 +373,4 @@ jobs:
             -H 'Content-type: application/json' \
             --data "{\"text\":\"✅ *BoardUpscale deployed successfully* — tag \`${{ steps.tag.outputs.value }}\`\nTriggered by: ${{ github.actor }}\"}" \
             2>/dev/null || true
+
