@@ -10,6 +10,7 @@ import { useCreateIssue } from '@/hooks/useIssues'
 import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { cn } from '@/lib/utils'
@@ -384,6 +385,7 @@ export function ProjectBoardPage() {
   const deleteColumn = board?.statuses.find((c) => c.id === deleteColumnId)
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full min-h-0">
       <PageHeader
         title={project?.name || t('board.title')}
@@ -862,5 +864,6 @@ export function ProjectBoardPage() {
         </Dialog>
       )}
     </div>
+    </ProjectMemberGuard>
   )
 }

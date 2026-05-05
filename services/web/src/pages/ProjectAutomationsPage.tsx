@@ -21,6 +21,7 @@ import {
 import type { AutomationRule, AutomationCondition, AutomationAction } from '@/hooks/useAutomation'
 import { useProject } from '@/hooks/useProjects'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
@@ -430,6 +431,7 @@ export function ProjectAutomationsPage() {
   if (!projectKey) return null
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="Automations"
@@ -443,5 +445,6 @@ export function ProjectAutomationsPage() {
         <AutomationsContent projectKey={projectKey} />
       </div>
     </div>
+    </ProjectMemberGuard>
   )
 }

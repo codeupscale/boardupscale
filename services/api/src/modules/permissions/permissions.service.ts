@@ -333,11 +333,22 @@ export class PermissionsService {
    * within a given project?
    *
    * Resolution order:
-   * 1. If user's org-level role is 'admin', always allow.
-   * 2. Look up the user's ProjectMember for the project.
-   * 3. If the member has an assigned role (role_id), check its permissions.
-   * 4. Fall back to matching a system role by the member's legacy 'role' string.
+   * 1. Org Owner → always allowed (full bypass, no membership required).
+   * 2. Org Admin → allowed WITHOUT membership only for exempted resources
+   *    (member management, project settings, ai/Upsy). For all other project
+   *    content (board, issues, sprints, pages, etc.) the admin must be an
+   *    explicit project member — same as any other role.
+   * 3. Look up the user's ProjectMember for the project.
+   * 4. If the member has an assigned role (role_id), check its permissions.
+   * 5. Fall back to matching a system role by the member's legacy 'role' string.
+   *
+   * Resources that Admin can access without project membership:
+   *   'member'  — so admin can add themselves (or others) to the project
+   *   'project' — so admin can view/update project settings
+   *   'ai'      — org-level feature; Upsy is available org-wide
    */
+  private readonly ADMIN_MEMBERSHIP_EXEMPT_RESOURCES = ['member', 'project', 'ai'];
+
   async checkPermission(
     userId: string,
     projectId: string,
@@ -348,29 +359,48 @@ export class PermissionsService {
     const project = await this.resolveProject(projectId);
     if (!project) return false;
 
-    // 2. Org admin/owner shortcut.
-    if (await this.isOrgAdminOrOwner(userId, project.organizationId)) return true;
+    // 2. Org Owner: unconditional full access regardless of project membership.
+    if (await this.isOrgOwner(userId, project.organizationId)) return true;
 
-    // Legacy global role fallback.
+    // 3. Org Admin: exempt resources bypass the membership check; everything
+    //    else requires the admin to be an explicit project member.
+    const isAdmin = await this.isOrgAdminOrOwner(userId, project.organizationId);
+    if (isAdmin) {
+      if (this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(resource)) return true;
+      const adminMember = await this.projectMemberRepo.findOne({
+        where: { projectId: project.id, userId },
+      });
+      // Admin is a project member — grant full access (no further role check needed).
+      return adminMember !== null;
+    }
+
+    // Legacy global role fallback (pre-membership-row users).
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return false;
-    if (user.role === 'admin' || user.role === 'owner') return true;
+    if (user.role === 'owner') return true;
+    if (user.role === 'admin') {
+      if (this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(resource)) return true;
+      const adminMember = await this.projectMemberRepo.findOne({
+        where: { projectId: project.id, userId },
+      });
+      return adminMember !== null;
+    }
 
-    // 3. Find the project membership using the resolved UUID.
+    // 4. Find the project membership using the resolved UUID.
     const member = await this.projectMemberRepo.findOne({
       where: { projectId: project.id, userId },
       relations: ['assignedRole', 'assignedRole.permissions'],
     });
     if (!member) return false;
 
-    // 4. If member has an explicit role_id, check those permissions.
+    // 5. If member has an explicit role_id, check those permissions.
     if (member.assignedRole?.permissions) {
       return member.assignedRole.permissions.some(
         (p) => p.resource === resource && p.action === action,
       );
     }
 
-    // 5. Fallback: match legacy role string to system role name.
+    // 6. Fallback: match legacy role string to system role name.
     const legacyRoleName = this.mapLegacyRole(member.role);
     if (!legacyRoleName) return false;
 
@@ -393,17 +423,52 @@ export class PermissionsService {
     userId: string,
     projectId: string,
   ): Promise<{ resource: string; action: string }[]> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) return [];
+    const project = await this.resolveProject(projectId);
+    if (!project) return [];
 
-    // Admins and org owners get all permissions
-    if (user.role === 'admin' || user.role === 'owner') {
+    // Owner: full access regardless of project membership.
+    if (await this.isOrgOwner(userId, project.organizationId)) {
       const allPerms = await this.permissionRepo.find();
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
 
-    const project = await this.resolveProject(projectId);
-    if (!project) return [];
+    // Admin: full access if they are a project member; otherwise return only
+    // the exempted resources so the frontend still shows member-management UI.
+    const isAdmin = await this.isOrgAdminOrOwner(userId, project.organizationId);
+    if (isAdmin) {
+      const adminMember = await this.projectMemberRepo.findOne({
+        where: { projectId: project.id, userId },
+      });
+      const allPerms = await this.permissionRepo.find();
+      if (adminMember) {
+        return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
+      }
+      // Not a member — return only exempt resource permissions so they can
+      // join the project or manage members from the outside.
+      return allPerms
+        .filter((p) => this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(p.resource))
+        .map((p) => ({ resource: p.resource, action: p.action }));
+    }
+
+    // Legacy global role fallback (pre-membership-row users).
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) return [];
+    if (user.role === 'owner') {
+      const allPerms = await this.permissionRepo.find();
+      return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
+    }
+    if (user.role === 'admin') {
+      const adminMember = await this.projectMemberRepo.findOne({
+        where: { projectId: project.id, userId },
+      });
+      const allPerms = await this.permissionRepo.find();
+      if (adminMember) {
+        return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
+      }
+      return allPerms
+        .filter((p) => this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(p.resource))
+        .map((p) => ({ resource: p.resource, action: p.action }));
+    }
 
     const member = await this.projectMemberRepo.findOne({
       where: { projectId: project.id, userId },

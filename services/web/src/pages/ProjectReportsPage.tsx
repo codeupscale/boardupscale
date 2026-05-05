@@ -12,6 +12,7 @@ import {
   BarChart3,
 } from 'lucide-react'
 import { ChartSkeleton } from '@/components/ui/skeleton'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   Select,
@@ -136,6 +137,7 @@ export function ProjectReportsPage() {
   if (!projectKey) return null
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={project?.name ?? 'Reports'}
@@ -422,5 +424,6 @@ export function ProjectReportsPage() {
         </div>
       </div>
     </div>
+    </ProjectMemberGuard>
   )
 }

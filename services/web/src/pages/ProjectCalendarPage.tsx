@@ -25,6 +25,7 @@ import {
   Plus,
 } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
@@ -220,6 +221,7 @@ export function ProjectCalendarPage() {
   if (projectLoading) return <CalendarSkeleton />
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={project?.name || 'Calendar'}
@@ -469,5 +471,6 @@ export function ProjectCalendarPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProjectMemberGuard>
   )
 }
