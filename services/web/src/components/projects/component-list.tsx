@@ -17,9 +17,12 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 interface ComponentListProps {
   projectId: string
+  canCreate?: boolean
+  canUpdate?: boolean
+  canDelete?: boolean
 }
 
-export function ComponentList({ projectId }: ComponentListProps) {
+export function ComponentList({ projectId, canCreate = true, canUpdate = true, canDelete = true }: ComponentListProps) {
   const { data: components } = useComponents(projectId)
   const createComponent = useCreateComponent()
   const updateComponent = useUpdateComponent()
@@ -76,10 +79,12 @@ export function ComponentList({ projectId }: ComponentListProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-foreground">Epics</h2>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Add Epic
-        </Button>
+        {canCreate && (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Add Epic
+          </Button>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border border-border divide-y divide-border">
@@ -101,21 +106,25 @@ export function ComponentList({ projectId }: ComponentListProps) {
                 </span>
               </div>
             )}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => openEdit(component)}
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-red-600"
-              onClick={() => setDeleteTarget(component)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {canUpdate && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => openEdit(component)}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-red-600"
+                onClick={() => setDeleteTarget(component)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         ))}
         {(!components || components.length === 0) && (

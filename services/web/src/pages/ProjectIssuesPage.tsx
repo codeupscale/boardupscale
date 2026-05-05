@@ -416,7 +416,7 @@ export function ProjectIssuesPage() {
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-36">{t('common.status')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">{t('common.assignee')}</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">{t('issues.dueDate')}</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">SP</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">Sprint</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">

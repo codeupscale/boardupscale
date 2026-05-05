@@ -24,22 +24,23 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 /* ── Recent-project localStorage helpers ─────────────────────────── */
-const RECENT_PROJECTS_KEY = 'boardupscale:recent-projects'
+// Key is scoped per organization so different orgs never share recent projects.
+const recentProjectsKey = (orgId: string) => `boardupscale:recent-projects:${orgId}`
 
 type RecentProject = { key: string; name: string }
 
-function readRecentProjects(): RecentProject[] {
+function readRecentProjects(orgId: string): RecentProject[] {
   try {
-    return JSON.parse(localStorage.getItem(RECENT_PROJECTS_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(recentProjectsKey(orgId)) || '[]')
   } catch {
     return []
   }
 }
 
-function pushRecentProject(project: RecentProject) {
-  const list = readRecentProjects().filter((p) => p.key !== project.key)
+function pushRecentProject(orgId: string, project: RecentProject) {
+  const list = readRecentProjects(orgId).filter((p) => p.key !== project.key)
   list.unshift(project)
-  localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(list.slice(0, 5)))
+  localStorage.setItem(recentProjectsKey(orgId), JSON.stringify(list.slice(0, 5)))
 }
 /* ────────────────────────────────────────────────────────────────── */
 
@@ -61,9 +62,18 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
+  const orgId = user?.organizationId ?? ''
 
-  // Recently visited projects (localStorage)
-  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(readRecentProjects)
+  // Recently visited projects — scoped per org so different orgs never bleed into each other.
+  // Initialized lazily once orgId is known to avoid reading stale data from a previous session.
+  const [recentProjects, setRecentProjects] = useState<RecentProject[]>(() =>
+    orgId ? readRecentProjects(orgId) : [],
+  )
+
+  // Re-hydrate the list whenever the logged-in org changes (e.g. switching accounts).
+  useEffect(() => {
+    setRecentProjects(orgId ? readRecentProjects(orgId) : [])
+  }, [orgId])
 
   // Close sidebar on mobile on initial mount
   useEffect(() => {
@@ -81,14 +91,15 @@ export function Sidebar() {
 
   // Track last-visited project on every navigation
   useEffect(() => {
+    if (!orgId) return
     const match = location.pathname.match(/^\/projects\/([^/]+)/)
     if (!match) return
     const key = match[1]
     const project = projects?.find((p) => p.key === key)
     if (!project) return
-    pushRecentProject({ key: project.key, name: project.name })
-    setRecentProjects(readRecentProjects())
-  }, [location.pathname, projects])
+    pushRecentProject(orgId, { key: project.key, name: project.name })
+    setRecentProjects(readRecentProjects(orgId))
+  }, [location.pathname, projects, orgId])
 
   const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
 
