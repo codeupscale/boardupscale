@@ -95,6 +95,22 @@ export class OrganizationsService {
     dto: InviteMemberDto,
     inviterId: string,
   ): Promise<User> {
+    // ── Only an org Owner may invite someone directly as Owner ──────────────
+    if (dto.role === 'owner') {
+      const inviterMembership = await this.organizationMemberRepository.findOne({
+        where: { userId: inviterId, organizationId },
+      });
+      const inviterUser = inviterMembership
+        ? null
+        : await this.userRepository.findOne({ where: { id: inviterId } });
+      const inviterRole = inviterMembership?.role ?? inviterUser?.role;
+      if (inviterRole !== 'owner') {
+        throw new ForbiddenException(
+          'Only an Owner can invite someone with the Owner role',
+        );
+      }
+    }
+
     const existingUser = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -277,6 +293,23 @@ export class OrganizationsService {
     // The role THIS org sees — prefer the membership row (authoritative in the
     // multi-org design); fall back to the legacy users.role for pre-migration rows.
     const currentRole = membership?.role ?? member.role;
+
+    // ── Only an org Owner may promote another member to the Owner role ──────
+    // Admins can manage all other roles, but the Owner role is protected.
+    if (newRole === 'owner') {
+      const actorMembership = await this.organizationMemberRepository.findOne({
+        where: { userId: actorId, organizationId },
+      });
+      const actorUser = actorMembership
+        ? null
+        : await this.userRepository.findOne({ where: { id: actorId } });
+      const actorRole = actorMembership?.role ?? actorUser?.role;
+      if (actorRole !== 'owner') {
+        throw new ForbiddenException(
+          'Only an Owner can assign the Owner role to another member',
+        );
+      }
+    }
 
     // Prevent removing the last owner IN THIS ORG.
     if (currentRole === 'owner' && newRole !== 'owner') {

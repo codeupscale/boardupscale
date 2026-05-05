@@ -11,6 +11,7 @@ import {
 } from 'date-fns'
 import { ChevronLeft, ChevronRight, GanttChart } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useIssues } from '@/hooks/useIssues'
 import { useSprints } from '@/hooks/useSprints'
 import { PageHeader } from '@/components/common/page-header'
@@ -123,6 +124,7 @@ export function ProjectTimelinePage() {
   if (projectLoading) return <ChartSkeleton height="h-[500px]" />
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={project?.name || 'Timeline'}
@@ -372,5 +374,6 @@ export function ProjectTimelinePage() {
         </div>
       )}
     </div>
+    </ProjectMemberGuard>
   )
 }

@@ -8,6 +8,7 @@ import {
   useVersionProgress,
 } from '@/hooks/useVersions'
 import { useProject } from '@/hooks/useProjects'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectVersion, VersionProgress } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -191,6 +192,7 @@ export function ProjectReleasesPage() {
   }
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="Releases"
@@ -319,5 +321,6 @@ export function ProjectReleasesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProjectMemberGuard>
   )
 }

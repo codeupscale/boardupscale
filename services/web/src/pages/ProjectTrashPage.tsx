@@ -6,6 +6,7 @@ import { useIssues } from '@/hooks/useIssues'
 import { useBulkRestore, useBulkDelete } from '@/hooks/useBulkOperations'
 import { useSelectionStore } from '@/store/selection.store'
 import { PageHeader } from '@/components/common/page-header'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { Button } from '@/components/ui/button'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -145,6 +146,7 @@ export function ProjectTrashPage() {
   if (!projectKey) return null
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title="Trash"
@@ -158,5 +160,6 @@ export function ProjectTrashPage() {
         <TrashContent projectKey={projectKey} />
       </div>
     </div>
+    </ProjectMemberGuard>
   )
 }

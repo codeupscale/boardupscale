@@ -35,6 +35,7 @@ import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -932,6 +933,7 @@ export function ProjectBacklogPage() {
   )
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={t('nav.backlog')}
@@ -1103,5 +1105,6 @@ export function ProjectBacklogPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProjectMemberGuard>
   )
 }

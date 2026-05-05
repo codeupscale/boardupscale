@@ -7,6 +7,7 @@ import { PageTree } from '@/components/pages/page-tree'
 import { BookOpen, Plus, FileText } from 'lucide-react'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -57,6 +58,7 @@ export function ProjectPagesPage() {
   }
 
   return (
+    <ProjectMemberGuard projectKey={key!}>
     <div className="flex flex-col h-full min-h-0">
       <PageHeader
         title={project?.name ?? 'Pages'}
@@ -158,5 +160,6 @@ export function ProjectPagesPage() {
         destructive
       />
     </div>
+    </ProjectMemberGuard>
   )
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Download, Bookmark, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
 import { useIssues, useCreateIssue } from '@/hooks/useIssues'
@@ -166,6 +167,7 @@ export function ProjectIssuesPage() {
   }, [search, filterType, filterPriority, filterStatus, filterAssignee, filterSprint, activeViewId, savedViews])
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={t('nav.issues')}
@@ -485,5 +487,6 @@ export function ProjectIssuesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProjectMemberGuard>
   )
 }
