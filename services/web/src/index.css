@@ -1021,19 +1021,18 @@ html.theme-transition *::after {
   }
 }
 
-/* ─────────────────────────────────────────────
-   Rich Text Editor — ProseMirror / TipTap
-   ───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Rich Text Editor & Display — ProseMirror / TipTap
+   Jira-quality typography, spacing, and visual hierarchy
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* Editor editable area */
+/* ─── Editor chrome ─────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror {
   outline: none;
-  font-size: 0.875rem;
-  line-height: 1.625;
-  color: #111827;
   min-height: inherit;
 }
 
+/* Placeholder */
 .rich-text-editor-content .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   color: #9ca3af;
@@ -1042,23 +1041,21 @@ html.theme-transition *::after {
   height: 0;
 }
 
-/* ─── Shared typography for both editor & display ─── */
+/* ─── Base typography (editor + display) ────────────────────────── */
 .rich-text-editor-content .ProseMirror,
 .rich-text-content {
-  font-size: 0.875rem;
-  line-height: 1.75;
-  color: #374151;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+  font-size: 0.875rem;       /* 14px — matches Jira body size */
+  line-height: 1.714;        /* 24px at 14px base — Jira's exact line-height */
+  color: #172b4d;            /* Jira's body text color */
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
-.rich-text-editor-content .ProseMirror > * + *,
-.rich-text-content > * + * {
-  margin-top: 0.75em;
-}
-
-/* Paragraphs */
+/* ─── Paragraphs ────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror p,
 .rich-text-content p {
-  margin: 0 0 0.75em 0;
+  margin: 0 0 1em 0;        /* 1em bottom gap — Jira's paragraph rhythm */
 }
 
 .rich-text-editor-content .ProseMirror p:last-child,
@@ -1066,96 +1063,135 @@ html.theme-transition *::after {
   margin-bottom: 0;
 }
 
-/* Give <br> tags breathing room so inline line-breaks don't feel cramped */
+/*
+ * <br> rendering for legacy content stored as single <p> with <br> tags.
+ * Single <br> = small gap (line break feel).
+ * Double <br><br> = ~1em gap (paragraph-like separation).
+ * display:block on <br> is a well-supported CSS trick for this purpose.
+ */
 .rich-text-content br,
 .rich-text-editor-content .ProseMirror br {
   display: block;
-  content: '';
-  margin-top: 0.35em;
+  margin-top: 0.5em;
 }
 
-/* Headings */
+/* ─── Headings ──────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror h1,
 .rich-text-editor-content .ProseMirror h2,
 .rich-text-editor-content .ProseMirror h3,
+.rich-text-editor-content .ProseMirror h4,
+.rich-text-editor-content .ProseMirror h5,
+.rich-text-editor-content .ProseMirror h6,
 .rich-text-content h1,
 .rich-text-content h2,
-.rich-text-content h3 {
+.rich-text-content h3,
+.rich-text-content h4,
+.rich-text-content h5,
+.rich-text-content h6 {
   font-weight: 600;
-  color: #111827;
-  line-height: 1.3;
-  margin-top: 1em;
-  margin-bottom: 0.25em;
+  color: #172b4d;
+  line-height: 1.25;
+  margin: 1.5em 0 0.5em 0;
 }
 
-.rich-text-editor-content .ProseMirror h1,
-.rich-text-content h1 {
-  font-size: 1.25rem;
+/* First heading in content shouldn't have top margin */
+.rich-text-editor-content .ProseMirror h1:first-child,
+.rich-text-editor-content .ProseMirror h2:first-child,
+.rich-text-editor-content .ProseMirror h3:first-child,
+.rich-text-editor-content .ProseMirror h4:first-child,
+.rich-text-editor-content .ProseMirror h5:first-child,
+.rich-text-editor-content .ProseMirror h6:first-child,
+.rich-text-content h1:first-child,
+.rich-text-content h2:first-child,
+.rich-text-content h3:first-child,
+.rich-text-content h4:first-child,
+.rich-text-content h5:first-child,
+.rich-text-content h6:first-child {
+  margin-top: 0;
 }
 
-.rich-text-editor-content .ProseMirror h2,
-.rich-text-content h2 {
-  font-size: 1.125rem;
-}
+/* Heading size scale — mirrors Jira's heading hierarchy */
+.rich-text-editor-content .ProseMirror h1, .rich-text-content h1 { font-size: 1.714em; } /* 24px */
+.rich-text-editor-content .ProseMirror h2, .rich-text-content h2 { font-size: 1.429em; } /* 20px */
+.rich-text-editor-content .ProseMirror h3, .rich-text-content h3 { font-size: 1.143em; } /* 16px */
+.rich-text-editor-content .ProseMirror h4, .rich-text-content h4 { font-size: 1em;      } /* 14px bold */
+.rich-text-editor-content .ProseMirror h5, .rich-text-content h5 { font-size: 0.857em;  } /* 12px */
+.rich-text-editor-content .ProseMirror h6, .rich-text-content h6 { font-size: 0.857em; color: #5e6c84; } /* 12px muted */
 
-.rich-text-editor-content .ProseMirror h3,
-.rich-text-content h3 {
-  font-size: 1rem;
-}
-
-/* Lists */
+/* ─── Lists ─────────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror ul,
 .rich-text-editor-content .ProseMirror ol,
 .rich-text-content ul,
 .rich-text-content ol {
-  padding-left: 1.5em;
+  padding-left: 1.75em;     /* ~24px — Jira's list indentation */
+  margin: 0.75em 0;
+}
+
+/* Nested lists get tighter vertical margin */
+.rich-text-editor-content .ProseMirror ul ul,
+.rich-text-editor-content .ProseMirror ul ol,
+.rich-text-editor-content .ProseMirror ol ul,
+.rich-text-editor-content .ProseMirror ol ol,
+.rich-text-content ul ul,
+.rich-text-content ul ol,
+.rich-text-content ol ul,
+.rich-text-content ol ol {
   margin: 0.25em 0;
 }
 
-.rich-text-editor-content .ProseMirror ul,
-.rich-text-content ul {
-  list-style-type: disc;
-}
+.rich-text-editor-content .ProseMirror ul, .rich-text-content ul { list-style-type: disc; }
+.rich-text-editor-content .ProseMirror ol, .rich-text-content ol { list-style-type: decimal; }
 
-.rich-text-editor-content .ProseMirror ol,
-.rich-text-content ol {
-  list-style-type: decimal;
-}
+/* Nested unordered list styles (matches Jira) */
+.rich-text-editor-content .ProseMirror ul ul, .rich-text-content ul ul { list-style-type: circle; }
+.rich-text-editor-content .ProseMirror ul ul ul, .rich-text-content ul ul ul { list-style-type: square; }
 
 .rich-text-editor-content .ProseMirror li,
 .rich-text-content li {
-  margin: 0.125em 0;
+  margin: 0.25em 0;
+  line-height: 1.714;
 }
 
-/* Blockquote */
+.rich-text-editor-content .ProseMirror li > p,
+.rich-text-content li > p {
+  margin-bottom: 0.25em;
+}
+
+.rich-text-editor-content .ProseMirror li > p:last-child,
+.rich-text-content li > p:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Blockquote ────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror blockquote,
 .rich-text-content blockquote {
-  border-left: 3px solid #b2d8d4;
-  padding-left: 1em;
-  margin: 0.5em 0;
-  color: #6b7280;
-  font-style: italic;
+  border-left: 3px solid #dfe1e6;
+  padding: 0.25em 0 0.25em 1em;
+  margin: 1em 0;
+  color: #5e6c84;
+  font-style: normal;       /* Jira doesn't italicise blockquotes */
 }
 
-/* Inline code */
+/* ─── Inline code ───────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror code,
 .rich-text-content code {
-  background-color: #ecf5f4;
-  border: 1px solid #d5e5e3;
+  background-color: #f4f5f7;
+  border: 1px solid #dfe1e6;
   border-radius: 3px;
   padding: 0.1em 0.35em;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 0.8125rem;
-  color: #0f766e;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 0.857em;       /* 12px at 14px base */
+  color: #172b4d;
 }
 
-/* Code block */
+/* ─── Code block ────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror pre,
 .rich-text-content pre {
-  background-color: #1f2937;
-  border-radius: 6px;
+  background-color: #f4f5f7;
+  border: 1px solid #dfe1e6;
+  border-radius: 4px;
   padding: 0.75em 1em;
-  margin: 0.5em 0;
+  margin: 1em 0;
   overflow-x: auto;
 }
 
@@ -1164,123 +1200,141 @@ html.theme-transition *::after {
   background: none;
   border: none;
   padding: 0;
-  color: #e5e7eb;
-  font-size: 0.8125rem;
+  color: #172b4d;
+  font-size: 0.857em;
 }
 
-/* Horizontal rule */
+/* ─── Horizontal rule ───────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror hr,
 .rich-text-content hr {
   border: none;
-  border-top: 2px solid #d5e5e3;
-  margin: 0.75em 0;
+  border-top: 1px solid #dfe1e6;
+  margin: 1.5em 0;
 }
 
-/* Links */
+/* ─── Links ─────────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror a,
 .rich-text-content a,
 .rich-text-editor-content .ProseMirror .rich-link,
 .rich-text-content .rich-link {
-  color: #2563eb;
-  text-decoration: underline;
+  color: #0052cc;            /* Jira blue */
+  text-decoration: none;
   cursor: pointer;
 }
 
 .rich-text-editor-content .ProseMirror a:hover,
-.rich-text-content a:hover {
-  color: #1d4ed8;
+.rich-text-content a:hover,
+.rich-text-editor-content .ProseMirror .rich-link:hover,
+.rich-text-content .rich-link:hover {
+  color: #0065ff;
+  text-decoration: underline;
 }
 
-/* @Mentions */
+/* ─── Inline formatting ─────────────────────────────────────────── */
+.rich-text-editor-content .ProseMirror strong, .rich-text-content strong { font-weight: 600; }
+.rich-text-editor-content .ProseMirror em,     .rich-text-content em     { font-style: italic; }
+.rich-text-editor-content .ProseMirror u,      .rich-text-content u      { text-decoration: underline; }
+.rich-text-editor-content .ProseMirror s,      .rich-text-content s      { text-decoration: line-through; color: #5e6c84; }
+.rich-text-editor-content .ProseMirror mark,   .rich-text-content mark   { background-color: #ffc400; color: #172b4d; border-radius: 2px; padding: 0 0.1em; }
+
+/* ─── @Mentions ─────────────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror .mention,
 .rich-text-content .mention {
-  background-color: #e0f2f1;
+  background-color: #deebff;
   border-radius: 4px;
-  color: #0f766e;
+  color: #0052cc;
   font-weight: 500;
   padding: 0.05em 0.3em;
   white-space: nowrap;
 }
 
-/* Bold / Italic / Underline / Strike handled by browser defaults via semantic tags */
-.rich-text-editor-content .ProseMirror strong,
-.rich-text-content strong {
-  font-weight: 600;
-}
-
-.rich-text-editor-content .ProseMirror em,
-.rich-text-content em {
-  font-style: italic;
-}
-
-.rich-text-editor-content .ProseMirror u,
-.rich-text-content u {
-  text-decoration: underline;
-}
-
-.rich-text-editor-content .ProseMirror s,
-.rich-text-content s {
-  text-decoration: line-through;
-}
-
-/* Selection highlight in editor */
+/* ─── Editor selection ──────────────────────────────────────────── */
 .rich-text-editor-content .ProseMirror ::selection {
-  background-color: #b2dfdb;
+  background-color: #b3d4ff;
 }
 
-/* Dark mode adjustments */
+/* ─── Dark mode ─────────────────────────────────────────────────── */
 .dark .rich-text-editor-content .ProseMirror,
 .dark .rich-text-content {
-  color: #d1d5db;
+  color: #c9d1d9;
 }
 
 .dark .rich-text-editor-content .ProseMirror h1,
 .dark .rich-text-editor-content .ProseMirror h2,
 .dark .rich-text-editor-content .ProseMirror h3,
+.dark .rich-text-editor-content .ProseMirror h4,
+.dark .rich-text-editor-content .ProseMirror h5,
+.dark .rich-text-editor-content .ProseMirror h6,
 .dark .rich-text-content h1,
 .dark .rich-text-content h2,
-.dark .rich-text-content h3 {
-  color: #f3f4f6;
+.dark .rich-text-content h3,
+.dark .rich-text-content h4,
+.dark .rich-text-content h5,
+.dark .rich-text-content h6 {
+  color: #e6edf3;
+}
+
+.dark .rich-text-editor-content .ProseMirror h6,
+.dark .rich-text-content h6 {
+  color: #8b949e;
 }
 
 .dark .rich-text-editor-content .ProseMirror code,
 .dark .rich-text-content code {
-  background-color: #374151;
-  border-color: #4b5563;
-  color: #f87171;
+  background-color: #21262d;
+  border-color: #30363d;
+  color: #f85149;
+}
+
+.dark .rich-text-editor-content .ProseMirror pre,
+.dark .rich-text-content pre {
+  background-color: #161b22;
+  border-color: #30363d;
+}
+
+.dark .rich-text-editor-content .ProseMirror pre code,
+.dark .rich-text-content pre code {
+  color: #c9d1d9;
 }
 
 .dark .rich-text-editor-content .ProseMirror blockquote,
 .dark .rich-text-content blockquote {
-  border-color: #4b5563;
-  color: #9ca3af;
-}
-
-.dark .rich-text-editor-content .ProseMirror .mention,
-.dark .rich-text-content .mention {
-  background-color: #1e3a5f;
-  color: #93c5fd;
+  border-color: #30363d;
+  color: #8b949e;
 }
 
 .dark .rich-text-editor-content .ProseMirror hr,
 .dark .rich-text-content hr {
-  border-top-color: #4b5563;
+  border-top-color: #30363d;
 }
 
 .dark .rich-text-editor-content .ProseMirror a,
 .dark .rich-text-content a,
 .dark .rich-text-editor-content .ProseMirror .rich-link,
 .dark .rich-text-content .rich-link {
-  color: #60a5fa;
+  color: #58a6ff;
 }
 
 .dark .rich-text-editor-content .ProseMirror a:hover,
-.dark .rich-text-content a:hover {
-  color: #93bbfd;
+.dark .rich-text-content a:hover,
+.dark .rich-text-editor-content .ProseMirror .rich-link:hover,
+.dark .rich-text-content .rich-link:hover {
+  color: #79b8ff;
+}
+
+.dark .rich-text-editor-content .ProseMirror .mention,
+.dark .rich-text-content .mention {
+  background-color: #1c2d4a;
+  color: #58a6ff;
+}
+
+.dark .rich-text-editor-content .ProseMirror s,
+.dark .rich-text-content s {
+  color: #8b949e;
 }
 
 .dark .rich-text-editor-content .ProseMirror ::selection {
-  background-color: #1e40af;
+  background-color: #1c4478;
 }
 
 /* ─── TipTap Table ─────────────────────────────────────────────────────────── */
