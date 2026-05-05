@@ -110,6 +110,17 @@ export function ProjectSettingsPage() {
   const { hasPermission } = useHasPermission(projectKey)
   const currentUser = useAuthStore((s) => s.user)
   const canManageOrgRoles = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMIN
+  const canUpdateProject = hasPermission('project', 'update')
+  const canManageBoard = hasPermission('board', 'manage')
+  const canManageGithub = hasPermission('project', 'manage')
+  const canManageWebhook = hasPermission('webhook', 'manage')
+  const canManageAutomations = hasPermission('automation', 'create')
+  const canManageVersions = hasPermission('version', 'create')
+  const canManageCustomFields = hasPermission('custom-field', 'create')
+  const canCreateComponent = hasPermission('component', 'create')
+  const canUpdateComponent = hasPermission('component', 'update')
+  const canDeleteComponent = hasPermission('component', 'delete')
+  const canReadAi = hasPermission('ai', 'read')
   const { data: usersResult } = useUsers()
   const users = usersResult?.data
 
@@ -206,8 +217,8 @@ export function ProjectSettingsPage() {
             </div>
           ))}
 
-          {/* Administration — bottom, separated */}
-          <div className="px-2 pt-2 pb-4 mt-auto border-t border-border">
+          {/* Administration — bottom, separated (managers and above only) */}
+          {hasPermission('project', 'delete') && <div className="px-2 pt-2 pb-4 mt-auto border-t border-border">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 pb-1 pt-3">
               Administration
             </p>
@@ -237,7 +248,7 @@ export function ProjectSettingsPage() {
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               Danger Zone
             </button>
-          </div>
+          </div>}
         </div>
 
         {/* Content panel */}
@@ -257,6 +268,7 @@ export function ProjectSettingsPage() {
                   onCancel={() => {}}
                   isLoading={updateProject.isPending}
                   submitLabel={t('settings.saveChanges')}
+                  readOnly={!canUpdateProject}
                 />
               </div>
             </div>
@@ -271,16 +283,18 @@ export function ProjectSettingsPage() {
                   <p className="text-sm text-muted-foreground mt-0.5">Add and manage who has access to this project.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => repairMemberships.mutate()}
-                    disabled={repairMemberships.isPending}
-                    title="Sync project memberships from Jira-imported issue assignments"
-                  >
-                    <RefreshCw className={cn('h-4 w-4', repairMemberships.isPending && 'animate-spin')} />
-                    {repairMemberships.isPending ? 'Syncing…' : 'Sync Members'}
-                  </Button>
+                  {canManageOrgRoles && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => repairMemberships.mutate()}
+                      disabled={repairMemberships.isPending}
+                      title="Sync project memberships from Jira-imported issue assignments"
+                    >
+                      <RefreshCw className={cn('h-4 w-4', repairMemberships.isPending && 'animate-spin')} />
+                      {repairMemberships.isPending ? 'Syncing…' : 'Sync Members'}
+                    </Button>
+                  )}
                   {hasPermission('member', 'create') && (
                     <Button size="sm" onClick={() => setShowAddMember(true)}>
                       <Plus className="h-4 w-4" />
@@ -303,19 +317,21 @@ export function ProjectSettingsPage() {
                   <h2 className="text-base font-semibold text-foreground">{t('settings.issueStatuses')}</h2>
                   <p className="text-sm text-muted-foreground mt-0.5">Define the statuses issues move through in this project.</p>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditStatus(null)
-                    setStatusName('')
-                    setStatusCategory(IssueStatusCategory.TODO)
-                    setStatusColor(STATUS_COLORS[0])
-                    setShowAddStatus(true)
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('settings.addStatus')}
-                </Button>
+                {canManageBoard && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditStatus(null)
+                      setStatusName('')
+                      setStatusCategory(IssueStatusCategory.TODO)
+                      setStatusColor(STATUS_COLORS[0])
+                      setShowAddStatus(true)
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t('settings.addStatus')}
+                  </Button>
+                )}
               </div>
               <div className="rounded-xl border border-border bg-card divide-y divide-border">
                 {board?.statuses?.map((status) => (
@@ -323,17 +339,21 @@ export function ProjectSettingsPage() {
                     <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color || '#6b7280' }} />
                     <span className="flex-1 text-sm font-medium text-foreground">{status.name}</span>
                     <span className="text-xs text-muted-foreground capitalize">{status.category}</span>
-                    <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEditStatus(status)}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
-                      onClick={() => deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {canManageBoard && (
+                      <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEditStatus(status)}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {canManageBoard && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
+                        onClick={() => deleteStatus.mutate({ projectId: projectKey!, statusId: status.id })}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 ))}
                 {(!board?.statuses || board.statuses.length === 0) && (
@@ -385,9 +405,11 @@ export function ProjectSettingsPage() {
                     <p className="text-xs text-muted-foreground">Configure outgoing HTTP callbacks</p>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => navigate(`/projects/${projectKey}/webhooks`)}>
-                  Manage
-                </Button>
+                {canManageWebhook && (
+                  <Button size="sm" onClick={() => navigate(`/projects/${projectKey}/webhooks`)}>
+                    Manage
+                  </Button>
+                )}
               </div>
             </div>
           )}
@@ -399,7 +421,7 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">Custom Fields</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Add extra fields to issues in this project.</p>
               </div>
-              <CustomFieldSettings projectId={projectKey!} />
+              <CustomFieldSettings projectId={projectKey!} canManage={canManageCustomFields} />
             </div>
           )}
 
@@ -410,7 +432,7 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">Epics</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Organize issues by functional areas of your project.</p>
               </div>
-              <ComponentList projectId={projectKey!} />
+              <ComponentList projectId={projectKey!} canCreate={canCreateComponent} canUpdate={canUpdateComponent} canDelete={canDeleteComponent} />
             </div>
           )}
 
@@ -421,7 +443,7 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">Versions</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Track releases and milestones for this project.</p>
               </div>
-              <VersionList projectId={projectKey!} />
+              <VersionList projectId={projectKey!} canManage={canManageVersions} />
             </div>
           )}
 
@@ -432,7 +454,7 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">GitHub Integration</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Connect a GitHub repository to auto-link commits and pull requests.</p>
               </div>
-              <GitHubConnection projectId={projectKey!} />
+              <GitHubConnection projectId={projectKey!} canManage={canManageGithub} />
             </div>
           )}
 
@@ -443,7 +465,19 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">AI Usage</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Monitor AI feature usage and credits for this project.</p>
               </div>
-              <AiUsageDashboard />
+              {canReadAi ? (
+                <AiUsageDashboard />
+              ) : (
+                <div className="rounded-xl border border-border bg-card p-8 flex flex-col items-center justify-center text-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                    <Shield className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Access Denied</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Manager or higher access is required to view AI usage.</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -454,12 +488,12 @@ export function ProjectSettingsPage() {
                 <h2 className="text-base font-semibold text-foreground">Automations</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Create rules to automate repetitive tasks in this project.</p>
               </div>
-              <AutomationsContent projectKey={projectKey} />
+              <AutomationsContent projectKey={projectKey} canManage={canManageAutomations} />
             </div>
           )}
 
           {/* Trash */}
-          {activeTab === 'trash' && projectKey && (
+          {activeTab === 'trash' && hasPermission('project', 'delete') && projectKey && (
             <div>
               <div className="mb-6">
                 <h2 className="text-base font-semibold text-foreground">Trash</h2>
@@ -470,7 +504,7 @@ export function ProjectSettingsPage() {
           )}
 
           {/* Danger Zone */}
-          {activeTab === 'danger' && (
+          {activeTab === 'danger' && hasPermission('project', 'delete') && (
             <div className="max-w-lg">
               <div className="mb-6">
                 <h2 className="text-base font-semibold text-foreground">Danger Zone</h2>

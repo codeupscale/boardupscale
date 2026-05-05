@@ -23,6 +23,7 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
 interface CustomFieldSettingsProps {
   projectId: string
+  canManage?: boolean
 }
 
 const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
@@ -41,7 +42,7 @@ const OPTION_COLORS = [
   '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#6b7280',
 ]
 
-export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
+export function CustomFieldSettings({ projectId, canManage = true }: CustomFieldSettingsProps) {
   const { data: definitions } = useCustomFieldDefinitions(projectId)
   const createField = useCreateCustomField()
   const updateField = useUpdateCustomField()
@@ -130,10 +131,12 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-foreground">Custom Fields</h2>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Add Field
-        </Button>
+        {canManage && (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Add Field
+          </Button>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border border-border divide-y divide-border">
@@ -156,21 +159,25 @@ export function CustomFieldSettings({ projectId }: CustomFieldSettingsProps) {
               )}
               <p className="text-xs text-muted-foreground font-mono mt-0.5">key: {def.fieldKey}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => openEdit(def)}
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-red-600"
-              onClick={() => setDeleteTarget(def)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => openEdit(def)}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-red-600"
+                onClick={() => setDeleteTarget(def)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         ))}
         {(!definitions || definitions.length === 0) && (

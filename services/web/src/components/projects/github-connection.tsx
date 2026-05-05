@@ -11,12 +11,13 @@ import api from '@/lib/api'
 
 interface GitHubConnectionProps {
   projectId: string
+  canManage?: boolean
 }
 
 // The frontend callback URL GitHub redirects to after OAuth
 const GITHUB_CALLBACK_URL = `${window.location.origin}/github/callback`
 
-export function GitHubConnection({ projectId }: GitHubConnectionProps) {
+export function GitHubConnection({ projectId, canManage = true }: GitHubConnectionProps) {
   const { data: connection, isLoading } = useGithubConnection(projectId)
   const connectGithub = useConnectGithub()
   const disconnectGithub = useDisconnectGithub()
@@ -117,6 +118,23 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
     )
   }
 
+  if (!connection && !canManage) {
+    return (
+      <div>
+        <SectionHeader />
+        <div className="rounded-xl border border-border bg-card p-8 flex flex-col items-center justify-center text-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+            <Lock className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Access Denied</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Manager or higher access is required to connect a GitHub repository.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Connected state ──
   if (connection) {
     const repoUrl = `https://github.com/${connection.repoOwner}/${connection.repoName}`
@@ -163,15 +181,17 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
                   <Badge variant="secondary" className="text-[10px]">Not registered</Badge>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => verifyWebhook.mutate(projectId)}
-                disabled={verifyWebhook.isPending}
-              >
-                <RefreshCw className={cn('h-3.5 w-3.5', verifyWebhook.isPending && 'animate-spin')} />
-                Verify
-              </Button>
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => verifyWebhook.mutate(projectId)}
+                  disabled={verifyWebhook.isPending}
+                >
+                  <RefreshCw className={cn('h-3.5 w-3.5', verifyWebhook.isPending && 'animate-spin')} />
+                  Verify
+                </Button>
+              )}
             </div>
             {connection.webhookActive && (
               <p className="text-xs text-muted-foreground mt-2">
@@ -186,25 +206,29 @@ export function GitHubConnection({ projectId }: GitHubConnectionProps) {
             )}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border">
-            <Button variant="destructive" size="sm" onClick={() => setShowDisconnect(true)}>
-              Disconnect Repository
-            </Button>
-          </div>
+          {canManage && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <Button variant="destructive" size="sm" onClick={() => setShowDisconnect(true)}>
+                Disconnect Repository
+              </Button>
+            </div>
+          )}
         </div>
 
-        <ConfirmDialog
-          open={showDisconnect}
-          onClose={() => setShowDisconnect(false)}
-          onConfirm={() =>
-            disconnectGithub.mutate(projectId, { onSuccess: () => setShowDisconnect(false) })
-          }
-          title="Disconnect GitHub Repository"
-          description={`Are you sure you want to disconnect ${connection.repoOwner}/${connection.repoName}? The webhook will be removed from GitHub and no new events will be received. Existing events linked to issues will be preserved.`}
-          confirmLabel="Disconnect"
-          destructive
-          isLoading={disconnectGithub.isPending}
-        />
+        {canManage && (
+          <ConfirmDialog
+            open={showDisconnect}
+            onClose={() => setShowDisconnect(false)}
+            onConfirm={() =>
+              disconnectGithub.mutate(projectId, { onSuccess: () => setShowDisconnect(false) })
+            }
+            title="Disconnect GitHub Repository"
+            description={`Are you sure you want to disconnect ${connection.repoOwner}/${connection.repoName}? The webhook will be removed from GitHub and no new events will be received. Existing events linked to issues will be preserved.`}
+            confirmLabel="Disconnect"
+            destructive
+            isLoading={disconnectGithub.isPending}
+          />
+        )}
       </div>
     )
   }
