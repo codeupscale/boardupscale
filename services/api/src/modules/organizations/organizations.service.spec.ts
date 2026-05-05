@@ -11,6 +11,7 @@ import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { PermissionsService } from '../permissions/permissions.service';
 import { createMockRepository } from '../../test/test-utils';
 import { mockOrganization, mockUser, TEST_IDS } from '../../test/mock-factories';
 
@@ -25,6 +26,17 @@ describe('OrganizationsService', () => {
   const mockDataSource = {
     transaction: jest.fn((cb: any) => cb({ query: jest.fn().mockResolvedValue({ rows: [] }) })),
     query: jest.fn(),
+  };
+  // System roles returned by PermissionsService.getRolesForOrg — must include every
+  // role name used in inviteMember/updateMemberRole tests so resolveInviteRole succeeds.
+  const mockPermissionsService = {
+    getRolesForOrg: jest.fn().mockResolvedValue([
+      { id: 'role-owner',   name: 'Owner' },
+      { id: 'role-admin',   name: 'Admin' },
+      { id: 'role-manager', name: 'Manager' },
+      { id: 'role-member',  name: 'Member' },
+      { id: 'role-viewer',  name: 'Viewer' },
+    ]),
   };
 
   beforeEach(async () => {
@@ -44,6 +56,7 @@ describe('OrganizationsService', () => {
         { provide: DataSource, useValue: mockDataSource },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
         { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
+        { provide: PermissionsService, useValue: mockPermissionsService },
       ],
     }).compile();
 
@@ -52,6 +65,14 @@ describe('OrganizationsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Restore the default mock after each test in case a specific test overrides it.
+    mockPermissionsService.getRolesForOrg.mockResolvedValue([
+      { id: 'role-owner',   name: 'Owner' },
+      { id: 'role-admin',   name: 'Admin' },
+      { id: 'role-manager', name: 'Manager' },
+      { id: 'role-member',  name: 'Member' },
+      { id: 'role-viewer',  name: 'Viewer' },
+    ]);
   });
 
   describe('findById', () => {
