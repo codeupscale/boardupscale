@@ -1046,19 +1046,32 @@ html.theme-transition *::after {
 .rich-text-editor-content .ProseMirror,
 .rich-text-content {
   font-size: 0.875rem;
-  line-height: 1.625;
+  line-height: 1.75;
   color: #374151;
 }
 
 .rich-text-editor-content .ProseMirror > * + *,
 .rich-text-content > * + * {
-  margin-top: 0.5em;
+  margin-top: 0.75em;
 }
 
 /* Paragraphs */
 .rich-text-editor-content .ProseMirror p,
 .rich-text-content p {
-  margin: 0;
+  margin: 0 0 0.75em 0;
+}
+
+.rich-text-editor-content .ProseMirror p:last-child,
+.rich-text-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Give <br> tags breathing room so inline line-breaks don't feel cramped */
+.rich-text-content br,
+.rich-text-editor-content .ProseMirror br {
+  display: block;
+  content: '';
+  margin-top: 0.35em;
 }
 
 /* Headings */
