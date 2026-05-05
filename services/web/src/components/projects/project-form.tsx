@@ -29,6 +29,7 @@ interface ProjectFormProps {
   onCancel: () => void
   isLoading?: boolean
   submitLabel?: string
+  readOnly?: boolean
 }
 
 const TEMPLATE_ICONS: Record<string, string> = {
@@ -44,6 +45,7 @@ export function ProjectForm({
   onCancel,
   isLoading,
   submitLabel,
+  readOnly,
 }: ProjectFormProps) {
   const { t } = useTranslation()
   const {
@@ -142,6 +144,7 @@ export function ProjectForm({
         label={t('projects.projectName')}
         placeholder="My Awesome Project"
         error={errors.name?.message}
+        disabled={readOnly}
         {...register('name')}
       />
 
@@ -150,6 +153,7 @@ export function ProjectForm({
         placeholder="MAP"
         error={errors.key?.message}
         helperText={t('projects.projectKeyHelper')}
+        disabled={readOnly}
         {...register('key')}
         onChange={(e) => {
           e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -161,17 +165,20 @@ export function ProjectForm({
         label={t('common.description')}
         placeholder={t('projects.whatIsProject')}
         rows={3}
+        disabled={readOnly}
         {...register('description')}
       />
 
-      <div className="flex justify-end gap-3 pt-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          {t('common.cancel')}
-        </Button>
-        <Button type="submit" isLoading={isLoading}>
-          {submitLabel || t('projects.createProject')}
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" isLoading={isLoading}>
+            {submitLabel || t('projects.createProject')}
+          </Button>
+        </div>
+      )}
     </form>
   )
 }

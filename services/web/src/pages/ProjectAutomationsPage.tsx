@@ -37,7 +37,7 @@ function getTriggerLabel(triggerType: string): string {
   return option?.label || triggerType
 }
 
-export function AutomationsContent({ projectKey }: { projectKey: string }) {
+export function AutomationsContent({ projectKey, canManage = true }: { projectKey: string; canManage?: boolean }) {
   const { data: rules, isLoading } = useAutomationRules(projectKey)
 
   const createRule = useCreateRule()
@@ -112,10 +112,12 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <Button onClick={openCreateEditor}>
-          <Plus className="h-4 w-4" />
-          Create Rule
-        </Button>
+        {canManage && (
+          <Button onClick={openCreateEditor}>
+            <Plus className="h-4 w-4" />
+            Create Rule
+          </Button>
+        )}
       </div>
 
       {/* Empty state */}
@@ -131,10 +133,12 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
             Create automation rules to automatically perform actions when issues are created,
             updated, or when other events occur.
           </p>
-          <Button onClick={openCreateEditor}>
-            <Plus className="h-4 w-4" />
-            Create Your First Rule
-          </Button>
+          {canManage && (
+            <Button onClick={openCreateEditor}>
+              <Plus className="h-4 w-4" />
+              Create Your First Rule
+            </Button>
+          )}
         </div>
       )}
 
@@ -189,29 +193,33 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                 </div>
 
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title={rule.isActive ? 'Disable' : 'Enable'}
-                    onClick={() => toggleRule.mutate({ id: rule.id })}
-                  >
-                    {rule.isActive ? (
-                      <ToggleRight className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Test rule"
-                    onClick={() => {
-                      setShowTestDialog(rule.id)
-                      setTestIssueId('')
-                    }}
-                  >
-                    <Play className="h-4 w-4" />
-                  </Button>
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title={rule.isActive ? 'Disable' : 'Enable'}
+                      onClick={() => toggleRule.mutate({ id: rule.id })}
+                    >
+                      {rule.isActive ? (
+                        <ToggleRight className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Test rule"
+                      onClick={() => {
+                        setShowTestDialog(rule.id)
+                        setTestIssueId('')
+                      }}
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -222,23 +230,27 @@ export function AutomationsContent({ projectKey }: { projectKey: string }) {
                   >
                     <History className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Edit rule"
-                    onClick={() => openEditEditor(rule)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground hover:text-red-600"
-                    title="Delete rule"
-                    onClick={() => setShowDeleteConfirm(rule.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      title="Edit rule"
+                      onClick={() => openEditEditor(rule)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:text-red-600"
+                      title="Delete rule"
+                      onClick={() => setShowDeleteConfirm(rule.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
 

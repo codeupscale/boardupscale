@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/utils'
 
 interface VersionListProps {
   projectId: string
+  canManage?: boolean
 }
 
 const statusStyles: Record<string, string> = {
@@ -26,7 +27,7 @@ const statusStyles: Record<string, string> = {
   archived: 'bg-muted text-muted-foreground',
 }
 
-export function VersionList({ projectId }: VersionListProps) {
+export function VersionList({ projectId, canManage = true }: VersionListProps) {
   const { data: versions } = useVersions(projectId)
   const createVersion = useCreateVersion()
   const updateVersion = useUpdateVersion()
@@ -89,10 +90,12 @@ export function VersionList({ projectId }: VersionListProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-foreground">Versions</h2>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          Add Version
-        </Button>
+        {canManage && (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            Add Version
+          </Button>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border border-border divide-y divide-border">
@@ -127,7 +130,7 @@ export function VersionList({ projectId }: VersionListProps) {
                 )}
               </div>
             </div>
-            {version.status === 'unreleased' && (
+            {canManage && version.status === 'unreleased' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -140,21 +143,25 @@ export function VersionList({ projectId }: VersionListProps) {
                 Release
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => openEdit(version)}
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-red-600"
-              onClick={() => setDeleteTarget(version)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => openEdit(version)}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canManage && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-red-600"
+                onClick={() => setDeleteTarget(version)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         ))}
         {(!versions || versions.length === 0) && (

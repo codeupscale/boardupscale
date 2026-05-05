@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class InviteMemberDto {
   @ApiProperty({ example: 'jane@example.com' })
@@ -11,10 +11,10 @@ export class InviteMemberDto {
   @IsString()
   displayName?: string;
 
-  @ApiPropertyOptional({ example: 'member', default: 'member', enum: ['owner', 'admin', 'member'] })
+  @ApiPropertyOptional({ example: 'member', default: 'member' })
   @IsOptional()
   @IsString()
-  @IsIn(['owner', 'admin', 'member'])
+  @MaxLength(50)
   role?: string = 'member';
 
   @ApiPropertyOptional({
