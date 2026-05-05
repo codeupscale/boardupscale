@@ -21,6 +21,7 @@ import { EmailService } from '../notifications/email.service';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class OrganizationsService {
@@ -37,7 +38,25 @@ export class OrganizationsService {
     private dataSource: DataSource,
     private posthogService: PosthogService,
     private gateway: EventsGateway,
+    private permissionsService: PermissionsService,
   ) {}
+
+  /**
+   * Validates `roleName` against system roles and the org's custom roles.
+   * Returns the canonical lowercase role name, or throws BadRequestException.
+   */
+  private async resolveInviteRole(
+    roleName: string,
+    organizationId: string,
+  ): Promise<string> {
+    const normalized = roleName.trim().toLowerCase();
+    const roles = await this.permissionsService.getRolesForOrg(organizationId);
+    const match = roles.find((r) => r.name.toLowerCase() === normalized);
+    if (!match) {
+      throw new BadRequestException(`Role "${roleName}" does not exist in this organization`);
+    }
+    return match.name.toLowerCase();
+  }
 
   async findById(id: string): Promise<Organization> {
     const org = await this.organizationRepository.findOne({ where: { id } });
@@ -110,6 +129,7 @@ export class OrganizationsService {
         );
       }
     }
+    const role = await this.resolveInviteRole(dto.role || 'member', organizationId);
 
     const existingUser = await this.userRepository.findOne({
       where: { email: dto.email },
@@ -131,7 +151,7 @@ export class OrganizationsService {
         .values({
           userId: existingUser.id,
           organizationId,
-          role: dto.role || 'member',
+          role,
           isDefault: false,
         })
         .orIgnore()
@@ -158,7 +178,7 @@ export class OrganizationsService {
         'organization.member.invited',
         'user',
         existingUser.id,
-        { email: existingUser.email, role: dto.role || 'member', existingUser: true },
+        { email: existingUser.email, role, existingUser: true },
         null,
       );
 
@@ -201,7 +221,7 @@ export class OrganizationsService {
       email: dto.email,
       displayName: dto.displayName || dto.email.split('@')[0],
       passwordHash: null,
-      role: dto.role || 'member',
+      role,
       isActive: false,
       invitationStatus: 'pending',
       emailVerified: false,
@@ -217,7 +237,7 @@ export class OrganizationsService {
       .values({
         userId: saved.id,
         organizationId,
-        role: dto.role || 'member',
+        role,
         isDefault: true,
       })
       .orIgnore()
@@ -230,7 +250,7 @@ export class OrganizationsService {
     this.posthogService.capture(inviterId, 'organization_member_invited', {
       organizationId,
       invitedEmail: dto.email,
-      role: dto.role || 'member',
+      role,
     });
 
     this.notifyOrgMembersChanged(organizationId);

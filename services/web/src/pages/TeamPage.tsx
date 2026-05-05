@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, ComponentType } from 'react'
 import {
   Users,
   UserPlus,
@@ -32,6 +32,7 @@ import {
   useRevokeInvitation,
 } from '@/hooks/useOrganization'
 import type { MergePreview } from '@/hooks/useOrganization'
+import { useRoles } from '@/hooks/usePermissions'
 import { MergeConfirmationModal } from '@/components/MergeConfirmationModal'
 import { User, UserRole } from '@/types'
 import { toast } from '@/store/ui.store'
@@ -52,47 +53,71 @@ import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
 
-// ─── Role Config ─────────────────────────────────────────────────────────────
-const ROLE_CONFIG = [
-  {
-    value: 'owner',
-    label: 'Owner',
-    description: 'Full control over the organization, billing, and all settings',
+// ─── Role display helpers ─────────────────────────────────────────────────────
+interface RoleCardConfig {
+  value: string
+  label: string
+  description: string
+  icon: ComponentType<{ className?: string }>
+  iconColor: string
+  selectedBg: string
+  defaultBg: string
+  badgeCls: string
+}
+
+const ROLE_STYLE_MAP: Record<string, Omit<RoleCardConfig, 'value' | 'label' | 'description'>> = {
+  owner: {
     icon: Crown,
     iconColor: 'text-purple-500',
     selectedBg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600',
     defaultBg: 'bg-card/50 border-border',
-    badgeCls:
-      'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
+    badgeCls: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
   },
-  {
-    value: 'admin',
-    label: 'Admin',
-    description: 'Manage members, projects, and organization settings',
+  admin: {
     icon: Shield,
     iconColor: 'text-primary',
     selectedBg: 'bg-primary/10 border-primary dark:border-primary',
     defaultBg: 'bg-card/50 border-border',
-    badgeCls:
-      'bg-primary/15 text-primary border border-primary/30 dark:border-primary/40',
+    badgeCls: 'bg-primary/15 text-primary border border-primary/30 dark:border-primary/40',
   },
-  {
-    value: 'member',
-    label: 'Member',
-    description: 'Access and collaborate on assigned projects',
+  manager: {
+    icon: ShieldCheck,
+    iconColor: 'text-blue-500',
+    selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
+    defaultBg: 'bg-card/50 border-border',
+    badgeCls: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
+  },
+  member: {
     icon: User2,
     iconColor: 'text-muted-foreground',
     selectedBg: 'bg-muted border-muted-foreground',
     defaultBg: 'bg-card/50 border-border',
-    badgeCls:
-      'bg-muted text-foreground border border-border',
+    badgeCls: 'bg-muted text-foreground border border-border',
   },
-] as const
+  viewer: {
+    icon: Users,
+    iconColor: 'text-muted-foreground',
+    selectedBg: 'bg-muted border-muted-foreground',
+    defaultBg: 'bg-card/50 border-border',
+    badgeCls: 'bg-muted text-foreground border border-border',
+  },
+}
 
-type RoleValue = 'owner' | 'admin' | 'member'
+const DEFAULT_ROLE_STYLE: Omit<RoleCardConfig, 'value' | 'label' | 'description'> = {
+  icon: User2,
+  iconColor: 'text-muted-foreground',
+  selectedBg: 'bg-muted border-muted-foreground',
+  defaultBg: 'bg-card/50 border-border',
+  badgeCls: 'bg-muted text-foreground border border-border',
+}
 
-function getRoleConfig(role: string) {
-  return ROLE_CONFIG.find((r) => r.value === role) ?? ROLE_CONFIG[2]
+type RoleValue = string
+
+function getRoleConfig(role: string): RoleCardConfig {
+  const key = role.toLowerCase()
+  const style = ROLE_STYLE_MAP[key] ?? DEFAULT_ROLE_STYLE
+  const label = role.charAt(0).toUpperCase() + role.slice(1)
+  return { value: key, label, description: '', ...style }
 }
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
@@ -151,7 +176,7 @@ function RoleCard({
   selected,
   onClick,
 }: {
-  config: (typeof ROLE_CONFIG)[number]
+  config: RoleCardConfig
   selected: boolean
   onClick: () => void
 }) {
@@ -284,12 +309,13 @@ export function TeamPage() {
   const deactivateMember = useDeactivateMember()
   const resendInvitation = useResendInvitation()
   const revokeInvitation = useRevokeInvitation()
+  const { data: orgRoles = [] } = useRoles(me?.organizationId)
 
   // ── Invite dialog ─────────────────────────────────────────────────────────
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteDisplayName, setInviteDisplayName] = useState('')
-  const [inviteRole, setInviteRole] = useState<RoleValue>('member')
+  const [inviteRole, setInviteRole] = useState<string>('member')
 
   // ── Edit member dialog ────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<User | null>(null)
@@ -299,7 +325,7 @@ export function TeamPage() {
   // ── Change role dialog ────────────────────────────────────────────────────
   const [showRoleDialog, setShowRoleDialog] = useState(false)
   const [roleTarget, setRoleTarget] = useState<User | null>(null)
-  const [newRole, setNewRole] = useState<RoleValue>('member')
+  const [newRole, setNewRole] = useState<string>('member')
 
   // ── Update email dialog ───────────────────────────────────────────────────
   const [emailTarget, setEmailTarget] = useState<User | null>(null)
@@ -325,8 +351,18 @@ export function TeamPage() {
   const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
   const isOwner = me?.role === UserRole.OWNER
 
-  // The roles an admin/owner is allowed to assign when inviting or changing roles
-  const assignableRoles = ROLE_CONFIG.filter((r) => isOwner || r.value !== 'owner')
+  // Build assignable roles dynamically from the org's roles (system + custom)
+  const assignableRoles = useMemo<RoleCardConfig[]>(
+    () =>
+      orgRoles
+        .filter((r) => isOwner || r.name.toLowerCase() !== 'owner')
+        .map((r) => {
+          const key = r.name.toLowerCase()
+          const style = ROLE_STYLE_MAP[key] ?? DEFAULT_ROLE_STYLE
+          return { value: key, label: r.name, description: r.description || '', ...style }
+        }),
+    [orgRoles, isOwner],
+  )
 
   const activeMembers = useMemo(
     () => members.filter((m) => m.invitationStatus === 'accepted' || m.invitationStatus === 'none'),
@@ -894,7 +930,7 @@ export function TeamPage() {
                     key={conf.value}
                     config={conf}
                     selected={inviteRole === conf.value}
-                    onClick={() => setInviteRole(conf.value as RoleValue)}
+                    onClick={() => setInviteRole(conf.value)}
                   />
                 ))}
               </div>
@@ -1019,7 +1055,7 @@ export function TeamPage() {
                     key={conf.value}
                     config={conf}
                     selected={newRole === conf.value}
-                    onClick={() => setNewRole(conf.value as RoleValue)}
+                    onClick={() => setNewRole(conf.value)}
                   />
                 ))}
               </div>
