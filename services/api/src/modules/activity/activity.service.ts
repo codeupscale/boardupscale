@@ -35,11 +35,12 @@ export class ActivityService {
 
   async findByIssue(
     issueId: string,
+    organizationId: string,
     page = 1,
     limit = 20,
   ): Promise<{ items: Activity[]; total: number; page: number; limit: number }> {
     const [items, total] = await this.activityRepository.findAndCount({
-      where: { issueId },
+      where: { issueId, organizationId },
       relations: ['user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,

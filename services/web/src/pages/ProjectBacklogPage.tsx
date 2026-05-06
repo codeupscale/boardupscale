@@ -20,6 +20,7 @@ import {
   Check,
   X,
   User as UserIcon,
+  Bug,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useProject, useProjects, useProjectMembers } from '@/hooks/useProjects'
@@ -830,6 +831,7 @@ export function ProjectBacklogPage() {
   const [showCreateIssue, setShowCreateIssue] = useState(false)
   const issueFormRef = useRef<IssueFormHandle>(null)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
+  const [typeFilter, setTypeFilter] = useState('')
   const [sprintName, setSprintName] = useState('')
   const [sprintGoal, setSprintGoal] = useState('')
 
@@ -853,19 +855,24 @@ export function ProjectBacklogPage() {
 
   const allIssues = issuesData?.data || []
 
+  const filteredIssues = useMemo(
+    () => (typeFilter ? allIssues.filter((i) => i.type === typeFilter) : allIssues),
+    [allIssues, typeFilter],
+  )
+
   const activeSprints = useMemo(
     () => sprints?.filter((s) => s.status !== SprintStatus.COMPLETED) || [],
     [sprints],
   )
 
   const getSprintIssues = useCallback(
-    (sprintId: string) => allIssues.filter((i) => i.sprintId === sprintId),
-    [allIssues],
+    (sprintId: string) => filteredIssues.filter((i) => i.sprintId === sprintId),
+    [filteredIssues],
   )
 
   const backlogIssues = useMemo(
-    () => allIssues.filter((i) => !i.sprintId),
-    [allIssues],
+    () => filteredIssues.filter((i) => !i.sprintId),
+    [filteredIssues],
   )
 
   const boardStatuses = useMemo(
@@ -962,6 +969,35 @@ export function ProjectBacklogPage() {
 
       <ProjectTabNav projectKey={projectKey!} />
 
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2 px-6 py-3 bg-card border-b border-border">
+        <Select value={typeFilter || '__all__'} onValueChange={(v) => setTypeFilter(v === '__all__' ? '' : v)}>
+          <SelectTrigger className={cn(
+            'w-auto gap-1.5 text-sm',
+            typeFilter ? 'border-primary/50 bg-primary/10 text-primary' : 'text-muted-foreground',
+          )}>
+            <Bug className="h-3.5 w-3.5" />
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All types</SelectItem>
+            <SelectItem value="epic">Epic</SelectItem>
+            <SelectItem value="story">Story</SelectItem>
+            <SelectItem value="task">Task</SelectItem>
+            <SelectItem value="bug">Bug</SelectItem>
+          </SelectContent>
+        </Select>
+        {typeFilter && (
+          <button
+            onClick={() => setTypeFilter('')}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600 transition-colors"
+          >
+            <X className="h-3 w-3" />
+            Clear
+          </button>
+        )}
+      </div>
+
       {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade className="flex-1 min-h-0 flex flex-col">
       {/* Drag-and-Drop Context */}
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -973,7 +1009,7 @@ export function ProjectBacklogPage() {
                 {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
               <span className="text-muted-foreground/60">•</span>
-              <span>{allIssues.length} total issues</span>
+              <span>{filteredIssues.length} {typeFilter ? 'matching' : 'total'} issues</span>
               <span className="text-muted-foreground/60">•</span>
               <span>{backlogIssues.length} in backlog</span>
               <span className="text-muted-foreground/60">•</span>

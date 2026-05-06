@@ -30,6 +30,7 @@ export function useUploadAttachment() {
     },
     onSuccess: (_, { issueId }) => {
       qc.invalidateQueries({ queryKey: ['attachments', issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', issueId] })
       toast('File uploaded')
     },
     onError: (err: any) =>
@@ -46,6 +47,7 @@ export function useDeleteAttachment() {
     },
     onSuccess: (_, { issueId }) => {
       qc.invalidateQueries({ queryKey: ['attachments', issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', issueId] })
       toast('File deleted')
     },
     onError: (err: any) =>

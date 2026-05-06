@@ -10,6 +10,7 @@ import { ActivityService } from './activity.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
+import { OrgId } from '../../common/decorators/org-id.decorator';
 
 @ApiTags('activities')
 @ApiBearerAuth()
@@ -24,12 +25,13 @@ export class ActivityController {
   @ApiQuery({ name: 'limit', required: false })
   async findByIssue(
     @Param('issueId', ParseUUIDPipe) issueId: string,
+    @OrgId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
-    const result = await this.activityService.findByIssue(issueId, pageNum, limitNum);
+    const result = await this.activityService.findByIssue(issueId, organizationId, pageNum, limitNum);
     return {
       data: result.items,
       meta: {

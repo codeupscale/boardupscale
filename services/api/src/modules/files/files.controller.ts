@@ -60,8 +60,9 @@ export class FilesController {
   async confirmUpload(
     @Body() dto: ConfirmUploadDto,
     @CurrentUser() user: any,
+    @OrgId() organizationId: string,
   ) {
-    const attachment = await this.filesService.confirmUpload(dto, user.id);
+    const attachment = await this.filesService.confirmUpload(dto, user.id, organizationId);
     return { data: attachment };
   }
 
@@ -95,11 +96,12 @@ export class FilesController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadFileDto,
     @CurrentUser() user: any,
+    @OrgId() organizationId: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
-    return this.filesService.upload(file, dto, user.id);
+    return this.filesService.upload(file, dto, user.id, organizationId);
   }
 
   /**

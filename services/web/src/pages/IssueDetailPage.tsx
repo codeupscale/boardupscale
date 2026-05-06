@@ -314,16 +314,43 @@ export function IssueDetailPage() {
   const currentUser = useAuthStore((s) => s.user)
   const qc = useQueryClient()
 
-  // Re-fetch when the backend pushes an update for this issue (e.g. sprint completion)
+  // Re-fetch when the backend pushes an update for this issue or its comments/activity
   useEffect(() => {
     const socket = getSocket()
-    const handler = (updated: { id: string }) => {
-      if (updated?.id === issueId) {
-        qc.invalidateQueries({ queryKey: ['issue', issueId] })
-      }
+
+    const handleIssueUpdated = (updated: { id: string }) => {
+      if (updated?.id !== issueId) return
+      qc.invalidateQueries({ queryKey: ['issue', issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', issueId] })
     }
-    socket.on('issue:updated', handler)
-    return () => { socket.off('issue:updated', handler) }
+
+    const handleCommentEvent = (data: { issueId: string }) => {
+      if (data?.issueId !== issueId) return
+      qc.invalidateQueries({ queryKey: ['comments', issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', issueId] })
+    }
+
+    const handleAttachmentEvent = (data: { issueId: string }) => {
+      if (data?.issueId !== issueId) return
+      qc.invalidateQueries({ queryKey: ['attachments', issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', issueId] })
+    }
+
+    socket.on('issue:updated', handleIssueUpdated)
+    socket.on('comment:created', handleCommentEvent)
+    socket.on('comment:updated', handleCommentEvent)
+    socket.on('comment:deleted', handleCommentEvent)
+    socket.on('attachment:created', handleAttachmentEvent)
+    socket.on('attachment:deleted', handleAttachmentEvent)
+
+    return () => {
+      socket.off('issue:updated', handleIssueUpdated)
+      socket.off('comment:created', handleCommentEvent)
+      socket.off('comment:updated', handleCommentEvent)
+      socket.off('comment:deleted', handleCommentEvent)
+      socket.off('attachment:created', handleAttachmentEvent)
+      socket.off('attachment:deleted', handleAttachmentEvent)
+    }
   }, [issueId, qc])
 
   const { data: issue, isLoading } = useIssue(issueId!)
