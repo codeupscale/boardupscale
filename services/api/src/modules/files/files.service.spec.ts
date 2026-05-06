@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { FilesService } from './files.service';
 import { Attachment } from './entities/attachment.entity';
+import { ActivityService } from '../activity/activity.service';
+import { EventsGateway } from '../../websocket/events.gateway';
 import { createMockRepository, createMockConfigService } from '../../test/test-utils';
 import { mockAttachment, TEST_IDS } from '../../test/mock-factories';
 
@@ -39,6 +41,8 @@ describe('FilesService', () => {
         FilesService,
         { provide: getRepositoryToken(Attachment), useValue: attachmentRepo },
         { provide: ConfigService, useValue: createMockConfigService() },
+        { provide: ActivityService, useValue: { log: jest.fn() } },
+        { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
       ],
     }).compile();
 

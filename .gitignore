@@ -4,10 +4,7 @@ node_modules/
 .pnp.js
 
 # ── Environment — never commit secrets ────────────────────────────────────────
-.env
-.env.local
 .env.*.local
-.env.production
 
 # ── Build output ──────────────────────────────────────────────────────────────
 dist/
@@ -62,3 +59,4 @@ temp_interactive_push.bat
 .worktrees/
 .superpowers
 .docs/superpowers
+config.bat
