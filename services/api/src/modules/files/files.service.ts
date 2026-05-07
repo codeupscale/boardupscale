@@ -24,6 +24,9 @@ import { Attachment } from './entities/attachment.entity';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { PresignUploadDto } from './dto/presign-upload.dto';
 import { ConfirmUploadDto } from './dto/confirm-upload.dto';
+import { ActivityService } from '../activity/activity.service';
+import { ActivityAction } from '../activity/entities/activity.entity';
+import { EventsGateway } from '../../websocket/events.gateway';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;   // 50 MB
 const PRESIGN_EXPIRES_SECONDS = 10 * 60;     // 10 min to complete the PUT
@@ -45,6 +48,8 @@ export class FilesService {
     @InjectRepository(Attachment)
     private attachmentRepository: Repository<Attachment>,
     private configService: ConfigService,
+    private activityService: ActivityService,
+    private eventsGateway: EventsGateway,
   ) {
     const endpoint = this.configService.get<string>('minio.endpoint');
     const port = this.configService.get<number>('minio.port');
@@ -142,7 +147,7 @@ export class FilesService {
    * the Attachment row. storage_bucket is constrained to this service's
    * bucket to prevent key-guessing into other buckets.
    */
-  async confirmUpload(dto: ConfirmUploadDto, userId: string): Promise<Attachment> {
+  async confirmUpload(dto: ConfirmUploadDto, userId: string, organizationId?: string): Promise<Attachment> {
     if (dto.storageBucket !== this.bucket) {
       throw new BadRequestException('Invalid storageBucket');
     }
@@ -179,7 +184,26 @@ export class FilesService {
       storageBucket: dto.storageBucket,
     });
 
-    return this.attachmentRepository.save(attachment);
+    const saved = await this.attachmentRepository.save(attachment);
+
+    if (dto.issueId && organizationId) {
+      await this.activityService.log(
+        organizationId,
+        dto.issueId,
+        userId,
+        ActivityAction.ATTACHMENT_ADDED,
+        undefined,
+        undefined,
+        undefined,
+        { fileName: dto.fileName, attachmentId: saved.id, fileSize: actualSize },
+      );
+      this.eventsGateway.emitToOrg(organizationId, 'attachment:created', {
+        issueId: dto.issueId,
+        attachmentId: saved.id,
+      });
+    }
+
+    return saved;
   }
 
   private sanitizeFileName(name: string): string {
@@ -194,6 +218,7 @@ export class FilesService {
     file: Express.Multer.File,
     dto: UploadFileDto,
     userId: string,
+    organizationId?: string,
   ): Promise<Attachment> {
     await this.ensureBucket();
     const key = `${uuidv4()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -219,7 +244,26 @@ export class FilesService {
       storageBucket: this.bucket,
     });
 
-    return this.attachmentRepository.save(attachment);
+    const saved = await this.attachmentRepository.save(attachment);
+
+    if (dto.issueId && organizationId) {
+      await this.activityService.log(
+        organizationId,
+        dto.issueId,
+        userId,
+        ActivityAction.ATTACHMENT_ADDED,
+        undefined,
+        undefined,
+        undefined,
+        { fileName: file.originalname, attachmentId: saved.id, fileSize: file.size },
+      );
+      this.eventsGateway.emitToOrg(organizationId, 'attachment:created', {
+        issueId: dto.issueId,
+        attachmentId: saved.id,
+      });
+    }
+
+    return saved;
   }
 
   async getPresignedUrl(id: string, organizationId?: string): Promise<string> {
@@ -295,6 +339,24 @@ export class FilesService {
     }
     if (attachment.uploadedBy !== userId) {
       throw new ForbiddenException('You can only delete your own files');
+    }
+
+    const resolvedOrgId = organizationId ?? attachment.issue?.project?.organizationId;
+    if (attachment.issueId && resolvedOrgId) {
+      await this.activityService.log(
+        resolvedOrgId,
+        attachment.issueId,
+        userId,
+        ActivityAction.ATTACHMENT_REMOVED,
+        undefined,
+        undefined,
+        undefined,
+        { fileName: attachment.fileName, attachmentId: id },
+      );
+      this.eventsGateway.emitToOrg(resolvedOrgId, 'attachment:deleted', {
+        issueId: attachment.issueId,
+        attachmentId: id,
+      });
     }
 
     await this.s3Client.send(

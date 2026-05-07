@@ -43,6 +43,19 @@ export class CommentsService {
     private automationEngine?: AutomationEngineService,
   ) {}
 
+  private stripHtml(html: string): string {
+    return html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async findAll(issueId: string, organizationId?: string): Promise<Comment[]> {
     if (organizationId) {
       const issue = await this.issueRepository.findOne({
@@ -130,7 +143,7 @@ export class CommentsService {
       null,
       null,
       null,
-      { commentId: saved.id, content: dto.content.substring(0, 200) },
+      { commentId: saved.id, content: this.stripHtml(dto.content).substring(0, 200) },
     );
 
     // Trigger automation rules
@@ -161,11 +174,25 @@ export class CommentsService {
 
     const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
     if (issue) {
+      this.eventsGateway.emitToOrg(issue.organizationId, 'comment:updated', {
+        ...saved,
+        issueId: comment.issueId,
+      });
       this.webhookEventEmitter.emit(
         issue.organizationId,
         issue.projectId,
         WebhookEventType.COMMENT_UPDATED,
         { comment: saved, issueId: comment.issueId, issueKey: issue.key },
+      );
+      this.activityService.log(
+        issue.organizationId,
+        comment.issueId,
+        userId,
+        'comment_updated',
+        null,
+        null,
+        null,
+        { commentId: id, content: this.stripHtml(dto.content).substring(0, 200) },
       );
     }
 
@@ -186,11 +213,25 @@ export class CommentsService {
 
     const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
     if (issue) {
+      this.eventsGateway.emitToOrg(issue.organizationId, 'comment:deleted', {
+        commentId: id,
+        issueId: comment.issueId,
+      });
       this.webhookEventEmitter.emit(
         issue.organizationId,
         issue.projectId,
         WebhookEventType.COMMENT_DELETED,
         { commentId: id, issueId: comment.issueId, issueKey: issue.key },
+      );
+      this.activityService.log(
+        issue.organizationId,
+        comment.issueId,
+        userId,
+        'comment_deleted',
+        null,
+        null,
+        null,
+        { commentId: id },
       );
     }
   }

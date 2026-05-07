@@ -10,7 +10,7 @@ import { Comment } from '../modules/comments/entities/comment.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
 import { Attachment } from '../modules/files/entities/attachment.entity';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
-import { Activity } from '../modules/activity/activity.entity';
+import { Activity } from '../modules/activity/entities/activity.entity';
 import { AuditLog } from '../modules/audit/audit-log.entity';
 
 const ORG_ID = '11111111-1111-1111-1111-111111111111';
@@ -257,7 +257,7 @@ export function mockActivity(overrides?: Partial<Activity>): Activity {
   const activity = new Activity();
   Object.assign(activity, {
     id: ACTIVITY_ID,
-    orgId: ORG_ID,
+    organizationId: ORG_ID,
     issueId: ISSUE_ID,
     userId: USER_ID,
     action: 'created',
