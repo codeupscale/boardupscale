@@ -15,7 +15,6 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { CreateProjectDto, ProjectTemplate } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
-import { InviteProjectMemberDto } from './dto/invite-project-member.dto';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
