@@ -7,7 +7,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 
@@ -19,8 +19,8 @@ export class AuditController {
   constructor(private auditService: AuditService) {}
 
   @Get()
-  @Roles('admin', 'owner')
-  @ApiOperation({ summary: 'Get audit logs (admin only)' })
+  @RequirePermission('organization', 'view-audit-log')
+  @ApiOperation({ summary: 'Get audit logs (owner or administrator)' })
   @ApiQuery({ name: 'entityType', required: false })
   @ApiQuery({ name: 'action', required: false })
   @ApiQuery({ name: 'userId', required: false })

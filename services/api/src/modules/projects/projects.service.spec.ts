@@ -84,6 +84,19 @@ describe('ProjectsService', () => {
       expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
       expect(qb.innerJoin).not.toHaveBeenCalled();
     });
+
+    it('should return all org projects for administrator without membership join (O21)', async () => {
+      const projects = [mockProject()];
+      const qb = createMockQueryBuilder(projects);
+      qb.getCount.mockResolvedValue(projects.length);
+      qb.getMany.mockResolvedValue(projects);
+      projectRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator');
+
+      expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
+      expect(qb.innerJoin).not.toHaveBeenCalled();
+    });
   });
 
   describe('findById', () => {

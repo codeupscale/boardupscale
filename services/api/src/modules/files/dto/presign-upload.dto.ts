@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   Max,
   Min,
@@ -26,6 +27,11 @@ export class PresignUploadDto {
   @Min(1)
   @Max(50 * 1024 * 1024)
   fileSize: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-issue', description: 'Required for permission check — the issue this file will be attached to' })
+  @IsOptional()
+  @IsUUID()
+  issueId?: string;
 }
 
 export class PresignUploadResponseDto {

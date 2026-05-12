@@ -129,7 +129,7 @@ export class OrganizationsService {
         );
       }
     }
-    const role = await this.resolveInviteRole(dto.role || 'member', organizationId);
+    const role = await this.resolveInviteRole(dto.role || 'user', organizationId);
 
     const existingUser = await this.userRepository.findOne({
       where: { email: dto.email },
@@ -314,20 +314,32 @@ export class OrganizationsService {
     // multi-org design); fall back to the legacy users.role for pre-migration rows.
     const currentRole = membership?.role ?? member.role;
 
-    // ── Only an org Owner may promote another member to the Owner role ──────
-    // Admins can manage all other roles, but the Owner role is protected.
+    // ── Role-change authorization per CSV O9/O10/O11 ─────────────────────────
+    // Owner-only actions: promote to owner (O2), demote an owner (prevents last-owner removal).
+    // Owner + Administrator: promote to administrator (O9), demote administrator (O10),
+    //   change between member/viewer (O11).
+    const actorMembership = await this.organizationMemberRepository.findOne({
+      where: { userId: actorId, organizationId },
+    });
+    const actorUserRow = actorMembership
+      ? null
+      : await this.userRepository.findOne({ where: { id: actorId } });
+    const actorRole = actorMembership?.role ?? actorUserRow?.role;
+
     if (newRole === 'owner') {
-      const actorMembership = await this.organizationMemberRepository.findOne({
-        where: { userId: actorId, organizationId },
-      });
-      const actorUser = actorMembership
-        ? null
-        : await this.userRepository.findOne({ where: { id: actorId } });
-      const actorRole = actorMembership?.role ?? actorUser?.role;
+      // Only an Owner can transfer ownership (O2).
       if (actorRole !== 'owner') {
-        throw new ForbiddenException(
-          'Only an Owner can assign the Owner role to another member',
-        );
+        throw new ForbiddenException('Only an Owner can transfer ownership to another member');
+      }
+    } else if (currentRole === 'owner') {
+      // Demoting an Owner requires Owner authority (prevents lock-out).
+      if (actorRole !== 'owner') {
+        throw new ForbiddenException("Only an Owner can change another Owner's role");
+      }
+    } else {
+      // All other role changes: Owner or Administrator (O9/O10/O11).
+      if (actorRole !== 'owner' && actorRole !== 'administrator') {
+        throw new ForbiddenException('Only an Owner or Administrator can manage member roles');
       }
     }
 
@@ -738,7 +750,7 @@ export class OrganizationsService {
       if (!existingMembership) {
         await manager.query(
           `INSERT INTO organization_members (user_id, organization_id, role, is_default)
-           VALUES ($1, $2, 'member', false)
+           VALUES ($1, $2, 'user', false)
            ON CONFLICT (user_id, organization_id) DO NOTHING`,
           [realUserId, organizationId],
         );

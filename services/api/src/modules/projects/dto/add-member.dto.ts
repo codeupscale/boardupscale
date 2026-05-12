@@ -6,8 +6,8 @@ export class AddMemberDto {
   @IsUUID()
   userId: string;
 
-  @ApiPropertyOptional({ example: 'developer', enum: ['owner', 'admin', 'developer', 'viewer'] })
+  @ApiPropertyOptional({ example: 'member', enum: ['admin', 'member', 'viewer'] })
   @IsOptional()
   @IsString()
-  role?: string = 'developer';
+  role?: string = 'member';
 }

@@ -27,25 +27,6 @@ export class PermissionsService {
     private orgMemberRepo: Repository<OrganizationMember>,
   ) {}
 
-  /**
-   * True if the user is an admin or owner **in the given organization**.
-   * Reads from organization_members first (per-org role, authoritative in
-   * the multi-org design) and falls back to users.role (legacy) only when
-   * the user has no membership row — so pre-migration data still works.
-   */
-  private async isOrgAdminOrOwner(userId: string, organizationId: string): Promise<boolean> {
-    if (!userId || !organizationId) return false;
-    const membership = await this.orgMemberRepo.findOne({
-      where: { userId, organizationId },
-    });
-    if (membership) {
-      return membership.role === 'admin' || membership.role === 'owner';
-    }
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user || user.organizationId !== organizationId) return false;
-    return user.role === 'admin' || user.role === 'owner';
-  }
-
   private async isOrgOwner(userId: string, organizationId: string): Promise<boolean> {
     if (!userId || !organizationId) return false;
     const membership = await this.orgMemberRepo.findOne({
@@ -68,12 +49,15 @@ export class PermissionsService {
 
   /**
    * Get roles for an organization, including global system roles.
+   * Pass scope='org'|'project' to filter; omit for all roles.
    */
-  async getRolesForOrg(organizationId: string): Promise<Role[]> {
+  async getRolesForOrg(organizationId: string, scope?: string): Promise<Role[]> {
+    const systemWhere: any = { organizationId: IsNull(), isSystem: true };
+    if (scope) systemWhere.scope = scope;
     return this.roleRepo.find({
       where: [
-        { organizationId },
-        { organizationId: IsNull(), isSystem: true },
+        { organizationId, ...(scope ? { scope } : {}) },
+        systemWhere,
       ],
       relations: ['permissions'],
       order: { isSystem: 'DESC', name: 'ASC' },
@@ -194,11 +178,19 @@ export class PermissionsService {
       throw new NotFoundException('Project not found');
     }
 
-    const actorIsAdminOrOwner = actorUserId
-      ? await this.isOrgAdminOrOwner(actorUserId, project.organizationId)
+    const actorIsOwner = actorUserId
+      ? await this.isOrgOwner(actorUserId, project.organizationId)
       : false;
-    if (!actorIsAdminOrOwner) {
-      throw new ForbiddenException('Only organization admins can change roles');
+    // Project admins can also assign roles within their project — checked via project membership.
+    let actorIsProjectAdmin = false;
+    if (actorUserId && !actorIsOwner) {
+      const actorMember = await this.projectMemberRepo.findOne({
+        where: { projectId: project.id, userId: actorUserId },
+      });
+      actorIsProjectAdmin = actorMember?.role === 'admin';
+    }
+    if (!actorIsOwner && !actorIsProjectAdmin) {
+      throw new ForbiddenException('Only the organization owner or a project admin can change roles');
     }
 
     const member = await this.projectMemberRepo.findOne({
@@ -227,6 +219,7 @@ export class PermissionsService {
     const role = await this.getRoleById(roleId);
     member.roleId = role.id;
     member.assignedRole = role;
+    member.role = role.name.toLowerCase();
 
     return this.projectMemberRepo.save(member);
   }
@@ -257,8 +250,8 @@ export class PermissionsService {
     if (isNewSignature) {
       const userId = userIdOrRole;
       const organizationId = organizationIdOrResource;
-      if (await this.isOrgAdminOrOwner(userId, organizationId)) return true;
-      // Determine the user's role in THIS org for non-admin checks.
+      if (await this.isOrgOwner(userId, organizationId)) return true;
+      // Determine the user's role in THIS org for non-owner checks.
       const membership = await this.orgMemberRepo.findOne({
         where: { userId, organizationId },
       });
@@ -270,7 +263,7 @@ export class PermissionsService {
       }
     } else {
       effectiveRole = userIdOrRole;
-      if (effectiveRole === 'admin' || effectiveRole === 'owner') return true;
+      if (effectiveRole === 'owner') return true;
     }
 
     if (!effectiveRole) return false;
@@ -292,6 +285,158 @@ export class PermissionsService {
     return systemRole.permissions.some(
       (p) => p.resource === resource && p.action === act,
     );
+  }
+
+  /**
+   * Given a @RequirePermission resource type and an arbitrary UUID hint
+   * (which may be a resource UUID, not a project UUID), look up the parent
+   * project from the resource's own table. Covers every project-scoped
+   * resource used in the route layer.
+   *
+   * Returns null for org-level resources (webhooks, roles, etc.) and when
+   * the record does not exist.
+   */
+  private async resolveProjectFromResource(
+    resource: string,
+    hint: string,
+  ): Promise<{ id: string; organizationId: string } | null> {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hint);
+    if (!isUuid) return null;
+
+    const mgr = this.projectMemberRepo.manager;
+    try {
+      switch (resource) {
+        case 'issue':
+        case 'worklog': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('issues', 'i')
+            .innerJoin('projects', 'p', 'p.id = i.project_id')
+            .where('i.id = :id AND i.deleted_at IS NULL', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'sprint': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('sprints', 's')
+            .innerJoin('projects', 'p', 'p.id = s.project_id')
+            .where('s.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'comment': {
+          // hint may be a comment UUID (edit/delete) or an issue UUID (create — no comment yet)
+          const fromComment = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('comments', 'c')
+            .innerJoin('issues', 'i', 'i.id = c.issue_id')
+            .innerJoin('projects', 'p', 'p.id = i.project_id')
+            .where('c.id = :id AND c.deleted_at IS NULL', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          if (fromComment) return fromComment;
+          // fallback: hint is an issue UUID (POST /comments sends body.issueId)
+          const fromIssue = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('issues', 'i')
+            .innerJoin('projects', 'p', 'p.id = i.project_id')
+            .where('i.id = :id AND i.deleted_at IS NULL', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return fromIssue ?? null;
+        }
+        case 'page': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('pages', 'pg')
+            .innerJoin('projects', 'p', 'p.id = pg.project_id')
+            .where('pg.id = :id AND pg.deleted_at IS NULL', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'automation': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('automation_rules', 'a')
+            .innerJoin('projects', 'p', 'p.id = a.project_id')
+            .where('a.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'version': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('versions', 'v')
+            .innerJoin('projects', 'p', 'p.id = v.project_id')
+            .where('v.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'component': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('components', 'c')
+            .innerJoin('projects', 'p', 'p.id = c.project_id')
+            .where('c.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'custom-field': {
+          const row = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('custom_field_definitions', 'cf')
+            .innerJoin('projects', 'p', 'p.id = cf.project_id')
+            .where('cf.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return row ?? null;
+        }
+        case 'attachment': {
+          // hint may be an attachment UUID (delete) or an issue UUID (upload routes)
+          const fromAttachment = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('attachments', 'a')
+            .innerJoin('issues', 'i', 'i.id = a.issue_id')
+            .innerJoin('projects', 'p', 'p.id = i.project_id')
+            .where('a.id = :id', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          if (fromAttachment) return fromAttachment;
+          // upload/presign routes pass body.issueId as the hint
+          const fromIssue = await mgr
+            .createQueryBuilder()
+            .select('p.id', 'id')
+            .addSelect('p.organization_id', 'organizationId')
+            .from('issues', 'i')
+            .innerJoin('projects', 'p', 'p.id = i.project_id')
+            .where('i.id = :id AND i.deleted_at IS NULL', { id: hint })
+            .getRawOne<{ id: string; organizationId: string }>();
+          return fromIssue ?? null;
+        }
+        default:
+          return null;
+      }
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -347,46 +492,48 @@ export class PermissionsService {
    *   'project' — so admin can view/update project settings
    *   'ai'      — org-level feature; Upsy is available org-wide
    */
-  private readonly ADMIN_MEMBERSHIP_EXEMPT_RESOURCES = ['member', 'project', 'ai'];
+  // No longer used — kept for reference only. Admin bypasses all resources now.
+  // private readonly ADMIN_MEMBERSHIP_EXEMPT_RESOURCES = ['member', 'project', 'ai'];
 
   async checkPermission(
     userId: string,
-    projectId: string,
+    projectHint: string,
     resource: string,
     action: string,
+    fallbackOrgId?: string,
   ): Promise<boolean> {
-    // 1. Resolve slug/UUID → canonical project row (single query, type-safe).
-    const project = await this.resolveProject(projectId);
-    if (!project) return false;
+    // 1. Try hint as a project slug/UUID (covers project-prefixed routes).
+    let project = await this.resolveProject(projectHint);
+
+    // 2. If not a project, derive from the resource's own table
+    //    (covers routes like PATCH /issues/:id where params.id is an issue UUID).
+    if (!project) {
+      project = await this.resolveProjectFromResource(resource, projectHint);
+    }
+
+    // 3. Still nothing — last resort: admin/owner bypass via fallback org.
+    //    Org-level resources (webhooks, roles) land here too.
+    if (!project) {
+      if (fallbackOrgId) return this.isAdminOrOwner(userId, fallbackOrgId);
+      return false;
+    }
 
     // 2. Org Owner: unconditional full access regardless of project membership.
     if (await this.isOrgOwner(userId, project.organizationId)) return true;
-
-    // 3. Org Admin: exempt resources bypass the membership check; everything
-    //    else requires the admin to be an explicit project member.
-    const isAdmin = await this.isOrgAdminOrOwner(userId, project.organizationId);
-    if (isAdmin) {
-      if (this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(resource)) return true;
-      const adminMember = await this.projectMemberRepo.findOne({
-        where: { projectId: project.id, userId },
-      });
-      // Admin is a project member — grant full access (no further role check needed).
-      return adminMember !== null;
-    }
 
     // Legacy global role fallback (pre-membership-row users).
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return false;
     if (user.role === 'owner') return true;
-    if (user.role === 'admin') {
-      if (this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(resource)) return true;
-      const adminMember = await this.projectMemberRepo.findOne({
-        where: { projectId: project.id, userId },
-      });
-      return adminMember !== null;
-    }
 
-    // 4. Find the project membership using the resolved UUID.
+    // 3. Org Administrator: full project bypass per CSV O21
+    //    (auto-grants Project Admin rights without requiring explicit membership).
+    const orgMembership = await this.orgMemberRepo.findOne({
+      where: { userId, organizationId: project.organizationId },
+    });
+    if (orgMembership?.role === 'administrator') return true;
+
+    // 3. Find the project membership using the resolved UUID.
     const member = await this.projectMemberRepo.findOne({
       where: { projectId: project.id, userId },
       relations: ['assignedRole', 'assignedRole.permissions'],
@@ -432,24 +579,6 @@ export class PermissionsService {
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
 
-    // Admin: full access if they are a project member; otherwise return only
-    // the exempted resources so the frontend still shows member-management UI.
-    const isAdmin = await this.isOrgAdminOrOwner(userId, project.organizationId);
-    if (isAdmin) {
-      const adminMember = await this.projectMemberRepo.findOne({
-        where: { projectId: project.id, userId },
-      });
-      const allPerms = await this.permissionRepo.find();
-      if (adminMember) {
-        return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
-      }
-      // Not a member — return only exempt resource permissions so they can
-      // join the project or manage members from the outside.
-      return allPerms
-        .filter((p) => this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(p.resource))
-        .map((p) => ({ resource: p.resource, action: p.action }));
-    }
-
     // Legacy global role fallback (pre-membership-row users).
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) return [];
@@ -457,17 +586,14 @@ export class PermissionsService {
       const allPerms = await this.permissionRepo.find();
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
-    if (user.role === 'admin') {
-      const adminMember = await this.projectMemberRepo.findOne({
-        where: { projectId: project.id, userId },
-      });
+
+    // Org Administrator: full project access bypass per CSV O21.
+    const orgMembership = await this.orgMemberRepo.findOne({
+      where: { userId, organizationId: project.organizationId },
+    });
+    if (orgMembership?.role === 'administrator') {
       const allPerms = await this.permissionRepo.find();
-      if (adminMember) {
-        return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
-      }
-      return allPerms
-        .filter((p) => this.ADMIN_MEMBERSHIP_EXEMPT_RESOURCES.includes(p.resource))
-        .map((p) => ({ resource: p.resource, action: p.action }));
+      return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
 
     const member = await this.projectMemberRepo.findOne({
@@ -504,15 +630,32 @@ export class PermissionsService {
   }
 
   /**
+   * Public helper consumed by service-layer ownership checks (comments,
+   * worklogs, pages) to decide whether a caller can act on any resource
+   * regardless of ownership (i.e. they are an org Owner or Administrator).
+   */
+  async isAdminOrOwner(userId: string, organizationId: string): Promise<boolean> {
+    if (await this.isOrgOwner(userId, organizationId)) return true;
+    const membership = await this.orgMemberRepo.findOne({
+      where: { userId, organizationId },
+    });
+    return membership?.role === 'administrator';
+  }
+
+  /**
    * Map legacy role string values to system role names.
+   * 'manager' is kept as an 'Admin' fallback to handle any data that was not
+   * updated by the ManagerRoleToAdmin migration (e.g. custom-org roles that
+   * happened to be named 'manager').
    */
   private mapLegacyRole(legacyRole: string): string | null {
     const mapping: Record<string, string> = {
-      owner: 'Admin',
+      owner: 'Owner',
+      administrator: 'Administrator',
+      user: 'User',
+      // project-level roles
       admin: 'Admin',
-      manager: 'Manager',
       member: 'Member',
-      developer: 'Member',
       viewer: 'Viewer',
     };
     return mapping[legacyRole?.toLowerCase()] || null;

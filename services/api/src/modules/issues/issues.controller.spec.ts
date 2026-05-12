@@ -114,9 +114,9 @@ describe('IssuesController', () => {
     it('should soft delete an issue', async () => {
       issuesService.softDelete.mockResolvedValue(undefined);
 
-      await controller.delete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      await controller.delete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, { id: TEST_IDS.USER_ID });
 
-      expect(issuesService.softDelete).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      expect(issuesService.softDelete).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
     });
   });
 

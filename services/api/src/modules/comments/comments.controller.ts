@@ -49,7 +49,7 @@ export class CommentsController {
   }
 
   @Patch(':id')
-  @RequirePermission('comment', 'update')
+  @RequirePermission('comment', 'update:own')
   @ApiOperation({ summary: 'Update a comment' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,7 +60,7 @@ export class CommentsController {
   }
 
   @Delete(':id')
-  @RequirePermission('comment', 'delete')
+  @RequirePermission('comment', 'delete:own')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a comment (soft delete)' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {

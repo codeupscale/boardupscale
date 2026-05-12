@@ -11,11 +11,11 @@ export class InviteMemberDto {
   @IsString()
   displayName?: string;
 
-  @ApiPropertyOptional({ example: 'member', default: 'member' })
+  @ApiPropertyOptional({ example: 'user', default: 'user' })
   @IsOptional()
   @IsString()
   @MaxLength(50)
-  role?: string = 'member';
+  role?: string = 'user';
 
   @ApiPropertyOptional({
     example: false,

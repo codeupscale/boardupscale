@@ -83,7 +83,7 @@ export class SearchService implements OnModuleInit {
     }
   }
 
-  private readonly ADMIN_ROLES = new Set(['owner', 'admin', 'manager']);
+  private readonly ADMIN_ROLES = new Set(['owner', 'admin']);
 
   private async getAccessibleProjectIds(
     userId: string,

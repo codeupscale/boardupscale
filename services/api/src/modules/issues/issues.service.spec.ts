@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
@@ -11,6 +11,7 @@ import { IssueLink } from './entities/issue-link.entity';
 import { IssueWatcher } from './entities/issue-watcher.entity';
 import { ActivityService } from '../activity/activity.service';
 import { AuditService } from '../audit/audit.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { ProjectsService } from '../projects/projects.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../notifications/email.service';
@@ -37,6 +38,7 @@ describe('IssuesService', () => {
   let projectsService: ReturnType<typeof createMockProjectsService>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
+  let permissionsService: Record<string, jest.Mock>;
   let emailService: Record<string, jest.Mock>;
   let usersService: Record<string, jest.Mock>;
 
@@ -48,6 +50,7 @@ describe('IssuesService', () => {
     projectsService.isMember.mockResolvedValue(true);
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
+    permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false) };
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -81,6 +84,7 @@ describe('IssuesService', () => {
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn().mockResolvedValue(undefined), findByIssue: jest.fn().mockResolvedValue({ data: [], total: 0 }) } },
         { provide: AuditService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+        { provide: PermissionsService, useValue: permissionsService },
       ],
     }).compile();
 
@@ -382,15 +386,36 @@ describe('IssuesService', () => {
   });
 
   describe('softDelete', () => {
-    it('should set deletedAt timestamp and emit event', async () => {
-      const issue = mockIssue();
+    it('should set deletedAt timestamp and emit event when reporter deletes own issue', async () => {
+      const issue = mockIssue({ reporterId: TEST_IDS.USER_ID });
       issueRepo.findOne.mockResolvedValue(issue);
       issueRepo.update.mockResolvedValue(mockUpdateResult());
 
-      await service.softDelete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      await service.softDelete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID);
 
       expect(issueRepo.update).toHaveBeenCalledWith(TEST_IDS.ISSUE_ID, { deletedAt: expect.any(Date) });
       expect(eventsGateway.emitToOrg).toHaveBeenCalledWith(TEST_IDS.ORG_ID, 'issue:deleted', { id: TEST_IDS.ISSUE_ID });
+    });
+
+    it('should allow admin to delete any issue (own-only bypass)', async () => {
+      const issue = mockIssue({ reporterId: 'someone-else' });
+      issueRepo.findOne.mockResolvedValue(issue);
+      issueRepo.update.mockResolvedValue(mockUpdateResult());
+      permissionsService.isAdminOrOwner.mockResolvedValue(true);
+
+      await expect(
+        service.softDelete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID),
+      ).resolves.not.toThrow();
+    });
+
+    it('should throw ForbiddenException when Member tries to delete another user\'s issue', async () => {
+      const issue = mockIssue({ reporterId: 'another-user-id' });
+      issueRepo.findOne.mockResolvedValue(issue);
+      permissionsService.isAdminOrOwner.mockResolvedValue(false);
+
+      await expect(
+        service.softDelete(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException when issue not found', async () => {

@@ -5,6 +5,7 @@ import {
   Settings, Users, GitBranch, SlidersHorizontal, Layers,
   Tag, Sparkles, Github, Zap, RefreshCw,
 } from 'lucide-react'
+import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { AutomationsContent } from '@/pages/ProjectAutomationsPage'
 import { TrashContent } from '@/pages/ProjectTrashPage'
 import { useTranslation } from 'react-i18next'
@@ -109,7 +110,7 @@ export function ProjectSettingsPage() {
   const { data: members } = useProjectMembers(projectKey!)
   const { hasPermission } = useHasPermission(projectKey)
   const currentUser = useAuthStore((s) => s.user)
-  const canManageOrgRoles = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMIN
+  const canManageOrgRoles = currentUser?.role === UserRole.OWNER
   const canUpdateProject = hasPermission('project', 'update')
   const canManageBoard = hasPermission('board', 'manage')
   const canManageGithub = hasPermission('project', 'manage')
@@ -178,6 +179,7 @@ export function ProjectSettingsPage() {
   }
 
   return (
+    <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
       <PageHeader
         title={t('nav.projectSettings')}
@@ -474,7 +476,7 @@ export function ProjectSettingsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">Access Denied</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">Manager or higher access is required to view AI usage.</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Admin or higher access is required to view AI usage.</p>
                   </div>
                 </div>
               )}
@@ -563,7 +565,6 @@ export function ProjectSettingsPage() {
                 <SelectContent>
                   <SelectItem value="viewer">{t('settings.viewer')}</SelectItem>
                   <SelectItem value="member">{t('projects.member')}</SelectItem>
-                  <SelectItem value="manager">{t('settings.manager')}</SelectItem>
                   <SelectItem value="admin">{t('settings.admin')}</SelectItem>
                 </SelectContent>
               </Select>
@@ -665,6 +666,7 @@ export function ProjectSettingsPage() {
         isLoading={deleteProject.isPending}
       />
     </div>
+    </ProjectMemberGuard>
   )
 }
 
@@ -675,16 +677,16 @@ export function ProjectSettingsPage() {
 function MemberRoleList({ projectId }: { projectId: string }) {
   const { data: me } = useMe()
   const { data: members = [] } = useProjectMembers(projectId)
-  const { data: roles = [] } = useRoles(me?.organizationId)
+  const { data: roles = [] } = useRoles(me?.organizationId, 'project')
   const { data: orgMembers = [] } = useOrgMembers()
   const assignRole = useAssignRole()
+  const { hasPermission } = useHasPermission(projectId)
   const selfId = me?.id
   const orgRoleByUserId = useMemo(
     () => new Map(orgMembers.map((member) => [member.id, member.role])),
     [orgMembers],
   )
-  const selfOrgRole = selfId ? orgRoleByUserId.get(selfId) : undefined
-  const canAssignRoles = selfOrgRole === 'admin' || selfOrgRole === 'owner'
+  const canAssignRoles = hasPermission('member', 'update')
 
   if (members.length === 0) {
     return (

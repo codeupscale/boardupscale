@@ -12,6 +12,7 @@ import { Page } from './entities/page.entity';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto, MovePageDto } from './dto/update-page.dto';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { PermissionsService } from '../permissions/permissions.service';
 
 export interface PageTreeNode extends Omit<Page, 'parentPage' | 'project' | 'organization' | 'creator' | 'lastEditor'> {
   children: PageTreeNode[];
@@ -29,6 +30,7 @@ export class PagesService {
     @InjectQueue('search-index')
     private searchIndexQueue: Queue,
     private eventsGateway: EventsGateway,
+    private permissionsService: PermissionsService,
   ) {}
 
   // ─── Tree Query ────────────────────────────────────────────────────────────
@@ -246,11 +248,19 @@ export class PagesService {
 
   // ─── Soft Delete ─────────────────────────────────────────────────────────
 
-  async softDelete(id: string, orgId: string): Promise<void> {
+  async softDelete(id: string, orgId: string, userId: string): Promise<void> {
     const page = await this.pageRepository.findOne({
       where: { id, organizationId: orgId, deletedAt: IsNull() },
     });
     if (!page) throw new NotFoundException(`Page ${id} not found`);
+
+    if (page.creatorId !== userId) {
+      // Allow admins/owners to delete any page (page:delete:any).
+      const isAdmin = await this.permissionsService.isAdminOrOwner(userId, orgId);
+      if (!isAdmin) {
+        throw new ForbiddenException('You can only delete your own pages');
+      }
+    }
 
     page.deletedAt = new Date();
     await this.pageRepository.save(page);

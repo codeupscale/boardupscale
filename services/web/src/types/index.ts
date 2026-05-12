@@ -43,8 +43,12 @@ export type TemplateCategory = 'all' | 'software' | 'marketing' | 'sales' | 'hr'
 
 export enum UserRole {
   OWNER = 'owner',
+  ADMINISTRATOR = 'administrator',
+  USER = 'user',
+}
+
+export enum ProjectRole {
   ADMIN = 'admin',
-  MANAGER = 'manager',
   MEMBER = 'member',
   VIEWER = 'viewer',
 }
@@ -331,6 +335,7 @@ export interface Role {
   name: string
   description?: string
   isSystem: boolean
+  scope: 'org' | 'project'
   permissions: Permission[]
   createdAt: string
   updatedAt: string

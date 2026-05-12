@@ -27,6 +27,7 @@ import { ConfirmUploadDto } from './dto/confirm-upload.dto';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityAction } from '../activity/entities/activity.entity';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { PermissionsService } from '../permissions/permissions.service';
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;   // 50 MB
 const PRESIGN_EXPIRES_SECONDS = 10 * 60;     // 10 min to complete the PUT
@@ -50,6 +51,7 @@ export class FilesService {
     private configService: ConfigService,
     private activityService: ActivityService,
     private eventsGateway: EventsGateway,
+    private permissionsService: PermissionsService,
   ) {
     const endpoint = this.configService.get<string>('minio.endpoint');
     const port = this.configService.get<number>('minio.port');
@@ -338,7 +340,14 @@ export class FilesService {
       throw new NotFoundException('Attachment not found');
     }
     if (attachment.uploadedBy !== userId) {
-      throw new ForbiddenException('You can only delete your own files');
+      // Allow admins/owners to delete any attachment (attachment:delete:any).
+      const resolvedOrg = organizationId ?? attachment.issue?.project?.organizationId;
+      const isAdmin = resolvedOrg
+        ? await this.permissionsService.isAdminOrOwner(userId, resolvedOrg)
+        : false;
+      if (!isAdmin) {
+        throw new ForbiddenException('You can only delete your own files');
+      }
     }
 
     const resolvedOrgId = organizationId ?? attachment.issue?.project?.organizationId;

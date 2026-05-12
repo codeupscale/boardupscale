@@ -22,6 +22,7 @@ import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { ActivityService } from '../activity/activity.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class CommentsService {
@@ -39,6 +40,7 @@ export class CommentsService {
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
     private activityService: ActivityService,
+    private permissionsService: PermissionsService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -166,7 +168,14 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
     if (comment.authorId !== userId) {
-      throw new ForbiddenException('You can only edit your own comments');
+      // Allow admins/owners to edit any comment (comment:update:any).
+      const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
+      const isAdmin = issue
+        ? await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)
+        : false;
+      if (!isAdmin) {
+        throw new ForbiddenException('You can only edit your own comments');
+      }
     }
     comment.content = dto.content;
     comment.editedAt = new Date();
@@ -207,7 +216,14 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
     if (comment.authorId !== userId) {
-      throw new ForbiddenException('You can only delete your own comments');
+      // Allow admins/owners to delete any comment (comment:delete:any).
+      const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
+      const isAdmin = issue
+        ? await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)
+        : false;
+      if (!isAdmin) {
+        throw new ForbiddenException('You can only delete your own comments');
+      }
     }
     await this.commentRepository.update(id, { deletedAt: new Date() });
 

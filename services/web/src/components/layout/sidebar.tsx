@@ -24,23 +24,25 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 /* ── Recent-project localStorage helpers ─────────────────────────── */
-// Key is scoped per organization so different orgs never share recent projects.
-const recentProjectsKey = (orgId: string) => `boardupscale:recent-projects:${orgId}`
+// Key is scoped per org + user so different users on the same browser
+// never share visit history.
+const recentProjectsKey = (orgId: string, userId: string) =>
+  `boardupscale:recent-projects:${orgId}:${userId}`
 
 type RecentProject = { key: string; name: string }
 
-function readRecentProjects(orgId: string): RecentProject[] {
+function readRecentProjects(orgId: string, userId: string): RecentProject[] {
   try {
-    return JSON.parse(localStorage.getItem(recentProjectsKey(orgId)) || '[]')
+    return JSON.parse(localStorage.getItem(recentProjectsKey(orgId, userId)) || '[]')
   } catch {
     return []
   }
 }
 
-function pushRecentProject(orgId: string, project: RecentProject) {
-  const list = readRecentProjects(orgId).filter((p) => p.key !== project.key)
+function pushRecentProject(orgId: string, userId: string, project: RecentProject) {
+  const list = readRecentProjects(orgId, userId).filter((p) => p.key !== project.key)
   list.unshift(project)
-  localStorage.setItem(recentProjectsKey(orgId), JSON.stringify(list.slice(0, 5)))
+  localStorage.setItem(recentProjectsKey(orgId, userId), JSON.stringify(list.slice(0, 5)))
 }
 /* ────────────────────────────────────────────────────────────────── */
 
@@ -63,17 +65,19 @@ export function Sidebar() {
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
   const orgId = user?.organizationId ?? ''
+  const userId = user?.id ?? ''
 
-  // Recently visited projects — scoped per org so different orgs never bleed into each other.
-  // Initialized lazily once orgId is known to avoid reading stale data from a previous session.
+  // Recently visited projects — scoped per org+user so different users on the
+  // same browser never see each other's visit history.
+  // Initialized lazily once orgId/userId are known.
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>(() =>
-    orgId ? readRecentProjects(orgId) : [],
+    orgId && userId ? readRecentProjects(orgId, userId) : [],
   )
 
-  // Re-hydrate the list whenever the logged-in org changes (e.g. switching accounts).
+  // Re-hydrate the list whenever the logged-in user or org changes.
   useEffect(() => {
-    setRecentProjects(orgId ? readRecentProjects(orgId) : [])
-  }, [orgId])
+    setRecentProjects(orgId && userId ? readRecentProjects(orgId, userId) : [])
+  }, [orgId, userId])
 
   // Close sidebar on mobile on initial mount
   useEffect(() => {
@@ -91,17 +95,18 @@ export function Sidebar() {
 
   // Track last-visited project on every navigation
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId || !userId) return
     const match = location.pathname.match(/^\/projects\/([^/]+)/)
     if (!match) return
     const key = match[1]
     const project = projects?.find((p) => p.key === key)
     if (!project) return
-    pushRecentProject(orgId, { key: project.key, name: project.name })
-    setRecentProjects(readRecentProjects(orgId))
-  }, [location.pathname, projects, orgId])
+    pushRecentProject(orgId, userId, { key: project.key, name: project.name })
+    setRecentProjects(readRecentProjects(orgId, userId))
+  }, [location.pathname, projects, orgId, userId])
 
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
+  const isAdmin = user?.role === UserRole.OWNER || user?.role === UserRole.ADMINISTRATOR
+  const isOwner = user?.role === UserRole.OWNER
 
   const navItems = [
     { icon: LayoutGrid, label: t('nav.dashboard'), href: '/dashboard' },
@@ -115,7 +120,7 @@ export function Sidebar() {
     { icon: UserCircle, label: 'Profile', href: '/settings' },
     ...(isAdmin ? [{ icon: UsersRound, label: 'Team', href: '/settings/team' }] : []),
     ...(isAdmin ? [{ icon: CreditCard, label: 'Billing', href: '/settings/billing' }] : []),
-    ...(isAdmin ? [{ icon: ShieldCheck, label: 'Roles', href: '/settings/roles' }] : []),
+    ...(isOwner ? [{ icon: ShieldCheck, label: 'Roles', href: '/settings/roles' }] : []),
     ...(isAdmin ? [{ icon: Upload, label: 'Import', href: '/import' }] : []),
     ...(isAdmin ? [{ icon: ArrowLeftRight, label: 'Migrate from Jira', href: '/settings/migrate/jira' }] : []),
     ...(isAdmin ? [{ icon: History, label: t('nav.auditLogs'), href: '/admin/audit-logs' }] : []),

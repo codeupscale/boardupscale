@@ -114,7 +114,7 @@ export class IssuesController {
   }
 
   @Post('bulk-move')
-  @RequirePermission('issue', 'update')
+  @RequirePermission('issue', 'move')
   @ApiOperation({ summary: 'Bulk move issues to another project' })
   async bulkMove(
     @OrgId() organizationId: string,
@@ -184,8 +184,9 @@ export class IssuesController {
   async delete(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
   ) {
-    await this.issuesService.softDelete(id, organizationId);
+    await this.issuesService.softDelete(id, organizationId, user.id);
   }
 
   // ── Issue Links ──

@@ -538,11 +538,11 @@ async function resolveSafeTriggeredById(
 
   if (existing[0]) return; // still valid
 
-  // Attempt fallback to an admin in the org
+  // Attempt fallback to an administrator in the org
   const { rows: admins } = await client.query<{ id: string }>(
     `SELECT u.id FROM users u
      JOIN organization_members om ON om.user_id = u.id
-     WHERE om.organization_id = $1 AND u.role = 'admin'
+     WHERE om.organization_id = $1 AND u.role IN ('owner', 'administrator')
      ORDER BY u.created_at
      LIMIT 1`,
     [state.organizationId],
@@ -661,7 +661,7 @@ async function runMembersPhase(
   interface MemberRow {
     email: string;
     displayName: string;
-    role: 'admin' | 'manager' | 'member' | 'viewer';
+    role: 'admin' | 'member' | 'viewer';
     accountId: string;
     hasRealEmail: boolean;
     /** true = active in Jira; false = deactivated/inactive in Jira */
@@ -677,9 +677,10 @@ async function runMembersPhase(
     const displayName = u.displayName || email.split('@')[0];
     const roleMappingRecord = state.roleMapping ?? {};
     const mapped = roleMappingRecord[u.accountId] ?? roleMappingRecord[email] ?? 'member';
-    const role = (['admin', 'manager', 'member', 'viewer'] as const).includes(mapped as any)
+    const role = (['admin', 'member', 'viewer'] as const).includes(mapped as any)
       ? (mapped as MemberRow['role'])
-      : 'member';
+      // 'manager' is a retired role — map it to 'admin' to preserve intent.
+      : mapped === 'manager' ? 'admin' : 'member';
     // `active` field is present on Jira Cloud user objects; absent = assume active
     const isJiraActive = (u as any).active !== false;
     if (rowsByEmail.has(email)) {

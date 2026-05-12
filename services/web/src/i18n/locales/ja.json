@@ -293,8 +293,7 @@
     "user": "\u30e6\u30fc\u30b6\u30fc",
     "role": "\u5f79\u5272",
     "viewer": "\u95b2\u89a7\u8005",
-    "admin": "\u7ba1\u7406\u8005",
-    "manager": "\u30de\u30cd\u30fc\u30b8\u30e3\u30fc"
+    "admin": "\u7ba1\u7406\u8005"
   },
   "priorities": {
     "critical": "\u81f4\u547d\u7684",

@@ -73,6 +73,13 @@ const ROLE_STYLE_MAP: Record<string, Omit<RoleCardConfig, 'value' | 'label' | 'd
     defaultBg: 'bg-card/50 border-border',
     badgeCls: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
   },
+  user: {
+    icon: User2,
+    iconColor: 'text-muted-foreground',
+    selectedBg: 'bg-muted border-muted-foreground',
+    defaultBg: 'bg-card/50 border-border',
+    badgeCls: 'bg-muted text-foreground border border-border',
+  },
   admin: {
     icon: Shield,
     iconColor: 'text-primary',
@@ -309,13 +316,13 @@ export function TeamPage() {
   const deactivateMember = useDeactivateMember()
   const resendInvitation = useResendInvitation()
   const revokeInvitation = useRevokeInvitation()
-  const { data: orgRoles = [] } = useRoles(me?.organizationId)
+  const { data: orgRoles = [] } = useRoles(me?.organizationId, 'org')
 
   // ── Invite dialog ─────────────────────────────────────────────────────────
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteDisplayName, setInviteDisplayName] = useState('')
-  const [inviteRole, setInviteRole] = useState<string>('member')
+  const [inviteRole, setInviteRole] = useState<string>('user')
 
   // ── Edit member dialog ────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<User | null>(null)
@@ -348,7 +355,7 @@ export function TeamPage() {
   // ── Pagination ────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState(1)
 
-  const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMIN
+  const isAdmin = me?.role === UserRole.OWNER || me?.role === UserRole.ADMINISTRATOR
   const isOwner = me?.role === UserRole.OWNER
 
   // Build assignable roles dynamically from the org's roles (system + custom)
@@ -394,7 +401,7 @@ export function TeamPage() {
   )
 
   const adminCount = activeMembers.filter(
-    (m) => m.role === UserRole.ADMIN || m.role === UserRole.OWNER,
+    (m) => m.role === UserRole.OWNER,
   ).length
 
   const handleSearch = (v: string) => { setSearch(v); setActivePage(1) }
@@ -410,7 +417,7 @@ export function TeamPage() {
           setShowInviteDialog(false)
           setInviteEmail('')
           setInviteDisplayName('')
-          setInviteRole('member')
+          setInviteRole('user')
         },
       },
     )
@@ -525,7 +532,7 @@ export function TeamPage() {
               icon: Shield,
               iconBg: 'bg-purple-50 dark:bg-purple-900/20',
               iconColor: 'text-purple-600 dark:text-purple-400',
-              label: 'Admins & Owners',
+              label: 'Owners',
               value: adminCount,
             },
             {
@@ -562,12 +569,12 @@ export function TeamPage() {
                 {activeMembers.length} people with access to this organization
               </p>
             </div>
-            {isAdmin && (
+            {/* {isAdmin && (
               <Button size="sm" variant="outline" onClick={() => setShowInviteDialog(true)}>
                 <UserPlus className="h-3.5 w-3.5" />
                 Add Member
               </Button>
-            )}
+            )} */}
           </div>
 
           {/* Search + Filter */}
@@ -583,7 +590,7 @@ export function TeamPage() {
               />
             </div>
             <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-              {['all', 'owner', 'admin', 'member'].map((r) => (
+              {['all', 'owner', 'user'].map((r) => (
                 <button
                   key={r}
                   onClick={() => handleRoleFilter(r)}
@@ -684,7 +691,7 @@ export function TeamPage() {
 
                     {/* Status */}
                     <div className="flex items-center gap-1.5">
-                      {member.invitationStatus === 'none' ? (
+                      {isMigratedEmail(member.email) ? (
                         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700 whitespace-nowrap">
                           No Email
                         </span>

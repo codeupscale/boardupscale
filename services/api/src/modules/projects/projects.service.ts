@@ -15,9 +15,11 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { CreateProjectDto, ProjectTemplate } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { InviteProjectMemberDto } from './dto/invite-project-member.dto';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 import { PosthogService } from '../telemetry/posthog.service';
 
@@ -37,13 +39,17 @@ export class ProjectsService {
     private auditService: AuditService,
     private emailService: EmailService,
     private usersService: UsersService,
+    private organizationsService: OrganizationsService,
     private configService: ConfigService,
     private posthogService: PosthogService,
   ) {}
 
   /**
-   * List projects: org owner/admin see every non-archived project in the org;
-   * other roles only see projects they belong to (project_members).
+   * List projects visible to the calling org member.
+   *
+   * Owner: sees all non-archived projects in the org.
+   * User (default org role): sees only projects where they have an explicit
+   * project_members row — they have no implicit access to any project.
    */
   async findAll(
     organizationId: string,
@@ -61,9 +67,16 @@ export class ProjectsService {
       .andWhere('project.status != :archived', { archived: 'archived' })
       .orderBy('project.createdAt', 'DESC');
 
-    const isOrgAdmin = orgRole === 'owner' || orgRole === 'admin' || orgRole === 'manager';
+    // O21: Owner and Administrator bypass project membership — they see all projects.
+    // Everyone else can only see projects where they have an explicit membership row.
+    const isOrgAdmin = orgRole === 'owner' || orgRole === 'administrator';
     if (!isOrgAdmin) {
-      qb.innerJoin('project_members', 'pm', 'pm.project_id = project.id AND pm.user_id = :userId', { userId });
+      qb.innerJoin(
+        'project_members',
+        'pm',
+        'pm.project_id = project.id AND pm.user_id = :userId',
+        { userId },
+      );
     }
 
     if (options?.search) {
@@ -245,6 +258,84 @@ export class ProjectsService {
     });
   }
 
+  /**
+   * Invite someone to a project by email.
+   *
+   * - If the person is already in the org → add them to the project directly
+   *   (same as addMember) and send a "you've been added to project" email.
+   * - If the person is NOT in the org → call organizationsService.inviteMember()
+   *   (reusing the exact same org-invite flow: token generation, email template).
+   *   The project_members row is created immediately so when they accept the org
+   *   invite they already have access.  No "project added" email is sent yet —
+   *   they'll see the project on first login.
+   */
+  async inviteMemberByEmail(
+    projectId: string,
+    organizationId: string,
+    dto: import('./dto/invite-project-member.dto').InviteProjectMemberDto,
+    actorId: string,
+  ) {
+    const project = await this.findById(projectId, organizationId);
+    const projectRole = (['admin', 'member', 'viewer'] as const).includes(dto.projectRole as any)
+      ? dto.projectRole!
+      : 'viewer';
+
+    // Check if the user already exists in our DB
+    const existingUser = await this.usersService.findByEmail(dto.email);
+
+    if (existingUser) {
+      // Check if already in org (via org membership or legacy users.organization_id)
+      const alreadyInProject = await this.projectMemberRepository.findOne({
+        where: { projectId, userId: existingUser.id },
+      });
+      if (alreadyInProject) {
+        throw new ConflictException('User is already a member of this project');
+      }
+
+      // Add to org if not already a member (reuse org invite — handles membership row + email)
+      const orgUser = await this.organizationsService.inviteMember(
+        organizationId,
+        { email: dto.email, displayName: dto.displayName, role: 'user', forceCreate: true },
+        actorId,
+      ).catch((err) => {
+        // 409 = already in org — that's fine, we still need to add to project
+        if (err?.status === 409 || err?.response?.statusCode === 409) return existingUser;
+        throw err;
+      });
+
+      const member = this.projectMemberRepository.create({
+        projectId,
+        userId: orgUser.id,
+        role: projectRole,
+      });
+      const saved = await this.projectMemberRepository.save(member);
+
+      // Only notify if they already have an active account
+      if (existingUser.invitationStatus === 'accepted') {
+        this.sendProjectMemberEmail(orgUser.id, project, organizationId, actorId).catch((err) =>
+          this.logger.warn(`Failed to send project-member-added email: ${err.message}`),
+        );
+      }
+
+      return saved;
+    }
+
+    // Person is not in DB at all — trigger full org invite (creates user + sends invite email)
+    const invited = await this.organizationsService.inviteMember(
+      organizationId,
+      { email: dto.email, displayName: dto.displayName, role: 'user', forceCreate: true },
+      actorId,
+    );
+
+    // Pre-create project membership so they land in the project on first login
+    const member = this.projectMemberRepository.create({
+      projectId,
+      userId: invited.id,
+      role: projectRole,
+    });
+    return this.projectMemberRepository.save(member);
+  }
+
   async addMember(projectId: string, organizationId: string, dto: AddMemberDto, actorId?: string) {
     const project = await this.findById(projectId, organizationId);
     const existing = await this.projectMemberRepository.findOne({
@@ -256,7 +347,7 @@ export class ProjectsService {
     const member = this.projectMemberRepository.create({
       projectId,
       userId: dto.userId,
-      role: dto.role || 'developer',
+      role: dto.role || 'member',
     });
     const saved = await this.projectMemberRepository.save(member);
 

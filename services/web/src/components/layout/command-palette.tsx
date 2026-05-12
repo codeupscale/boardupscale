@@ -86,7 +86,7 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const isAdmin = user?.role === UserRole.ADMIN || user?.role === UserRole.OWNER
+  const isAdmin = user?.role === UserRole.OWNER || user?.role === UserRole.ADMINISTRATOR
 
   // Detect current project context
   const currentProjectKey = useMemo(() => {
