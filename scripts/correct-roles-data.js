@@ -4,17 +4,16 @@
  *
  * One-time data correction script for the org/project roles refactor.
  *
- * Applies the same data changes as migration 1747400000000-RefactorOrgAndProjectRoles
- * but ONLY corrects existing rows — safe to run against a live DB BEFORE the migration
- * if you need to stage the data change separately, or AFTER the migration to verify
- * or re-apply to rows inserted between migration run and this script.
+ * Reflects the cumulative state of ALL migrations up to and including
+ * 1747700000000-AddIssueMovePermission. Safe to run against a live DB to repair
+ * or verify role_permissions, or to backfill rows that slipped through migrations.
  *
  * What it does:
  *   1. Prints a dry-run report of affected rows.
  *   2. Backfills organization_members.role: admin/member/viewer → user.
  *   3. Backfills users.role: admin/member/viewer/manager/developer → user.
- *   4. Backfills project_members.role: developer/viewer/user/manager → member.
- *   5. Rebuilds role_permissions for all system roles (Owner/User/Admin/Member/Viewer).
+ *   4. Backfills project_members.role: developer/user/manager → member  (viewer stays as-is).
+ *   5. Rebuilds role_permissions for all system roles (Owner/Administrator/User/Admin/Member/Viewer).
  *
  * Usage:
  *   DATABASE_URL=postgres://user:pass@host:5432/dbname node scripts/correct-roles-data.js
@@ -75,11 +74,11 @@ async function main() {
     const pmAffected = await client.query(`
       SELECT role, COUNT(*) AS count
         FROM project_members
-       WHERE role IN ('developer', 'viewer', 'user', 'manager')
+       WHERE role IN ('developer', 'user', 'manager')
        GROUP BY role
        ORDER BY role
     `)
-    console.log('\nproject_members rows to remap → member:')
+    console.log('\nproject_members rows to remap → member (viewer stays as-is):')
     if (pmAffected.rows.length === 0) {
       console.log('  (none — already clean)')
     } else {
@@ -114,11 +113,11 @@ async function main() {
     `)
     console.log(`✅ users updated: ${u.rowCount} rows → user`)
 
-    // 3. project_members.role backfill
+    // 3. project_members.role backfill  (viewer is a valid current role — do NOT remap it)
     const pm = await client.query(`
       UPDATE project_members
          SET role = 'member'
-       WHERE role IN ('developer', 'viewer', 'user', 'manager')
+       WHERE role IN ('developer', 'user', 'manager')
     `)
     console.log(`✅ project_members updated: ${pm.rowCount} rows → member`)
 
@@ -158,16 +157,37 @@ async function main() {
     `)
     console.log(`  User: ${userRoleGrant.rowCount} permissions granted`)
 
-    // Admin (project): everything except organization:manage
+    // Admin (project): all permissions except ALL organization:* (those belong to org-scope roles only)
     const adminGrant = await client.query(`
       INSERT INTO role_permissions (role_id, permission_id)
       SELECT r.id, p.id
         FROM roles r CROSS JOIN permissions p
        WHERE r.name = 'Admin' AND r.is_system = TRUE AND r.organization_id IS NULL
-         AND NOT (p.resource = 'organization' AND p.action = 'manage')
+         AND NOT (p.resource = 'organization')
       ON CONFLICT DO NOTHING
     `)
     console.log(`  Admin: ${adminGrant.rowCount} permissions granted`)
+
+    // Administrator (org-scope): all org permissions except delete/transfer-ownership/manage-billing
+    const administratorGrant = await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+       WHERE r.name = 'Administrator' AND r.is_system = TRUE AND r.organization_id IS NULL
+         AND p.resource = 'organization'
+         AND p.action NOT IN ('delete', 'transfer-ownership', 'manage-billing')
+      ON CONFLICT DO NOTHING
+    `)
+    // Also grant Administrator project:create (O18)
+    await client.query(`
+      INSERT INTO role_permissions (role_id, permission_id)
+      SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+       WHERE r.name = 'Administrator' AND r.is_system = TRUE AND r.organization_id IS NULL
+         AND p.resource = 'project' AND p.action = 'create'
+      ON CONFLICT DO NOTHING
+    `)
+    console.log(`  Administrator: ${administratorGrant.rowCount} org permissions granted (+project:create)`)
 
     // Member (project): project content
     const memberGrant = await client.query(`
@@ -177,18 +197,18 @@ async function main() {
        WHERE r.name = 'Member' AND r.is_system = TRUE AND r.organization_id IS NULL
          AND (
                (p.resource = 'project'       AND p.action IN ('read'))
-            OR (p.resource = 'board'         AND p.action IN ('read'))
+            OR (p.resource = 'board'         AND p.action IN ('read', 'create'))
             OR (p.resource = 'sprint'        AND p.action IN ('read'))
             OR (p.resource = 'issue'         AND p.action IN ('create', 'read', 'update', 'assign',
                                                               'assignable', 'transition', 'resolve',
                                                               'close', 'link', 'schedule', 'bulk-change',
-                                                              'vote'))
+                                                              'vote', 'delete'))
             OR (p.resource = 'comment'       AND p.action IN ('create', 'read', 'update:own', 'delete:own'))
             OR (p.resource = 'worklog'       AND p.action IN ('create', 'read', 'update:own', 'delete:own'))
             OR (p.resource = 'page'          AND p.action IN ('create', 'read', 'update', 'delete:own'))
             OR (p.resource = 'member'        AND p.action = 'read')
             OR (p.resource = 'automation'    AND p.action = 'read')
-            OR (p.resource = 'component'     AND p.action IN ('create', 'read', 'update'))
+            OR (p.resource = 'component'     AND p.action = 'read')
             OR (p.resource = 'version'       AND p.action = 'read')
             OR (p.resource = 'custom-field'  AND p.action = 'read')
             OR (p.resource = 'attachment'    AND p.action IN ('read', 'create', 'delete:own'))

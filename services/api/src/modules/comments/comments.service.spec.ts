@@ -12,6 +12,7 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { ActivityService } from '../activity/activity.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import {
   createMockRepository,
   createMockNotificationsService,
@@ -29,12 +30,14 @@ describe('CommentsService', () => {
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
   let emailService: Record<string, jest.Mock>;
   let usersService: Record<string, jest.Mock>;
+  let permissionsService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     commentRepo = createMockRepository();
     issueRepo = createMockRepository();
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
+    permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false) };
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -62,6 +65,7 @@ describe('CommentsService', () => {
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
+        { provide: PermissionsService, useValue: permissionsService },
       ],
     }).compile();
 
@@ -242,6 +246,8 @@ describe('CommentsService', () => {
     it('should throw ForbiddenException when updating another users comment', async () => {
       const comment = mockComment({ authorId: 'other-user-id' });
       commentRepo.findOne.mockResolvedValue(comment);
+      permissionsService.isAdminOrOwner.mockResolvedValue(false);
+      issueRepo.findOne.mockResolvedValue(mockIssue());
 
       await expect(
         service.update(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID, { content: 'hacked' }),
@@ -249,6 +255,21 @@ describe('CommentsService', () => {
       await expect(
         service.update(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID, { content: 'hacked' }),
       ).rejects.toThrow('You can only edit your own comments');
+    });
+
+    it('should allow admin to edit any comment (isAdminOrOwner bypass)', async () => {
+      const comment = mockComment({ authorId: 'other-user-id' });
+      const issue = mockIssue();
+      const updated = { ...comment, content: 'Admin edit', editedAt: new Date() };
+      commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(issue);
+      permissionsService.isAdminOrOwner.mockResolvedValue(true);
+      commentRepo.save.mockResolvedValue(updated);
+
+      const result = await service.update(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID, { content: 'Admin edit' });
+
+      expect(result.content).toBe('Admin edit');
+      expect(permissionsService.isAdminOrOwner).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.organizationId);
     });
   });
 
@@ -274,11 +295,27 @@ describe('CommentsService', () => {
     it('should throw ForbiddenException when deleting another users comment', async () => {
       const comment = mockComment({ authorId: 'other-user-id' });
       commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(mockIssue());
+      permissionsService.isAdminOrOwner.mockResolvedValue(false);
 
       await expect(service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(ForbiddenException);
       await expect(service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(
         'You can only delete your own comments',
       );
+    });
+
+    it('should allow admin to delete any comment (isAdminOrOwner bypass)', async () => {
+      const comment = mockComment({ authorId: 'other-user-id' });
+      const issue = mockIssue();
+      commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(issue);
+      permissionsService.isAdminOrOwner.mockResolvedValue(true);
+      commentRepo.update.mockResolvedValue(mockUpdateResult());
+
+      await service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID);
+
+      expect(commentRepo.update).toHaveBeenCalledWith(TEST_IDS.COMMENT_ID, { deletedAt: expect.any(Date) });
+      expect(permissionsService.isAdminOrOwner).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.organizationId);
     });
   });
 });
