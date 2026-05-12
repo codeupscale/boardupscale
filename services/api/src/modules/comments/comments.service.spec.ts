@@ -37,7 +37,7 @@ describe('CommentsService', () => {
     issueRepo = createMockRepository();
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
-    permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false) };
+    permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false), isProjectAdmin: jest.fn().mockResolvedValue(false) };
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -264,12 +264,29 @@ describe('CommentsService', () => {
       commentRepo.findOne.mockResolvedValue(comment);
       issueRepo.findOne.mockResolvedValue(issue);
       permissionsService.isAdminOrOwner.mockResolvedValue(true);
+      permissionsService.isProjectAdmin.mockResolvedValue(false);
       commentRepo.save.mockResolvedValue(updated);
 
       const result = await service.update(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID, { content: 'Admin edit' });
 
       expect(result.content).toBe('Admin edit');
       expect(permissionsService.isAdminOrOwner).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.organizationId);
+    });
+
+    it('should allow project Admin to edit any comment (P45)', async () => {
+      const comment = mockComment({ authorId: 'other-user-id' });
+      const issue = mockIssue();
+      const updated = { ...comment, content: 'Project admin edit', editedAt: new Date() };
+      commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(issue);
+      permissionsService.isAdminOrOwner.mockResolvedValue(false);
+      permissionsService.isProjectAdmin.mockResolvedValue(true);
+      commentRepo.save.mockResolvedValue(updated);
+
+      const result = await service.update(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID, { content: 'Project admin edit' });
+
+      expect(result.content).toBe('Project admin edit');
+      expect(permissionsService.isProjectAdmin).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.projectId);
     });
   });
 
@@ -297,6 +314,7 @@ describe('CommentsService', () => {
       commentRepo.findOne.mockResolvedValue(comment);
       issueRepo.findOne.mockResolvedValue(mockIssue());
       permissionsService.isAdminOrOwner.mockResolvedValue(false);
+      permissionsService.isProjectAdmin.mockResolvedValue(false);
 
       await expect(service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(ForbiddenException);
       await expect(service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(
@@ -310,12 +328,28 @@ describe('CommentsService', () => {
       commentRepo.findOne.mockResolvedValue(comment);
       issueRepo.findOne.mockResolvedValue(issue);
       permissionsService.isAdminOrOwner.mockResolvedValue(true);
+      permissionsService.isProjectAdmin.mockResolvedValue(false);
       commentRepo.update.mockResolvedValue(mockUpdateResult());
 
       await service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID);
 
       expect(commentRepo.update).toHaveBeenCalledWith(TEST_IDS.COMMENT_ID, { deletedAt: expect.any(Date) });
       expect(permissionsService.isAdminOrOwner).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.organizationId);
+    });
+
+    it('should allow project Admin to delete any comment (P47)', async () => {
+      const comment = mockComment({ authorId: 'other-user-id' });
+      const issue = mockIssue();
+      commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(issue);
+      permissionsService.isAdminOrOwner.mockResolvedValue(false);
+      permissionsService.isProjectAdmin.mockResolvedValue(true);
+      commentRepo.update.mockResolvedValue(mockUpdateResult());
+
+      await service.delete(TEST_IDS.COMMENT_ID, TEST_IDS.USER_ID);
+
+      expect(commentRepo.update).toHaveBeenCalledWith(TEST_IDS.COMMENT_ID, { deletedAt: expect.any(Date) });
+      expect(permissionsService.isProjectAdmin).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.projectId);
     });
   });
 });

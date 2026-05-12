@@ -642,6 +642,13 @@ export class PermissionsService {
     return membership?.role === 'administrator';
   }
 
+  async isProjectAdmin(userId: string, projectId: string): Promise<boolean> {
+    const member = await this.projectMemberRepo.findOne({
+      where: { projectId, userId },
+    });
+    return member?.role === 'admin';
+  }
+
   /**
    * Map legacy role string values to system role names.
    * 'manager' is kept as an 'Admin' fallback to handle any data that was not
