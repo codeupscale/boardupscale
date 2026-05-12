@@ -29,7 +29,7 @@ export class ProjectMember {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ type: 'varchar', length: 50, default: 'developer' })
+  @Column({ type: 'varchar', length: 50, default: 'member' })
   role: string;
 
   @Column({ name: 'role_id', type: 'uuid', nullable: true })

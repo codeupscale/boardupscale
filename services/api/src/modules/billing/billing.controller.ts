@@ -44,7 +44,7 @@ export class BillingController {
   @Post('checkout')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('owner')
   @ApiOperation({ summary: 'Create a Stripe checkout session' })
   async createCheckout(
     @OrgId() organizationId: string,
@@ -61,7 +61,7 @@ export class BillingController {
   @Post('portal')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'owner')
+  @Roles('owner')
   @ApiOperation({ summary: 'Create a Stripe billing portal session' })
   async createPortal(@OrgId() organizationId: string) {
     const data = await this.billingService.createBillingPortalSession(organizationId);

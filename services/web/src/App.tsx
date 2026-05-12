@@ -150,13 +150,13 @@ export default function App() {
           <Route path="/issues/:id" element={<IssueDetailPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<UserSettingsPage />} />
-          <Route path="/settings/roles" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><RoleManagementPage /></RoleGuard>} />
-          <Route path="/settings/team" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><TeamPage /></RoleGuard>} />
-          <Route path="/settings/billing" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><BillingPage /></RoleGuard>} />
-          <Route path="/admin/audit-logs" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><AuditLogPage /></RoleGuard>} />
-          <Route path="/import" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><ImportPage /></RoleGuard>} />
-          <Route path="/settings/migrate/jira" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><JiraMigrationPage /></RoleGuard>} />
-          <Route path="/settings/migrate/history" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMIN]}><MigrationHistoryPage /></RoleGuard>} />
+          <Route path="/settings/roles" element={<RoleGuard roles={[UserRole.OWNER]}><RoleManagementPage /></RoleGuard>} />
+          <Route path="/settings/team" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><TeamPage /></RoleGuard>} />
+          <Route path="/settings/billing" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><BillingPage /></RoleGuard>} />
+          <Route path="/admin/audit-logs" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><AuditLogPage /></RoleGuard>} />
+          <Route path="/import" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><ImportPage /></RoleGuard>} />
+          <Route path="/settings/migrate/jira" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><JiraMigrationPage /></RoleGuard>} />
+          <Route path="/settings/migrate/history" element={<RoleGuard roles={[UserRole.OWNER, UserRole.ADMINISTRATOR]}><MigrationHistoryPage /></RoleGuard>} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 

@@ -19,11 +19,12 @@ export function usePermissions() {
 /**
  * Fetch roles for an organization, including global system roles.
  */
-export function useRoles(organizationId: string | undefined) {
+export function useRoles(organizationId: string | undefined, scope?: 'org' | 'project') {
   return useQuery({
-    queryKey: ['roles', organizationId],
+    queryKey: ['roles', organizationId, scope],
     queryFn: async () => {
-      const { data } = await api.get(`/organizations/${organizationId}/roles`)
+      const params = scope ? `?scope=${scope}` : ''
+      const { data } = await api.get(`/organizations/${organizationId}/roles${params}`)
       return data.data as Role[]
     },
     enabled: !!organizationId,

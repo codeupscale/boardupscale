@@ -293,8 +293,7 @@
     "user": "User",
     "role": "Role",
     "viewer": "Viewer",
-    "admin": "Admin",
-    "manager": "Manager"
+    "admin": "Admin"
   },
   "priorities": {
     "critical": "Critical",

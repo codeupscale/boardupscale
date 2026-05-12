@@ -170,23 +170,21 @@ export class SeedData1741651200001 implements MigrationInterface {
                (p.resource = 'project'  AND p.action = 'read')
             OR (p.resource = 'board'    AND p.action = 'read')
             OR (p.resource = 'sprint'   AND p.action = 'read')
-            OR (p.resource = 'issue'    AND p.action IN ('create', 'read', 'update'))
-            OR (p.resource = 'comment'  AND p.action IN ('create', 'read', 'update'))
-            OR (p.resource = 'worklog'  AND p.action IN ('create', 'read', 'update'))
-            OR (p.resource = 'page'     AND p.action IN ('create', 'read', 'update'))
+            OR (p.resource = 'issue'    AND p.action IN ('create', 'read', 'update', 'assign'))
+            OR (p.resource = 'comment'  AND p.action IN ('create', 'read', 'update', 'delete'))
+            OR (p.resource = 'worklog'  AND p.action IN ('create', 'read', 'update', 'delete'))
+            OR (p.resource = 'page'     AND p.action IN ('create', 'read', 'update', 'delete'))
             OR (p.resource = 'member'      AND p.action = 'read')
             OR (p.resource = 'automation'  AND p.action = 'read')
-            OR (p.resource = 'webhook'     AND p.action = 'read')
             OR (p.resource = 'component'   AND p.action IN ('create', 'read', 'update'))
             OR (p.resource = 'version'     AND p.action = 'read')
             OR (p.resource = 'custom-field' AND p.action = 'read')
-            OR (p.resource = 'api-key'     AND p.action = 'read')
             OR (p.resource = 'ai'          AND p.action IN ('read', 'use', 'chat'))
          )
       ON CONFLICT DO NOTHING
     `);
 
-    // Viewer: read-only access to every resource.
+    // Viewer: read-only access, excluding admin-only resources (webhook, api-key).
     await queryRunner.query(`
       INSERT INTO "role_permissions" ("role_id", "permission_id")
       SELECT r.id, p.id
@@ -196,6 +194,8 @@ export class SeedData1741651200001 implements MigrationInterface {
          AND r.is_system IS TRUE
          AND r.organization_id IS NULL
          AND p.action = 'read'
+         AND NOT (p.resource = 'webhook')
+         AND NOT (p.resource = 'api-key')
       ON CONFLICT DO NOTHING
     `);
 

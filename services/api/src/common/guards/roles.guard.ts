@@ -47,16 +47,22 @@ export class RolesGuard implements CanActivate {
     );
 
     if (requiredPermission) {
-      // Extract projectId from route params, query, or body. Note the param
-      // may still be a slug at guard time — ResolveProjectPipe runs later.
-      const projectId =
+      // Build a project-context hint from all request sources.
+      // Ordering matters: explicit projectId params win; params.id comes last
+      // because it may be a resource UUID (issue, sprint, comment …) rather than
+      // a project UUID. body.issueId is included for attachment upload routes
+      // that carry no explicit project context.
+      // checkPermission handles all three cases via resolveProjectFromResource.
+      const projectHint: string | undefined =
         request.params?.projectId ||
         request.query?.projectId ||
-        request.body?.projectId;
+        request.body?.projectId ||
+        request.params?.id ||
+        request.body?.issueId || // attachment upload / confirm-upload routes
+        request.query?.issueId;  // GET /files?issueId= and similar read routes
 
-      if (!projectId) {
-        // No project context — check org-level role (per-org via membership,
-        // legacy fallback to users.role).
+      if (!projectHint) {
+        // No resource context at all — purely org-level check.
         const allowed = await this.permissionsService.checkOrgLevelPermission(
           user.id,
           user.organizationId,
@@ -71,9 +77,10 @@ export class RolesGuard implements CanActivate {
 
       const hasPermission = await this.permissionsService.checkPermission(
         user.id,
-        projectId,
+        projectHint,
         requiredPermission.resource,
         requiredPermission.action,
+        user.organizationId, // fallback for non-project resource routes
       );
 
       if (!hasPermission) {

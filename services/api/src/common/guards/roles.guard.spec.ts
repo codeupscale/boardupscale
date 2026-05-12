@@ -91,7 +91,7 @@ describe('RolesGuard', () => {
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
       expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
-        'user-id', 'project-123', 'issue', 'create',
+        'user-id', 'project-123', 'issue', 'create', undefined,
       );
     });
 

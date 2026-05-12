@@ -107,7 +107,8 @@ export class PagesController {
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() orgId: string,
+    @CurrentUser() user: any,
   ) {
-    await this.pagesService.softDelete(id, orgId);
+    await this.pagesService.softDelete(id, orgId, user.id);
   }
 }

@@ -293,8 +293,7 @@
     "user": "Utilisateur",
     "role": "R\u00f4le",
     "viewer": "Observateur",
-    "admin": "Administrateur",
-    "manager": "Gestionnaire"
+    "admin": "Administrateur"
   },
   "priorities": {
     "critical": "Critique",

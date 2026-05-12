@@ -35,6 +35,9 @@ export class Role {
   @Column({ name: 'is_system', type: 'boolean', default: false })
   isSystem: boolean;
 
+  @Column({ type: 'varchar', length: 20, default: 'project' })
+  scope: string;
+
   @ManyToMany(() => Permission, { eager: true })
   @JoinTable({
     name: 'role_permissions',

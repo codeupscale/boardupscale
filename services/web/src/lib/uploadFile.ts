@@ -37,6 +37,7 @@ export async function uploadFile(
     fileName: file.name,
     mimeType: file.type || 'application/octet-stream',
     fileSize: file.size,
+    issueId: opts.issueId,
   })
   const presign: PresignResponse = presignRes.data
 

@@ -1,10 +1,11 @@
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { ProjectMember, UserRole } from '@/types'
+import { ProjectMember } from '@/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useRemoveProjectMember } from '@/hooks/useProjects'
 import { useAuthStore } from '@/store/auth.store'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { cn } from '@/lib/utils'
 
 interface MemberListProps {
@@ -30,6 +31,7 @@ export function MemberList({ projectId, members }: MemberListProps) {
   const { t } = useTranslation()
   const removeMember = useRemoveProjectMember()
   const currentUser = useAuthStore((s) => s.user)
+  const { hasPermission } = useHasPermission(projectId)
 
   if (members.length === 0) {
     return (
@@ -55,9 +57,7 @@ export function MemberList({ projectId, members }: MemberListProps) {
             {t(roleKeys[member.role] || 'projects.member')}
           </span>
           {currentUser?.id !== member.userId &&
-            (currentUser?.role === UserRole.OWNER ||
-              currentUser?.role === UserRole.ADMIN ||
-              currentUser?.role === UserRole.MANAGER) && (
+            hasPermission('member', 'delete') && (
             <Button
               variant="ghost"
               size="icon-sm"

@@ -23,7 +23,7 @@ export class OrganizationMember {
   @Column({ name: 'organization_id', type: 'uuid' })
   organizationId: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'member' })
+  @Column({ type: 'varchar', length: 50, default: 'user' })
   role: string;
 
   @Column({ name: 'is_default', type: 'boolean', default: false })

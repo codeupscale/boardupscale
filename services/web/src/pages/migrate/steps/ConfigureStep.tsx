@@ -25,12 +25,12 @@ const DEFAULT_JIRA_STATUSES = [
 const BOARDUPSCALE_STATUSES = ['To Do', 'In Progress', 'Done', 'Cancelled']
 
 const DEFAULT_JIRA_ROLES = [
-  { jira: 'Project Lead', default: 'manager' },
+  { jira: 'Project Lead', default: 'admin' },
   { jira: 'Developer', default: 'member' },
   { jira: 'Viewer', default: 'viewer' },
 ]
 
-const BOARDUPSCALE_ROLES = ['admin', 'manager', 'member', 'viewer']
+const BOARDUPSCALE_ROLES = ['admin', 'member', 'viewer']
 
 interface ToggleProps {
   checked: boolean

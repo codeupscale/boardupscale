@@ -14,7 +14,8 @@ import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateLanguageDto } from './dto/update-language.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
@@ -28,6 +29,8 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
+  @UseGuards(RolesGuard)
+  @RequirePermission('organization', 'view-directory')
   @ApiOperation({ summary: 'List users in organization (paginated)' })
   async findAll(
     @OrgId() organizationId: string,
@@ -51,6 +54,8 @@ export class UsersController {
   }
 
   @Get('dropdown')
+  @UseGuards(RolesGuard)
+  @RequirePermission('organization', 'view-directory')
   @ApiOperation({ summary: 'List minimal user fields for dropdowns (no pagination, safe fields only)' })
   async findForDropdown(@OrgId() organizationId: string) {
     const users = await this.usersService.findAllForDropdown(organizationId);
@@ -79,6 +84,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
+  @RequirePermission('organization', 'view-directory')
   @ApiOperation({ summary: 'Get user by ID' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
     const user = await this.usersService.findByIdAndOrg(id, organizationId);
@@ -101,8 +108,8 @@ export class UsersController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('admin', 'owner')
-  @ApiOperation({ summary: 'Deactivate a user (admin only)' })
+  @RequirePermission('organization', 'remove-member')
+  @ApiOperation({ summary: 'Deactivate a user (owner or administrator)' })
   async deactivate(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,

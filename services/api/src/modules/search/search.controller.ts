@@ -2,7 +2,8 @@ import { Controller, Get, Post, Query, Param, UseGuards, HttpCode, HttpStatus } 
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
@@ -83,9 +84,9 @@ export class SearchController {
 
   @Post('reindex/:projectId')
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @RequirePermission('organization', 'manage-integrations')
   @HttpCode(HttpStatus.ACCEPTED)
-  @ApiOperation({ summary: 'Trigger full reindex of a project\'s issues (admin only)' })
+  @ApiOperation({ summary: 'Trigger full reindex of a project\'s issues (owner or administrator)' })
   @ApiParam({ name: 'projectId', description: 'Project ID to reindex' })
   async reindexProject(
     @OrgId() organizationId: string,

@@ -10,6 +10,7 @@ import { Organization } from '../organizations/entities/organization.entity';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
+import { OrganizationsService } from '../organizations/organizations.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
@@ -23,6 +24,7 @@ describe('ProjectsService', () => {
 
   const mockEmailService = { sendProjectMemberAddedEmail: jest.fn().mockResolvedValue(undefined) };
   const mockUsersService = { findById: jest.fn() };
+  const mockOrganizationsService = { inviteMember: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
 
   beforeEach(async () => {
@@ -41,6 +43,7 @@ describe('ProjectsService', () => {
         { provide: AuditService, useValue: { log: jest.fn() } },
         { provide: EmailService, useValue: mockEmailService },
         { provide: UsersService, useValue: mockUsersService },
+        { provide: OrganizationsService, useValue: mockOrganizationsService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
       ],
@@ -80,6 +83,19 @@ describe('ProjectsService', () => {
       projectRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner');
+
+      expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
+      expect(qb.innerJoin).not.toHaveBeenCalled();
+    });
+
+    it('should return all org projects for administrator without membership join (O21)', async () => {
+      const projects = [mockProject()];
+      const qb = createMockQueryBuilder(projects);
+      qb.getCount.mockResolvedValue(projects.length);
+      qb.getMany.mockResolvedValue(projects);
+      projectRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator');
 
       expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
       expect(qb.innerJoin).not.toHaveBeenCalled();

@@ -37,7 +37,7 @@ export class User {
   @Exclude()
   passwordHash: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'member' })
+  @Column({ type: 'varchar', length: 50, default: 'user' })
   role: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

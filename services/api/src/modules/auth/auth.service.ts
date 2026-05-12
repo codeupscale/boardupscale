@@ -226,7 +226,7 @@ export class AuthService {
     userAgent?: string,
     activeOrganizationId?: string,
   ) {
-    const organizationId = activeOrganizationId || user.organizationId;
+    let organizationId = activeOrganizationId || user.organizationId;
     let role = user.role;
 
     // Always resolve the org membership role — more accurate than users.role for org context.
@@ -237,6 +237,17 @@ export class AuthService {
       });
       if (membership) {
         role = membership.role;
+      }
+    } else {
+      // Fallback: users.organization_id can be NULL for invited users whose
+      // invite acceptance skipped the organizationId update (e.g. they already
+      // had a passwordHash). Use their default org membership row instead.
+      const defaultMembership = await this.orgMemberRepository.findOne({
+        where: { userId: user.id, isDefault: true },
+      });
+      if (defaultMembership) {
+        organizationId = defaultMembership.organizationId;
+        role = defaultMembership.role;
       }
     }
 
@@ -515,7 +526,7 @@ export class AuthService {
           this.orgMemberRepository.create({
             userId: existingEmail.id,
             organizationId: existingEmail.organizationId,
-            role: existingEmail.role || 'member',
+            role: existingEmail.role || 'user',
             isDefault: true,
           }),
         );
@@ -840,11 +851,12 @@ export class AuthService {
           inviteOrgId,
         })
         .execute();
+    }
 
-      // Make the invited org the user's "home" org. users.organization_id is
-      // still consulted in several legacy code paths, and by default the JWT
-      // embeds it as the session org. Stale Jira-source home orgs would land
-      // the user in the wrong workspace on first login.
+    // Always set the user's home org when it is unset — covers both first-time
+    // activations and invited users who already had a passwordHash (e.g. users
+    // created via another path before being invited to this org).
+    if (!user.organizationId) {
       await this.usersService.update(user.id, {
         organizationId: inviteOrgId,
       } as any);
@@ -866,7 +878,7 @@ export class AuthService {
         this.orgMemberRepository.create({
           userId: user.id,
           organizationId: inviteOrgId,
-          role: user.role || 'member',
+          role: user.role || 'user',
           isDefault: otherMembershipsCount === 0,
         }),
       );
@@ -924,7 +936,7 @@ export class AuthService {
           this.orgMemberRepository.create({
             userId: existingUser.id,
             organizationId: orgId,
-            role: 'member',
+            role: 'user',
             isDefault: existingUser.organizationId === orgId,
           }),
         );
@@ -945,7 +957,7 @@ export class AuthService {
       avatarUrl: null,
       oauthProvider: 'saml',
       oauthId: profile.email, // Use email as the SAML identifier
-      role: 'member',
+      role: 'user',
     });
 
     // Dual-write: create organization_members row for the new SAML user
@@ -953,7 +965,7 @@ export class AuthService {
       this.orgMemberRepository.create({
         userId: user.id,
         organizationId: orgId,
-        role: 'member',
+        role: 'user',
         isDefault: true,
       }),
     );

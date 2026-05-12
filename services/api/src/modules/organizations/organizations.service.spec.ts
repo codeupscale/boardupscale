@@ -33,9 +33,9 @@ describe('OrganizationsService', () => {
     getRolesForOrg: jest.fn().mockResolvedValue([
       { id: 'role-owner',   name: 'Owner' },
       { id: 'role-admin',   name: 'Admin' },
-      { id: 'role-manager', name: 'Manager' },
       { id: 'role-member',  name: 'Member' },
       { id: 'role-viewer',  name: 'Viewer' },
+      { id: 'role-user',    name: 'User' },
     ]),
   };
 
@@ -69,9 +69,9 @@ describe('OrganizationsService', () => {
     mockPermissionsService.getRolesForOrg.mockResolvedValue([
       { id: 'role-owner',   name: 'Owner' },
       { id: 'role-admin',   name: 'Admin' },
-      { id: 'role-manager', name: 'Manager' },
       { id: 'role-member',  name: 'Member' },
       { id: 'role-viewer',  name: 'Viewer' },
+      { id: 'role-user',    name: 'User' },
     ]);
   });
 
@@ -228,7 +228,7 @@ describe('OrganizationsService', () => {
       await service.inviteMember(TEST_IDS.ORG_ID, { email: 'new@example.com' }, inviterId);
 
       expect(userRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ role: 'member' }),
+        expect.objectContaining({ role: 'user' }),
       );
     });
 

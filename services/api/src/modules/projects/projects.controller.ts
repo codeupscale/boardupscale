@@ -16,6 +16,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { InviteProjectMemberDto } from './dto/invite-project-member.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -131,7 +132,7 @@ export class ProjectsController {
 
   @Post(':id/members')
   @RequirePermission('member', 'create')
-  @ApiOperation({ summary: 'Add a member to the project' })
+  @ApiOperation({ summary: 'Add a member to the project by userId' })
   @ApiResponse({ status: 201, description: 'Member added' })
   @ApiResponse({ status: 409, description: 'User is already a member' })
   async addMember(
@@ -141,6 +142,26 @@ export class ProjectsController {
     @Body() dto: AddMemberDto,
   ) {
     return this.projectsService.addMember(id, organizationId, dto, user.id);
+  }
+
+  @Post(':id/members/invite')
+  @RequirePermission('member', 'create')
+  @ApiOperation({
+    summary: 'Invite a person to the project by email',
+    description:
+      'If the email is not yet in the org, sends an org invite (1 email). ' +
+      'The project membership is pre-created so they land in the project on first login. ' +
+      'If already in the org, adds them to the project directly.',
+  })
+  @ApiResponse({ status: 201, description: 'Invite sent / member added' })
+  @ApiResponse({ status: 409, description: 'Already a project member' })
+  async inviteMemberByEmail(
+    @Param('id', ResolveProjectPipe) id: string,
+    @OrgId() organizationId: string,
+    @CurrentUser() user: any,
+    @Body() dto: InviteProjectMemberDto,
+  ) {
+    return this.projectsService.inviteMemberByEmail(id, organizationId, dto, user.id);
   }
 
   @Delete(':id/members/:userId')

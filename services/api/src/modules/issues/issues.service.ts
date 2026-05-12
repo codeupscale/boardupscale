@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   Optional,
   Logger,
@@ -35,6 +36,7 @@ import { AutomationEngineService } from '../automation/automation-engine.service
 import { ActivityService } from '../activity/activity.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService } from '../ai/ai.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class IssuesService {
@@ -62,6 +64,7 @@ export class IssuesService {
     private searchIndexQueue: Queue,
     private activityService: ActivityService,
     private auditService: AuditService,
+    private permissionsService: PermissionsService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
     @Optional() @Inject(AiService)
@@ -565,6 +568,15 @@ export class IssuesService {
 
   async softDelete(id: string, organizationId: string, userId?: string): Promise<void> {
     const issue = await this.findById(id, organizationId);
+
+    // P27: Members may only delete their own issues; Admin/Manager/Owner bypass.
+    if (userId && issue.reporterId !== userId) {
+      const isElevated = await this.permissionsService.isAdminOrOwner(userId, organizationId);
+      if (!isElevated) {
+        throw new ForbiddenException('You can only delete your own issues');
+      }
+    }
+
     await this.issueRepository.update(id, { deletedAt: new Date() });
     this.eventsGateway.emitToOrg(organizationId, 'issue:deleted', { id });
 

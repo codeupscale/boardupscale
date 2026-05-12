@@ -11,11 +11,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 import { Organization } from '../organizations/entities/organization.entity';
 import { TelemetryModule } from '../telemetry/telemetry.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Project, ProjectMember, IssueStatus, Organization]),
     forwardRef(() => PermissionsModule),
+    forwardRef(() => OrganizationsModule),
     NotificationsModule,
     UsersModule,
     ConfigModule,

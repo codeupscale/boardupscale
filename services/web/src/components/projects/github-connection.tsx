@@ -128,7 +128,7 @@ export function GitHubConnection({ projectId, canManage = true }: GitHubConnecti
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">Access Denied</p>
-            <p className="text-sm text-muted-foreground mt-0.5">Manager or higher access is required to connect a GitHub repository.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Admin or higher access is required to connect a GitHub repository.</p>
           </div>
         </div>
       </div>

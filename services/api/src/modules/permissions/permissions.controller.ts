@@ -17,7 +17,8 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/guards/roles.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
@@ -38,14 +39,17 @@ export class PermissionsController {
   }
 
   @Get('organizations/:orgId/roles')
-  @ApiOperation({ summary: 'List roles for an organization (including system roles)' })
-  async getRolesForOrg(@Param('orgId', ParseUUIDPipe) orgId: string) {
-    const roles = await this.permissionsService.getRolesForOrg(orgId);
+  @ApiOperation({ summary: 'List roles for an organization (including system roles). Optional ?scope=org|project' })
+  async getRolesForOrg(
+    @Param('orgId', ParseUUIDPipe) orgId: string,
+    @Query('scope') scope?: string,
+  ) {
+    const roles = await this.permissionsService.getRolesForOrg(orgId, scope);
     return { data: roles };
   }
 
   @Post('organizations/:orgId/roles')
-  @Roles('admin', 'owner')
+  @RequirePermission('organization', 'manage-roles')
   @ApiOperation({ summary: 'Create a custom role for an organization' })
   async createRole(
     @Param('orgId', ParseUUIDPipe) orgId: string,
@@ -68,7 +72,7 @@ export class PermissionsController {
   }
 
   @Put('roles/:id')
-  @Roles('admin', 'owner')
+  @RequirePermission('organization', 'manage-roles')
   @ApiOperation({ summary: 'Update a custom role' })
   async updateRole(
     @Param('id', ParseUUIDPipe) id: string,
@@ -83,7 +87,7 @@ export class PermissionsController {
   }
 
   @Delete('roles/:id')
-  @Roles('admin', 'owner')
+  @RequirePermission('organization', 'manage-roles')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a custom role' })
   async deleteRole(@Param('id', ParseUUIDPipe) id: string) {
@@ -91,7 +95,7 @@ export class PermissionsController {
   }
 
   @Post('projects/:projectId/members/:memberId/role')
-  @Roles('admin', 'owner')
+  @RequirePermission('member', 'update')
   @ApiOperation({ summary: 'Assign a role to a project member' })
   async assignRoleToMember(
     @Param('projectId', ResolveProjectPipe) projectId: string,

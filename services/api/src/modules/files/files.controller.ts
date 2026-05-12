@@ -28,19 +28,22 @@ import {
 } from './dto/presign-upload.dto';
 import { ConfirmUploadDto } from './dto/confirm-upload.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 
 @ApiTags('files')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('files')
 export class FilesController {
   constructor(private filesService: FilesService) {}
 
   @Post('presign-upload')
+  @RequirePermission('attachment', 'create')
   @ApiOperation({
     summary: 'Get a presigned PUT URL for direct browser → storage upload',
     description:
@@ -54,6 +57,7 @@ export class FilesController {
   }
 
   @Post('confirm-upload')
+  @RequirePermission('attachment', 'create')
   @ApiOperation({
     summary: 'Finalize a presigned upload and create the attachment record',
   })
@@ -92,6 +96,7 @@ export class FilesController {
     },
   })
   @ApiOperation({ summary: 'Upload a file attachment' })
+  @RequirePermission('attachment', 'create')
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadFileDto,
@@ -146,6 +151,7 @@ export class FilesController {
   }
 
   @Get()
+  @RequirePermission('attachment', 'read')
   @ApiOperation({ summary: 'List attachments for an issue' })
   async findByIssue(@Query('issueId', ParseUUIDPipe) issueId: string) {
     const attachments = await this.filesService.findByIssue(issueId);
@@ -153,6 +159,7 @@ export class FilesController {
   }
 
   @Delete(':id')
+  @RequirePermission('attachment', 'delete:own')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a file attachment' })
   async delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any, @OrgId() organizationId: string) {

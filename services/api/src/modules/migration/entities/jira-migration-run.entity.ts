@@ -102,7 +102,7 @@ export class JiraMigrationRun {
   @Column({ name: 'status_mapping', type: 'jsonb', nullable: true })
   statusMapping: Record<string, string> | null;
 
-  /** Jira role → Boardupscale role mapping, e.g. { "Project Lead": "manager" } */
+  /** Jira role → Boardupscale role mapping, e.g. { "Project Lead": "admin" } */
   @Column({ name: 'role_mapping', type: 'jsonb', nullable: true })
   roleMapping: Record<string, string> | null;
 
