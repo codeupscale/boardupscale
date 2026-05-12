@@ -255,9 +255,11 @@ export class PagesService {
     if (!page) throw new NotFoundException(`Page ${id} not found`);
 
     if (page.creatorId !== userId) {
-      // Allow admins/owners to delete any page (page:delete:any).
-      const isAdmin = await this.permissionsService.isAdminOrOwner(userId, orgId);
-      if (!isAdmin) {
+      // Allow org admins/owners or project admins to delete any page.
+      const canDeleteAny =
+        (await this.permissionsService.isAdminOrOwner(userId, orgId)) ||
+        (await this.permissionsService.isProjectAdmin(userId, page.projectId));
+      if (!canDeleteAny) {
         throw new ForbiddenException('You can only delete your own pages');
       }
     }
