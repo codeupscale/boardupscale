@@ -168,12 +168,13 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
     if (comment.authorId !== userId) {
-      // Allow admins/owners to edit any comment (comment:update:any).
+      // Allow org Owner/Administrator OR project Admin to edit any comment (P45).
       const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
-      const isAdmin = issue
-        ? await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)
+      const canEditAny = issue
+        ? (await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)) ||
+          (await this.permissionsService.isProjectAdmin(userId, issue.projectId))
         : false;
-      if (!isAdmin) {
+      if (!canEditAny) {
         throw new ForbiddenException('You can only edit your own comments');
       }
     }
@@ -216,12 +217,13 @@ export class CommentsService {
       throw new NotFoundException('Comment not found');
     }
     if (comment.authorId !== userId) {
-      // Allow admins/owners to delete any comment (comment:delete:any).
+      // Allow org Owner/Administrator OR project Admin to delete any comment (P47).
       const issue = await this.issueRepository.findOne({ where: { id: comment.issueId } });
-      const isAdmin = issue
-        ? await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)
+      const canDeleteAny = issue
+        ? (await this.permissionsService.isAdminOrOwner(userId, issue.organizationId)) ||
+          (await this.permissionsService.isProjectAdmin(userId, issue.projectId))
         : false;
-      if (!isAdmin) {
+      if (!canDeleteAny) {
         throw new ForbiddenException('You can only delete your own comments');
       }
     }

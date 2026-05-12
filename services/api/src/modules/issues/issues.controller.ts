@@ -270,6 +270,7 @@ export class IssuesController {
   }
 
   @Get(':id/work-logs')
+  @RequirePermission('worklog', 'read')
   @ApiOperation({ summary: 'Get work logs for an issue' })
   async getWorkLogs(
     @Param('id', ParseUUIDPipe) id: string,

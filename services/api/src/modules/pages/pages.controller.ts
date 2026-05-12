@@ -101,7 +101,7 @@ export class PagesController {
 
   // DELETE /api/pages/:id — soft delete
   @Delete(':id')
-  @RequirePermission('page', 'delete')
+  @RequirePermission('page', 'delete:own')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete a page (and its children)' })
   async remove(
