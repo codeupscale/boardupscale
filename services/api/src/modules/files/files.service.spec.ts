@@ -6,6 +6,7 @@ import { FilesService } from './files.service';
 import { Attachment } from './entities/attachment.entity';
 import { ActivityService } from '../activity/activity.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { PermissionsService } from '../permissions/permissions.service';
 import { createMockRepository, createMockConfigService } from '../../test/test-utils';
 import { mockAttachment, TEST_IDS } from '../../test/mock-factories';
 
@@ -43,6 +44,7 @@ describe('FilesService', () => {
         { provide: ConfigService, useValue: createMockConfigService() },
         { provide: ActivityService, useValue: { log: jest.fn() } },
         { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
+        { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true), isAdminOrOwner: jest.fn().mockResolvedValue(false) } },
       ],
     }).compile();
 

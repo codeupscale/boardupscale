@@ -35,6 +35,7 @@ describe('OrganizationsService', () => {
       { id: 'role-admin',   name: 'Admin' },
       { id: 'role-member',  name: 'Member' },
       { id: 'role-viewer',  name: 'Viewer' },
+      { id: 'role-user',    name: 'User' },
     ]),
   };
 
@@ -70,6 +71,7 @@ describe('OrganizationsService', () => {
       { id: 'role-admin',   name: 'Admin' },
       { id: 'role-member',  name: 'Member' },
       { id: 'role-viewer',  name: 'Viewer' },
+      { id: 'role-user',    name: 'User' },
     ]);
   });
 
@@ -226,7 +228,7 @@ describe('OrganizationsService', () => {
       await service.inviteMember(TEST_IDS.ORG_ID, { email: 'new@example.com' }, inviterId);
 
       expect(userRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ role: 'member' }),
+        expect.objectContaining({ role: 'user' }),
       );
     });
 
