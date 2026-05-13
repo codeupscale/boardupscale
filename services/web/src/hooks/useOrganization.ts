@@ -65,7 +65,7 @@ export function useOrgMembers() {
 export function useInviteMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { email: string; displayName?: string; role?: string }) => {
+    mutationFn: async (payload: { email: string; displayName?: string; role?: string; forceCreate?: boolean }) => {
       const { data } = await api.post('/organizations/invite', payload)
       return data.data
     },
@@ -74,6 +74,8 @@ export function useInviteMember() {
       toast('Invitation sent')
     },
     onError: (err: any) => {
+      // JIRA_MERGE_REQUIRED (409) is handled by the caller — suppress generic toast
+      if (err?.response?.data?.code === 'JIRA_MERGE_REQUIRED') return
       toast(err?.response?.data?.message || 'Failed to send invitation', 'error')
     },
   })
