@@ -28,6 +28,9 @@ describe('IssuesController', () => {
       getChildren: jest.fn(),
       createWorkLog: jest.fn(),
       getWorkLogs: jest.fn(),
+      bulkUpdate: jest.fn(),
+      bulkDelete: jest.fn(),
+      bulkTransition: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -164,6 +167,43 @@ describe('IssuesController', () => {
       const result = await controller.getWorkLogs(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
 
       expect(result).toEqual({ data: logs });
+    });
+  });
+
+  describe('PATCH /issues/bulk-update', () => {
+    it('should call bulkUpdate with org and dto', async () => {
+      const dto = { issueIds: [TEST_IDS.ISSUE_ID], priority: 'high' };
+      issuesService.bulkUpdate.mockResolvedValue({ affected: 1 });
+
+      const result = await controller.bulkUpdate(TEST_IDS.ORG_ID, dto as any);
+
+      expect(result).toEqual({ affected: 1 });
+      expect(issuesService.bulkUpdate).toHaveBeenCalledWith(TEST_IDS.ORG_ID, dto);
+    });
+  });
+
+  describe('POST /issues/bulk-delete', () => {
+    it('should call bulkDelete with org, dto and user id', async () => {
+      const dto = { issueIds: [TEST_IDS.ISSUE_ID] };
+      const user = { id: TEST_IDS.USER_ID };
+      issuesService.bulkDelete.mockResolvedValue({ affected: 1 });
+
+      const result = await controller.bulkDelete(TEST_IDS.ORG_ID, user, dto as any);
+
+      expect(result).toEqual({ affected: 1 });
+      expect(issuesService.bulkDelete).toHaveBeenCalledWith(TEST_IDS.ORG_ID, dto, TEST_IDS.USER_ID);
+    });
+  });
+
+  describe('POST /issues/bulk-transition', () => {
+    it('should call bulkTransition with org and dto', async () => {
+      const dto = { issueIds: [TEST_IDS.ISSUE_ID], statusId: TEST_IDS.STATUS_ID };
+      issuesService.bulkTransition.mockResolvedValue({ affected: 1 });
+
+      const result = await controller.bulkTransition(TEST_IDS.ORG_ID, dto as any);
+
+      expect(result).toEqual({ affected: 1 });
+      expect(issuesService.bulkTransition).toHaveBeenCalledWith(TEST_IDS.ORG_ID, dto);
     });
   });
 });

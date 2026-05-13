@@ -137,10 +137,12 @@ function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
 function CommentItem({
   comment,
   currentUserId,
+  canModifyAny,
   users,
 }: {
   comment: Comment
   currentUserId?: string
+  canModifyAny?: boolean
   users?: import('@/types').User[]
 }) {
   const { t } = useTranslation()
@@ -194,7 +196,7 @@ function CommentItem({
         ) : (
           <RichTextDisplay content={comment.content} className="text-sm text-foreground" />
         )}
-        {currentUserId === comment.authorId && !editing && (
+        {(currentUserId === comment.authorId || canModifyAny) && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               className="text-xs text-muted-foreground hover:text-primary dark:hover:text-primary font-medium transition-colors"
@@ -371,6 +373,7 @@ export function IssueDetailPage() {
   const { hasPermission } = useHasPermission(issue?.projectId)
   const canEdit = hasPermission('issue', 'update')
   const canDelete = hasPermission('issue', 'delete')
+  const canModifyAnyComment = hasPermission('comment', 'update:any')
 
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
@@ -420,6 +423,7 @@ export function IssueDetailPage() {
   const [showCreateChild, setShowCreateChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
+  const [childAssigneeId, setChildAssigneeId] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
 
   // Derive labels directly from issue data (no disconnected local state)
@@ -742,6 +746,7 @@ export function IssueDetailPage() {
                       key={comment.id}
                       comment={comment}
                       currentUserId={currentUser?.id}
+                      canModifyAny={canModifyAnyComment}
                       users={orgUsers || []}
                     />
                   ))}
@@ -1325,6 +1330,12 @@ export function IssueDetailPage() {
                     onChange={(val) => setChildType(val)}
                     options={config.types}
                   />
+                  <UserSelect
+                    value={childAssigneeId}
+                    onChange={setChildAssigneeId}
+                    placeholder="Unassigned"
+                    projectId={issue.projectId}
+                  />
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="outline" onClick={() => setShowCreateChild(false)}>
                       {t('common.cancel')}
@@ -1340,12 +1351,14 @@ export function IssueDetailPage() {
                             type: selectedChildType,
                             priority: 'medium',
                             parentId: issue.id,
+                            ...(childAssigneeId ? { assigneeId: childAssigneeId } : {}),
                           },
                           {
                             onSuccess: () => {
                               setShowCreateChild(false)
                               setChildTitle('')
                               setChildType('')
+                              setChildAssigneeId(null)
                             },
                           },
                         )

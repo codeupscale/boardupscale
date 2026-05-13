@@ -21,10 +21,11 @@ describe('RolesGuard', () => {
     roles?: string[],
     permission?: { resource: string; action: string } | null,
     params?: any,
+    body?: any,
   ): ExecutionContext {
     const mockContext = {
       switchToHttp: () => ({
-        getRequest: () => ({ user, params: params || {}, query: {}, body: {} }),
+        getRequest: () => ({ user, params: params || {}, query: {}, body: body || {} }),
       }),
       getHandler: () => ({}),
       getClass: () => ({}),
@@ -104,6 +105,38 @@ describe('RolesGuard', () => {
       );
       mockPermissionsService.checkPermission.mockResolvedValue(false);
       await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should resolve project hint from issueIds[0] for bulk operations', async () => {
+      const issueId = '44444444-4444-4444-4444-444444444444';
+      const context = createMockExecutionContext(
+        { id: 'user-id', organizationId: 'org-123' },
+        undefined,
+        { resource: 'issue', action: 'update' },
+        {},
+        { issueIds: [issueId, 'other-uuid'] },
+      );
+      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      const result = await guard.canActivate(context);
+      expect(result).toBe(true);
+      expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
+        'user-id', issueId, 'issue', 'update', 'org-123',
+      );
+    });
+
+    it('should fall back to org-level check when issueIds is empty', async () => {
+      const context = createMockExecutionContext(
+        { id: 'user-id', organizationId: 'org-123' },
+        undefined,
+        { resource: 'issue', action: 'update' },
+        {},
+        { issueIds: [] },
+      );
+      mockPermissionsService.checkOrgLevelPermission = jest.fn().mockResolvedValue(true);
+      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      // Empty array means no hint — guard takes org-level path
+      const result = await guard.canActivate(context);
+      expect(result).toBe(true);
     });
   });
 });

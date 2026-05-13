@@ -59,7 +59,8 @@ export class RolesGuard implements CanActivate {
         request.body?.projectId ||
         request.params?.id ||
         request.body?.issueId || // attachment upload / confirm-upload routes
-        request.query?.issueId;  // GET /files?issueId= and similar read routes
+        request.query?.issueId || // GET /files?issueId= and similar read routes
+        (Array.isArray(request.body?.issueIds) ? request.body.issueIds[0] : undefined); // bulk operation routes
 
       if (!projectHint) {
         // No resource context at all — purely org-level check.
