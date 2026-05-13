@@ -23,10 +23,9 @@ export function BulkAssignDialog({ open, onClose, users, issueIds }: BulkAssignD
   )
 
   const handleSelect = (userId: string) => {
-    bulkUpdate.mutate(
-      { issueIds, assigneeId: userId },
-      { onSuccess: () => { onClose(); setSearch('') } },
-    )
+    onClose()
+    setSearch('')
+    bulkUpdate.mutate({ issueIds, assigneeId: userId })
   }
 
   return (

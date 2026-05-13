@@ -423,6 +423,7 @@ export function IssueDetailPage() {
   const [showCreateChild, setShowCreateChild] = useState(false)
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
+  const [childAssigneeId, setChildAssigneeId] = useState<string | null>(null)
   const [labelInput, setLabelInput] = useState('')
 
   // Derive labels directly from issue data (no disconnected local state)
@@ -1329,6 +1330,12 @@ export function IssueDetailPage() {
                     onChange={(val) => setChildType(val)}
                     options={config.types}
                   />
+                  <UserSelect
+                    value={childAssigneeId}
+                    onChange={setChildAssigneeId}
+                    placeholder="Unassigned"
+                    projectId={issue.projectId}
+                  />
                   <div className="flex justify-end gap-2 pt-2">
                     <Button variant="outline" onClick={() => setShowCreateChild(false)}>
                       {t('common.cancel')}
@@ -1344,12 +1351,14 @@ export function IssueDetailPage() {
                             type: selectedChildType,
                             priority: 'medium',
                             parentId: issue.id,
+                            ...(childAssigneeId ? { assigneeId: childAssigneeId } : {}),
                           },
                           {
                             onSuccess: () => {
                               setShowCreateChild(false)
                               setChildTitle('')
                               setChildType('')
+                              setChildAssigneeId(null)
                             },
                           },
                         )

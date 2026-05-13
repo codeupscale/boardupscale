@@ -937,19 +937,34 @@ export class IssuesService {
     return { affected };
   }
 
-  async bulkDelete(organizationId: string, dto: BulkDeleteIssuesDto): Promise<{ affected: number }> {
+  async bulkDelete(organizationId: string, dto: BulkDeleteIssuesDto, callerId: string): Promise<{ affected: number }> {
     if (!dto.issueIds || dto.issueIds.length === 0) {
       throw new BadRequestException('issueIds must not be empty');
     }
 
-    const result = await this.issueRepository
+    // Project Admins / Org Admins / Owners can delete any issue (issue:delete).
+    // Project Members can only delete issues they reported (P27).
+    const canDeleteAny = await this.permissionsService.checkPermission(
+      callerId,
+      dto.issueIds[0],
+      'issue',
+      'delete',
+      organizationId,
+    );
+
+    const qb = this.issueRepository
       .createQueryBuilder()
       .update(Issue)
       .set({ deletedAt: new Date() })
       .where('id IN (:...ids)', { ids: dto.issueIds })
       .andWhere('organization_id = :organizationId', { organizationId })
-      .andWhere('deleted_at IS NULL')
-      .execute();
+      .andWhere('deleted_at IS NULL');
+
+    if (!canDeleteAny) {
+      qb.andWhere('reporter_id = :callerId', { callerId });
+    }
+
+    const result = await qb.execute();
 
     this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-deleted', {
       issueIds: dto.issueIds,

@@ -124,14 +124,15 @@ export class IssuesController {
   }
 
   @Post('bulk-delete')
-  @RequirePermission('issue', 'delete')
+  @RequirePermission('issue', 'bulk-change')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Bulk soft-delete issues' })
   async bulkDelete(
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
     @Body() dto: BulkDeleteIssuesDto,
   ) {
-    return this.issuesService.bulkDelete(organizationId, dto);
+    return this.issuesService.bulkDelete(organizationId, dto, user.id);
   }
 
   @Post('bulk-restore')

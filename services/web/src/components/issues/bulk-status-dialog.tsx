@@ -13,10 +13,8 @@ export function BulkStatusDialog({ open, onClose, statuses, issueIds }: BulkStat
   const bulkTransition = useBulkTransition()
 
   const handleSelect = (statusId: string) => {
-    bulkTransition.mutate(
-      { issueIds, statusId },
-      { onSuccess: onClose },
-    )
+    onClose()
+    bulkTransition.mutate({ issueIds, statusId })
   }
 
   return (
