@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   X,
   UserPlus,
@@ -45,6 +45,21 @@ export function BulkActionsBar({
 
   const bulkUpdate = useBulkUpdate()
   const bulkDelete = useBulkDelete()
+
+  // Reset all dialog state when selection is cleared (e.g. after a successful
+  // bulk action). Without this, showPriority/showStatus etc. remain true in
+  // React state even after BulkActionsBar returns null, causing the dialogs to
+  // flash open again when the user selects the next ticket.
+  useEffect(() => {
+    if (count === 0) {
+      setShowAssign(false)
+      setShowStatus(false)
+      setShowPriority(false)
+      setShowSprint(false)
+      setShowMove(false)
+      setShowDelete(false)
+    }
+  }, [count])
 
   if (count === 0) return null
 
@@ -227,12 +242,10 @@ function PriorityPickerDialog({
             <button
               key={p.value}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors text-left"
-              onClick={() =>
-                bulkUpdate.mutate(
-                  { issueIds, priority: p.value },
-                  { onSuccess: onClose },
-                )
-              }
+              onClick={() => {
+                onClose()
+                bulkUpdate.mutate({ issueIds, priority: p.value })
+              }}
               disabled={bulkUpdate.isPending}
             >
               <span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />
@@ -270,12 +283,10 @@ function SprintPickerDialog({
         <div className="p-2 max-h-64 overflow-y-auto">
           <button
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-accent transition-colors text-left italic"
-            onClick={() =>
-              bulkUpdate.mutate(
-                { issueIds, sprintId: null },
-                { onSuccess: onClose },
-              )
-            }
+            onClick={() => {
+              onClose()
+              bulkUpdate.mutate({ issueIds, sprintId: null })
+            }}
             disabled={bulkUpdate.isPending}
           >
             Move to Backlog
@@ -284,12 +295,10 @@ function SprintPickerDialog({
             <button
               key={sprint.id}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors text-left"
-              onClick={() =>
-                bulkUpdate.mutate(
-                  { issueIds, sprintId: sprint.id },
-                  { onSuccess: onClose },
-                )
-              }
+              onClick={() => {
+                onClose()
+                bulkUpdate.mutate({ issueIds, sprintId: sprint.id })
+              }}
               disabled={bulkUpdate.isPending}
             >
               {sprint.name}

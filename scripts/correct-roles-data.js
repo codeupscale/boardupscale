@@ -202,7 +202,7 @@ async function main() {
             OR (p.resource = 'issue'         AND p.action IN ('create', 'read', 'update', 'assign',
                                                               'assignable', 'transition', 'resolve',
                                                               'close', 'link', 'schedule', 'bulk-change',
-                                                              'vote', 'delete'))
+                                                              'vote'))
             OR (p.resource = 'comment'       AND p.action IN ('create', 'read', 'update:own', 'delete:own'))
             OR (p.resource = 'worklog'       AND p.action IN ('create', 'read', 'update:own', 'delete:own'))
             OR (p.resource = 'page'          AND p.action IN ('create', 'read', 'update', 'delete:own'))

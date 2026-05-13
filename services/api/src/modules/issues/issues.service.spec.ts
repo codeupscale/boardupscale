@@ -50,7 +50,10 @@ describe('IssuesService', () => {
     projectsService.isMember.mockResolvedValue(true);
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
-    permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false) };
+    permissionsService = {
+      isAdminOrOwner: jest.fn().mockResolvedValue(false),
+      checkPermission: jest.fn().mockResolvedValue(false),
+    };
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -542,6 +545,52 @@ describe('IssuesService', () => {
         where: { issueId: TEST_IDS.ISSUE_ID },
         relations: ['user'],
         order: { loggedAt: 'DESC' },
+      });
+    });
+  });
+
+  describe('bulkDelete', () => {
+    const dto = { issueIds: [TEST_IDS.ISSUE_ID, '55555555-5555-5555-5555-000000000000'] };
+
+    it('should throw BadRequestException when issueIds is empty', async () => {
+      await expect(
+        service.bulkDelete(TEST_IDS.ORG_ID, { issueIds: [] }, TEST_IDS.USER_ID),
+      ).rejects.toThrow('issueIds must not be empty');
+    });
+
+    it('should delete any issue when caller has issue:delete permission', async () => {
+      permissionsService.checkPermission.mockResolvedValue(true);
+      const qb = createMockQueryBuilder([]);
+      qb.execute.mockResolvedValue({ affected: 2 });
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.bulkDelete(TEST_IDS.ORG_ID, dto, TEST_IDS.USER_ID);
+
+      expect(result).toEqual({ affected: 2 });
+      // No reporter_id filter when admin
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'reporter_id = :callerId',
+        expect.anything(),
+      );
+      expect(eventsGateway.emitToOrg).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        'issues:bulk-deleted',
+        { issueIds: dto.issueIds },
+      );
+    });
+
+    it('should restrict to own issues when caller lacks issue:delete permission', async () => {
+      permissionsService.checkPermission.mockResolvedValue(false);
+      const qb = createMockQueryBuilder([]);
+      qb.execute.mockResolvedValue({ affected: 1 });
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.bulkDelete(TEST_IDS.ORG_ID, dto, TEST_IDS.USER_ID);
+
+      expect(result).toEqual({ affected: 1 });
+      // Must apply reporter_id filter for non-admins (P27)
+      expect(qb.andWhere).toHaveBeenCalledWith('reporter_id = :callerId', {
+        callerId: TEST_IDS.USER_ID,
       });
     });
   });
