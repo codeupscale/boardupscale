@@ -324,6 +324,14 @@ export function TeamPage() {
   const [inviteDisplayName, setInviteDisplayName] = useState('')
   const [inviteRole, setInviteRole] = useState<string>('user')
 
+  // ── Force-create confirmation (when org has Jira placeholders) ────────────
+  const [showForceCreateConfirm, setShowForceCreateConfirm] = useState(false)
+  const [pendingInvitePayload, setPendingInvitePayload] = useState<{
+    email: string
+    displayName?: string
+    role: string
+  } | null>(null)
+
   // ── Edit member dialog ────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [editName, setEditName] = useState('')
@@ -418,6 +426,36 @@ export function TeamPage() {
           setInviteEmail('')
           setInviteDisplayName('')
           setInviteRole('user')
+        },
+        onError: (err: any) => {
+          if (err?.response?.data?.code === 'JIRA_MERGE_REQUIRED') {
+            setPendingInvitePayload({
+              email: inviteEmail.trim(),
+              displayName: inviteDisplayName.trim() || undefined,
+              role: inviteRole,
+            })
+            setShowForceCreateConfirm(true)
+          }
+        },
+      },
+    )
+  }
+
+  const handleForceCreate = () => {
+    if (!pendingInvitePayload) return
+    inviteMember.mutate(
+      { ...pendingInvitePayload, forceCreate: true },
+      {
+        onSuccess: () => {
+          setShowForceCreateConfirm(false)
+          setShowInviteDialog(false)
+          setPendingInvitePayload(null)
+          setInviteEmail('')
+          setInviteDisplayName('')
+          setInviteRole('user')
+        },
+        onError: () => {
+          setShowForceCreateConfirm(false)
         },
       },
     )
@@ -1186,6 +1224,57 @@ export function TeamPage() {
           setMergeError(null)
         }}
       />
+
+      {/* Force-create confirmation — shown when org has Jira placeholders */}
+      <Dialog
+        open={showForceCreateConfirm}
+        onOpenChange={(o) => {
+          if (!o) {
+            setShowForceCreateConfirm(false)
+            setPendingInvitePayload(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              </div>
+              <div>
+                <DialogTitle>Jira Placeholder Users Exist</DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This organisation has unresolved Jira placeholder accounts
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Your organisation has Jira placeholder users that haven't been matched to real accounts yet.
+            If <span className="font-medium text-foreground">{pendingInvitePayload?.email}</span> was
+            imported from Jira, consider merging them instead of creating a duplicate account.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Add <span className="font-medium text-foreground">{pendingInvitePayload?.email}</span> as a
+            brand-new member anyway?
+          </p>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForceCreateConfirm(false)
+                setPendingInvitePayload(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleForceCreate} isLoading={inviteMember.isPending}>
+              <UserPlus className="h-4 w-4" />
+              Add as New Member
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
