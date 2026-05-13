@@ -137,10 +137,12 @@ function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
 function CommentItem({
   comment,
   currentUserId,
+  canModifyAny,
   users,
 }: {
   comment: Comment
   currentUserId?: string
+  canModifyAny?: boolean
   users?: import('@/types').User[]
 }) {
   const { t } = useTranslation()
@@ -194,7 +196,7 @@ function CommentItem({
         ) : (
           <RichTextDisplay content={comment.content} className="text-sm text-foreground" />
         )}
-        {currentUserId === comment.authorId && !editing && (
+        {(currentUserId === comment.authorId || canModifyAny) && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               className="text-xs text-muted-foreground hover:text-primary dark:hover:text-primary font-medium transition-colors"
@@ -371,6 +373,7 @@ export function IssueDetailPage() {
   const { hasPermission } = useHasPermission(issue?.projectId)
   const canEdit = hasPermission('issue', 'update')
   const canDelete = hasPermission('issue', 'delete')
+  const canModifyAnyComment = hasPermission('comment', 'update:any')
 
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
@@ -742,6 +745,7 @@ export function IssueDetailPage() {
                       key={comment.id}
                       comment={comment}
                       currentUserId={currentUser?.id}
+                      canModifyAny={canModifyAnyComment}
                       users={orgUsers || []}
                     />
                   ))}
