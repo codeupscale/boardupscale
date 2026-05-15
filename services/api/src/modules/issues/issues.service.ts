@@ -132,8 +132,15 @@ export class IssuesService {
     limit?: number;
     backlog?: boolean;
     deleted?: boolean;
+    parentless?: boolean;
+    /**
+     * Comma-separated list of issue types to omit (e.g. "epic,subtask").
+     * Used by the Backlog view to hide containers (Epic) and child-only
+     * work (Subtask) from the flat planning list.
+     */
+    excludeTypes?: string;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted } = filters;
+    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, excludeTypes } = filters;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
@@ -178,6 +185,15 @@ export class IssuesService {
         search: `%${search}%`,
       });
     }
+    if (parentless) {
+      qb.andWhere('issue.parent_id IS NULL');
+    }
+    if (excludeTypes) {
+      const types = excludeTypes.split(',').map((t) => t.trim()).filter(Boolean);
+      if (types.length > 0) {
+        qb.andWhere('issue.type NOT IN (:...excludeTypeList)', { excludeTypeList: types });
+      }
+    }
 
     const total = await qb.getCount();
     const items = await qb
@@ -204,14 +220,14 @@ export class IssuesService {
   /**
    * Validates parent-child type hierarchy:
    *   Epic -> Story, Task, Bug
-   *   Story -> Task, Bug, Subtask
-   *   Task, Bug -> Subtask
+   *   Story, Task, Bug -> Subtask
    *   Subtask -> (none)
+   * Epic explicitly cannot have Subtask children.
    */
   private validateChildTypeHierarchy(parentType: string, childType: string): void {
     const allowedChildren: Record<string, string[]> = {
       epic: ['story', 'task', 'bug'],
-      story: ['task', 'bug', 'subtask'],
+      story: ['subtask'],
       task: ['subtask'],
       bug: ['subtask'],
     };
@@ -377,6 +393,24 @@ export class IssuesService {
       if (!isAssigneeMember) {
         throw new BadRequestException('Assignee is not a member of this project');
       }
+    }
+
+    // Validate parent-child hierarchy when parentId is being changed.
+    // Mirrors the check in create() — same project, valid hierarchy, prevents self-parenting.
+    if ('parentId' in dto && dto.parentId !== null && dto.parentId !== undefined) {
+      if (dto.parentId === issue.id) {
+        throw new BadRequestException('An issue cannot be its own parent');
+      }
+      const parent = await this.issueRepository.findOne({
+        where: { id: dto.parentId, organizationId },
+      });
+      if (!parent) {
+        throw new NotFoundException('Parent issue not found');
+      }
+      if (parent.projectId !== issue.projectId) {
+        throw new BadRequestException('Parent issue must be in the same project');
+      }
+      this.validateChildTypeHierarchy(parent.type, issue.type);
     }
 
     Object.assign(issue, dto);

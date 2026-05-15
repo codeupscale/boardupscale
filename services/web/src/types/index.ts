@@ -141,6 +141,8 @@ export interface Sprint {
   status: SprintStatus
   startDate?: string
   endDate?: string
+  /** Timestamp stamped when the sprint is marked complete. Null until then. */
+  completedAt?: string | null
   createdAt: string
   updatedAt: string
 }
