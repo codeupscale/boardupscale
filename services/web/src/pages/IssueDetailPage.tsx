@@ -588,12 +588,16 @@ export function IssueDetailPage() {
           {/* GitHub Activity */}
           <GitHubEventsList issueId={issue.id} projectId={issue.projectId} />
 
-          {/* Similar Issues */}
+          {/* Similar Issues — "Possible duplicates found" panel. Hidden for now;
+              re-enable by un-commenting the block below. The underlying AI-side
+              detection still runs; this only suppresses the UI affordance. */}
+          {/*
           <SimilarIssuesPanel
             title={issue.title}
             projectId={issue.projectId}
             excludeIssueId={issue.id}
           />
+          */}
 
           {/* Child Issues */}
           {childConfig && (
