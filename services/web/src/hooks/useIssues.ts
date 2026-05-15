@@ -14,6 +14,9 @@ interface IssueFilters {
   page?: number
   limit?: number
   deleted?: boolean
+  parentless?: boolean
+  /** Comma-separated list of issue types to omit, e.g. "epic,subtask". */
+  excludeTypes?: string
 }
 
 export function useIssues(filters: IssueFilters | undefined = {}) {

@@ -228,7 +228,7 @@
     "title": "Sprints",
     "createSprint": "Create Sprint",
     "startSprint": "Start Sprint",
-    "completeSprint": "Complete Sprint",
+    "completeSprint": "Mark Complete Sprint",
     "sprintName": "Sprint Name",
     "sprintGoal": "Sprint Goal",
     "startDate": "Start Date",
@@ -245,7 +245,8 @@
     "issueCount": "{{count}} issue",
     "issueCount_plural": "{{count}} issues",
     "start": "Start",
-    "complete": "Complete"
+    "complete": "Complete",
+    "markAsComplete": "Mark as complete"
   },
   "notifications": {
     "title": "Notifications",

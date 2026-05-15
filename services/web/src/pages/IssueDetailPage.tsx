@@ -61,6 +61,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
+import { ParentIssueSelect, childTypeAllowsParent } from '@/components/issues/parent-issue-select'
+import { LinkSubtaskPicker } from '@/components/issues/link-subtask-picker'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { AttachmentPanel } from '@/components/issues/attachment-panel'
@@ -77,19 +80,15 @@ import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 /* -------------------------------------------------------------------------- */
 /*  Allowed child types map (must match backend hierarchy)                    */
 /* -------------------------------------------------------------------------- */
+/**
+ * Mirrors the BE allowedChildren in issues.service.ts validateChildTypeHierarchy.
+ * Epic parents Story/Task/Bug. Story/Task/Bug parent Subtask. Subtask has no children.
+ */
 const CHILD_TYPE_MAP: Record<string, { types: string[]; default: string }> = {
   epic: { types: ['story', 'task', 'bug'], default: 'story' },
-  story: { types: ['task', 'bug', 'subtask'], default: 'task' },
+  story: { types: ['subtask'], default: 'subtask' },
   task: { types: ['subtask'], default: 'subtask' },
   bug: { types: ['subtask'], default: 'subtask' },
-}
-
-/** Issue types that may serve as a parent, indexed by the child's type. */
-const VALID_PARENT_TYPES: Record<string, string[]> = {
-  story: ['epic'],
-  task: ['epic', 'story'],
-  bug: ['epic', 'story'],
-  subtask: ['epic', 'story', 'task', 'bug'],
 }
 
 /* -------------------------------------------------------------------------- */
@@ -392,24 +391,6 @@ export function IssueDetailPage() {
     [childIssuesData, issueId],
   )
 
-  const [parentSearch, setParentSearch] = useState('')
-
-  // Candidate parent issues for the current issue's type, filtered by search text.
-  // Excludes the issue itself and its own children to prevent circular references.
-  const eligibleParents = useMemo(() => {
-    if (!issue) return []
-    const validTypes = VALID_PARENT_TYPES[issue.type.toLowerCase()] ?? []
-    const childIds = new Set(childIssues.map((c) => c.id))
-    const needle = parentSearch.toLowerCase()
-    return (childIssuesData?.data || []).filter(
-      (p) =>
-        p.id !== issue.id &&
-        !childIds.has(p.id) &&
-        validTypes.includes(p.type.toLowerCase()) &&
-        (needle === '' || p.title.toLowerCase().includes(needle) || p.key.toLowerCase().includes(needle)),
-    )
-  }, [childIssuesData, issue, childIssues, parentSearch])
-
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
   const [editingDesc, setEditingDesc] = useState(false)
@@ -424,6 +405,8 @@ export function IssueDetailPage() {
   const [childTitle, setChildTitle] = useState('')
   const [childType, setChildType] = useState('')
   const [childAssigneeId, setChildAssigneeId] = useState<string | null>(null)
+  /** Active section in the subtask flow — toggled by the Tabs at the top of the modal. */
+  const [childMode, setChildMode] = useState<'link' | 'create'>('link')
   const [labelInput, setLabelInput] = useState('')
 
   // Derive labels directly from issue data (no disconnected local state)
@@ -642,6 +625,19 @@ export function IssueDetailPage() {
                       <IssueTypeIcon type={child.type} />
                       <CopyTicketLink issueKey={child.key} issueId={child.id} className="text-xs font-mono text-primary font-medium" />
                       <span className="text-sm text-foreground truncate flex-1">{child.title}</span>
+                      {/* Assignee — read-only chip. No 'add assignee' affordance here. */}
+                      <div className="flex items-center gap-1.5 min-w-[120px] max-w-[160px] shrink-0 justify-end">
+                        {child.assignee && (
+                          <>
+                            <Avatar user={child.assignee} size="xs" />
+                            <span className="text-xs text-muted-foreground truncate">
+                              {child.assignee.displayName}
+                            </span>
+                          </>
+                        // ) : (
+                        //   <span className="text-xs text-muted-foreground">--</span>
+                        )}
+                      </div>
                       <StatusBadge status={child.status} />
                     </Link>
                   ))}
@@ -889,28 +885,17 @@ export function IssueDetailPage() {
                 </Select>
               </SidebarField>
 
-              {VALID_PARENT_TYPES[issue.type.toLowerCase()] && (
+              {childTypeAllowsParent(issue.type) && (
                 <SidebarField label="Parent Issue">
-                  <Input
-                    type="text"
-                    value={parentSearch}
-                    onChange={(e) => setParentSearch(e.target.value)}
-                    placeholder="Search by key or title…"
-                    className="text-xs mb-1"
+                  <ParentIssueSelect
+                    projectId={issue.projectId}
+                    childType={issue.type}
+                    value={issue.parentId ?? null}
+                    onChange={(v) => updateIssue.mutate({ id: issue.id, parentId: v })}
+                    currentParent={issue.parent ?? null}
+                    excludeIds={[issue.id, ...childIssues.map((c) => c.id)]}
+                    disabled={!canEdit}
                   />
-                  <Select value={issue.parentId || '__none__'} onValueChange={(v) => updateIssue.mutate({ id: issue.id, parentId: v === '__none__' ? null : v })}>
-                    <SelectTrigger className="w-full text-sm">
-                      <SelectValue placeholder="— No parent —" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— No parent —</SelectItem>
-                      {eligibleParents.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          [{p.key}] {p.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </SidebarField>
               )}
 
@@ -1299,20 +1284,129 @@ export function IssueDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Child Issue Dialog */}
+      {/* Add Child / Subtask Dialog */}
       <Dialog
         open={showCreateChild}
-        onOpenChange={(o) => !o && setShowCreateChild(false)}
+        onOpenChange={(o) => {
+          if (!o) {
+            // Reset the subtask flow state on close so the modal re-opens fresh
+            // (mode = 'link', empty form).
+            setShowCreateChild(false)
+            setChildMode('link')
+            setChildTitle('')
+            setChildType('')
+            setChildAssigneeId(null)
+          }
+        }}
       >
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Child Issue</DialogTitle>
+            <DialogTitle>
+              {CHILD_TYPE_MAP[issue.type]?.types[0] === 'subtask'
+                ? 'Add Subtask'
+                : 'Create Child Issue'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {(() => {
               const config = CHILD_TYPE_MAP[issue.type]
               if (!config) return <p className="text-sm text-muted-foreground">This issue type cannot have children.</p>
 
+              // Subtask flow: hardcoded type, link-existing picker visible above the
+              // create-new section. Used when the current issue is Story/Task/Bug.
+              const isSubtaskFlow = config.types.length === 1 && config.types[0] === 'subtask'
+
+              if (isSubtaskFlow) {
+                const handleLink = (subtaskId: string) => {
+                  updateIssue.mutate(
+                    { id: subtaskId, parentId: issue.id },
+                    {
+                      onSuccess: () => {
+                        // Refresh both the parent issue (children list) and the broader
+                        // issues caches so the linked subtask leaves any "parentless"
+                        // queries on other surfaces.
+                        qc.invalidateQueries({ queryKey: ['issue', issue.id] })
+                        qc.invalidateQueries({ queryKey: ['issues'] })
+                        setShowCreateChild(false)
+                      },
+                    },
+                  )
+                }
+
+                const existingChildIds = childIssues.map((c) => c.id)
+
+                return (
+                  <Tabs
+                    value={childMode}
+                    onValueChange={(v) => setChildMode(v as 'link' | 'create')}
+                    className="space-y-4"
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="link">Link existing</TabsTrigger>
+                      <TabsTrigger value="create">Create new</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="link" className="mt-0">
+                      <LinkSubtaskPicker
+                        projectId={issue.projectId}
+                        excludeIds={[issue.id, ...existingChildIds]}
+                        onPick={handleLink}
+                        onSwitchToCreate={() => setChildMode('create')}
+                        disabled={updateIssue.isPending}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="create" className="mt-0 space-y-3">
+                      <Input
+                        label="Title"
+                        placeholder="Subtask title"
+                        value={childTitle}
+                        onChange={(e) => setChildTitle(e.target.value)}
+                        autoFocus
+                      />
+                      <UserSelect
+                        value={childAssigneeId}
+                        onChange={setChildAssigneeId}
+                        placeholder="Unassigned"
+                        projectId={issue.projectId}
+                      />
+                      <div className="flex justify-end gap-2 pt-1">
+                        <Button variant="outline" onClick={() => setShowCreateChild(false)}>
+                          {t('common.cancel')}
+                        </Button>
+                        <Button
+                          disabled={!childTitle.trim() || updateIssue.isPending}
+                          isLoading={createIssue.isPending}
+                          onClick={() => {
+                            createIssue.mutate(
+                              {
+                                projectId: issue.projectId,
+                                title: childTitle.trim(),
+                                type: 'subtask',
+                                priority: 'medium',
+                                parentId: issue.id,
+                                ...(childAssigneeId ? { assigneeId: childAssigneeId } : {}),
+                              },
+                              {
+                                onSuccess: () => {
+                                  setShowCreateChild(false)
+                                  setChildMode('link')
+                                  setChildTitle('')
+                                  setChildAssigneeId(null)
+                                },
+                              },
+                            )
+                          }}
+                        >
+                          Create
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )
+              }
+
+              // Legacy flow (Epic parent → Story/Task/Bug child). Type dropdown kept.
               const selectedChildType = childType || config.default
 
               return (

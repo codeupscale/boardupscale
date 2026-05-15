@@ -38,7 +38,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useSelectionStore } from '@/store/selection.store'
-import { SprintStatus, Issue, User } from '@/types'
+import { SprintStatus, Issue, IssueType, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -156,7 +156,12 @@ function DraggableIssueRow({
               onClick={(e) => e.stopPropagation()}
             >
               <IssueTypeIcon type={issue.type} />
-              <CopyTicketLink issueKey={issue.key} issueId={issue.id} className="text-xs font-mono text-primary font-medium" />
+              <CopyTicketLink
+                issueKey={issue.key}
+                issueId={issue.id}
+                done={issue.status?.category === 'done'}
+                className="text-xs font-mono text-primary font-medium"
+              />
             </Link>
           </td>
 
@@ -171,13 +176,30 @@ function DraggableIssueRow({
             </Link>
           </td>
 
+          {/* Epic */}
+          <td className="px-3 py-3 w-40" onClick={(e) => e.stopPropagation()}>
+            {issue.parent && issue.parent.type === IssueType.EPIC && (
+              <Link
+                to={`/issues/${issue.parent.id}`}
+                title={`${issue.parent.key} · ${issue.parent.title}`}
+                className="inline-flex items-center gap-1 max-w-full px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/20 transition-colors"
+              >
+                <IssueTypeIcon type={IssueType.EPIC} className="h-3 w-3 shrink-0" />
+                <span className="truncate">{issue.parent.title}</span>
+              </Link>
+            // ) : (
+            //   <span className="text-xs text-muted-foreground">--</span>
+          )}
+          </td>
+
           {/* Priority */}
           <td className="px-3 py-3 w-24">
             <PriorityBadge priority={issue.priority} />
           </td>
 
-          {/* Status — inline editable */}
-          <td className="px-3 py-3 w-32" onClick={(e) => e.stopPropagation()}>
+          {/* Status — inline editable. w-40 so longer labels like "In Progress" or
+              custom statuses ("Code Review", "Ready for QA") render without truncation. */}
+          <td className="px-3 py-3 w-40" onClick={(e) => e.stopPropagation()}>
             {inlineEdit && statuses && onUpdateIssue ? (
               <Select
                 value={issue.statusId || ''}
@@ -265,16 +287,6 @@ function DraggableIssueRow({
             )}
           </td>
 
-          {/* Story Points */}
-          <td className="px-3 py-3 w-14 text-center">
-            {issue.storyPoints != null ? (
-              <span className="text-xs font-medium text-foreground bg-muted rounded-full px-2 py-0.5">
-                {issue.storyPoints}
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground/60">--</span>
-            )}
-          </td>
         </tr>
       )}
     </Draggable>
@@ -302,7 +314,8 @@ function SprintSection({
 }) {
   const { t } = useTranslation()
   const { hasPermission } = useHasPermission(projectId)
-  const [collapsed, setCollapsed] = useState(false)
+  // Completed sprints start collapsed — they're historical reference, not active planning.
+  const [collapsed, setCollapsed] = useState(sprint.status === SprintStatus.COMPLETED)
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -323,6 +336,7 @@ function SprintSection({
 
   const isActive = sprint.status === SprintStatus.ACTIVE
   const isPlanned = sprint.status === SprintStatus.PLANNED
+  const isCompleted = sprint.status === SprintStatus.COMPLETED
 
   const issueIds = issues.map((i) => i.id)
   const allSelected = issueIds.length > 0 && issueIds.every((id) => selectedIssueIds.has(id))
@@ -342,7 +356,9 @@ function SprintSection({
   }
 
   return (
-    <Droppable droppableId={sprint.id} type="ISSUE">
+    // Completed sprints accept no drops — incomplete issues moved during completion
+    // already left this sprint, and you can't add work to a closed sprint.
+    <Droppable droppableId={sprint.id} type="ISSUE" isDropDisabled={isCompleted}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -352,15 +368,16 @@ function SprintSection({
             snapshot.isDraggingOver
               ? 'border-primary/50 dark:border-primary bg-primary/5 dark:bg-primary/10'
               : 'border-border',
+            isCompleted && 'opacity-90',
           )}
         >
-          {/* Sprint Header */}
+          {/* Sprint Header — active gets the primary tint, completed gets a muted tint, planned is neutral */}
           <div
             className={cn(
               'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
-              isActive
-                ? 'bg-primary/10 border-b border-primary/20 dark:border-primary/30'
-                : 'bg-muted/50 border-b border-border',
+              isActive && 'bg-primary/10 border-b border-primary/20 dark:border-primary/30',
+              isCompleted && 'bg-muted/30 border-b border-border',
+              !isActive && !isCompleted && 'bg-muted/50 border-b border-border',
             )}
             onClick={() => setCollapsed((c) => !c)}
           >
@@ -374,6 +391,11 @@ function SprintSection({
               {isActive && (
                 <span className="px-2 py-0.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium rounded-full flex-shrink-0">
                   {t('sprints.active')}
+                </span>
+              )}
+              {isCompleted && (
+                <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs font-medium rounded-full flex-shrink-0">
+                  {t('sprints.completed')}
                 </span>
               )}
               <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
@@ -405,9 +427,11 @@ function SprintSection({
                 </Button>
               )}
               {isActive && hasPermission('sprint', 'manage') && (
-                <Button size="sm" variant="secondary" onClick={() => setShowConfirm('complete')}>
+                // outline variant (matches "Start Sprint") so the action reads as a button,
+                // not as another status badge alongside the green "Active" pill.
+                <Button size="sm" variant="outline" onClick={() => setShowConfirm('complete')}>
                   <CheckCircle className="h-3.5 w-3.5" />
-                  {t('sprints.complete')}
+                  {t('sprints.markAsComplete')}
                 </Button>
               )}
               {hasPermission('sprint', 'delete') && (
@@ -516,11 +540,11 @@ function SprintSection({
                       </th>
                       <th className="px-3 py-1 w-28 text-left text-sm font-bold text-muted-foreground uppercase tracking-wide">Key</th>
                       <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                      <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                       <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
-                      <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
+                      <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
                       <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Date</th>
                       <th className="px-3 py-1 w-12 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Assignee</th>
-                      <th className="px-3 py-1 w-14 text-center text-xs font-bold text-muted-foreground uppercase tracking-wide">SP</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -680,7 +704,7 @@ function SprintSection({
                             )
                           }}
                         >
-                          {t('sprints.completeSprint')}
+                          {t('sprints.markAsComplete')}
                         </Button>
                       </div>
                     </>
@@ -792,11 +816,11 @@ function BacklogSection({
                     </th>
                     <th className="px-3 py-1 w-28 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Key</th>
                     <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                    <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                     <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
-                    <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
+                    <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
                     <th className="px-3 py-1 w-32 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Date</th>
                     <th className="px-3 py-1 w-12 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Assignee</th>
-                    <th className="px-3 py-1 w-14 text-center text-xs font-bold text-muted-foreground uppercase tracking-wide">SP</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -844,7 +868,14 @@ export function ProjectBacklogPage() {
   const { data: board } = useBoard(projectKey!)
   const { data: usersResult } = useUsers()
   const users = usersResult?.data
-  const { data: issuesData, isLoading: issuesLoading } = useIssues({ projectId: projectKey! })
+  // Backlog only renders planning-level work (Story / Task / Bug).
+  // Epics are containers — rendered as the parent badge on each row, and reachable
+  // via Timeline / roadmap surfaces. Subtasks live nested inside their parent's
+  // Child Issues section. Both are hidden from this flat list by design.
+  const { data: issuesData, isLoading: issuesLoading } = useIssues({
+    projectId: projectKey!,
+    excludeTypes: 'epic,subtask',
+  })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
   const updateIssue = useUpdateIssue()
@@ -860,10 +891,35 @@ export function ProjectBacklogPage() {
     [allIssues, typeFilter],
   )
 
+  // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
+  // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
   const activeSprints = useMemo(
     () => sprints?.filter((s) => s.status !== SprintStatus.COMPLETED) || [],
     [sprints],
   )
+
+  // `displaySprints` is what we render on the page — includes completed sprints
+  // so users keep a chronological view. Ordering: Active → Planned → Completed.
+  // Within each group: Active/Planned by start date ascending, Completed by
+  // most-recently-ended first.
+  const displaySprints = useMemo(() => {
+    if (!sprints) return []
+    const order: Record<string, number> = {
+      [SprintStatus.ACTIVE]: 0,
+      [SprintStatus.PLANNED]: 1,
+      [SprintStatus.COMPLETED]: 2,
+    }
+    return [...sprints].sort((a, b) => {
+      const oa = order[a.status] ?? 99
+      const ob = order[b.status] ?? 99
+      if (oa !== ob) return oa - ob
+      if (a.status === SprintStatus.COMPLETED) {
+        // Newest-finished first inside the completed group.
+        return (b.completedAt || b.endDate || '').localeCompare(a.completedAt || a.endDate || '')
+      }
+      return (a.startDate || '').localeCompare(b.startDate || '')
+    })
+  }, [sprints])
 
   const getSprintIssues = useCallback(
     (sprintId: string) => filteredIssues.filter((i) => i.sprintId === sprintId),
@@ -980,8 +1036,8 @@ export function ProjectBacklogPage() {
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
+            {/* "All types" maps to Story + Task + Bug — epics + subtasks are excluded at fetch time. */}
             <SelectItem value="__all__">All types</SelectItem>
-            <SelectItem value="epic">Epic</SelectItem>
             <SelectItem value="story">Story</SelectItem>
             <SelectItem value="task">Task</SelectItem>
             <SelectItem value="bug">Bug</SelectItem>
@@ -1003,10 +1059,10 @@ export function ProjectBacklogPage() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
           {/* Summary Bar */}
-          {activeSprints.length > 0 && (
+          {displaySprints.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
               <span>
-                {activeSprints.length} {activeSprints.length === 1 ? 'sprint' : 'sprints'}
+                {displaySprints.length} {displaySprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
               <span className="text-muted-foreground/60">•</span>
               <span>{filteredIssues.length} {typeFilter ? 'matching' : 'total'} issues</span>
@@ -1019,8 +1075,9 @@ export function ProjectBacklogPage() {
             </div>
           )}
 
-          {/* Sprint Sections */}
-          {activeSprints.map((sprint) => (
+          {/* Sprint Sections — completed sprints render here too with a "Completed" badge,
+              collapsed by default and drop-disabled. */}
+          {displaySprints.map((sprint) => (
             <SprintSection
               key={sprint.id}
               sprint={sprint}
@@ -1121,12 +1178,6 @@ export function ProjectBacklogPage() {
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
               sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
-              parentIssues={allIssues.map((i) => ({
-                id: i.id,
-                key: i.key,
-                title: i.title,
-                type: i.type,
-              }))}
               users={users || []}
               onSubmit={(values) =>
                 createIssue.mutate(

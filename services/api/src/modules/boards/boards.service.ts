@@ -51,8 +51,11 @@ export class BoardsService {
       }
     }
 
-    // Hide subtasks from the board — they appear nested under their parent in detail view
-    qb.andWhere("issue.type != 'subtask'");
+    // Hide subtasks and epics from the board.
+    // - Subtasks appear nested under their parent in detail view.
+    // - Epics are containers (rendered as the parent badge on each card) and
+    //   belong on the Timeline / roadmap surface, not as Board cards.
+    qb.andWhere("issue.type NOT IN ('subtask', 'epic')");
   }
 
   async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {

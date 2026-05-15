@@ -62,6 +62,9 @@ export function ProjectIssuesPage() {
   const { data: sprints } = useSprints(projectKey!)
   const { data: projectMembers } = useProjectMembers(projectKey!)
   const users = projectMembers?.map((m) => m.user)
+  // Issues view scopes to planning-level work (Story / Task / Bug).
+  // Epics live on Timeline / as the parent badge; Subtasks live inside their
+  // parent's Child Issues section. Both are hidden here by design.
   const { data: issuesData, isLoading } = useIssues({
     projectId: projectKey!,
     search: search || undefined,
@@ -70,6 +73,7 @@ export function ProjectIssuesPage() {
     statusId: filterStatus || undefined,
     assigneeId: filterAssignee || undefined,
     sprintId: filterSprint || undefined,
+    excludeTypes: 'epic,subtask',
     page,
     limit: 25,
   })
@@ -235,12 +239,11 @@ export function ProjectIssuesPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {/* "All types" maps to Story + Task + Bug — epics + subtasks are excluded at fetch time. */}
                 <SelectItem value="__all__">{t('issues.allTypes')}</SelectItem>
-                <SelectItem value={IssueType.EPIC}>{t('issues.epic')}</SelectItem>
                 <SelectItem value={IssueType.STORY}>{t('issues.story')}</SelectItem>
                 <SelectItem value={IssueType.TASK}>{t('issues.task')}</SelectItem>
                 <SelectItem value={IssueType.BUG}>{t('issues.bug')}</SelectItem>
-                <SelectItem value={IssueType.SUBTASK}>{t('issues.subtask')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -467,12 +470,6 @@ export function ProjectIssuesPage() {
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
               sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-              parentIssues={(issuesData?.data || []).map((i) => ({
-                id: i.id,
-                key: i.key,
-                title: i.title,
-                type: i.type,
-              }))}
               users={users || []}
               onSubmit={(values) =>
                 createIssue.mutate(

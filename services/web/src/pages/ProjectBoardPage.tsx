@@ -596,12 +596,6 @@ export function ProjectBoardPage() {
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
               sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-              parentIssues={allIssues.map((i) => ({
-                id: i.id,
-                key: i.key,
-                title: i.title,
-                type: i.type,
-              }))}
               users={orgUsers || []}
               defaultValues={{
                 statusId: createStatusId ?? board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,

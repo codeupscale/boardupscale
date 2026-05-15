@@ -1,11 +1,12 @@
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState, useMemo, useImperativeHandle, forwardRef } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { IssueType, IssuePriority, Issue, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
+import { IssueType, IssuePriority, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
+import { ParentIssueSelect, childTypeAllowsParent } from '@/components/issues/parent-issue-select'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -22,14 +23,6 @@ import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-
-/** Issue types that may serve as a parent, indexed by the prospective child's type. */
-const VALID_PARENT_TYPES: Record<string, string[]> = {
-  story: ['epic'],
-  task: ['epic', 'story'],
-  bug: ['epic', 'story'],
-  subtask: ['epic', 'story', 'task', 'bug'],
-}
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
@@ -51,8 +44,6 @@ interface IssueFormProps {
   projectId: string
   statuses?: Array<{ id: string; name: string }>
   sprints?: Array<{ id: string; name: string }>
-  /** Candidate parent issues for the current project — filtered by hierarchy rules in the UI. */
-  parentIssues?: Array<{ id: string; key: string; title: string; type: string }>
   customFieldDefs?: CustomFieldDefinition[]
   components?: ProjectComponent[]
   versions?: ProjectVersion[]
@@ -73,7 +64,6 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
   projectId,
   statuses = [],
   sprints = [],
-  parentIssues = [],
   customFieldDefs = [],
   components = [],
   versions = [],
@@ -90,7 +80,6 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
   const [selectedComponents, setSelectedComponents] = useState<string[]>([])
   const [selectedFixVersions, setSelectedFixVersions] = useState<string[]>([])
-  const [parentSearch, setParentSearch] = useState('')
 
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
@@ -126,18 +115,6 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
   const watchedType = useWatch({ control, name: 'type' }) || IssueType.TASK
 
   // Parent issues eligible for the currently selected child type
-  const eligibleParents = useMemo(() => {
-    const validTypes = VALID_PARENT_TYPES[watchedType.toLowerCase()] ?? []
-    const needle = parentSearch.toLowerCase()
-    return parentIssues.filter(
-      (p) =>
-        validTypes.includes(p.type.toLowerCase()) &&
-        (needle === '' ||
-          p.title.toLowerCase().includes(needle) ||
-          p.key.toLowerCase().includes(needle)),
-    )
-  }, [parentIssues, watchedType, parentSearch])
-
   const addLabel = () => {
     const trimmed = labelInput.trim()
     if (trimmed && !labels.includes(trimmed)) {
@@ -208,6 +185,9 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               value={field.value}
               onChange={(val) => field.onChange(val)}
               required
+              // Top-level Create Issue never produces a Subtask — those are
+              // always created via "Add Subtask" on a parent issue's detail page.
+              options={[IssueType.EPIC, IssueType.STORY, IssueType.TASK, IssueType.BUG]}
             />
           )}
         />
@@ -274,7 +254,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
       />
 
       {/* Parent Issue — only shown when the selected type can have a parent */}
-      {VALID_PARENT_TYPES[watchedType?.toLowerCase() ?? ''] && (
+      {childTypeAllowsParent(watchedType) && (
         <Controller
           name="parentId"
           control={control}
@@ -283,34 +263,12 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
               <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Parent Issue
               </label>
-              <Input
-                type="text"
-                value={parentSearch}
-                onChange={(e) => setParentSearch(e.target.value)}
-                placeholder="Search by key or title…"
-                className="mb-1"
+              <ParentIssueSelect
+                projectId={projectId}
+                childType={watchedType}
+                value={field.value ?? null}
+                onChange={(v) => field.onChange(v ?? undefined)}
               />
-              <Select
-                value={field.value || '__none__'}
-                onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="— No parent —" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">— No parent —</SelectItem>
-                  {eligibleParents.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      [{p.key}] {p.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {parentIssues.length > 0 && eligibleParents.length === 0 && parentSearch === '' && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  No eligible parents for a {watchedType} in this project.
-                </p>
-              )}
             </div>
           )}
         />

@@ -17,8 +17,9 @@ interface BoardQuickFiltersProps {
   projectType?: string
 }
 
+// Board only renders Story / Task / Bug (BE excludes Epic + Subtask).
+// Keep this in sync with boards.service.ts's hardcoded exclusion.
 const ISSUE_TYPES = [
-  { value: 'epic', label: 'Epic', color: 'bg-purple-100 text-purple-700' },
   { value: 'story', label: 'Story', color: 'bg-green-100 text-green-700' },
   { value: 'task', label: 'Task', color: 'bg-primary/10 text-primary' },
   { value: 'bug', label: 'Bug', color: 'bg-red-100 text-red-700' },
