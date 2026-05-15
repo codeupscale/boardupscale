@@ -70,7 +70,7 @@ import { AttachmentPanel } from '@/components/issues/attachment-panel'
 import { UserSelect } from '@/components/common/user-select'
 import { IssueLinksList } from '@/components/issues/issue-links-list'
 import { GitHubEventsList } from '@/components/issues/github-events-list'
-import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
+// import { SimilarIssuesPanel } from '@/components/issues/similar-issues-panel'
 import { AiSummaryPanel } from '@/components/issues/ai-summary-panel'
 import { WatchButton } from '@/components/issues/watch-button'
 import { ActivityList } from '@/components/issues/activity-list'
@@ -589,11 +589,11 @@ export function IssueDetailPage() {
           <GitHubEventsList issueId={issue.id} projectId={issue.projectId} />
 
           {/* Similar Issues */}
-          <SimilarIssuesPanel
+          {/* <SimilarIssuesPanel
             title={issue.title}
             projectId={issue.projectId}
             excludeIssueId={issue.id}
-          />
+          /> */}
 
           {/* Child Issues */}
           {childConfig && (
