@@ -212,6 +212,43 @@ describe('BoardsService', () => {
 
       expect(mainQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NULL');
     });
+
+    it('should always exclude subtasks and epics from the board (hardcoded)', async () => {
+      // The board never shows Epics (containers) or Subtasks (children of
+      // a parent issue). This is enforced at the service layer, not opt-in
+      // — every call to getBoardData must apply NOT IN ('subtask', 'epic').
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
+
+      expect(mainQb.andWhere).toHaveBeenCalledWith("issue.type NOT IN ('subtask', 'epic')");
+      // Count query must mirror the exclusion so totals stay consistent with the rendered set.
+      expect(countQb.andWhere).toHaveBeenCalledWith("issue.type NOT IN ('subtask', 'epic')");
+    });
+
+    it('should keep the type-exclusion even when a type filter is also passed', async () => {
+      // Passing type='story' must AND with the hardcoded exclusion — never replace it.
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { type: 'story' });
+
+      expect(mainQb.andWhere).toHaveBeenCalledWith('issue.type = :type', { type: 'story' });
+      expect(mainQb.andWhere).toHaveBeenCalledWith("issue.type NOT IN ('subtask', 'epic')");
+    });
   });
 
   describe('getColumnIssues', () => {

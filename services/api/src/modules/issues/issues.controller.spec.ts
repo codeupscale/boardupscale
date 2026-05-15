@@ -73,6 +73,75 @@ describe('IssuesController', () => {
 
       expect(result.meta.totalPages).toBe(6); // ceil(55/10)
     });
+
+    it('should forward parentless="true" as parentless:true to the service', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      // Positional args, last two are the new params:
+      //   ..., deleted, parentless, excludeTypes
+      await controller.findAll(
+        TEST_IDS.ORG_ID,
+        { page: 1, limit: 20 } as any,
+        TEST_IDS.PROJECT_ID,
+        undefined, // sprintId
+        undefined, // assigneeId
+        undefined, // type
+        undefined, // priority
+        undefined, // statusId
+        undefined, // search
+        undefined, // deleted
+        'true', // parentless
+      );
+
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ parentless: true }),
+      );
+    });
+
+    it('should coerce parentless="false" to parentless:false', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(
+        TEST_IDS.ORG_ID,
+        { page: 1, limit: 20 } as any,
+        TEST_IDS.PROJECT_ID,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'false',
+      );
+
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ parentless: false }),
+      );
+    });
+
+    it('should forward excludeTypes string verbatim to the service', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(
+        TEST_IDS.ORG_ID,
+        { page: 1, limit: 20 } as any,
+        TEST_IDS.PROJECT_ID,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined, // parentless
+        'epic,subtask',
+      );
+
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ excludeTypes: 'epic,subtask' }),
+      );
+    });
   });
 
   describe('POST /issues', () => {

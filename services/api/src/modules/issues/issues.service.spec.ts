@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IssuesService } from './issues.service';
 import { Issue } from './entities/issue.entity';
@@ -212,6 +212,95 @@ describe('IssuesService', () => {
       expect(result.page).toBe(3);
       expect(result.limit).toBe(10);
     });
+
+    it('should apply parentless filter (parent_id IS NULL) when set to true', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        parentless: true,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.parent_id IS NULL');
+    });
+
+    it('should NOT apply parentless filter when false or omitted', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        parentless: false,
+      });
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith('issue.parent_id IS NULL');
+    });
+
+    it('should apply excludeTypes with a single value', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        excludeTypes: 'subtask',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'issue.type NOT IN (:...excludeTypeList)',
+        { excludeTypeList: ['subtask'] },
+      );
+    });
+
+    it('should apply excludeTypes with multiple comma-separated values', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        excludeTypes: 'epic,subtask',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'issue.type NOT IN (:...excludeTypeList)',
+        { excludeTypeList: ['epic', 'subtask'] },
+      );
+    });
+
+    it('should trim whitespace and drop empty entries in excludeTypes', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        excludeTypes: ' epic , , subtask ',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'issue.type NOT IN (:...excludeTypeList)',
+        { excludeTypeList: ['epic', 'subtask'] },
+      );
+    });
+
+    it('should NOT add NOT IN clause when excludeTypes is an empty string', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        excludeTypes: '',
+      });
+
+      // No NOT IN clause should have been added when the input is empty.
+      const calls = qb.andWhere.mock.calls.map((c: unknown[]) => c[0]);
+      expect(calls).not.toContain('issue.type NOT IN (:...excludeTypeList)');
+    });
   });
 
   describe('findById', () => {
@@ -385,6 +474,116 @@ describe('IssuesService', () => {
       await service.update(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, { assigneeId: TEST_IDS.USER_ID }, TEST_IDS.USER_ID);
 
       expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Parent-id update path — hierarchy validation, same-project, self-parent
+    // ─────────────────────────────────────────────────────────────────────────
+
+    it('should accept a valid parent (Epic → Story) on update', async () => {
+      const story = mockIssue({ id: 'story-1', type: 'story', projectId: 'proj-1' });
+      const epic = mockIssue({ id: 'epic-1', type: 'epic', projectId: 'proj-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(story) // findById (load child)
+        .mockResolvedValueOnce(epic) // parent lookup
+        .mockResolvedValueOnce(mockIssue({ id: 'story-1', parentId: 'epic-1' })); // refetch
+      issueRepo.save.mockResolvedValue(story);
+
+      await expect(
+        service.update('story-1', TEST_IDS.ORG_ID, { parentId: 'epic-1' }, TEST_IDS.USER_ID),
+      ).resolves.toBeDefined();
+
+      expect(issueRepo.save).toHaveBeenCalled();
+    });
+
+    it('should accept Story → Subtask parent on update', async () => {
+      const subtask = mockIssue({ id: 'sub-1', type: 'subtask', projectId: 'proj-1' });
+      const story = mockIssue({ id: 'story-1', type: 'story', projectId: 'proj-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(subtask)
+        .mockResolvedValueOnce(story)
+        .mockResolvedValueOnce(mockIssue({ id: 'sub-1', parentId: 'story-1' }));
+      issueRepo.save.mockResolvedValue(subtask);
+
+      await expect(
+        service.update('sub-1', TEST_IDS.ORG_ID, { parentId: 'story-1' }, TEST_IDS.USER_ID),
+      ).resolves.toBeDefined();
+
+      expect(issueRepo.save).toHaveBeenCalled();
+    });
+
+    it('should reject self-parenting before any DB lookup', async () => {
+      const issue = mockIssue({ id: 'iss-1', type: 'task' });
+      issueRepo.findOne.mockResolvedValueOnce(issue);
+
+      // Share one promise across both expects so the mock queue is consumed once.
+      const promise = service.update('iss-1', TEST_IDS.ORG_ID, { parentId: 'iss-1' }, TEST_IDS.USER_ID);
+      await expect(promise).rejects.toThrow(BadRequestException);
+      await expect(promise).rejects.toThrow('An issue cannot be its own parent');
+    });
+
+    it('should reject when the parent does not exist in the org', async () => {
+      const issue = mockIssue({ id: 'iss-1', type: 'task', projectId: 'proj-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(issue) // load child
+        .mockResolvedValueOnce(null); // parent lookup returns nothing
+
+      await expect(
+        service.update('iss-1', TEST_IDS.ORG_ID, { parentId: 'ghost' }, TEST_IDS.USER_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should reject parent in a different project', async () => {
+      const taskInProjA = mockIssue({ id: 'task-1', type: 'task', projectId: 'proj-A' });
+      const epicInProjB = mockIssue({ id: 'epic-1', type: 'epic', projectId: 'proj-B' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(taskInProjA)
+        .mockResolvedValueOnce(epicInProjB);
+
+      const promise = service.update('task-1', TEST_IDS.ORG_ID, { parentId: 'epic-1' }, TEST_IDS.USER_ID);
+      await expect(promise).rejects.toThrow(BadRequestException);
+      await expect(promise).rejects.toThrow('Parent issue must be in the same project');
+    });
+
+    it('should reject invalid hierarchy (Story cannot parent a Task)', async () => {
+      // Under the current rule Story can only parent Subtask.
+      const task = mockIssue({ id: 'task-1', type: 'task', projectId: 'proj-1' });
+      const story = mockIssue({ id: 'story-1', type: 'story', projectId: 'proj-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(task)
+        .mockResolvedValueOnce(story);
+
+      await expect(
+        service.update('task-1', TEST_IDS.ORG_ID, { parentId: 'story-1' }, TEST_IDS.USER_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject invalid hierarchy (Subtask cannot parent anything)', async () => {
+      const story = mockIssue({ id: 'story-1', type: 'story', projectId: 'proj-1' });
+      const subtask = mockIssue({ id: 'sub-1', type: 'subtask', projectId: 'proj-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(story)
+        .mockResolvedValueOnce(subtask);
+
+      const promise = service.update('story-1', TEST_IDS.ORG_ID, { parentId: 'sub-1' }, TEST_IDS.USER_ID);
+      await expect(promise).rejects.toThrow(BadRequestException);
+      await expect(promise).rejects.toThrow(/cannot have child issues/i);
+    });
+
+    it('should allow clearing parent (parentId=null) without validation', async () => {
+      const subtask = mockIssue({ id: 'sub-1', type: 'subtask', parentId: 'story-1' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(subtask)
+        .mockResolvedValueOnce(mockIssue({ id: 'sub-1', parentId: null }));
+      issueRepo.save.mockResolvedValue(subtask);
+
+      await expect(
+        service.update('sub-1', TEST_IDS.ORG_ID, { parentId: null }, TEST_IDS.USER_ID),
+      ).resolves.toBeDefined();
+
+      // The parent-lookup findOne must NOT have been called when clearing.
+      // (1 call for findById, 1 for refetch — total 2; would be 3 if validation ran.)
+      expect(issueRepo.findOne).toHaveBeenCalledTimes(2);
     });
   });
 
