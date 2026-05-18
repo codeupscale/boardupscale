@@ -13,9 +13,27 @@ interface IssueTableRowProps {
   selectable?: boolean
   showDeletedAt?: boolean
   showProject?: boolean
+  /**
+   * Column visibility toggles. All default true so existing callers
+   * (Issues page, MyIssues, Trash, etc.) are untouched. The Epics page
+   * disables Priority + Status + Story Points because none of them are
+   * meaningful on an Epic row.
+   */
+  showPriority?: boolean
+  showStatus?: boolean
+  showStoryPoints?: boolean
 }
 
-export function IssueTableRow({ issue, className, selectable = false, showDeletedAt = false, showProject = false }: IssueTableRowProps) {
+export function IssueTableRow({
+  issue,
+  className,
+  selectable = false,
+  showDeletedAt = false,
+  showProject = false,
+  showPriority = true,
+  showStatus = true,
+  showStoryPoints = true,
+}: IssueTableRowProps) {
   const navigate = useNavigate()
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
@@ -89,14 +107,18 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
       </td>
 
       {/* Priority */}
-      <td className="px-4 py-3 w-28">
-        <PriorityBadge priority={issue.priority} />
-      </td>
+      {showPriority && (
+        <td className="px-4 py-3 w-28">
+          <PriorityBadge priority={issue.priority} />
+        </td>
+      )}
 
       {/* Status */}
-      <td className="px-4 py-3 w-36">
-        <StatusBadge status={issue.status} />
-      </td>
+      {showStatus && (
+        <td className="px-4 py-3 w-36">
+          <StatusBadge status={issue.status} />
+        </td>
+      )}
 
       {/* Assignee */}
       <td className="px-4 py-3 w-16">
@@ -123,15 +145,17 @@ export function IssueTableRow({ issue, className, selectable = false, showDelete
       </td>
 
       {/* Story Points */}
-      <td className="px-4 py-3 w-16 text-center">
-        {issue.storyPoints != null ? (
-          <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-            {issue.storyPoints}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">--</span>
-        )}
-      </td>
+      {showStoryPoints && (
+        <td className="px-4 py-3 w-16 text-center">
+          {issue.storyPoints != null ? (
+            <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+              {issue.storyPoints}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">--</span>
+          )}
+        </td>
+      )}
     </tr>
   )
 }

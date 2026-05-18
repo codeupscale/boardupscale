@@ -484,8 +484,13 @@ export function IssueDetailPage() {
             <div className="flex items-center gap-2.5 mb-3">
               <IssueTypeIcon type={issue.type} className="h-5 w-5" />
               <CopyTicketLink issueKey={issue.key} issueId={issue.id} issueType={issue.type} className="text-sm font-mono text-primary font-semibold" />
-              {issue.status && <StatusBadge status={issue.status} />}
-              <PriorityBadge priority={issue.priority as IssuePriority} />
+              {/* Status + Priority badges are workflow signals — hidden for
+                  Epics since they're containers, not workflow steps (matches
+                  the hidden Workflow sidebar section on Epic detail pages). */}
+              {issue.type !== IssueType.EPIC && issue.status && <StatusBadge status={issue.status} />}
+              {issue.type !== IssueType.EPIC && (
+                <PriorityBadge priority={issue.priority as IssuePriority} />
+              )}
             </div>
             {editingTitle ? (
               <div className="flex gap-2">
@@ -798,50 +803,54 @@ export function IssueDetailPage() {
         {/* ================================================================ */}
         <div className="w-full lg:w-80 xl:w-[340px] flex-shrink-0 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
           <div className="p-4 space-y-3">
-            {/* ── Workflow ── */}
-            <IssueSection icon={Workflow} title="Workflow">
-              <SidebarField label={t('common.status')}>
-                <Select value={issue.statusId || '__none__'} disabled={!canEdit} onValueChange={(v) => {
-                  if (v !== '__none__') updateIssue.mutate({ id: issue.id, statusId: v })
-                }}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue placeholder={t('common.noStatus')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">{t('common.noStatus')}</SelectItem>
-                    {board?.statuses?.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SidebarField>
+            {/* ── Workflow ── hidden for Epic. Epics are containers, not a
+                 step in the work-flow: status / priority / type don't carry
+                 the same meaning for them as for story/task/bug. */}
+            {issue.type !== IssueType.EPIC && (
+              <IssueSection icon={Workflow} title="Workflow">
+                <SidebarField label={t('common.status')}>
+                  <Select value={issue.statusId || '__none__'} disabled={!canEdit} onValueChange={(v) => {
+                    if (v !== '__none__') updateIssue.mutate({ id: issue.id, statusId: v })
+                  }}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder={t('common.noStatus')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{t('common.noStatus')}</SelectItem>
+                      {board?.statuses?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
 
-              <SidebarField label={t('common.priority')}>
-                <Select value={issue.priority} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, priority: v as IssuePriority })}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(IssuePriority).map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </SidebarField>
+                <SidebarField label={t('common.priority')}>
+                  <Select value={issue.priority} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, priority: v as IssuePriority })}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(IssuePriority).map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
 
-              <SidebarField label={t('common.type')}>
-                <IssueTypeSelect
-                  value={issue.type}
-                  onChange={canEdit ? (val) =>
-                    updateIssue.mutate({ id: issue.id, type: val as IssueType })
-                  : undefined}
-                />
-              </SidebarField>
-            </IssueSection>
+                <SidebarField label={t('common.type')}>
+                  <IssueTypeSelect
+                    value={issue.type}
+                    onChange={canEdit ? (val) =>
+                      updateIssue.mutate({ id: issue.id, type: val as IssueType })
+                    : undefined}
+                  />
+                </SidebarField>
+              </IssueSection>
+            )}
 
             {/* ── People ── */}
             <IssueSection icon={Users} title="People">

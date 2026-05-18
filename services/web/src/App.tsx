@@ -34,6 +34,9 @@ const ProjectBacklogPage = React.lazy(() =>
 const ProjectIssuesPage = React.lazy(() =>
   import('@/pages/ProjectIssuesPage').then(m => ({ default: m.ProjectIssuesPage }))
 )
+const ProjectEpicsPage = React.lazy(() =>
+  import('@/pages/ProjectEpicsPage').then(m => ({ default: m.ProjectEpicsPage }))
+)
 const ProjectSettingsPage = React.lazy(() =>
   import('@/pages/ProjectSettingsPage').then(m => ({ default: m.ProjectSettingsPage }))
 )
@@ -140,6 +143,7 @@ export default function App() {
           <Route path="/projects/:key/board" element={<ProjectBoardPage />} />
           <Route path="/projects/:key/backlog" element={<ProjectBacklogPage />} />
           <Route path="/projects/:key/issues" element={<ProjectIssuesPage />} />
+          <Route path="/projects/:key/epics" element={<ProjectEpicsPage />} />
           <Route path="/projects/:key/reports" element={<ProjectReportsPage />} />
           <Route path="/projects/:key/automations" element={<ProjectAutomationsPage />} />
           <Route path="/projects/:key/settings" element={<ProjectSettingsPage />} />

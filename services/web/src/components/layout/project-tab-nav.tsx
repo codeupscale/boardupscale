@@ -5,6 +5,7 @@ const TABS = [
   { label: 'Board',     path: 'board' },
   { label: 'Backlog',   path: 'backlog' },
   { label: 'Issues',    path: 'issues' },
+  { label: 'Epics',     path: 'epics' },
   { label: 'Calendar',  path: 'calendar' },
   { label: 'Timeline',  path: 'timeline' },
   { label: 'Pages',     path: 'pages' },
