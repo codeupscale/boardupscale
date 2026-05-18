@@ -17,6 +17,12 @@ interface IssueFilters {
   parentless?: boolean
   /** Comma-separated list of issue types to omit, e.g. "epic,subtask". */
   excludeTypes?: string
+  /**
+   * Bypass server-side pagination for this query. Backlog page uses this to
+   * fetch every issue in the project at once so completed sprints render in
+   * full. Other consumers should leave this unset and keep pagination.
+   */
+  noLimit?: boolean
 }
 
 export function useIssues(filters: IssueFilters | undefined = {}) {

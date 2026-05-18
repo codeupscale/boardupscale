@@ -54,6 +54,7 @@ export class IssuesController {
   @ApiQuery({ name: 'deleted', required: false })
   @ApiQuery({ name: 'parentless', required: false, description: 'When "true", only returns issues with parent_id IS NULL' })
   @ApiQuery({ name: 'excludeTypes', required: false, description: 'Comma-separated list of issue types to omit, e.g. "epic,subtask"' })
+  @ApiQuery({ name: 'noLimit', required: false, description: 'When "true", bypasses LIMIT/OFFSET and returns every matching row. Used by the Backlog page; other callers should keep pagination.' })
   async findAll(
     @OrgId() organizationId: string,
     @Query() pagination: PaginationDto,
@@ -67,6 +68,7 @@ export class IssuesController {
     @Query('deleted') deleted?: string,
     @Query('parentless') parentless?: string,
     @Query('excludeTypes') excludeTypes?: string,
+    @Query('noLimit') noLimit?: string,
   ) {
     const result = await this.issuesService.findAll({
       organizationId,
@@ -82,6 +84,7 @@ export class IssuesController {
       deleted: deleted === 'true',
       parentless: parentless === 'true',
       excludeTypes,
+      noLimit: noLimit === 'true',
     });
     return {
       data: result.items,
