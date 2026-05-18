@@ -139,8 +139,15 @@ export class IssuesService {
      * work (Subtask) from the flat planning list.
      */
     excludeTypes?: string;
+    /**
+     * When true, the query skips LIMIT/OFFSET entirely and returns every
+     * matching row. Used by the Backlog page so completed sprints surface
+     * all their historical Done tickets regardless of project size.
+     * All other consumers continue to paginate via `page` + `limit`.
+     */
+    noLimit?: boolean;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, excludeTypes } = filters;
+    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, excludeTypes, noLimit } = filters;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
@@ -196,14 +203,18 @@ export class IssuesService {
     }
 
     const total = await qb.getCount();
-    const items = await qb
-      .orderBy('issue.position', 'ASC')
-      .addOrderBy('issue.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
 
-    return { items, total, page, limit };
+    qb.orderBy('issue.position', 'ASC').addOrderBy('issue.createdAt', 'DESC');
+
+    if (!noLimit) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    const items = await qb.getMany();
+
+    // When pagination is bypassed the returned `limit` reflects the actual
+    // page size so callers reading the response shape don't get a stale 20.
+    return { items, total, page, limit: noLimit ? items.length : limit };
   }
 
   async findById(id: string, organizationId: string): Promise<Issue> {

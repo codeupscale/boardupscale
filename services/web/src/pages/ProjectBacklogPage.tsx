@@ -872,9 +872,12 @@ export function ProjectBacklogPage() {
   // Epics are containers — rendered as the parent badge on each row, and reachable
   // via Timeline / roadmap surfaces. Subtasks live nested inside their parent's
   // Child Issues section. Both are hidden from this flat list by design.
+  // `noLimit: true` bypasses pagination so every completed sprint section
+  // surfaces all its historical Done tickets, not just the first page.
   const { data: issuesData, isLoading: issuesLoading } = useIssues({
     projectId: projectKey!,
     excludeTypes: 'epic,subtask',
+    noLimit: true,
   })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
