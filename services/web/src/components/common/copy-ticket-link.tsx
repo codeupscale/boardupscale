@@ -1,17 +1,28 @@
 import { useState } from 'react'
 import { Copy, Check, Link } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
+import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { toast } from '@/store/ui.store'
+import { IssueType } from '@/types'
 import { cn } from '@/lib/utils'
+
+const TYPE_LABELS: Record<IssueType, string> = {
+  [IssueType.EPIC]: 'Epic',
+  [IssueType.STORY]: 'Story',
+  [IssueType.TASK]: 'Task',
+  [IssueType.BUG]: 'Bug',
+  [IssueType.SUBTASK]: 'Subtask',
+}
 
 interface CopyTicketLinkProps {
   issueKey: string
   issueId: string
+  issueType?: IssueType
   className?: string
   done?: boolean
 }
 
-function CopyLinkPopoverContent({ issueId }: { issueId: string }) {
+function CopyLinkPopoverContent({ issueId, issueType }: { issueId: string; issueType?: IssueType }) {
   const [copied, setCopied] = useState(false)
   const link = `${window.location.origin}/issues/${issueId}`
 
@@ -29,9 +40,17 @@ function CopyLinkPopoverContent({ issueId }: { issueId: string }) {
 
   return (
     <div className="p-3 flex flex-col gap-2 w-[280px]">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
-        Copy ticket link
-      </p>
+      <div className="flex items-center justify-between px-0.5">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          Copy ticket link
+        </p>
+        {issueType && (
+          <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+            <IssueTypeIcon type={issueType} className="h-3 w-3" />
+            {TYPE_LABELS[issueType]}
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-2 bg-muted rounded-md px-2 py-1.5">
         <Link className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
         <span className="text-xs text-foreground truncate flex-1 font-mono select-all">{link}</span>
@@ -54,10 +73,10 @@ function CopyLinkPopoverContent({ issueId }: { issueId: string }) {
   )
 }
 
-export function CopyTicketLink({ issueKey, issueId, className, done }: CopyTicketLinkProps) {
+export function CopyTicketLink({ issueKey, issueId, issueType, className, done }: CopyTicketLinkProps) {
   return (
     <Tooltip
-      content={<CopyLinkPopoverContent issueId={issueId} />}
+      content={<CopyLinkPopoverContent issueId={issueId} issueType={issueType} />}
       side="bottom"
       align="start"
       sideOffset={6}

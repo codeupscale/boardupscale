@@ -159,6 +159,7 @@ function DraggableIssueRow({
               <CopyTicketLink
                 issueKey={issue.key}
                 issueId={issue.id}
+                issueType={issue.type}
                 done={issue.status?.category === 'done'}
                 className="text-xs font-mono text-primary font-medium"
               />
@@ -321,6 +322,9 @@ function SprintSection({
   const [endDate, setEndDate] = useState('')
   const [editingGoal, setEditingGoal] = useState(false)
   const [goalText, setGoalText] = useState(sprint.goal || '')
+  const [editingDates, setEditingDates] = useState(false)
+  const [editStartDate, setEditStartDate] = useState(sprint.startDate ? String(sprint.startDate).slice(0, 10) : '')
+  const [editEndDate, setEditEndDate] = useState(sprint.endDate ? String(sprint.endDate).slice(0, 10) : '')
   const [moveToSprintId, setMoveToSprintId] = useState<string>('')
   const [newSprintName, setNewSprintName] = useState('')
 
@@ -353,6 +357,22 @@ function SprintSection({
       { projectId, sprintId: sprint.id, goal: goalText },
       { onSuccess: () => setEditingGoal(false) },
     )
+  }
+
+  const handleUpdateStartDate = (date: string | null) => {
+    const value = date ?? ''
+    setEditStartDate(value)
+    if (value) {
+      updateSprint.mutate({ projectId, sprintId: sprint.id, startDate: value })
+    }
+  }
+
+  const handleUpdateEndDate = (date: string | null) => {
+    const value = date ?? ''
+    setEditEndDate(value)
+    if (value) {
+      updateSprint.mutate({ projectId, sprintId: sprint.id, endDate: value })
+    }
   }
 
   return (
@@ -410,10 +430,59 @@ function SprintSection({
                 </span>
               )}
 
-              {sprint.startDate && sprint.endDate && (
-                <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 hidden sm:inline">
-                  {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
-                </span>
+              {/* Sprint dates — editable for active/planned sprints with manage permission */}
+              {!isCompleted && hasPermission('sprint', 'manage') ? (
+                editingDates ? (
+                  <div
+                    className="flex items-center gap-1.5 ml-2 flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DatePicker
+                      value={editStartDate || undefined}
+                      onChange={handleUpdateStartDate}
+                      placeholder={t('sprints.startDate')}
+                      className="text-xs h-7"
+                    />
+                    <span className="text-xs text-muted-foreground">—</span>
+                    <DatePicker
+                      value={editEndDate || undefined}
+                      onChange={handleUpdateEndDate}
+                      placeholder={t('sprints.endDate')}
+                      className="text-xs h-7"
+                    />
+                    <button
+                      onClick={() => setEditingDates(false)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Close date editor"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="group/dates flex items-center gap-1 ml-2 flex-shrink-0 hidden sm:flex cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditingDates(true)
+                    }}
+                    title="Edit sprint dates"
+                  >
+                    {sprint.startDate && sprint.endDate ? (
+                      <span className="text-xs text-muted-foreground group-hover/dates:text-foreground transition-colors">
+                        {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60 italic">Set dates</span>
+                    )}
+                    <Pencil className="h-3 w-3 text-muted-foreground/60 opacity-0 group-hover/dates:opacity-100 transition-opacity" />
+                  </div>
+                )
+              ) : (
+                sprint.startDate && sprint.endDate && (
+                  <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 hidden sm:inline">
+                    {formatDate(sprint.startDate)} — {formatDate(sprint.endDate)}
+                  </span>
+                )
               )}
             </div>
             <div

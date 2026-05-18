@@ -40,7 +40,7 @@ function LinkItem({
         to={`/issues/${link.issue.id}`}
         className="flex items-center gap-2 min-w-0 flex-1 hover:text-primary"
       >
-        <CopyTicketLink issueKey={link.issue.key} issueId={link.issue.id} className="text-xs font-mono text-primary flex-shrink-0" />
+        <CopyTicketLink issueKey={link.issue.key} issueId={link.issue.id} issueType={link.issue.type} className="text-xs font-mono text-primary flex-shrink-0" />
         <span className="text-sm text-foreground/80 truncate">{link.issue.title}</span>
       </Link>
       {link.issue.status && <StatusBadge status={link.issue.status} />}

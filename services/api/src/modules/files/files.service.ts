@@ -340,12 +340,14 @@ export class FilesService {
       throw new NotFoundException('Attachment not found');
     }
     if (attachment.uploadedBy !== userId) {
-      // Allow admins/owners to delete any attachment (attachment:delete:any).
+      // Allow users with attachment:delete:any (Project Admins, Org Admins, Owners).
+      // checkPermission resolves the project from the attachment UUID so project-level
+      // roles are evaluated — isAdminOrOwner would only cover org-level admins.
       const resolvedOrg = organizationId ?? attachment.issue?.project?.organizationId;
-      const isAdmin = resolvedOrg
-        ? await this.permissionsService.isAdminOrOwner(userId, resolvedOrg)
+      const canDeleteAny = resolvedOrg
+        ? await this.permissionsService.checkPermission(userId, id, 'attachment', 'delete:any', resolvedOrg)
         : false;
-      if (!isAdmin) {
+      if (!canDeleteAny) {
         throw new ForbiddenException('You can only delete your own files');
       }
     }
