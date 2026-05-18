@@ -67,6 +67,13 @@ interface ThemeState {
   theme: Theme
   resolved: 'light' | 'dark'
   colorTheme: ColorTheme
+  /**
+   * True while a theme swap is in progress. Subscribed to by
+   * <ThemeTransitionOverlay /> so it can blur the screen and hide the
+   * brief staggered animation that happens as transitions run at slightly
+   * different speeds across icons, shadows, gradients, etc.
+   */
+  changing: boolean
   setTheme: (theme: Theme) => void
   setColorTheme: (colorTheme: ColorTheme) => void
 }
@@ -108,20 +115,64 @@ const initialColor: ColorTheme = storedColor || 'electric-cyan'
 applyTheme(initialResolved)
 applyColorTheme(initialColor)
 
+/**
+ * Total time the overlay stays visible after the theme class is applied, in
+ * ms. Long enough that the underlying CSS transitions (200ms on background /
+ * border / color) settle completely AND the loading screen registers as a
+ * deliberate, branded moment instead of a flash. Below ~400ms the overlay
+ * feels accidental; above ~700ms it feels slow. 500ms is the sweet spot.
+ */
+const THEME_TRANSITION_HOLD_MS = 500
+
+// Module-scoped timer so rapid re-clicks extend (not stack) the overlay window.
+let pendingHideTimer: ReturnType<typeof setTimeout> | null = null
+
+function beginTransition(set: (partial: Partial<ThemeState>) => void, apply: () => void) {
+  // 1. Surface the overlay first. Zustand → React render → paint.
+  set({ changing: true })
+
+  // 2. Wait two animation frames so the overlay is fully on screen
+  //    BEFORE we flip the theme class. A single rAF is unreliable on
+  //    slower devices; the second guarantees a committed paint.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      apply()
+
+      // 3. Reset any in-flight hide so rapid clicks extend the window
+      //    instead of clipping it short.
+      if (pendingHideTimer !== null) {
+        clearTimeout(pendingHideTimer)
+      }
+      pendingHideTimer = setTimeout(() => {
+        pendingHideTimer = null
+        set({ changing: false })
+      }, THEME_TRANSITION_HOLD_MS)
+    })
+  })
+}
+
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: initial,
   resolved: initialResolved,
   colorTheme: initialColor,
+  changing: false,
   setTheme: (theme) => {
     const resolved = resolve(theme)
     localStorage.setItem('theme', theme)
-    applyTheme(resolved, true)
-    set({ theme, resolved })
+    beginTransition(set, () => {
+      applyTheme(resolved, true)
+      set({ theme, resolved })
+    })
   },
   setColorTheme: (colorTheme) => {
     localStorage.setItem('color-theme', colorTheme)
-    applyColorTheme(colorTheme)
-    set({ colorTheme })
+    // Color-theme switches change CSS variables and can also produce a brief
+    // visual jump across cards/icons — covering it with the same overlay keeps
+    // the feel consistent with light/dark switching.
+    beginTransition(set, () => {
+      applyColorTheme(colorTheme)
+      set({ colorTheme })
+    })
   },
 }))
 
