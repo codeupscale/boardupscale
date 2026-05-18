@@ -44,7 +44,7 @@ describe('FilesService', () => {
         { provide: ConfigService, useValue: createMockConfigService() },
         { provide: ActivityService, useValue: { log: jest.fn() } },
         { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
-        { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(true), isAdminOrOwner: jest.fn().mockResolvedValue(false) } },
+        { provide: PermissionsService, useValue: { checkPermission: jest.fn().mockResolvedValue(false), isAdminOrOwner: jest.fn().mockResolvedValue(false) } },
       ],
     }).compile();
 
@@ -178,11 +178,28 @@ describe('FilesService', () => {
     it('should throw ForbiddenException when deleting another users file', async () => {
       const attachment = mockAttachment({ uploadedBy: 'other-user-id' });
       attachmentRepo.findOne.mockResolvedValue(attachment);
+      // checkPermission returns false → not a Project Admin
 
       await expect(service.delete(TEST_IDS.ATTACHMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(ForbiddenException);
       await expect(service.delete(TEST_IDS.ATTACHMENT_ID, TEST_IDS.USER_ID)).rejects.toThrow(
         'You can only delete your own files',
       );
+    });
+
+    it('should allow Project Admin to delete another users attachment (attachment:delete:any)', async () => {
+      const attachment = mockAttachment({
+        uploadedBy: 'other-user-id',
+        issue: { project: { organizationId: TEST_IDS.ORG_ID } } as any,
+      });
+      attachmentRepo.findOne.mockResolvedValue(attachment);
+      attachmentRepo.remove.mockResolvedValue(attachment);
+      // Simulate Project Admin having attachment:delete:any
+      const permissionsService = service['permissionsService'] as any;
+      permissionsService.checkPermission.mockResolvedValue(true);
+
+      // Pass organizationId explicitly so resolvedOrg is defined and checkPermission is called
+      await expect(service.delete(TEST_IDS.ATTACHMENT_ID, TEST_IDS.USER_ID, TEST_IDS.ORG_ID)).resolves.not.toThrow();
+      expect(attachmentRepo.remove).toHaveBeenCalledWith(attachment);
     });
   });
 });

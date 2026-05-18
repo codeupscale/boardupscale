@@ -46,7 +46,7 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5">
                 <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
-                <CopyTicketLink issueKey={issue.key} issueId={issue.id} done={issue.status?.category === IssueStatusCategory.DONE} />
+                <CopyTicketLink issueKey={issue.key} issueId={issue.id} issueType={issue.type} done={issue.status?.category === IssueStatusCategory.DONE} />
               </div>
               <PriorityBadge priority={issue.priority} showLabel={false} />
             </div>

@@ -120,7 +120,7 @@ function IssueBreadcrumbChain({ issue }: { issue: Issue }) {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary dark:hover:text-primary transition-colors"
           >
             <IssueTypeIcon type={ancestor.type} className="h-3.5 w-3.5" />
-            <CopyTicketLink issueKey={ancestor.key} issueId={ancestor.id} className="font-mono text-xs font-medium" />
+            <CopyTicketLink issueKey={ancestor.key} issueId={ancestor.id} issueType={ancestor.type} className="font-mono text-xs font-medium" />
             <span className="truncate max-w-[180px]">{ancestor.title}</span>
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -470,7 +470,7 @@ export function IssueDetailPage() {
 
         <span className="inline-flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5" />
-          <CopyTicketLink issueKey={issue.key} issueId={issue.id} className="font-mono text-primary font-semibold" />
+          <CopyTicketLink issueKey={issue.key} issueId={issue.id} issueType={issue.type} className="font-mono text-primary font-semibold" />
         </span>
       </div>
 
@@ -483,7 +483,7 @@ export function IssueDetailPage() {
           <div>
             <div className="flex items-center gap-2.5 mb-3">
               <IssueTypeIcon type={issue.type} className="h-5 w-5" />
-              <CopyTicketLink issueKey={issue.key} issueId={issue.id} className="text-sm font-mono text-primary font-semibold" />
+              <CopyTicketLink issueKey={issue.key} issueId={issue.id} issueType={issue.type} className="text-sm font-mono text-primary font-semibold" />
               {issue.status && <StatusBadge status={issue.status} />}
               <PriorityBadge priority={issue.priority as IssuePriority} />
             </div>
@@ -623,7 +623,7 @@ export function IssueDetailPage() {
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors"
                     >
                       <IssueTypeIcon type={child.type} />
-                      <CopyTicketLink issueKey={child.key} issueId={child.id} className="text-xs font-mono text-primary font-medium" />
+                      <CopyTicketLink issueKey={child.key} issueId={child.id} issueType={child.type} className="text-xs font-mono text-primary font-medium" />
                       <span className="text-sm text-foreground truncate flex-1">{child.title}</span>
                       {/* Assignee — read-only chip. No 'add assignee' affordance here. */}
                       <div className="flex items-center gap-1.5 min-w-[120px] max-w-[160px] shrink-0 justify-end">
