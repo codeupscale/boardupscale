@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { ThemeTransitionOverlay } from '@/components/layout/theme-transition-overlay'
 import { useAuthStore } from '@/store/auth.store'
 import { RoleGuard } from '@/components/common/role-guard'
 import { UserRole } from '@/types'
@@ -113,6 +114,10 @@ function RootRoute() {
 export default function App() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center w-full h-screen bg-background" />}>
+      {/* Theme-swap scrim — covers the brief staggered repaint when toggling
+          light/dark or color theme. Mounted once here so it sits above every
+          route, modal, and Radix portal. */}
+      <ThemeTransitionOverlay />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<RootRoute />} />
