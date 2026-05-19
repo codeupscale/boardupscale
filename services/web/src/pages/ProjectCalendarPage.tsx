@@ -307,7 +307,7 @@ export function ProjectCalendarPage() {
           </Select>
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4" />
-            Create Issue
+            Create Ticket
           </Button>
         </div>
       </div>
@@ -450,7 +450,7 @@ export function ProjectCalendarPage() {
       <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && issueFormRef.current?.requestClose()}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Issue</DialogTitle>
+            <DialogTitle>Create Ticket</DialogTitle>
           </DialogHeader>
           <DialogBody>
             <IssueForm

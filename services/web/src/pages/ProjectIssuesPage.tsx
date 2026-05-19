@@ -9,7 +9,7 @@ import { useIssues, useCreateIssue } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import { useSelectionStore } from '@/store/selection.store'
-import { IssueType, IssuePriority } from '@/types'
+import { IssueType, IssuePriority, IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -471,6 +471,11 @@ export function ProjectIssuesPage() {
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
               sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
               users={users || []}
+              // Default Status to the project's first "To Do" category status
+              // so the dropdown isn't empty on open. Matches the Board page.
+              defaultValues={{
+                statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
+              }}
               onSubmit={(values) =>
                 createIssue.mutate(
                   { ...values, projectId: project?.id || projectKey! } as any,

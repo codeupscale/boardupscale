@@ -154,9 +154,9 @@
   },
   "issues": {
     "title": "Issues",
-    "createIssue": "Create Issue",
+    "createIssue": "Create Ticket",
     "editIssue": "Edit Issue",
-    "issueTitle": "Issue Title",
+    "issueTitle": "Ticker Title",
     "issueType": "Issue Type",
     "task": "Task",
     "story": "Story",

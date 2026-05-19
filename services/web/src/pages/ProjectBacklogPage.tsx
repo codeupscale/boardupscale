@@ -38,7 +38,7 @@ import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useSelectionStore } from '@/store/selection.store'
-import { SprintStatus, Issue, IssueType, User } from '@/types'
+import { SprintStatus, Issue, IssueType, IssueStatusCategory, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -1251,6 +1251,12 @@ export function ProjectBacklogPage() {
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
               sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
               users={users || []}
+              // Default Status to the project's first "To Do" category status
+              // so the dropdown isn't empty on open. Same fallback the Board
+              // page uses when "+ Add" is clicked outside a specific column.
+              defaultValues={{
+                statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
+              }}
               onSubmit={(values) =>
                 createIssue.mutate(
                   { ...values, projectId: project?.id || projectKey! } as any,
