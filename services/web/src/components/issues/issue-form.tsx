@@ -172,6 +172,10 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           placeholder={t('issues.describeIssue')}
           users={users}
           minHeight={100}
+          // Cap the description so long content scrolls internally instead
+          // of pushing Type / Priority / Status / Assignee / action buttons
+          // out of the modal viewport.
+          maxHeight={400}
         />
       </div>
 

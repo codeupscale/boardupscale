@@ -145,6 +145,15 @@ interface RichTextEditorProps {
   placeholder?: string
   users?: User[]
   minHeight?: number
+  /**
+   * Optional cap for the editor's content area. When set, the editor will
+   * scroll internally once content exceeds this height instead of growing
+   * to push surrounding UI off-screen. Used by modal-hosted editors
+   * (Create Ticket, etc.) where ambient space is limited. Leave unset
+   * for full-page surfaces (issue detail description, page editor) where
+   * unbounded growth is desirable.
+   */
+  maxHeight?: number
   autoFocus?: boolean
   className?: string
   issueId?: string
@@ -157,6 +166,7 @@ export function RichTextEditor({
   placeholder = 'Write something…',
   users = [],
   minHeight = 120,
+  maxHeight,
   autoFocus = false,
   className,
   issueId,
@@ -691,11 +701,16 @@ export function RichTextEditor({
         )}
       </div>
 
-      {/* Editor content area */}
+      {/* Editor content area.
+          When maxHeight is set, the content scrolls internally instead of
+          pushing surrounding UI (e.g. modal action buttons) off-screen. */}
       <EditorContent
         editor={editor}
         className="rich-text-editor-content px-3 py-2 focus:outline-none"
-        style={{ minHeight }}
+        style={{
+          minHeight,
+          ...(maxHeight ? { maxHeight, overflowY: 'auto' } : {}),
+        }}
       />
 
       {/* Drag overlay */}
