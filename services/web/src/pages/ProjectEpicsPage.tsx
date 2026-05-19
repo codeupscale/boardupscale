@@ -1,15 +1,22 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { Plus } from 'lucide-react'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
-import { useProject } from '@/hooks/useProjects'
-import { useIssues } from '@/hooks/useIssues'
-import { IssueType } from '@/types'
+import { useProject, useProjectMembers } from '@/hooks/useProjects'
+import { useBoard } from '@/hooks/useBoard'
+import { useSprints } from '@/hooks/useSprints'
+import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import { useHasPermission } from '@/hooks/useHasPermission'
+import { IssueType, IssueStatusCategory, SprintStatus } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
+import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { Pagination } from '@/components/ui/pagination'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 25
 
@@ -22,11 +29,17 @@ const PAGE_SIZE = 25
  * by every other issue type. Epic-specific behavior on that page (child
  * issues = story/task/bug, no parent picker) was wired up earlier.
  *
+ * Create flow
+ * ───────────
+ * Header carries a `Create Issue` action (gated on `issue:create`)
+ * matching the Backlog/Issues pattern. The Create dialog opens with
+ * `type` pre-filled to Epic — the user is on the Epics tab, so that's
+ * the obvious default. They can still pick Story/Task/Bug from the type
+ * dropdown if they want; this is a convenience, not a restriction.
+ *
  * What this page intentionally is NOT
  * ───────────────────────────────────
  * - No filters / search bar (kept simple per design intent)
- * - No "+ Create Epic" button (epics are created from the global
- *   Create Issue button, same as every other type)
  * - No progress column (deferred — would require either an aggregate
  *   BE endpoint or fetching every story/task/bug, both of which add
  *   weight for a page meant to be light)
@@ -43,8 +56,18 @@ export function ProjectEpicsPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
   const [page, setPage] = useState(1)
+  const [showCreateIssue, setShowCreateIssue] = useState(false)
+  const issueFormRef = useRef<IssueFormHandle>(null)
 
   const { data: project } = useProject(projectKey!)
+  const { data: board } = useBoard(projectKey!)
+  const { data: projectMembers } = useProjectMembers(projectKey!)
+  const users = projectMembers?.map((m) => m.user)
+  const { data: sprints } = useSprints(projectKey!)
+  const activeSprints = (sprints || []).filter((s) => s.status !== SprintStatus.COMPLETED)
+  const createIssue = useCreateIssue()
+  const { hasPermission } = useHasPermission(projectKey)
+
   const { data, isLoading } = useIssues({
     projectId: projectKey!,
     type: IssueType.EPIC,
@@ -66,12 +89,21 @@ export function ProjectEpicsPage() {
             { label: project?.name || '...', href: `/projects/${projectKey}/board` },
             { label: 'Epics' },
           ]}
+          actions={
+            // Permission-gated Create Issue, matches the Backlog/Issues pattern.
+            // The dialog pre-fills type=Epic since the user is on the Epics tab.
+            hasPermission('issue', 'create') ? (
+              <Button size="sm" onClick={() => setShowCreateIssue(true)}>
+                <Plus className="h-4 w-4" />
+                {t('issues.createIssue')}
+              </Button>
+            ) : undefined
+          }
         />
 
         <ProjectTabNav projectKey={projectKey!} />
 
         <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
-          {/* Total count strip — minimal chrome, no filter card. */}
           {!isLoading && total > 0 && (
             <p className="text-sm font-bold text-foreground">
               {total} epic{total !== 1 ? 's' : ''}
@@ -84,9 +116,9 @@ export function ProjectEpicsPage() {
             <ContentFade>
               <div className="rounded-xl border border-border/60 bg-card/50 shadow-sm overflow-hidden">
                 <table className="w-full">
+                  {/* Epics intentionally omit Priority, Status, and Story Points columns —
+                      none of them are meaningful on an Epic row. */}
                   <thead>
-                    {/* Epics intentionally omit Priority, Status, and Story Points columns —
-                        none of them are meaningful on an Epic row. */}
                     <tr className="sticky top-0 z-10 border-b border-border bg-muted/95 backdrop-blur-sm">
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">Key</th>
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('common.title')}</th>
@@ -129,11 +161,48 @@ export function ProjectEpicsPage() {
             <div className="rounded-xl border border-border/60 bg-card/40 px-6 py-16 text-center">
               <p className="text-sm font-medium text-foreground">No epics yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Create one from the <span className="font-medium text-foreground">Create Issue</span> button.
+                Create one from the <span className="font-medium text-foreground">Create Ticket</span> button.
               </p>
             </div>
           )}
         </div>
+
+        {/* Create Issue Dialog — pre-defaults type to Epic since this is the
+            Epics tab. User can still change type to Story/Task/Bug in the
+            form if needed. Mirrors the Backlog page's modal wiring. */}
+        <Dialog
+          open={showCreateIssue}
+          onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
+        >
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t('issues.createIssue')}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <IssueForm
+                ref={issueFormRef}
+                projectId={project?.id || projectKey!}
+                statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
+                sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+                users={users || []}
+                defaultValues={{
+                  type: IssueType.EPIC,
+                  // Default Status to the project's first "To Do" status so
+                  // the dropdown isn't empty on open. Matches Board/Backlog/Issues.
+                  statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
+                }}
+                onSubmit={(values) =>
+                  createIssue.mutate(
+                    { ...values, projectId: project?.id || projectKey! } as any,
+                    { onSuccess: () => setShowCreateIssue(false) },
+                  )
+                }
+                onCancel={() => setShowCreateIssue(false)}
+                isLoading={createIssue.isPending}
+              />
+            </DialogBody>
+          </DialogContent>
+        </Dialog>
       </div>
     </ProjectMemberGuard>
   )
