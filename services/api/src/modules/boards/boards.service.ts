@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
+import { Sprint } from '../sprints/entities/sprint.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
@@ -21,6 +22,8 @@ export class BoardsService {
     private issueStatusRepository: Repository<IssueStatus>,
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
+    @InjectRepository(Sprint)
+    private sprintRepository: Repository<Sprint>,
     private projectsService: ProjectsService,
     private activityService: ActivityService,
   ) {}
@@ -301,14 +304,45 @@ export class BoardsService {
       }
     }
 
+    const sprintIdsToValidate = [
+      ...new Set(
+        dto.items
+          .filter((item) => item.sprintId)
+          .map((item) => item.sprintId as string),
+      ),
+    ];
+    for (const sprintId of sprintIdsToValidate) {
+      const sprint = await this.sprintRepository.findOne({
+        where: { id: sprintId, projectId },
+      });
+      if (!sprint) {
+        throw new NotFoundException(`Sprint ${sprintId} not found`);
+      }
+    }
+
+    const resolvedItems = dto.items.map((item) => {
+      const existing = existingIssueById.get(item.issueId);
+      return {
+        issueId: item.issueId,
+        statusId: item.statusId,
+        position: item.position,
+        sprintId: item.sprintId !== undefined ? item.sprintId : (existing?.sprintId ?? null),
+      };
+    });
+
     // Single bulk UPDATE using VALUES list — avoids N individual round trips
-    const values = dto.items
-      .map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}::uuid, $${i * 3 + 3}::float)`)
+    const values = resolvedItems
+      .map((_, i) => `($${i * 4 + 1}::uuid, $${i * 4 + 2}::uuid, $${i * 4 + 3}::float, $${i * 4 + 4}::uuid)`)
       .join(', ');
-    const params = dto.items.flatMap((item) => [item.issueId, item.statusId, item.position]);
+    const params = resolvedItems.flatMap((item) => [
+      item.issueId,
+      item.statusId,
+      item.position,
+      item.sprintId,
+    ]);
     await this.issueRepository.query(
-      `UPDATE issues SET status_id = v.status_id, position = v.position, updated_at = NOW()
-       FROM (VALUES ${values}) AS v(id, status_id, position)
+      `UPDATE issues SET status_id = v.status_id, position = v.position, sprint_id = v.sprint_id, updated_at = NOW()
+       FROM (VALUES ${values}) AS v(id, status_id, position, sprint_id)
        WHERE issues.id = v.id AND issues.organization_id = $${params.length + 1}`,
       [...params, organizationId],
     );

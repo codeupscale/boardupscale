@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import {
   DragDropContext,
@@ -32,8 +33,14 @@ import {
   useDeleteSprint,
   useUpdateSprint,
 } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint, type IssueFilters } from '@/hooks/useIssues'
-import { useBoard } from '@/hooks/useBoard'
+import { useIssues, useCreateIssue, useUpdateIssue, type IssueFilters } from '@/hooks/useIssues'
+import { useBoard, useReorderIssues } from '@/hooks/useBoard'
+import {
+  applyContainerUpdates,
+  buildContainerInsertItems,
+  buildContainerReorderItems,
+  sortIssuesByPosition,
+} from '@/lib/issue-reorder'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
@@ -970,21 +977,43 @@ export function ProjectBacklogPage() {
   // Child Issues section. Both are hidden from this flat list by design.
   // `noLimit: true` bypasses pagination so every completed sprint section
   // surfaces all its historical Done tickets, not just the first page.
-  const { data: issuesData, isLoading: issuesLoading } = useIssues({
-    projectId: projectKey!,
-    excludeTypes: 'epic,subtask',
-    noLimit: true,
-    ...filters,
+  const issueFilters = useMemo<IssueFilters>(
+    () => ({
+      projectId: projectKey!,
+      excludeTypes: 'epic,subtask',
+      noLimit: true,
+      ...filters,
+    }),
+    [projectKey, filters],
+  )
+
+  const { data: issuesData, isLoading: issuesLoading } = useIssues(issueFilters, {
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    structuralSharing: false,
   })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
   const updateIssue = useUpdateIssue()
-  const moveIssue = useMoveIssueSprint()
+  const reorderIssues = useReorderIssues({
+    invalidateOnSuccess: false,
+    cancelQueryKey: ['issues', issueFilters],
+  })
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const clearSelection = useSelectionStore((s) => s.clearSelection)
 
-  const allIssues = issuesData?.data || []
+  /** Holds reordered list while the API is in flight — prevents snap-back from stale cache/refetch. */
+  const [optimisticIssues, setOptimisticIssues] = useState<Issue[] | null>(null)
+  const reorderingRef = useRef(false)
+
+  const allIssues = optimisticIssues ?? issuesData?.data ?? []
+
+  useEffect(() => {
+    if (!reorderingRef.current) {
+      setOptimisticIssues(null)
+    }
+  }, [issuesData])
 
   // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
   // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
@@ -1017,12 +1046,22 @@ export function ProjectBacklogPage() {
   }, [sprints])
 
   const getSprintIssues = useCallback(
-    (sprintId: string) => allIssues.filter((i) => i.sprintId === sprintId),
+    (sprintId: string) => sortIssuesByPosition(allIssues.filter((i) => i.sprintId === sprintId)),
+    [allIssues],
+  )
+
+  const getContainerIssues = useCallback(
+    (droppableId: string) =>
+      sortIssuesByPosition(
+        droppableId === 'backlog'
+          ? allIssues.filter((i) => !i.sprintId)
+          : allIssues.filter((i) => i.sprintId === droppableId),
+      ),
     [allIssues],
   )
 
   const backlogIssues = useMemo(
-    () => allIssues.filter((i) => !i.sprintId),
+    () => sortIssuesByPosition(allIssues.filter((i) => !i.sprintId)),
     [allIssues],
   )
 
@@ -1056,38 +1095,57 @@ export function ProjectBacklogPage() {
       if (!destination) return
       if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
-      const sourceSprintId = source.droppableId === 'backlog' ? null : source.droppableId
       const destSprintId = destination.droppableId === 'backlog' ? null : destination.droppableId
+      const currentIssues = optimisticIssues ?? issuesData?.data ?? []
+      const movedIssue = currentIssues.find((issue) => issue.id === draggableId)
+      if (!movedIssue) return
 
-      // Only fire API call if the sprint changed
-      if (sourceSprintId !== destSprintId) {
-        // Optimistic update: mutate the cached issues data
-        qc.setQueryData(['issues', { projectId: projectKey! }], (old: any) => {
-          if (!old?.data) return old
-          return {
-            ...old,
-            data: old.data.map((issue: Issue) =>
-              issue.id === draggableId ? { ...issue, sprintId: destSprintId } : issue,
-            ),
+      const items =
+        source.droppableId === destination.droppableId
+          ? buildContainerReorderItems(
+              getContainerIssues(source.droppableId),
+              source.index,
+              destination.index,
+            )
+          : buildContainerInsertItems(
+              getContainerIssues(destination.droppableId),
+              movedIssue,
+              destination.index,
+              destSprintId,
+            )
+
+      if (items.length === 0) return
+
+      const baseIssues = optimisticIssues ?? issuesData?.data ?? []
+      const nextIssues = applyContainerUpdates(baseIssues, items)
+
+      reorderingRef.current = true
+      flushSync(() => {
+        setOptimisticIssues(nextIssues)
+        qc.setQueryData(['issues', issueFilters], (old: { data?: Issue[] } | undefined) => {
+          if (!old) {
+            return { data: nextIssues, total: nextIssues.length, page: 1, limit: nextIssues.length }
           }
+          return { ...old, data: nextIssues }
         })
+      })
 
-        // Fire the update (silent — no toast)
-        moveIssue.mutate(
-          { id: draggableId, sprintId: destSprintId },
-          {
-            onError: () => {
-              // Revert on error
-              qc.invalidateQueries({ queryKey: ['issues'] })
-            },
-            onSuccess: () => {
-              qc.invalidateQueries({ queryKey: ['sprints', projectKey] })
-            },
+      reorderIssues.mutate(
+        { projectId: projectKey!, items },
+        {
+          onSuccess: () => {
+            reorderingRef.current = false
+            setOptimisticIssues(null)
           },
-        )
-      }
+          onError: () => {
+            reorderingRef.current = false
+            setOptimisticIssues(null)
+            qc.invalidateQueries({ queryKey: ['issues', issueFilters] })
+          },
+        },
+      )
     },
-    [projectKey, qc, moveIssue],
+    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues],
   )
 
   return (
@@ -1143,7 +1201,7 @@ export function ProjectBacklogPage() {
               <span>{backlogIssues.length} in backlog</span>
               <span className="text-muted-foreground/60">•</span>
               <span className="text-primary font-medium">
-                Drag issues between sprints to plan
+                Drag to reorder or move between sprints
               </span>
             </div>
           )}

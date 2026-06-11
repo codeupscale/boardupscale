@@ -52,19 +52,31 @@ export function useColumnLoadMore(
   })
 }
 
-export function useReorderIssues() {
+export function useReorderIssues(
+  options: { invalidateOnSuccess?: boolean; cancelQueryKey?: readonly unknown[] } = {},
+) {
+  const { invalidateOnSuccess = true, cancelQueryKey } = options
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (
-      payload: { projectId: string; items: Array<{ issueId: string; statusId: string; position: number }> },
+      payload: {
+        projectId: string
+        items: Array<{ issueId: string; statusId: string; position: number; sprintId?: string | null }>
+      },
     ) => {
       const { data } = await api.patch(`/projects/${payload.projectId}/issues/reorder`, { items: payload.items })
       return data.data
+    },
+    onMutate: async () => {
+      if (cancelQueryKey) {
+        await qc.cancelQueries({ queryKey: cancelQueryKey })
+      }
     },
     onError: (err: any) => {
       toast(err?.response?.data?.message || err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to reorder issues', 'error')
     },
     onSuccess: () => {
+      if (!invalidateOnSuccess) return
       qc.invalidateQueries({ queryKey: ['board'] })
       qc.invalidateQueries({ queryKey: ['issues'] })
     },
