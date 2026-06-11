@@ -3,7 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Issue, WorkLog } from '@/types'
 
-interface IssueFilters {
+export interface IssueFilters {
   projectId?: string
   sprintId?: string
   assigneeId?: string

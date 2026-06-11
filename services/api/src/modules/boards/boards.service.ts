@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
@@ -12,6 +12,7 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class BoardsService {
@@ -21,6 +22,7 @@ export class BoardsService {
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
     private projectsService: ProjectsService,
+    private activityService: ActivityService,
   ) {}
 
   /** Applies shared filter predicates to an issue query builder. */
@@ -225,11 +227,31 @@ export class BoardsService {
     await this.issueStatusRepository.remove(status);
   }
 
-  async reorderIssues(projectId: string, organizationId: string, dto: ReorderIssuesDto): Promise<void> {
+  async reorderIssues(
+    projectId: string,
+    organizationId: string,
+    dto: ReorderIssuesDto,
+    userId?: string,
+  ): Promise<void> {
     await this.projectsService.findById(projectId, organizationId);
+
+    const issueIds = [...new Set(dto.items.map((item) => item.issueId))];
+    const existingIssues = issueIds.length
+      ? await this.issueRepository.find({
+          where: {
+            id: In(issueIds),
+            organizationId,
+            projectId,
+            deletedAt: IsNull(),
+          },
+          relations: ['status'],
+        })
+      : [];
+    const existingIssueById = new Map((existingIssues ?? []).map((issue) => [issue.id, issue]));
 
     // Check WIP limits for each target status
     const targetStatusIds = [...new Set(dto.items.map((item) => item.statusId))];
+    const targetStatusById = new Map<string, IssueStatus>();
 
     for (const statusId of targetStatusIds) {
       const status = await this.issueStatusRepository.findOne({
@@ -239,6 +261,8 @@ export class BoardsService {
       if (!status) {
         throw new NotFoundException(`Status ${statusId} not found`);
       }
+
+      targetStatusById.set(statusId, status);
 
       if (status.wipLimit > 0) {
         // Count how many issues will end up in this status after the reorder
@@ -287,6 +311,37 @@ export class BoardsService {
        FROM (VALUES ${values}) AS v(id, status_id, position)
        WHERE issues.id = v.id AND issues.organization_id = $${params.length + 1}`,
       [...params, organizationId],
+    );
+
+    if (!userId) {
+      return;
+    }
+
+    const latestByIssueId = new Map(dto.items.map((item) => [item.issueId, item]));
+    const changedStatusMoves = Array.from(latestByIssueId.values()).filter((item) => {
+      const issue = existingIssueById.get(item.issueId);
+      return !!issue && issue.statusId !== item.statusId;
+    });
+
+    if (changedStatusMoves.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      changedStatusMoves.map((item) => {
+        const issue = existingIssueById.get(item.issueId)!;
+        const oldStatusName = issue.status?.name ?? null;
+        const newStatusName = targetStatusById.get(item.statusId)?.name ?? null;
+        return this.activityService.log(
+          organizationId,
+          issue.id,
+          userId,
+          'updated',
+          'statusId',
+          oldStatusName,
+          newStatusName,
+        );
+      }),
     );
   }
 }

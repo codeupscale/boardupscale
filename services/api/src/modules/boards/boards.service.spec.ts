@@ -5,6 +5,7 @@ import { BoardsService } from './boards.service';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { ActivityService } from '../activity/activity.service';
 import {
   createMockRepository,
   createMockQueryBuilder,
@@ -18,11 +19,13 @@ describe('BoardsService', () => {
   let statusRepo: ReturnType<typeof createMockRepository>;
   let issueRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
+  let activityService: { log: jest.Mock };
 
   beforeEach(async () => {
     statusRepo = createMockRepository();
     issueRepo = createMockRepository();
     projectsService = createMockProjectsService();
+    activityService = { log: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -30,6 +33,7 @@ describe('BoardsService', () => {
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: ProjectsService, useValue: projectsService },
+        { provide: ActivityService, useValue: activityService },
       ],
     }).compile();
 

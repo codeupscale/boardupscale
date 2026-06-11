@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import {
   DragDropContext,
   Droppable,
@@ -32,7 +32,7 @@ import {
   useDeleteSprint,
   useUpdateSprint,
 } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint, type IssueFilters } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
@@ -41,6 +41,7 @@ import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue, IssueType, IssueStatusCategory, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
+import { BacklogQuickFilters } from '@/components/backlog/backlog-filters'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -920,13 +921,39 @@ function BacklogSection({
 export function ProjectBacklogPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
   const issueFormRef = useRef<IssueFormHandle>(null)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
-  const [typeFilter, setTypeFilter] = useState('')
   const [sprintName, setSprintName] = useState('')
   const [sprintGoal, setSprintGoal] = useState('')
+
+  // Derive filters from URL search params
+  const filters: IssueFilters = useMemo(() => {
+    const f: IssueFilters = {}
+    const assigneeId = searchParams.get('assigneeId')
+    const type = searchParams.get('type')
+    const priority = searchParams.get('priority')
+    const search = searchParams.get('search')
+    if (assigneeId) f.assigneeId = assigneeId
+    if (type) f.type = type
+    if (priority) f.priority = priority
+    if (search) f.search = search
+    return f
+  }, [searchParams])
+
+  const handleFiltersChange = useCallback(
+    (newFilters: IssueFilters) => {
+      const params = new URLSearchParams()
+      if (newFilters.assigneeId) params.set('assigneeId', newFilters.assigneeId)
+      if (newFilters.type) params.set('type', newFilters.type)
+      if (newFilters.priority) params.set('priority', newFilters.priority)
+      if (newFilters.search) params.set('search', newFilters.search)
+      setSearchParams(params, { replace: true })
+    },
+    [setSearchParams],
+  )
 
   const { data: project } = useProject(projectKey!)
   const { data: projectMembers = [] } = useProjectMembers(project?.id || projectKey!)
@@ -947,6 +974,7 @@ export function ProjectBacklogPage() {
     projectId: projectKey!,
     excludeTypes: 'epic,subtask',
     noLimit: true,
+    ...filters,
   })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
@@ -957,11 +985,6 @@ export function ProjectBacklogPage() {
   const clearSelection = useSelectionStore((s) => s.clearSelection)
 
   const allIssues = issuesData?.data || []
-
-  const filteredIssues = useMemo(
-    () => (typeFilter ? allIssues.filter((i) => i.type === typeFilter) : allIssues),
-    [allIssues, typeFilter],
-  )
 
   // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
   // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
@@ -994,13 +1017,13 @@ export function ProjectBacklogPage() {
   }, [sprints])
 
   const getSprintIssues = useCallback(
-    (sprintId: string) => filteredIssues.filter((i) => i.sprintId === sprintId),
-    [filteredIssues],
+    (sprintId: string) => allIssues.filter((i) => i.sprintId === sprintId),
+    [allIssues],
   )
 
   const backlogIssues = useMemo(
-    () => filteredIssues.filter((i) => !i.sprintId),
-    [filteredIssues],
+    () => allIssues.filter((i) => !i.sprintId),
+    [allIssues],
   )
 
   const boardStatuses = useMemo(
@@ -1098,33 +1121,11 @@ export function ProjectBacklogPage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Filter Bar */}
-      <div className="flex items-center gap-2 px-6 py-3 bg-card border-b border-border">
-        <Select value={typeFilter || '__all__'} onValueChange={(v) => setTypeFilter(v === '__all__' ? '' : v)}>
-          <SelectTrigger className={cn(
-            'w-auto gap-1.5 text-sm',
-            typeFilter ? 'border-primary/50 bg-primary/10 text-primary' : 'text-muted-foreground',
-          )}>
-            <Bug className="h-3.5 w-3.5" />
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            {/* "All types" maps to Story + Task + Bug — epics + subtasks are excluded at fetch time. */}
-            <SelectItem value="__all__">All types</SelectItem>
-            <SelectItem value="story">Story</SelectItem>
-            <SelectItem value="task">Task</SelectItem>
-            <SelectItem value="bug">Bug</SelectItem>
-          </SelectContent>
-        </Select>
-        {typeFilter && (
-          <button
-            onClick={() => setTypeFilter('')}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600 transition-colors"
-          >
-            <X className="h-3 w-3" />
-            Clear
-          </button>
-        )}
-      </div>
+      <BacklogQuickFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        members={projectMembers}
+      />
 
       {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade className="flex-1 min-h-0 flex flex-col">
       {/* Drag-and-Drop Context */}
@@ -1137,7 +1138,7 @@ export function ProjectBacklogPage() {
                 {displaySprints.length} {displaySprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
               <span className="text-muted-foreground/60">•</span>
-              <span>{filteredIssues.length} {typeFilter ? 'matching' : 'total'} issues</span>
+              <span>{allIssues.length} total issues</span>
               <span className="text-muted-foreground/60">•</span>
               <span>{backlogIssues.length} in backlog</span>
               <span className="text-muted-foreground/60">•</span>
