@@ -547,5 +547,25 @@ describe('BoardsService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('should no-op when reorder items array is empty', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { items: [] });
+
+      expect(issueRepo.find).not.toHaveBeenCalled();
+      expect(issueRepo.query).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when reorder references missing issues', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      issueRepo.find.mockResolvedValue([]);
+
+      await expect(
+        service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+          items: [{ issueId: 'missing-issue', statusId: 'status-1', position: 0 }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 });

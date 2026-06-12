@@ -1071,7 +1071,11 @@ export function ProjectBacklogPage() {
   )
 
   const memberUsers = useMemo(
-    () => projectMembers.map((m) => m.user).sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    () =>
+      projectMembers
+        .map((m) => m.user)
+        .filter((user): user is NonNullable<typeof user> => !!user)
+        .sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? '')),
     [projectMembers],
   )
 

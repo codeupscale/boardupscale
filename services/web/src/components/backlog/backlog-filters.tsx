@@ -33,7 +33,7 @@ const PRIORITIES = [
 export function BacklogQuickFilters({
   filters,
   onFiltersChange,
-  members,
+  members = [],
 }: BacklogQuickFiltersProps) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState(filters.search || '')
@@ -134,11 +134,13 @@ export function BacklogQuickFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__all__">All assignees</SelectItem>
-          {members.map((member) => (
-            <SelectItem key={member.userId} value={member.userId}>
-              {member.user?.displayName || member.userId}
-            </SelectItem>
-          ))}
+          {members
+            .filter((member) => !!member.userId)
+            .map((member) => (
+              <SelectItem key={member.userId} value={member.userId}>
+                {member.user?.displayName || member.userId}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
 
