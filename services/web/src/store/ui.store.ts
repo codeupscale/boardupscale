@@ -1,11 +1,18 @@
 import { create } from 'zustand'
 import { toast as sonnerToast } from 'sonner'
 
+export type ToastOptions = { duration?: number }
+
 // Backward-compatible wrapper: toast('message', 'success') or toast('message', 'error')
-export function toast(message: string, type: 'success' | 'error' | 'info' = 'success') {
-  if (type === 'success') sonnerToast.success(message)
-  else if (type === 'error') sonnerToast.error(message)
-  else sonnerToast(message)
+export function toast(
+  message: string,
+  type: 'success' | 'error' | 'info' = 'success',
+  options?: ToastOptions,
+) {
+  const sonnerOptions = options?.duration !== undefined ? { duration: options.duration } : undefined
+  if (type === 'success') sonnerToast.success(message, sonnerOptions)
+  else if (type === 'error') sonnerToast.error(message, sonnerOptions)
+  else sonnerToast(message, sonnerOptions)
 }
 
 interface UiState {

@@ -155,6 +155,7 @@
   "issues": {
     "title": "\u8ab2\u984c",
     "createIssue": "\u8ab2\u984c\u4f5c\u6210",
+    "createdSuccess": "{{key}} \u304c\u6b63\u5e38\u306b\u4f5c\u6210\u3055\u308c\u307e\u3057\u305f",
     "editIssue": "\u8ab2\u984c\u7de8\u96c6",
     "issueTitle": "\u8ab2\u984c\u30bf\u30a4\u30c8\u30eb",
     "issueType": "\u8ab2\u984c\u30bf\u30a4\u30d7",

@@ -155,6 +155,7 @@
   "issues": {
     "title": "Issues",
     "createIssue": "Create Ticket",
+    "createdSuccess": "{{key}} is created successfully",
     "editIssue": "Edit Issue",
     "issueTitle": "Ticket Title",
     "issueType": "Issue Type",

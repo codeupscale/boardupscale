@@ -155,6 +155,7 @@
   "issues": {
     "title": "Tickets",
     "createIssue": "Cr\u00e9er un ticket",
+    "createdSuccess": "{{key}} a \u00e9t\u00e9 cr\u00e9\u00e9 avec succ\u00e8s",
     "editIssue": "Modifier le ticket",
     "issueTitle": "Titre du ticket",
     "issueType": "Type de ticket",

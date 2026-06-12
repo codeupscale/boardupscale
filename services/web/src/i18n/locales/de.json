@@ -155,6 +155,7 @@
   "issues": {
     "title": "Vorg\u00e4nge",
     "createIssue": "Vorgang erstellen",
+    "createdSuccess": "{{key}} wurde erfolgreich erstellt",
     "editIssue": "Vorgang bearbeiten",
     "issueTitle": "Vorgangstitel",
     "issueType": "Vorgangstyp",

@@ -1,7 +1,70 @@
-import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient, type UseQueryOptions } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
-import { Issue, WorkLog } from '@/types'
+import { mergeCreatedIssue } from '@/lib/issue-reorder'
+import { BoardData, Issue, WorkLog } from '@/types'
+
+function prependIssueToBoard(board: BoardData, issue: Issue): BoardData {
+  const existsInColumn = board.statuses.some(
+    (col) => col.id === issue.statusId && col.issues.some((i) => i.id === issue.id),
+  )
+
+  return {
+    statuses: board.statuses.map((col) => {
+      if (col.id !== issue.statusId) return col
+      const issues = mergeCreatedIssue(col.issues, issue)
+      return {
+        ...col,
+        issues,
+        total: existsInColumn ? col.total : col.total + 1,
+      }
+    }),
+  }
+}
+
+/** In-memory board sync when sprint assignment changes — no extra API calls. */
+export function syncBoardCacheAfterSprintMove(
+  board: BoardData,
+  issue: Issue,
+  destSprintId: string | null,
+  position?: number,
+): BoardData {
+  const updatedIssue: Issue = {
+    ...issue,
+    sprintId: destSprintId ?? undefined,
+    ...(position !== undefined ? { position } : {}),
+  }
+
+  const withoutIssue: BoardData = {
+    statuses: board.statuses.map((col) => {
+      const hadIssue = col.issues.some((i) => i.id === issue.id)
+      return {
+        ...col,
+        issues: col.issues.filter((i) => i.id !== issue.id),
+        total: hadIssue ? Math.max(0, col.total - 1) : col.total,
+      }
+    }),
+  }
+
+  if (!destSprintId) {
+    return withoutIssue
+  }
+
+  return prependIssueToBoard(withoutIssue, updatedIssue)
+}
+
+export function patchBoardCachesForSprintMove(
+  qc: QueryClient,
+  issue: Issue,
+  destSprintId: string | null,
+  position?: number,
+) {
+  qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
+    if (!old?.statuses) return old
+    return syncBoardCacheAfterSprintMove(old, issue, destSprintId, position)
+  })
+}
 
 export interface IssueFilters {
   projectId?: string
@@ -60,6 +123,7 @@ export function useIssue(id: string) {
 
 export function useCreateIssue() {
   const qc = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: async (payload: {
       projectId: string
@@ -79,10 +143,21 @@ export function useCreateIssue() {
       const { data } = await api.post('/issues', payload)
       return data.data as Issue
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['issues'] })
-      qc.invalidateQueries({ queryKey: ['board'] })
-      toast('Issue created')
+    onSuccess: (issue) => {
+      qc.setQueriesData<{ data: Issue[] }>({ queryKey: ['issues'] }, (old) => {
+        if (!old?.data) return old
+        return { ...old, data: mergeCreatedIssue(old.data, issue) }
+      })
+
+      if (issue.sprintId) {
+        qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
+          if (!old?.statuses) return old
+          return prependIssueToBoard(old, issue)
+        })
+      }
+
+      const key = issue.key || `#${issue.number}`
+      toast(t('issues.createdSuccess', { key }), 'success', { duration: 3000 })
     },
     onError: (err: any) =>
       toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create issue', 'error'),

@@ -155,6 +155,7 @@
   "issues": {
     "title": "Incidencias",
     "createIssue": "Crear incidencia",
+    "createdSuccess": "{{key}} se ha creado correctamente",
     "editIssue": "Editar incidencia",
     "issueTitle": "T\u00edtulo de la incidencia",
     "issueType": "Tipo de incidencia",

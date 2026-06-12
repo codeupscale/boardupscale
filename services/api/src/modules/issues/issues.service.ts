@@ -257,6 +257,53 @@ export class IssuesService {
     }
   }
 
+  /**
+   * Place new issues at the top of their board column and backlog/sprint section.
+   * Uses the lower of (min position in status column, min position in sprint bucket) − 1.
+   */
+  private async resolveCreatePosition(
+    projectId: string,
+    statusId: string,
+    sprintId: string | null,
+  ): Promise<number> {
+    const mins: number[] = [];
+
+    const statusMin = await this.issueRepository
+      .createQueryBuilder('issue')
+      .select('MIN(issue.position)', 'min')
+      .where('issue.projectId = :projectId', { projectId })
+      .andWhere('issue.statusId = :statusId', { statusId })
+      .andWhere('issue.deletedAt IS NULL')
+      .getRawOne<{ min: string | null }>();
+
+    if (statusMin?.min != null) {
+      mins.push(Number(statusMin.min));
+    }
+
+    const sprintQb = this.issueRepository
+      .createQueryBuilder('issue')
+      .select('MIN(issue.position)', 'min')
+      .where('issue.projectId = :projectId', { projectId })
+      .andWhere('issue.deletedAt IS NULL');
+
+    if (sprintId) {
+      sprintQb.andWhere('issue.sprintId = :sprintId', { sprintId });
+    } else {
+      sprintQb.andWhere('issue.sprintId IS NULL');
+    }
+
+    const sprintMin = await sprintQb.getRawOne<{ min: string | null }>();
+    if (sprintMin?.min != null) {
+      mins.push(Number(sprintMin.min));
+    }
+
+    if (mins.length === 0) {
+      return 0;
+    }
+
+    return Math.min(...mins) - 1;
+  }
+
   async create(dto: CreateIssueDto, organizationId: string, userId: string): Promise<Issue> {
     const project = await this.projectsService.findById(dto.projectId, organizationId);
 
@@ -297,15 +344,18 @@ export class IssuesService {
 
     const issueNumber = await this.projectsService.getNextIssueNumber(dto.projectId);
     const key = `${project.key}-${issueNumber}`;
+    const sprintId = dto.sprintId ?? null;
+    const position = await this.resolveCreatePosition(dto.projectId, statusId, sprintId);
 
     const issue = this.issueRepository.create({
       ...dto,
       organizationId,
       reporterId: userId,
       statusId,
+      sprintId,
       key,
       number: issueNumber,
-      position: issueNumber,
+      position,
     });
 
     const saved = await this.issueRepository.save(issue);

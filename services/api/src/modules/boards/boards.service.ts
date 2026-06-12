@@ -54,6 +54,9 @@ export class BoardsService {
       } else {
         qb.andWhere('issue.sprintId = :sprintId', { sprintId: query.sprintId });
       }
+    } else {
+      // Default board: sprint-assigned work only. Unscheduled items belong on the backlog page.
+      qb.andWhere('issue.sprintId IS NOT NULL');
     }
 
     // Hide subtasks and epics from the board.

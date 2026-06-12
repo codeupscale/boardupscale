@@ -340,6 +340,10 @@ describe('IssuesService', () => {
       statusRepo.findOne.mockResolvedValue(defaultStatus);
       projectsService.getNextIssueNumber.mockResolvedValue(5);
 
+      const minQb = createMockQueryBuilder();
+      minQb.getRawOne.mockResolvedValue({ min: null });
+      issueRepo.createQueryBuilder.mockReturnValue(minQb);
+
       const createdIssue = mockIssue({ key: 'TPROJ-5', number: 5 });
       issueRepo.create.mockReturnValue(createdIssue);
       issueRepo.save.mockResolvedValue(createdIssue);
@@ -354,7 +358,8 @@ describe('IssuesService', () => {
         expect.objectContaining({
           key: 'TPROJ-5',
           number: 5,
-          position: 5,
+          position: 0,
+          sprintId: null,
           organizationId: TEST_IDS.ORG_ID,
           reporterId: TEST_IDS.USER_ID,
           statusId: defaultStatus.id,
@@ -363,11 +368,48 @@ describe('IssuesService', () => {
       expect(eventsGateway.emitToOrg).toHaveBeenCalledWith(TEST_IDS.ORG_ID, 'issue:created', fullIssue);
     });
 
+    it('should place new issue at top of board column and sprint/backlog bucket', async () => {
+      const project = mockProject({ key: 'TPROJ' });
+      projectsService.findById.mockResolvedValue(project);
+      statusRepo.findOne.mockResolvedValue(mockIssueStatus({ id: 'status-1' }));
+      projectsService.getNextIssueNumber.mockResolvedValue(10);
+
+      const statusMinQb = createMockQueryBuilder();
+      statusMinQb.getRawOne.mockResolvedValue({ min: '5' });
+      const sprintMinQb = createMockQueryBuilder();
+      sprintMinQb.getRawOne.mockResolvedValue({ min: '2' });
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(statusMinQb)
+        .mockReturnValueOnce(sprintMinQb);
+
+      const issue = mockIssue({ key: 'TPROJ-10', number: 10 });
+      issueRepo.create.mockReturnValue(issue);
+      issueRepo.save.mockResolvedValue(issue);
+      issueRepo.findOne.mockResolvedValue(issue);
+
+      await service.create(
+        { ...createDto, sprintId: 'sprint-1' } as any,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+      );
+
+      expect(issueRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sprintId: 'sprint-1',
+          position: 1,
+        }),
+      );
+    });
+
     it('should send notification when assignee is different from reporter', async () => {
       const project = mockProject({ key: 'TPROJ' });
       projectsService.findById.mockResolvedValue(project);
       statusRepo.findOne.mockResolvedValue(mockIssueStatus());
       projectsService.getNextIssueNumber.mockResolvedValue(1);
+
+      const minQb = createMockQueryBuilder();
+      minQb.getRawOne.mockResolvedValue({ min: null });
+      issueRepo.createQueryBuilder.mockReturnValue(minQb);
 
       const assigneeId = 'assignee-user-id';
       const issue = mockIssue({ assigneeId });
@@ -395,6 +437,10 @@ describe('IssuesService', () => {
       statusRepo.findOne.mockResolvedValue(mockIssueStatus());
       projectsService.getNextIssueNumber.mockResolvedValue(1);
 
+      const minQb = createMockQueryBuilder();
+      minQb.getRawOne.mockResolvedValue({ min: null });
+      issueRepo.createQueryBuilder.mockReturnValue(minQb);
+
       const issue = mockIssue({ assigneeId: TEST_IDS.USER_ID });
       issueRepo.create.mockReturnValue(issue);
       issueRepo.save.mockResolvedValue(issue);
@@ -416,6 +462,10 @@ describe('IssuesService', () => {
         .mockResolvedValueOnce(null) // no default
         .mockResolvedValueOnce(mockIssueStatus({ id: 'fallback-status', isDefault: false }));
       projectsService.getNextIssueNumber.mockResolvedValue(1);
+
+      const minQb = createMockQueryBuilder();
+      minQb.getRawOne.mockResolvedValue({ min: null });
+      issueRepo.createQueryBuilder.mockReturnValue(minQb);
 
       const issue = mockIssue();
       issueRepo.create.mockReturnValue(issue);
