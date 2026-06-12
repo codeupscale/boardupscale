@@ -266,7 +266,24 @@ export function ProjectSettingsPage() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <ProjectForm
                   project={project}
-                  onSubmit={(values) => updateProject.mutate({ id: project.id, ...values })}
+                  onSubmit={(values) =>
+                    updateProject.mutate(
+                      {
+                        id: project.id,
+                        previousKey: projectKey!,
+                        name: values.name,
+                        key: values.key,
+                        description: values.description,
+                      },
+                      {
+                        onSuccess: ({ project: updated }) => {
+                          if (updated.key !== projectKey) {
+                            navigate(`/projects/${updated.key}/settings`, { replace: true })
+                          }
+                        },
+                      },
+                    )
+                  }
                   onCancel={() => {}}
                   isLoading={updateProject.isPending}
                   submitLabel={t('settings.saveChanges')}

@@ -98,12 +98,14 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Update a project' })
   @ApiResponse({ status: 200, description: 'Project updated' })
   @ApiResponse({ status: 404, description: 'Project not found' })
+  @ApiResponse({ status: 409, description: 'Project key already taken' })
   async update(
     @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: { id: string },
     @Body() dto: UpdateProjectDto,
   ) {
-    return this.projectsService.update(id, organizationId, dto);
+    return this.projectsService.update(id, organizationId, dto, user.id);
   }
 
   @Delete(':id')

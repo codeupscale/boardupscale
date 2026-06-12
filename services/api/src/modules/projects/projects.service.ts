@@ -21,6 +21,7 @@ import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 import { PosthogService } from '../telemetry/posthog.service';
+import { SearchService } from '../search/search.service';
 
 @Injectable()
 export class ProjectsService {
@@ -41,7 +42,22 @@ export class ProjectsService {
     private organizationsService: OrganizationsService,
     private configService: ConfigService,
     private posthogService: PosthogService,
+    private searchService: SearchService,
   ) {}
+
+  /**
+   * Issue keys are bulk-updated in SQL on project key rename, bypassing IssuesService
+   * which normally enqueues per-issue index jobs. Reindex the whole project instead.
+   */
+  private async enqueueSearchReindex(projectId: string, organizationId: string): Promise<void> {
+    try {
+      await this.searchService.reindexProject(projectId, organizationId);
+    } catch (err: any) {
+      this.logger.warn(
+        `Failed to enqueue search reindex for project ${projectId} after key change: ${err.message}`,
+      );
+    }
+  }
 
   /**
    * List projects visible to the calling org member.
@@ -196,14 +212,56 @@ export class ProjectsService {
 
   async update(id: string, organizationId: string, dto: UpdateProjectDto, userId?: string): Promise<Project> {
     const project = await this.findById(id, organizationId);
-    const prevValues = { name: project.name, description: project.description };
-    Object.assign(project, dto);
-    const saved = await this.projectRepository.save(project);
+    const prevValues = { name: project.name, key: project.key, description: project.description };
 
-    // Audit log for project update
+    const normalizedKey = dto.key?.toUpperCase();
+    const keyChanging = normalizedKey !== undefined && normalizedKey !== project.key;
+
+    if (keyChanging) {
+      const existing = await this.projectRepository.findOne({
+        where: { key: normalizedKey, organizationId },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictException(
+          `Project key "${normalizedKey}" is already taken in this organization`,
+        );
+      }
+    }
+
+    const applyUpdates = () => {
+      if (dto.name !== undefined) project.name = dto.name;
+      if (dto.description !== undefined) project.description = dto.description;
+      if (dto.status !== undefined) project.status = dto.status;
+      if (dto.color !== undefined) project.color = dto.color;
+      if (dto.iconUrl !== undefined) project.iconUrl = dto.iconUrl;
+      if (normalizedKey !== undefined) project.key = normalizedKey;
+    };
+
+    if (keyChanging) {
+      await this.projectRepository.manager.transaction(async (em) => {
+        applyUpdates();
+        await em.save(Project, project);
+        await em.query(
+          `UPDATE issues SET key = $1 || '-' || number::text, updated_at = NOW()
+           WHERE project_id = $2 AND organization_id = $3`,
+          [normalizedKey, id, organizationId],
+        );
+      });
+    } else {
+      applyUpdates();
+      await this.projectRepository.save(project);
+    }
+
+    const saved = await this.findById(id, organizationId);
+
+    if (keyChanging) {
+      await this.enqueueSearchReindex(id, organizationId);
+    }
+
     this.auditService.log(organizationId, userId || null, 'project.updated', 'project', id, {
       previous: prevValues,
       updated: dto,
+      ...(keyChanging ? { keyChanged: { from: prevValues.key, to: normalizedKey } } : {}),
     });
 
     return saved;

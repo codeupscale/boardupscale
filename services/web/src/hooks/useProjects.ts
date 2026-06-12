@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { isApiNotFound } from '@/lib/api-errors'
+import { renameRecentProjectKey } from '@/lib/recent-projects'
 import { toast } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { Project, ProjectMember } from '@/types'
@@ -36,6 +38,7 @@ export function useProject(id: string) {
       return data.data as Project
     },
     enabled: !!id,
+    retry: (failureCount, error) => !isApiNotFound(error) && failureCount < 2,
   })
 }
 
@@ -63,25 +66,44 @@ export function useCreateProject() {
 
 export function useUpdateProject() {
   const qc = useQueryClient()
+  const organizationId = useAuthStore((s) => s.user?.organizationId)
+  const userId = useAuthStore((s) => s.user?.id)
   return useMutation({
     mutationFn: async ({
       id,
+      previousKey,
       ...payload
     }: {
       id: string
+      previousKey?: string
       name?: string
       key?: string
       description?: string
-      type?: string
       status?: string
     }) => {
       const { data } = await api.patch(`/projects/${id}`, payload)
-      return data.data as Project
+      return { project: data.data as Project, previousKey }
     },
-    onSuccess: (project) => {
+    onSuccess: ({ project, previousKey }) => {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['project', project.id] })
-      toast('Project updated')
+      qc.invalidateQueries({ queryKey: ['project', project.key] })
+      if (previousKey && previousKey !== project.key) {
+        qc.invalidateQueries({ queryKey: ['project', previousKey] })
+        qc.removeQueries({ queryKey: ['project', previousKey] })
+        qc.invalidateQueries({ queryKey: ['board', previousKey] })
+        qc.invalidateQueries({ queryKey: ['board', project.key] })
+        if (organizationId && userId) {
+          renameRecentProjectKey(organizationId, userId, previousKey, {
+            key: project.key,
+            name: project.name,
+          })
+        }
+        toast(`Project key updated to ${project.key}`)
+      } else {
+        toast('Project updated')
+      }
+      return { project, previousKey }
     },
     onError: (err: any) =>
       toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update project', 'error'),

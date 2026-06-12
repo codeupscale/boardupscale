@@ -12,6 +12,7 @@ import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PosthogService } from '../telemetry/posthog.service';
+import { SearchService } from '../search/search.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 
@@ -26,6 +27,7 @@ describe('ProjectsService', () => {
   const mockUsersService = { findById: jest.fn() };
   const mockOrganizationsService = { inviteMember: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
+  const mockSearchService = { reindexProject: jest.fn().mockResolvedValue(undefined) };
 
   beforeEach(async () => {
     projectRepo = createMockRepository();
@@ -46,6 +48,7 @@ describe('ProjectsService', () => {
         { provide: OrganizationsService, useValue: mockOrganizationsService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
+        { provide: SearchService, useValue: mockSearchService },
       ],
     }).compile();
 
@@ -173,12 +176,57 @@ describe('ProjectsService', () => {
     it('should update project fields', async () => {
       const project = mockProject();
       const updatedProject = mockProject({ name: 'Updated' });
-      projectRepo.findOne.mockResolvedValue(project);
+      projectRepo.findOne.mockResolvedValueOnce(project).mockResolvedValueOnce(updatedProject);
       projectRepo.save.mockResolvedValue(updatedProject);
 
       const result = await service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { name: 'Updated' });
 
       expect(result).toEqual(updatedProject);
+    });
+
+    it('should update project key and rewrite issue keys in a transaction', async () => {
+      const project = mockProject({ key: 'OLDKEY' });
+      const updatedProject = mockProject({ key: 'NEWKEY' });
+      projectRepo.findOne
+        .mockResolvedValueOnce(project)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(updatedProject);
+      const em = { save: jest.fn().mockResolvedValue(updatedProject), query: jest.fn().mockResolvedValue({}) };
+      (projectRepo.manager.transaction as jest.Mock).mockImplementation(async (cb) => cb(em));
+
+      const result = await service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { key: 'newkey' });
+
+      expect(result).toEqual(updatedProject);
+      expect(em.save).toHaveBeenCalled();
+      expect(em.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE issues SET key'),
+        ['NEWKEY', TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID],
+      );
+      expect(mockSearchService.reindexProject).toHaveBeenCalledWith(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.ORG_ID,
+      );
+    });
+
+    it('should not enqueue search reindex when key is unchanged', async () => {
+      const project = mockProject();
+      const updatedProject = mockProject({ name: 'Updated' });
+      projectRepo.findOne.mockResolvedValueOnce(project).mockResolvedValueOnce(updatedProject);
+      projectRepo.save.mockResolvedValue(updatedProject);
+
+      await service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { name: 'Updated' });
+
+      expect(mockSearchService.reindexProject).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException when new key is already taken', async () => {
+      const project = mockProject({ key: 'OLDKEY' });
+      const otherProject = mockProject({ id: 'other-id', key: 'TAKEN' });
+      projectRepo.findOne.mockResolvedValueOnce(project).mockResolvedValueOnce(otherProject);
+
+      await expect(
+        service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { key: 'TAKEN' }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should throw NotFoundException when project not found', async () => {

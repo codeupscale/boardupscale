@@ -8,14 +8,18 @@ import { UserPermission } from '@/types'
  * Returns a helper function `hasPermission(resource, action)` for
  * conditionally rendering UI elements based on access.
  */
-export function useHasPermission(projectId: string | undefined) {
+export function useHasPermission(
+  projectId: string | undefined,
+  options?: { enabled?: boolean },
+) {
+  const enabled = (options?.enabled ?? true) && !!projectId
   const { data: permissions = [], isLoading } = useQuery({
     queryKey: ['my-permissions', projectId],
     queryFn: async () => {
       const { data } = await api.get(`/projects/${projectId}/my-permissions`)
       return data.data as UserPermission[]
     },
-    enabled: !!projectId,
+    enabled,
     staleTime: 60_000, // cache for 1 minute to avoid redundant calls
   })
 

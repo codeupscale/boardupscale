@@ -83,9 +83,20 @@ describe('ProjectsController', () => {
       const updated = mockProject({ name: 'Updated' });
       projectsService.update.mockResolvedValue(updated);
 
-      const result = await controller.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { name: 'Updated' });
+      const result = await controller.update(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.ORG_ID,
+        { id: TEST_IDS.USER_ID },
+        { name: 'Updated' },
+      );
 
       expect(result).toEqual(updated);
+      expect(projectsService.update).toHaveBeenCalledWith(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.ORG_ID,
+        { name: 'Updated' },
+        TEST_IDS.USER_ID,
+      );
     });
   });
 

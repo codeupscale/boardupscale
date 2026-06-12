@@ -30,7 +30,8 @@
     "pageOf": "Page {{page}} of {{totalPages}} ({{total}} issues)",
     "noStatus": "No Status",
     "noSprint": "No Sprint",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "retry": "Retry"
   },
   "auth": {
     "login": "Log In",
@@ -121,6 +122,14 @@
     "issues_count": "{{count}} issue",
     "issues_count_plural": "{{count}} issues",
     "projectKeyHelper": "Short unique identifier (auto-generated from name)",
+    "projectKeyChangeWarning": "Changing the key updates all issue keys (e.g. OLD-1 becomes NEW-1). Bookmarks and links using the old key will stop working.",
+    "projectNotFound": "Project not found",
+    "projectNotFoundDesc": "No project with key \"{{key}}\" exists in your organization. It may have been renamed or removed.",
+    "notProjectMember": "You're not a member of this project",
+    "notProjectMemberDesc": "Ask a project admin to add you to access this project's content.",
+    "viewAllProjects": "View all projects",
+    "projectLoadError": "Couldn't load this project",
+    "projectLoadErrorDesc": "Something went wrong while loading the project. Please try again.",
     "whatIsProject": "What is this project about?",
     "template": "Template",
     "templateScrum": "Scrum",

@@ -30,7 +30,8 @@
     "pageOf": "Page {{page}} sur {{totalPages}} ({{total}} tickets)",
     "noStatus": "Sans statut",
     "noSprint": "Sans sprint",
-    "collapse": "R\u00e9duire"
+    "collapse": "R\u00e9duire",
+    "retry": "R\u00e9essayer"
   },
   "auth": {
     "login": "Se connecter",
@@ -121,6 +122,14 @@
     "issues_count": "{{count}} ticket",
     "issues_count_plural": "{{count}} tickets",
     "projectKeyHelper": "Identifiant unique court (g\u00e9n\u00e9r\u00e9 automatiquement \u00e0 partir du nom)",
+    "projectKeyChangeWarning": "La modification de la cl\u00e9 met \u00e0 jour toutes les cl\u00e9s de tickets (ex. ANCIEN-1 devient NOUVEAU-1). Les liens utilisant l'ancienne cl\u00e9 ne fonctionneront plus.",
+    "projectNotFound": "Projet introuvable",
+    "projectNotFoundDesc": "Aucun projet avec la cl\u00e9 \"{{key}}\" n'existe dans votre organisation. Il a peut-\u00eatre \u00e9t\u00e9 renomm\u00e9 ou supprim\u00e9.",
+    "notProjectMember": "Vous n'\u00eates pas membre de ce projet",
+    "notProjectMemberDesc": "Demandez \u00e0 un administrateur du projet de vous ajouter pour acc\u00e9der \u00e0 son contenu.",
+    "viewAllProjects": "Voir tous les projets",
+    "projectLoadError": "Impossible de charger ce projet",
+    "projectLoadErrorDesc": "Une erreur s'est produite lors du chargement du projet. Veuillez réessayer.",
     "whatIsProject": "De quoi traite ce projet ?",
     "template": "Mod\u00e8le",
     "templateScrum": "Scrum",

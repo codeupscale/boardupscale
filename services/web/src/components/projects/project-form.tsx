@@ -66,7 +66,9 @@ export function ProjectForm({
   })
 
   const name = watch('name')
+  const currentKey = watch('key')
   const selectedTemplate = watch('templateType')
+  const keyChanged = !!project && currentKey !== project.key
 
   // Auto-generate key from name (only when creating new project)
   useEffect(() => {
@@ -152,7 +154,9 @@ export function ProjectForm({
         label={t('projects.projectKey')}
         placeholder="MAP"
         error={errors.key?.message}
-        helperText={t('projects.projectKeyHelper')}
+        helperText={
+          keyChanged ? t('projects.projectKeyChangeWarning') : t('projects.projectKeyHelper')
+        }
         disabled={readOnly}
         {...register('key')}
         onChange={(e) => {

@@ -23,29 +23,13 @@ import {
   History,
   ArrowLeftRight,
 } from 'lucide-react'
-/* ── Recent-project localStorage helpers ─────────────────────────── */
-// Key is scoped per org + user so different users on the same browser
-// never share visit history.
-const recentProjectsKey = (orgId: string, userId: string) =>
-  `boardupscale:recent-projects:${orgId}:${userId}`
-
-type RecentProject = { key: string; name: string }
-
-function readRecentProjects(orgId: string, userId: string): RecentProject[] {
-  try {
-    return JSON.parse(localStorage.getItem(recentProjectsKey(orgId, userId)) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function pushRecentProject(orgId: string, userId: string, project: RecentProject) {
-  const list = readRecentProjects(orgId, userId).filter((p) => p.key !== project.key)
-  list.unshift(project)
-  localStorage.setItem(recentProjectsKey(orgId, userId), JSON.stringify(list.slice(0, 5)))
-}
-/* ────────────────────────────────────────────────────────────────── */
-
+import {
+  type RecentProject,
+  readRecentProjects,
+  pushRecentProject,
+  pruneRecentProjects,
+  subscribeRecentProjectsChanged,
+} from '@/lib/recent-projects'
 import { Logo } from '@/components/Logo'
 import { OrgSwitcher } from '@/components/layout/org-switcher'
 import { useTranslation } from 'react-i18next'
@@ -78,6 +62,20 @@ export function Sidebar() {
   useEffect(() => {
     setRecentProjects(orgId && userId ? readRecentProjects(orgId, userId) : [])
   }, [orgId, userId])
+
+  // Sync sidebar when recent projects are updated elsewhere (e.g. key rename).
+  useEffect(() => {
+    if (!orgId || !userId) return
+    return subscribeRecentProjectsChanged(() => {
+      setRecentProjects(readRecentProjects(orgId, userId))
+    })
+  }, [orgId, userId])
+
+  // Drop stale keys (renamed/deleted projects) once the live project list is known.
+  useEffect(() => {
+    if (!orgId || !userId || !projects) return
+    setRecentProjects(pruneRecentProjects(orgId, userId, projects.map((p) => p.key)))
+  }, [orgId, userId, projects])
 
   // Close sidebar on mobile on initial mount
   useEffect(() => {
@@ -147,6 +145,19 @@ export function Sidebar() {
     if (!currentProjectKey || !projects) return null
     return projects.find((p) => p.key === currentProjectKey) || null
   }, [currentProjectKey, projects])
+
+  const validProjectKeys = useMemo(
+    () => new Set(projects?.map((p) => p.key) ?? []),
+    [projects],
+  )
+
+  const visibleRecentProjects = useMemo(
+    () =>
+      projects
+        ? recentProjects.filter((p) => validProjectKeys.has(p.key))
+        : recentProjects,
+    [recentProjects, validProjectKeys, projects],
+  )
 
   const projectSubNav = [
     { icon: Columns3, label: 'Board', path: 'board' },
@@ -312,7 +323,7 @@ export function Sidebar() {
         )}
 
         {/* Recent Projects */}
-        {isSidebarOpen && recentProjects.length > 0 && (
+        {isSidebarOpen && visibleRecentProjects.length > 0 && (
           <>
             <div className="sidebar-divider" />
             <div className="px-3">
@@ -320,7 +331,7 @@ export function Sidebar() {
                 {t('nav.recentProjects')}
               </div>
               <div className="space-y-0.5 pl-1">
-                {recentProjects.map((project) => {
+                {visibleRecentProjects.map((project) => {
                   const isProjectActive = location.pathname.includes(project.key)
                   return (
                     <Link
