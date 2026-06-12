@@ -7,12 +7,18 @@ export type IssueReorderPayloadItem = {
   sprintId?: string | null
 }
 
-function resolveStatusId(issue: Issue): string {
-  return issue.statusId ?? issue.status?.id ?? ''
+function resolveStatusId(issue: Issue): string | null {
+  return issue.statusId ?? issue.status?.id ?? null
+}
+
+function issuePosition(issue: Issue): number {
+  return issue.position ?? 0
 }
 
 export function compareIssueOrder(a: Issue, b: Issue): number {
-  if (a.position !== b.position) return a.position - b.position
+  const aPosition = issuePosition(a)
+  const bPosition = issuePosition(b)
+  if (aPosition !== bPosition) return aPosition - bPosition
   const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0
   const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0
   return bCreated - aCreated
@@ -37,9 +43,9 @@ export function distributeUniquePositions(
   slotCount: number,
 ): number[] {
   if (slotCount <= 0) return []
-  if (slotCount === 1) return [sourceIssues[0]?.position ?? 0]
+  if (slotCount === 1) return [sourceIssues[0] ? issuePosition(sourceIssues[0]) : 0]
 
-  const sorted = [...sourceIssues.map((issue) => issue.position)].sort((a, b) => a - b)
+  const sorted = [...sourceIssues.map(issuePosition)].sort((a, b) => a - b)
   const min = sorted[0]
   const max = sorted[sorted.length - 1]
 
@@ -71,15 +77,21 @@ export function buildContainerReorderItems(
 
   const reordered = [...containerIssues]
   const [moved] = reordered.splice(sourceIndex, 1)
+  if (!moved) return []
+
   reordered.splice(destIndex, 0, moved)
 
   const positions = distributeUniquePositions(containerIssues, reordered.length)
 
-  return reordered.map((issue, index) => ({
-    issueId: issue.id,
-    statusId: resolveStatusId(issue),
-    position: positions[index],
-  }))
+  return reordered.flatMap((issue, index) => {
+    const statusId = resolveStatusId(issue)
+    if (!statusId) return []
+    return [{
+      issueId: issue.id,
+      statusId,
+      position: positions[index] ?? index,
+    }]
+  })
 }
 
 /**
@@ -96,11 +108,14 @@ export function buildContainerInsertItems(
   const newList = [...destContainerIssues]
   newList.splice(clampedIndex, 0, movedIssue)
 
+  const movedStatusId = resolveStatusId(movedIssue)
+  if (!movedStatusId) return []
+
   if (newList.length === 1) {
     return [{
       issueId: movedIssue.id,
-      statusId: resolveStatusId(movedIssue),
-      position: movedIssue.position,
+      statusId: movedStatusId,
+      position: issuePosition(movedIssue),
       sprintId: destSprintId,
     }]
   }
@@ -110,12 +125,16 @@ export function buildContainerInsertItems(
     newList.length,
   )
 
-  return newList.map((issue, index) => ({
-    issueId: issue.id,
-    statusId: resolveStatusId(issue),
-    position: positions[index],
-    ...(issue.id === movedIssue.id ? { sprintId: destSprintId } : {}),
-  }))
+  return newList.flatMap((issue, index) => {
+    const statusId = issue.id === movedIssue.id ? movedStatusId : resolveStatusId(issue)
+    if (!statusId) return []
+    return [{
+      issueId: issue.id,
+      statusId,
+      position: positions[index] ?? index,
+      ...(issue.id === movedIssue.id ? { sprintId: destSprintId } : {}),
+    }]
+  })
 }
 
 /** Apply reorder payload (position + optional sprint) and re-sort for instant UI. */

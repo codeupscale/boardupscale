@@ -241,6 +241,10 @@ export class BoardsService {
   ): Promise<void> {
     await this.projectsService.findById(projectId, organizationId);
 
+    if (!dto.items?.length) {
+      return;
+    }
+
     const issueIds = [...new Set(dto.items.map((item) => item.issueId))];
     const existingIssues = issueIds.length
       ? await this.issueRepository.find({
@@ -254,6 +258,11 @@ export class BoardsService {
         })
       : [];
     const existingIssueById = new Map((existingIssues ?? []).map((issue) => [issue.id, issue]));
+
+    const missingIssueIds = issueIds.filter((id) => !existingIssueById.has(id));
+    if (missingIssueIds.length > 0) {
+      throw new NotFoundException(`Issues not found: ${missingIssueIds.join(', ')}`);
+    }
 
     // Check WIP limits for each target status
     const targetStatusIds = [...new Set(dto.items.map((item) => item.statusId))];
