@@ -41,6 +41,8 @@ import {
 } from '@/hooks/useCustomFields'
 import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
 import { useHasPermission } from '@/hooks/useHasPermission'
+import { useProject } from '@/hooks/useProjects'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -355,10 +357,15 @@ export function IssueDetailPage() {
   }, [issueId, qc])
 
   const { data: issue, isLoading } = useIssue(issueId!)
+  const projectRef = issue?.project?.key || issue?.projectId || ''
+  const { data: project } = useProject(projectRef)
+  const isKanban = isKanbanProject(project?.type)
   const { data: comments } = useComments(issueId!)
   const { data: workLogs } = useWorkLogs(issueId!)
   const { data: board } = useBoard(issue?.projectId || '')
-  const { data: sprints } = useSprints(issue?.projectId || '')
+  const { data: sprints } = useSprints(issue?.projectId || '', {
+    enabled: !!issue?.projectId && !!project && !isKanban,
+  })
   const { data: customFieldDefs } = useCustomFieldDefinitions(issue?.projectId || '')
   const { data: customFieldValues } = useIssueCustomFields(issueId!)
   const setCustomFields = useSetIssueCustomFields()
@@ -876,23 +883,25 @@ export function IssueDetailPage() {
 
             {/* ── Planning ── */}
             <IssueSection icon={CalendarDays} title="Planning">
-              <SidebarField label={t('issues.sprint')}>
-                <Select value={issue.sprintId || '__none__'} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
-                  <SelectTrigger className="w-full text-sm">
-                    <SelectValue placeholder={t('common.noSprint')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">{t('common.noSprint')}</SelectItem>
-                    {sprints
-                      ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </SidebarField>
+              {project && !isKanban && (
+                <SidebarField label={t('issues.sprint')}>
+                  <Select value={issue.sprintId || '__none__'} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder={t('common.noSprint')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{t('common.noSprint')}</SelectItem>
+                      {sprints
+                        ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </SidebarField>
+              )}
 
               {childTypeAllowsParent(issue.type) && (
                 <SidebarField label="Parent Issue">

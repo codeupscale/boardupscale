@@ -247,7 +247,10 @@
     "issueCount_plural": "{{count}} issues",
     "start": "Start",
     "complete": "Complete",
-    "markAsComplete": "Mark as complete"
+    "markAsComplete": "Mark as complete",
+    "kanbanBacklogSummary": "{{count}} total issues",
+    "kanbanBacklogDragHint": "Drag to reorder — issues also appear on the board",
+    "scrumBacklogDragHint": "Drag to reorder or move between sprints"
   },
   "notifications": {
     "title": "Notifications",

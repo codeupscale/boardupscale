@@ -3,7 +3,29 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { mergeCreatedIssue } from '@/lib/issue-reorder'
-import { BoardData, Issue, WorkLog } from '@/types'
+import {
+  resolveProjectTypeFromCache,
+  shouldShowIssueOnBoard,
+} from '@/lib/project-workflow'
+import { BoardData, Issue, ProjectType, WorkLog } from '@/types'
+
+export type CreateIssueVariables = {
+  projectId: string
+  /** Pass when available — avoids cache lookup for optimistic board updates */
+  projectType?: ProjectType
+  title: string
+  description?: string
+  type: string
+  priority: string
+  statusId?: string
+  assigneeId?: string
+  parentId?: string
+  sprintId?: string
+  dueDate?: string
+  storyPoints?: number
+  timeEstimate?: number
+  labels?: string[]
+}
 
 function prependIssueToBoard(board: BoardData, issue: Issue): BoardData {
   const existsInColumn = board.statuses.some(
@@ -29,6 +51,7 @@ export function syncBoardCacheAfterSprintMove(
   issue: Issue,
   destSprintId: string | null,
   position?: number,
+  retainOnBoardWithoutSprint = false,
 ): BoardData {
   const updatedIssue: Issue = {
     ...issue,
@@ -47,7 +70,7 @@ export function syncBoardCacheAfterSprintMove(
     }),
   }
 
-  if (!destSprintId) {
+  if (!destSprintId && !retainOnBoardWithoutSprint) {
     return withoutIssue
   }
 
@@ -59,10 +82,17 @@ export function patchBoardCachesForSprintMove(
   issue: Issue,
   destSprintId: string | null,
   position?: number,
+  options?: { retainOnBoardWithoutSprint?: boolean },
 ) {
   qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
     if (!old?.statuses) return old
-    return syncBoardCacheAfterSprintMove(old, issue, destSprintId, position)
+    return syncBoardCacheAfterSprintMove(
+      old,
+      issue,
+      destSprintId,
+      position,
+      options?.retainOnBoardWithoutSprint,
+    )
   })
 }
 
@@ -125,31 +155,19 @@ export function useCreateIssue() {
   const qc = useQueryClient()
   const { t } = useTranslation()
   return useMutation({
-    mutationFn: async (payload: {
-      projectId: string
-      title: string
-      description?: string
-      type: string
-      priority: string
-      statusId?: string
-      assigneeId?: string
-      parentId?: string
-      sprintId?: string
-      dueDate?: string
-      storyPoints?: number
-      timeEstimate?: number
-      labels?: string[]
-    }) => {
+    mutationFn: async ({ projectType: _projectType, ...payload }: CreateIssueVariables) => {
       const { data } = await api.post('/issues', payload)
       return data.data as Issue
     },
-    onSuccess: (issue) => {
+    onSuccess: (issue, variables) => {
       qc.setQueriesData<{ data: Issue[] }>({ queryKey: ['issues'] }, (old) => {
         if (!old?.data) return old
         return { ...old, data: mergeCreatedIssue(old.data, issue) }
       })
 
-      if (issue.sprintId) {
+      const projectType =
+        variables.projectType ?? resolveProjectTypeFromCache(qc, variables.projectId)
+      if (shouldShowIssueOnBoard(issue, projectType)) {
         qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
           if (!old?.statuses) return old
           return prependIssueToBoard(old, issue)

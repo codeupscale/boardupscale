@@ -13,6 +13,7 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { isKanbanProject } from '../projects/project-type';
 import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
@@ -32,6 +33,7 @@ export class BoardsService {
   private applyBoardFilters(
     qb: SelectQueryBuilder<Issue>,
     query?: BoardQueryDto,
+    projectType?: string,
   ): void {
     if (query?.assigneeId) {
       qb.andWhere('issue.assigneeId = :assigneeId', { assigneeId: query.assigneeId });
@@ -54,8 +56,9 @@ export class BoardsService {
       } else {
         qb.andWhere('issue.sprintId = :sprintId', { sprintId: query.sprintId });
       }
-    } else {
-      // Default board: sprint-assigned work only. Unscheduled items belong on the backlog page.
+    } else if (!isKanbanProject(projectType)) {
+      // Scrum (and other sprint-based workflows): only sprint-assigned work on the board.
+      // Kanban has no sprints — all issues belong on the board regardless of sprint_id.
       qb.andWhere('issue.sprintId IS NOT NULL');
     }
 
@@ -67,7 +70,7 @@ export class BoardsService {
   }
 
   async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {
-    await this.projectsService.findById(projectId, organizationId);
+    const project = await this.projectsService.findById(projectId, organizationId);
 
     const columnLimit = query?.columnLimit ?? 50;
 
@@ -90,7 +93,7 @@ export class BoardsService {
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.deletedAt IS NULL');
 
-    this.applyBoardFilters(qb, query);
+    this.applyBoardFilters(qb, query, project.type);
     qb.orderBy('issue.position', 'ASC');
 
     const allIssues = await qb
@@ -114,7 +117,7 @@ export class BoardsService {
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.deletedAt IS NULL');
 
-    this.applyBoardFilters(countQb, query);
+    this.applyBoardFilters(countQb, query, project.type);
     countQb.groupBy('issue.statusId');
 
     const countRows: Array<{ statusId: string; total: string }> =
@@ -140,7 +143,7 @@ export class BoardsService {
     query: BoardQueryDto,
     offset = 0,
   ) {
-    await this.projectsService.findById(projectId, organizationId);
+    const project = await this.projectsService.findById(projectId, organizationId);
 
     const limit = query?.columnLimit ?? 50;
 
@@ -154,7 +157,7 @@ export class BoardsService {
       .andWhere('issue.statusId = :statusId', { statusId })
       .andWhere('issue.deletedAt IS NULL');
 
-    this.applyBoardFilters(qb, query);
+    this.applyBoardFilters(qb, query, project.type);
     qb.orderBy('issue.position', 'ASC').skip(offset).take(limit);
 
     const [issues, total] = await qb.getManyAndCount();

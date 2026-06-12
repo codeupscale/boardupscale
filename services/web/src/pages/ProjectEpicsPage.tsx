@@ -6,7 +6,7 @@ import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { IssueType, IssueStatusCategory, SprintStatus } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
@@ -193,7 +193,11 @@ export function ProjectEpicsPage() {
                 }}
                 onSubmit={(values) =>
                   createIssue.mutate(
-                    { ...values, projectId: project?.id || projectKey! } as any,
+                    {
+                      ...values,
+                      projectId: project?.id || projectKey!,
+                      projectType: project?.type,
+                    } as CreateIssueVariables,
                     { onSuccess: () => setShowCreateIssue(false) },
                   )
                 }

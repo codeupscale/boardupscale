@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { isKanbanProject } from '@/lib/project-workflow'
 
 interface BoardQuickFiltersProps {
   filters: BoardFilters
@@ -209,8 +210,8 @@ export function BoardQuickFilters({
         </SelectContent>
       </Select>
 
-      {/* Sprint Filter */}
-      {sprints && sprints.length > 0 && (
+      {/* Sprint Filter — scrum only; kanban projects have no sprints */}
+      {!isKanbanProject(projectType) && sprints && sprints.length > 0 && (
         <Select value={filters.sprintId || '__all__'} onValueChange={(v) => setFilter('sprintId', v === '__all__' ? undefined : v)}>
           <SelectTrigger className={cn(
             'w-auto gap-1.5 text-sm',

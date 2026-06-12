@@ -246,7 +246,10 @@
     "issueCount": "{{count}} ticket",
     "issueCount_plural": "{{count}} tickets",
     "start": "D\u00e9marrer",
-    "complete": "Terminer"
+    "complete": "Terminer",
+    "kanbanBacklogSummary": "{{count}} tickets au total",
+    "kanbanBacklogDragHint": "Glissez pour r\u00e9ordonner \u2014 les tickets apparaissent aussi sur le tableau",
+    "scrumBacklogDragHint": "Glissez pour r\u00e9ordonner ou d\u00e9placer entre les sprints"
   },
   "notifications": {
     "title": "Notifications",

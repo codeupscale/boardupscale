@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
-import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import { useSelectionStore } from '@/store/selection.store'
@@ -478,7 +478,11 @@ export function ProjectIssuesPage() {
               }}
               onSubmit={(values) =>
                 createIssue.mutate(
-                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    ...values,
+                    projectId: project?.id || projectKey!,
+                    projectType: project?.type,
+                  } as CreateIssueVariables,
                   { onSuccess: () => setShowCreate(false) },
                 )
               }

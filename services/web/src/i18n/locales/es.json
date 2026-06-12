@@ -246,7 +246,10 @@
     "issueCount": "{{count}} incidencia",
     "issueCount_plural": "{{count}} incidencias",
     "start": "Iniciar",
-    "complete": "Completar"
+    "complete": "Completar",
+    "kanbanBacklogSummary": "{{count}} incidencias en total",
+    "kanbanBacklogDragHint": "Arrastra para reordenar — las incidencias tambi\u00e9n aparecen en el tablero",
+    "scrumBacklogDragHint": "Arrastra para reordenar o mover entre sprints"
   },
   "notifications": {
     "title": "Notificaciones",

@@ -3,14 +3,14 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Sprint } from '@/types'
 
-export function useSprints(projectId: string) {
+export function useSprints(projectId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['sprints', projectId],
     queryFn: async () => {
       const { data } = await api.get(`/sprints`, { params: { projectId } })
       return data.data as Sprint[]
     },
-    enabled: !!projectId,
+    enabled: !!projectId && (options?.enabled ?? true),
   })
 }
 

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { useThemeStore } from '@/store/theme.store'
 import { useSearch, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
 import { useProjects } from '@/hooks/useProjects'
@@ -98,6 +99,11 @@ export function CommandPalette() {
 
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
+  const currentProject = useMemo(
+    () => projects?.find((p) => p.key === currentProjectKey) ?? null,
+    [projects, currentProjectKey],
+  )
+  const isKanban = isKanbanProject(currentProject?.type)
   const isCommandMode = query.startsWith('>')
   const searchQuery = isCommandMode ? '' : query
   const { data: searchData, isLoading: isSearching } = useSearch(searchQuery)
@@ -247,15 +253,17 @@ export function CommandPalette() {
           keywords: 'board kanban columns',
           onSelect: () => go(`/projects/${currentProjectKey}/board`),
         },
-        {
-          id: 'proj-backlog',
-          label: 'Go to Backlog',
-          description: currentProjectKey,
-          icon: <ListTodo className="h-4 w-4" />,
-          section: 'Current Project',
-          keywords: 'backlog sprint planning grooming',
-          onSelect: () => go(`/projects/${currentProjectKey}/backlog`),
-        },
+        ...(!isKanban
+          ? [{
+              id: 'proj-backlog',
+              label: 'Go to Backlog',
+              description: currentProjectKey,
+              icon: <ListTodo className="h-4 w-4" />,
+              section: 'Current Project',
+              keywords: 'backlog sprint planning grooming',
+              onSelect: () => go(`/projects/${currentProjectKey}/backlog`),
+            }]
+          : []),
         {
           id: 'proj-issues',
           label: 'Go to Issues',
@@ -297,7 +305,7 @@ export function CommandPalette() {
     }
 
     return cmds
-  }, [currentProjectKey, projects, isAdmin, go, setTheme, setSearchOpen])
+  }, [currentProjectKey, isKanban, projects, isAdmin, go, setTheme, setSearchOpen])
 
   // ─── Filter commands ─────────────────────────────────────
 
