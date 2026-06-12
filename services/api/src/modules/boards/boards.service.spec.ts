@@ -204,6 +204,22 @@ describe('BoardsService', () => {
       );
     });
 
+    it('should exclude backlog issues from the default board (no sprint filter)', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
+
+      expect(mainQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
+      expect(countQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
+    });
+
     it('should filter backlog (no sprint) when sprintId is "backlog"', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);

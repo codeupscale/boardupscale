@@ -22,6 +22,11 @@ export function sortIssuesByPosition(issues: Issue[]): Issue[] {
   return [...issues].sort(compareIssueOrder)
 }
 
+/** Insert or replace a newly created issue and keep list sorted (backlog / issues queries). */
+export function mergeCreatedIssue(issues: Issue[], created: Issue): Issue[] {
+  return sortIssuesByPosition([...issues.filter((issue) => issue.id !== created.id), created])
+}
+
 /**
  * Assign strictly unique positions for a container reorder.
  * Board drag-and-drop can leave duplicate position values (per-column 0,1,2…);

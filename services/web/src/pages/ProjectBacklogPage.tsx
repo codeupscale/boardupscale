@@ -33,7 +33,13 @@ import {
   useDeleteSprint,
   useUpdateSprint,
 } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, useUpdateIssue, type IssueFilters } from '@/hooks/useIssues'
+import {
+  useIssues,
+  useCreateIssue,
+  useUpdateIssue,
+  patchBoardCachesForSprintMove,
+  type IssueFilters,
+} from '@/hooks/useIssues'
 import { useBoard, useReorderIssues } from '@/hooks/useBoard'
 import {
   applyContainerUpdates,
@@ -1116,6 +1122,8 @@ export function ProjectBacklogPage() {
 
       if (items.length === 0) return
 
+      const isCrossContainer = source.droppableId !== destination.droppableId
+      const movedItem = items.find((item) => item.issueId === draggableId)
       const baseIssues = optimisticIssues ?? issuesData?.data ?? []
       const nextIssues = applyContainerUpdates(baseIssues, items)
 
@@ -1128,6 +1136,9 @@ export function ProjectBacklogPage() {
           }
           return { ...old, data: nextIssues }
         })
+        if (isCrossContainer) {
+          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position)
+        }
       })
 
       reorderIssues.mutate(
@@ -1141,6 +1152,9 @@ export function ProjectBacklogPage() {
             reorderingRef.current = false
             setOptimisticIssues(null)
             qc.invalidateQueries({ queryKey: ['issues', issueFilters] })
+            if (isCrossContainer) {
+              qc.invalidateQueries({ queryKey: ['board'] })
+            }
           },
         },
       )

@@ -26,6 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <XOctagon className="h-4 w-4" />,
         loading: <Loader2 className="h-4 w-4 animate-spin" />,
       }}
+      duration={3000}
       toastOptions={{
         classNames: {
           toast:
