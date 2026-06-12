@@ -105,15 +105,17 @@ export function BulkActionsBar({
             Priority
           </Button>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground hover:bg-accent"
-            onClick={() => setShowSprint(true)}
-          >
-            <ArrowRightLeft className="h-4 w-4" />
-            Sprint
-          </Button>
+          {sprints && sprints.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent"
+              onClick={() => setShowSprint(true)}
+            >
+              <ArrowRightLeft className="h-4 w-4" />
+              Sprint
+            </Button>
+          )}
 
           <Button
             size="sm"

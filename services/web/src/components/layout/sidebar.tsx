@@ -54,6 +54,7 @@ import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { useProjects } from '@/hooks/useProjects'
 import { UserRole } from '@/types'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { Avatar } from '@/components/ui/avatar'
 import { Tooltip } from '@/components/ui/tooltip'
 
@@ -148,16 +149,22 @@ export function Sidebar() {
     return projects.find((p) => p.key === currentProjectKey) || null
   }, [currentProjectKey, projects])
 
-  const projectSubNav = [
-    { icon: Columns3, label: 'Board', path: 'board' },
-    { icon: ListTodo, label: 'Backlog', path: 'backlog' },
-    { icon: List, label: 'Issues', path: 'issues' },
-    { icon: CalendarRange, label: 'Calendar', path: 'calendar' },
-    { icon: BarChart4, label: 'Timeline', path: 'timeline' },
-    { icon: BookOpen, label: 'Pages', path: 'pages' },
-    { icon: BarChart4, label: 'Reports', path: 'reports' },
-    { icon: Settings2, label: 'Settings', path: 'settings' },
-  ]
+  const projectSubNav = useMemo(() => {
+    const items = [
+      { icon: Columns3, label: 'Board', path: 'board' },
+      { icon: ListTodo, label: 'Backlog', path: 'backlog' },
+      { icon: List, label: 'Issues', path: 'issues' },
+      { icon: CalendarRange, label: 'Calendar', path: 'calendar' },
+      { icon: BarChart4, label: 'Timeline', path: 'timeline' },
+      { icon: BookOpen, label: 'Pages', path: 'pages' },
+      { icon: BarChart4, label: 'Reports', path: 'reports' },
+      { icon: Settings2, label: 'Settings', path: 'settings' },
+    ]
+    if (isKanbanProject(currentProject?.type)) {
+      return items.filter((item) => item.path !== 'backlog')
+    }
+    return items
+  }, [currentProject?.type])
 
   return (
     <>

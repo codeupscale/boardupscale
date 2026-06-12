@@ -6,7 +6,7 @@ import { Plus, CheckCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useBoard, useReorderIssues, useUpdateStatus, useCreateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
-import { useCreateIssue } from '@/hooks/useIssues'
+import { useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
 import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
@@ -34,6 +34,7 @@ import {
 import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue, IssueStatusCategory } from '@/types'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { toast } from '@/store/ui.store'
 
 const CATEGORY_OPTIONS = [
@@ -77,7 +78,10 @@ export function ProjectBoardPage() {
   const [extraIssues, setExtraIssues] = useState<Record<string, Issue[]>>({})
   const [loadingMoreColumn, setLoadingMoreColumn] = useState<string | null>(null)
 
-  // Derive filters from URL search params
+  const { data: project } = useProject(projectKey!)
+  const isKanban = isKanbanProject(project?.type)
+
+  // Derive filters from URL search params (sprint filter is scrum-only)
   const filters: BoardFilters = useMemo(() => {
     const f: BoardFilters = {}
     const assigneeId = searchParams.get('assigneeId')
@@ -91,9 +95,9 @@ export function ProjectBoardPage() {
     if (priority) f.priority = priority
     if (label) f.label = label
     if (search) f.search = search
-    if (sprintId) f.sprintId = sprintId
+    if (sprintId && !isKanban) f.sprintId = sprintId
     return f
-  }, [searchParams])
+  }, [searchParams, isKanban])
 
   const handleFiltersChange = useCallback(
     (newFilters: BoardFilters) => {
@@ -103,17 +107,25 @@ export function ProjectBoardPage() {
       if (newFilters.priority) params.set('priority', newFilters.priority)
       if (newFilters.label) params.set('label', newFilters.label)
       if (newFilters.search) params.set('search', newFilters.search)
-      if (newFilters.sprintId) params.set('sprintId', newFilters.sprintId)
+      if (!isKanban && newFilters.sprintId) params.set('sprintId', newFilters.sprintId)
       setSearchParams(params, { replace: true })
       // Reset load-more state when filters change
       setExtraIssues({})
     },
-    [setSearchParams],
+    [setSearchParams, isKanban],
   )
 
-  const { data: project } = useProject(projectKey!)
+  // Drop stale sprint filter from URL when viewing a kanban project
+  useEffect(() => {
+    if (!isKanban || !searchParams.get('sprintId')) return
+    const params = new URLSearchParams(searchParams)
+    params.delete('sprintId')
+    setSearchParams(params, { replace: true })
+    setExtraIssues({})
+  }, [isKanban, searchParams, setSearchParams])
+
   const { hasPermission } = useHasPermission(projectKey)
-  const { data: sprints } = useSprints(projectKey!)
+  const { data: sprints } = useSprints(projectKey!, { enabled: !isKanban })
   const { data: members } = useProjectMembers(projectKey!)
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
@@ -404,7 +416,7 @@ export function ProjectBoardPage() {
         }
       />
 
-      {activeSprints.length > 0 && (
+      {!isKanban && activeSprints.length > 0 && (
         <div className="flex items-center justify-between px-6 py-2.5 bg-primary/5 border-b border-primary/20">
           <p className="text-sm font-medium text-primary">
             {t('board.activeSprint', { name: activeSprints[0].name })}
@@ -595,14 +607,18 @@ export function ProjectBoardPage() {
               ref={issueFormRef}
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
               users={orgUsers || []}
               defaultValues={{
                 statusId: createStatusId ?? board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
               }}
               onSubmit={(values) => {
                 createIssue.mutate(
-                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    ...values,
+                    projectId: project?.id || projectKey!,
+                    projectType: project?.type,
+                  } as CreateIssueVariables,
                   {
                     onSuccess: () => {
                       setShowCreateDialog(false)
@@ -744,8 +760,8 @@ export function ProjectBoardPage() {
         isLoading={deleteStatus.isPending}
       />
 
-      {/* Complete Sprint Dialog */}
-      {activeSprints.length > 0 && (
+      {/* Complete Sprint Dialog — scrum only */}
+      {!isKanban && activeSprints.length > 0 && (
         <Dialog
           open={showCompleteSprint}
           onOpenChange={(o) => !o && (setShowCompleteSprint(false), setBoardMoveToSprintId(''))}

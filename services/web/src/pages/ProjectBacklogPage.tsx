@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import { useParams, Link, useSearchParams } from 'react-router-dom'
+import { useParams, Link, useSearchParams, Navigate } from 'react-router-dom'
 import {
   DragDropContext,
   Droppable,
@@ -38,6 +38,7 @@ import {
   useCreateIssue,
   useUpdateIssue,
   patchBoardCachesForSprintMove,
+  type CreateIssueVariables,
   type IssueFilters,
 } from '@/hooks/useIssues'
 import { useBoard, useReorderIssues } from '@/hooks/useBoard'
@@ -52,6 +53,7 @@ import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue, IssueType, IssueStatusCategory, User } from '@/types'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { BacklogQuickFilters } from '@/components/backlog/backlog-filters'
@@ -968,12 +970,13 @@ export function ProjectBacklogPage() {
     [setSearchParams],
   )
 
-  const { data: project } = useProject(projectKey!)
+  const { data: project, isLoading: projectLoading } = useProject(projectKey!)
   const { data: projectMembers = [] } = useProjectMembers(project?.id || projectKey!)
   const { hasPermission } = useHasPermission(projectKey)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
-  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!)
+  const isKanban = isKanbanProject(project?.type)
+  const { data: sprints, isLoading: sprintsLoading } = useSprints(projectKey!, { enabled: !isKanban })
   const { data: board } = useBoard(projectKey!)
   const { data: usersResult } = useUsers()
   const users = usersResult?.data
@@ -1067,8 +1070,11 @@ export function ProjectBacklogPage() {
   )
 
   const backlogIssues = useMemo(
-    () => sortIssuesByPosition(allIssues.filter((i) => !i.sprintId)),
-    [allIssues],
+    () =>
+      isKanban
+        ? sortIssuesByPosition(allIssues)
+        : sortIssuesByPosition(allIssues.filter((i) => !i.sprintId)),
+    [allIssues, isKanban],
   )
 
   const boardStatuses = useMemo(
@@ -1141,7 +1147,9 @@ export function ProjectBacklogPage() {
           return { ...old, data: nextIssues }
         })
         if (isCrossContainer) {
-          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position)
+          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position, {
+            retainOnBoardWithoutSprint: isKanban,
+          })
         }
       })
 
@@ -1163,8 +1171,12 @@ export function ProjectBacklogPage() {
         },
       )
     },
-    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues],
+    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues, isKanban],
   )
+
+  if (!projectLoading && isKanban && projectKey) {
+    return <Navigate to={`/projects/${projectKey}/board`} replace />
+  }
 
   return (
     <ProjectMemberGuard projectKey={projectKey!}>
@@ -1178,7 +1190,7 @@ export function ProjectBacklogPage() {
         ]}
         actions={
           <div className="flex gap-2">
-            {hasPermission('sprint', 'create') && (
+            {!isKanban && hasPermission('sprint', 'create') && (
               <Button variant="secondary" size="sm" onClick={() => setShowCreateSprint(true)}>
                 <Plus className="h-4 w-4" />
                 {t('sprints.createSprint')}
@@ -1208,7 +1220,7 @@ export function ProjectBacklogPage() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
           {/* Summary Bar */}
-          {displaySprints.length > 0 && (
+          {!isKanban && displaySprints.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
               <span>
                 {displaySprints.length} {displaySprints.length === 1 ? 'sprint' : 'sprints'}
@@ -1219,14 +1231,22 @@ export function ProjectBacklogPage() {
               <span>{backlogIssues.length} in backlog</span>
               <span className="text-muted-foreground/60">•</span>
               <span className="text-primary font-medium">
-                Drag to reorder or move between sprints
+                {t('sprints.scrumBacklogDragHint')}
               </span>
+            </div>
+          )}
+
+          {isKanban && allIssues.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground px-4 py-2.5 rounded-xl border border-border bg-card">
+              <span>{t('sprints.kanbanBacklogSummary', { count: allIssues.length })}</span>
+              <span className="text-muted-foreground/60">•</span>
+              <span className="text-primary font-medium">{t('sprints.kanbanBacklogDragHint')}</span>
             </div>
           )}
 
           {/* Sprint Sections — completed sprints render here too with a "Completed" badge,
               collapsed by default and drop-disabled. */}
-          {displaySprints.map((sprint) => (
+          {!isKanban && displaySprints.map((sprint) => (
             <SprintSection
               key={sprint.id}
               sprint={sprint}
@@ -1254,13 +1274,13 @@ export function ProjectBacklogPage() {
         statuses={board?.statuses}
         users={users}
         projects={projects}
-        sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+        sprints={isKanban ? [] : activeSprints.map((s) => ({ id: s.id, name: s.name }))}
         projectId={projectKey}
       />
       </ContentFade>}
 
-      {/* Create Sprint Dialog */}
-      <Dialog
+      {/* Create Sprint Dialog — scrum only */}
+      {!isKanban && <Dialog
         open={showCreateSprint}
         onOpenChange={(o) => !o && setShowCreateSprint(false)}
       >
@@ -1310,7 +1330,7 @@ export function ProjectBacklogPage() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Create Issue Dialog */}
       <Dialog
@@ -1326,7 +1346,7 @@ export function ProjectBacklogPage() {
               ref={issueFormRef}
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={isKanban ? [] : activeSprints.map((s) => ({ id: s.id, name: s.name }))}
               users={users || []}
               // Default Status to the project's first "To Do" category status
               // so the dropdown isn't empty on open. Same fallback the Board
@@ -1336,7 +1356,11 @@ export function ProjectBacklogPage() {
               }}
               onSubmit={(values) =>
                 createIssue.mutate(
-                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    ...values,
+                    projectId: project?.id || projectKey!,
+                    projectType: project?.type,
+                  } as CreateIssueVariables,
                   { onSuccess: () => setShowCreateIssue(false) },
                 )
               }

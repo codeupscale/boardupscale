@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
-import { useIssues, useCreateIssue } from '@/hooks/useIssues'
+import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
@@ -460,7 +460,11 @@ export function ProjectCalendarPage() {
               users={orgUsers || []}
               onSubmit={(values) =>
                 createIssue.mutate(
-                  { ...values, projectId: project?.id || projectKey! } as any,
+                  {
+                    ...values,
+                    projectId: project?.id || projectKey!,
+                    projectType: project?.type,
+                  } as CreateIssueVariables,
                   { onSuccess: () => setShowCreate(false) },
                 )
               }

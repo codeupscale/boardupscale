@@ -246,7 +246,10 @@
     "issueCount": "{{count}} Vorgang",
     "issueCount_plural": "{{count}} Vorg\u00e4nge",
     "start": "Starten",
-    "complete": "Abschlie\u00dfen"
+    "complete": "Abschlie\u00dfen",
+    "kanbanBacklogSummary": "{{count}} Vorg\u00e4nge insgesamt",
+    "kanbanBacklogDragHint": "Zum Sortieren ziehen \u2014 Vorg\u00e4nge erscheinen auch auf dem Board",
+    "scrumBacklogDragHint": "Zum Sortieren ziehen oder zwischen Sprints verschieben"
   },
   "notifications": {
     "title": "Benachrichtigungen",

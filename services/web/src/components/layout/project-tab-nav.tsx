@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useProject } from '@/hooks/useProjects'
+import { isKanbanProject } from '@/lib/project-workflow'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -19,11 +22,20 @@ interface ProjectTabNavProps {
 
 export function ProjectTabNav({ projectKey }: ProjectTabNavProps) {
   const location = useLocation()
+  const { data: project } = useProject(projectKey)
+
+  const tabs = useMemo(
+    () =>
+      isKanbanProject(project?.type)
+        ? TABS.filter((tab) => tab.path !== 'backlog')
+        : TABS,
+    [project?.type],
+  )
 
   return (
     <nav aria-label="Project navigation">
       <div className="flex gap-1 px-6 pt-3 border-b border-border bg-card/80 backdrop-blur-sm flex-shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href = `/projects/${projectKey}/${tab.path}`
           const isActive = location.pathname === href || location.pathname.startsWith(href + '/')
           return (

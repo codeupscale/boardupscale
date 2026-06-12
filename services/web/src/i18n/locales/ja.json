@@ -246,7 +246,10 @@
     "issueCount": "{{count}}\u4ef6\u306e\u8ab2\u984c",
     "issueCount_plural": "{{count}}\u4ef6\u306e\u8ab2\u984c",
     "start": "\u958b\u59cb",
-    "complete": "\u5b8c\u4e86"
+    "complete": "\u5b8c\u4e86",
+    "kanbanBacklogSummary": "\u5168 {{count}} \u4ef6\u306e\u30a4\u30b7\u30e5\u30fc",
+    "kanbanBacklogDragHint": "\u30c9\u30e9\u30c3\u30b0\u3067\u4e26\u3079\u66ff\u3048 \u2014 \u30a4\u30b7\u30e5\u30fc\u306f\u30dc\u30fc\u30c9\u306b\u3082\u8868\u793a\u3055\u308c\u307e\u3059",
+    "scrumBacklogDragHint": "\u30c9\u30e9\u30c3\u30b0\u3067\u4e26\u3079\u66ff\u3048\u307e\u305f\u306f\u30b9\u30d7\u30ea\u30f3\u30c8\u9593\u3067\u79fb\u52d5"
   },
   "notifications": {
     "title": "\u901a\u77e5",
