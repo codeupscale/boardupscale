@@ -1,24 +1,21 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
-import { Search, X, Filter, Users, AlertTriangle, Layers } from 'lucide-react'
+import { Search, X, Users, AlertTriangle, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { BoardFilters, ProjectMember, Sprint, SwimlaneGroupBy, IssueType } from '@/types'
+import { ProjectMember, IssueType } from '@/types'
+import { type IssueFilters } from '@/hooks/useIssues'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 
-interface BoardQuickFiltersProps {
-  filters: BoardFilters
-  onFiltersChange: (filters: BoardFilters) => void
+interface BacklogQuickFiltersProps {
+  filters: IssueFilters
+  onFiltersChange: (filters: IssueFilters) => void
   members: ProjectMember[]
-  sprints: Sprint[]
-  groupBy: SwimlaneGroupBy
-  onGroupByChange: (groupBy: SwimlaneGroupBy) => void
-  projectType?: string
 }
 
-// Board only renders Story / Task / Bug (BE excludes Epic + Subtask).
+// Backlog renders Story / Task / Bug (same as board).
 // Keep this in sync with boards.service.ts's hardcoded exclusion.
 const ISSUE_TYPES = [
   { value: 'story', label: 'Story', color: 'bg-green-100 text-green-700' },
@@ -33,23 +30,11 @@ const PRIORITIES = [
   { value: 'low', label: 'P3 Low', color: 'bg-primary/10 text-primary' },
 ]
 
-const GROUP_BY_OPTIONS: { value: SwimlaneGroupBy; label: string }[] = [
-  { value: 'none', label: 'No grouping' },
-  { value: 'assignee', label: 'Assignee' },
-  { value: 'priority', label: 'Priority' },
-  { value: 'type', label: 'Type' },
-  { value: 'epic', label: 'Epic' },
-]
-
-export function BoardQuickFilters({
+export function BacklogQuickFilters({
   filters,
   onFiltersChange,
-  members,
-  sprints,
-  groupBy,
-  onGroupByChange,
-  projectType,
-}: BoardQuickFiltersProps) {
+  members = [],
+}: BacklogQuickFiltersProps) {
   const { t } = useTranslation()
   const [searchValue, setSearchValue] = useState(filters.search || '')
 
@@ -59,11 +44,8 @@ export function BoardQuickFilters({
     if (filters.type) count++
     if (filters.priority) count++
     if (filters.search) count++
-    if (filters.sprintId) count++
-    if (filters.label) count++
-    if (groupBy !== 'none') count++
     return count
-  }, [filters, groupBy])
+  }, [filters])
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -93,19 +75,16 @@ export function BoardQuickFilters({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-    // Only re-run when searchValue changes — we read filters/onFiltersChange via refs would
-    // add complexity; the 400ms debounce naturally coalesces rapid changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchValue])
 
   const clearAllFilters = useCallback(() => {
     setSearchValue('')
     onFiltersChange({})
-    onGroupByChange('none')
-  }, [onFiltersChange, onGroupByChange])
+  }, [onFiltersChange])
 
   const setFilter = useCallback(
-    (key: keyof BoardFilters, value: string | undefined) => {
+    (key: keyof IssueFilters, value: string | undefined) => {
       const next = { ...filters, [key]: value }
       if (!value) delete next[key]
       onFiltersChange(next)
@@ -155,11 +134,13 @@ export function BoardQuickFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__all__">All assignees</SelectItem>
-          {members.map((member) => (
-            <SelectItem key={member.userId} value={member.userId}>
-              {member.user?.displayName || member.userId}
-            </SelectItem>
-          ))}
+          {members
+            .filter((member) => !!member.userId)
+            .map((member) => (
+              <SelectItem key={member.userId} value={member.userId}>
+                {member.user?.displayName || member.userId}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
 
@@ -204,52 +185,6 @@ export function BoardQuickFilters({
           {PRIORITIES.map((p) => (
             <SelectItem key={p.value} value={p.value}>
               {p.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Sprint Filter */}
-      {sprints && sprints.length > 0 && (
-        <Select value={filters.sprintId || '__all__'} onValueChange={(v) => setFilter('sprintId', v === '__all__' ? undefined : v)}>
-          <SelectTrigger className={cn(
-            'w-auto gap-1.5 text-sm',
-            filters.sprintId
-              ? 'border-primary/50 bg-primary/10 text-primary'
-              : 'text-muted-foreground',
-          )}>
-            <Layers className="h-3.5 w-3.5" />
-            <SelectValue placeholder={t('board.sprint', 'Sprint')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All issues</SelectItem>
-            <SelectItem value="backlog">Backlog (no sprint)</SelectItem>
-            {sprints.map((sprint) => (
-              <SelectItem key={sprint.id} value={sprint.id}>
-                {sprint.name}{sprint.status === 'active' ? ' (active)' : ''}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
-      <div className="h-5 w-px bg-border" />
-
-      {/* Group By */}
-      <Select value={groupBy} onValueChange={(v) => onGroupByChange(v as SwimlaneGroupBy)}>
-        <SelectTrigger className={cn(
-          'w-auto gap-1.5 text-sm',
-          groupBy !== 'none'
-            ? 'border-purple-300 bg-purple-50 text-purple-700'
-            : 'text-muted-foreground',
-        )}>
-          <Filter className="h-3.5 w-3.5" />
-          <SelectValue placeholder={t('board.groupBy', 'Group by')} />
-        </SelectTrigger>
-        <SelectContent>
-          {GROUP_BY_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
             </SelectItem>
           ))}
         </SelectContent>

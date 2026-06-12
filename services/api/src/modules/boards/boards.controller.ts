@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
 
@@ -107,8 +108,9 @@ export class BoardsController {
   async reorderIssues(
     @Param('projectId', ResolveProjectPipe) projectId: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
     @Body() dto: ReorderIssuesDto,
   ) {
-    await this.boardsService.reorderIssues(projectId, organizationId, dto);
+    await this.boardsService.reorderIssues(projectId, organizationId, dto, user?.id);
   }
 }

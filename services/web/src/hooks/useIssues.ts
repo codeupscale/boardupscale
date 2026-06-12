@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { Issue, WorkLog } from '@/types'
 
-interface IssueFilters {
+export interface IssueFilters {
   projectId?: string
   sprintId?: string
   assigneeId?: string
@@ -25,7 +25,14 @@ interface IssueFilters {
   noLimit?: boolean
 }
 
-export function useIssues(filters: IssueFilters | undefined = {}) {
+type IssuesQueryData = { data: Issue[]; total: number; page: number; limit: number }
+
+type IssuesQueryOptions = Pick<
+  UseQueryOptions<IssuesQueryData>,
+  'staleTime' | 'refetchOnWindowFocus' | 'structuralSharing'
+>
+
+export function useIssues(filters: IssueFilters | undefined = {}, queryOptions?: IssuesQueryOptions) {
   return useQuery({
     queryKey: ['issues', filters],
     enabled: filters !== undefined,
@@ -36,6 +43,7 @@ export function useIssues(filters: IssueFilters | undefined = {}) {
       const { data } = await api.get('/issues', { params })
       return { data: data.data as Issue[], total: data.meta?.total ?? 0, page: data.meta?.page ?? 1, limit: data.meta?.limit ?? 25 }
     },
+    ...queryOptions,
   })
 }
 

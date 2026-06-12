@@ -4,7 +4,9 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { BoardsService } from './boards.service';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
+import { Sprint } from '../sprints/entities/sprint.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { ActivityService } from '../activity/activity.service';
 import {
   createMockRepository,
   createMockQueryBuilder,
@@ -17,19 +19,25 @@ describe('BoardsService', () => {
   let service: BoardsService;
   let statusRepo: ReturnType<typeof createMockRepository>;
   let issueRepo: ReturnType<typeof createMockRepository>;
+  let sprintRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
+  let activityService: { log: jest.Mock };
 
   beforeEach(async () => {
     statusRepo = createMockRepository();
     issueRepo = createMockRepository();
+    sprintRepo = createMockRepository();
     projectsService = createMockProjectsService();
+    activityService = { log: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BoardsService,
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
+        { provide: getRepositoryToken(Sprint), useValue: sprintRepo },
         { provide: ProjectsService, useValue: projectsService },
+        { provide: ActivityService, useValue: activityService },
       ],
     }).compile();
 
@@ -451,6 +459,11 @@ describe('BoardsService', () => {
         .mockResolvedValueOnce(status2);
 
       // New implementation uses a single batch UPDATE via issueRepository.query()
+      issueRepo.find.mockResolvedValue([
+        mockIssue({ id: 'issue-1', statusId: 'status-1', sprintId: 'sprint-a' }),
+        mockIssue({ id: 'issue-2', statusId: 'status-2', sprintId: 'sprint-a' }),
+        mockIssue({ id: 'issue-3', statusId: 'status-1', sprintId: 'sprint-a' }),
+      ]);
       issueRepo.query.mockResolvedValue([]);
 
       await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
@@ -464,8 +477,35 @@ describe('BoardsService', () => {
       // Single batch query instead of N individual updates — no N+1
       expect(issueRepo.query).toHaveBeenCalledTimes(1);
       expect(issueRepo.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE issues'),
+        expect.stringContaining('sprint_id'),
         expect.arrayContaining(['issue-1', 'issue-2', 'issue-3', TEST_IDS.ORG_ID]),
+      );
+    });
+
+    it('should update sprint_id when sprintId is provided on reorder items', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const status = mockIssueStatus({ id: 'status-1', wipLimit: 0 });
+      statusRepo.findOne.mockResolvedValue(status);
+      sprintRepo.findOne.mockResolvedValue({ id: 'sprint-b', projectId: TEST_IDS.PROJECT_ID });
+
+      issueRepo.find.mockResolvedValue([
+        mockIssue({ id: 'issue-1', statusId: 'status-1', sprintId: 'sprint-a' }),
+      ]);
+      issueRepo.query.mockResolvedValue([]);
+
+      await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        items: [
+          { issueId: 'issue-1', statusId: 'status-1', position: 0, sprintId: 'sprint-b' },
+        ],
+      });
+
+      expect(sprintRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'sprint-b', projectId: TEST_IDS.PROJECT_ID },
+      });
+      expect(issueRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('sprint_id'),
+        expect.arrayContaining(['issue-1', 'status-1', 0, 'sprint-b', TEST_IDS.ORG_ID]),
       );
     });
 
@@ -474,6 +514,9 @@ describe('BoardsService', () => {
 
       const status = mockIssueStatus({ id: 'status-1', wipLimit: 2 });
       statusRepo.findOne.mockResolvedValue(status);
+      issueRepo.find.mockResolvedValue([
+        mockIssue({ id: 'new-issue', statusId: 'status-2', sprintId: null }),
+      ]);
 
       // Currently 2 issues in this status, new issue not already in target
       const countQb = createMockQueryBuilder();
@@ -492,12 +535,35 @@ describe('BoardsService', () => {
     it('should throw NotFoundException when target status not found', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.findOne.mockResolvedValue(null);
+      issueRepo.find.mockResolvedValue([
+        mockIssue({ id: 'issue-1', statusId: 'status-1', sprintId: null }),
+      ]);
 
       await expect(
         service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
           items: [
             { issueId: 'issue-1', statusId: 'bad-status', position: 0 },
           ],
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should no-op when reorder items array is empty', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { items: [] });
+
+      expect(issueRepo.find).not.toHaveBeenCalled();
+      expect(issueRepo.query).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when reorder references missing issues', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      issueRepo.find.mockResolvedValue([]);
+
+      await expect(
+        service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+          items: [{ issueId: 'missing-issue', statusId: 'status-1', position: 0 }],
         }),
       ).rejects.toThrow(NotFoundException);
     });

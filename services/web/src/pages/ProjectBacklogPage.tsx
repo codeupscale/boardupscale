@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { flushSync } from 'react-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import {
   DragDropContext,
   Droppable,
@@ -32,8 +33,14 @@ import {
   useDeleteSprint,
   useUpdateSprint,
 } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, useUpdateIssue, useMoveIssueSprint } from '@/hooks/useIssues'
-import { useBoard } from '@/hooks/useBoard'
+import { useIssues, useCreateIssue, useUpdateIssue, type IssueFilters } from '@/hooks/useIssues'
+import { useBoard, useReorderIssues } from '@/hooks/useBoard'
+import {
+  applyContainerUpdates,
+  buildContainerInsertItems,
+  buildContainerReorderItems,
+  sortIssuesByPosition,
+} from '@/lib/issue-reorder'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
@@ -41,6 +48,7 @@ import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue, IssueType, IssueStatusCategory, User } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
+import { BacklogQuickFilters } from '@/components/backlog/backlog-filters'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -920,13 +928,39 @@ function BacklogSection({
 export function ProjectBacklogPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
   const issueFormRef = useRef<IssueFormHandle>(null)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
-  const [typeFilter, setTypeFilter] = useState('')
   const [sprintName, setSprintName] = useState('')
   const [sprintGoal, setSprintGoal] = useState('')
+
+  // Derive filters from URL search params
+  const filters: IssueFilters = useMemo(() => {
+    const f: IssueFilters = {}
+    const assigneeId = searchParams.get('assigneeId')
+    const type = searchParams.get('type')
+    const priority = searchParams.get('priority')
+    const search = searchParams.get('search')
+    if (assigneeId) f.assigneeId = assigneeId
+    if (type) f.type = type
+    if (priority) f.priority = priority
+    if (search) f.search = search
+    return f
+  }, [searchParams])
+
+  const handleFiltersChange = useCallback(
+    (newFilters: IssueFilters) => {
+      const params = new URLSearchParams()
+      if (newFilters.assigneeId) params.set('assigneeId', newFilters.assigneeId)
+      if (newFilters.type) params.set('type', newFilters.type)
+      if (newFilters.priority) params.set('priority', newFilters.priority)
+      if (newFilters.search) params.set('search', newFilters.search)
+      setSearchParams(params, { replace: true })
+    },
+    [setSearchParams],
+  )
 
   const { data: project } = useProject(projectKey!)
   const { data: projectMembers = [] } = useProjectMembers(project?.id || projectKey!)
@@ -943,25 +977,43 @@ export function ProjectBacklogPage() {
   // Child Issues section. Both are hidden from this flat list by design.
   // `noLimit: true` bypasses pagination so every completed sprint section
   // surfaces all its historical Done tickets, not just the first page.
-  const { data: issuesData, isLoading: issuesLoading } = useIssues({
-    projectId: projectKey!,
-    excludeTypes: 'epic,subtask',
-    noLimit: true,
+  const issueFilters = useMemo<IssueFilters>(
+    () => ({
+      projectId: projectKey!,
+      excludeTypes: 'epic,subtask',
+      noLimit: true,
+      ...filters,
+    }),
+    [projectKey, filters],
+  )
+
+  const { data: issuesData, isLoading: issuesLoading } = useIssues(issueFilters, {
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    structuralSharing: false,
   })
   const createSprint = useCreateSprint()
   const createIssue = useCreateIssue()
   const updateIssue = useUpdateIssue()
-  const moveIssue = useMoveIssueSprint()
+  const reorderIssues = useReorderIssues({
+    invalidateOnSuccess: false,
+    cancelQueryKey: ['issues', issueFilters],
+  })
 
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const clearSelection = useSelectionStore((s) => s.clearSelection)
 
-  const allIssues = issuesData?.data || []
+  /** Holds reordered list while the API is in flight — prevents snap-back from stale cache/refetch. */
+  const [optimisticIssues, setOptimisticIssues] = useState<Issue[] | null>(null)
+  const reorderingRef = useRef(false)
 
-  const filteredIssues = useMemo(
-    () => (typeFilter ? allIssues.filter((i) => i.type === typeFilter) : allIssues),
-    [allIssues, typeFilter],
-  )
+  const allIssues = optimisticIssues ?? issuesData?.data ?? []
+
+  useEffect(() => {
+    if (!reorderingRef.current) {
+      setOptimisticIssues(null)
+    }
+  }, [issuesData])
 
   // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
   // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
@@ -994,13 +1046,23 @@ export function ProjectBacklogPage() {
   }, [sprints])
 
   const getSprintIssues = useCallback(
-    (sprintId: string) => filteredIssues.filter((i) => i.sprintId === sprintId),
-    [filteredIssues],
+    (sprintId: string) => sortIssuesByPosition(allIssues.filter((i) => i.sprintId === sprintId)),
+    [allIssues],
+  )
+
+  const getContainerIssues = useCallback(
+    (droppableId: string) =>
+      sortIssuesByPosition(
+        droppableId === 'backlog'
+          ? allIssues.filter((i) => !i.sprintId)
+          : allIssues.filter((i) => i.sprintId === droppableId),
+      ),
+    [allIssues],
   )
 
   const backlogIssues = useMemo(
-    () => filteredIssues.filter((i) => !i.sprintId),
-    [filteredIssues],
+    () => sortIssuesByPosition(allIssues.filter((i) => !i.sprintId)),
+    [allIssues],
   )
 
   const boardStatuses = useMemo(
@@ -1009,7 +1071,11 @@ export function ProjectBacklogPage() {
   )
 
   const memberUsers = useMemo(
-    () => projectMembers.map((m) => m.user).sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    () =>
+      projectMembers
+        .map((m) => m.user)
+        .filter((user): user is NonNullable<typeof user> => !!user)
+        .sort((a, b) => (a.displayName ?? '').localeCompare(b.displayName ?? '')),
     [projectMembers],
   )
 
@@ -1033,38 +1099,57 @@ export function ProjectBacklogPage() {
       if (!destination) return
       if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
-      const sourceSprintId = source.droppableId === 'backlog' ? null : source.droppableId
       const destSprintId = destination.droppableId === 'backlog' ? null : destination.droppableId
+      const currentIssues = optimisticIssues ?? issuesData?.data ?? []
+      const movedIssue = currentIssues.find((issue) => issue.id === draggableId)
+      if (!movedIssue) return
 
-      // Only fire API call if the sprint changed
-      if (sourceSprintId !== destSprintId) {
-        // Optimistic update: mutate the cached issues data
-        qc.setQueryData(['issues', { projectId: projectKey! }], (old: any) => {
-          if (!old?.data) return old
-          return {
-            ...old,
-            data: old.data.map((issue: Issue) =>
-              issue.id === draggableId ? { ...issue, sprintId: destSprintId } : issue,
-            ),
+      const items =
+        source.droppableId === destination.droppableId
+          ? buildContainerReorderItems(
+              getContainerIssues(source.droppableId),
+              source.index,
+              destination.index,
+            )
+          : buildContainerInsertItems(
+              getContainerIssues(destination.droppableId),
+              movedIssue,
+              destination.index,
+              destSprintId,
+            )
+
+      if (items.length === 0) return
+
+      const baseIssues = optimisticIssues ?? issuesData?.data ?? []
+      const nextIssues = applyContainerUpdates(baseIssues, items)
+
+      reorderingRef.current = true
+      flushSync(() => {
+        setOptimisticIssues(nextIssues)
+        qc.setQueryData(['issues', issueFilters], (old: { data?: Issue[] } | undefined) => {
+          if (!old) {
+            return { data: nextIssues, total: nextIssues.length, page: 1, limit: nextIssues.length }
           }
+          return { ...old, data: nextIssues }
         })
+      })
 
-        // Fire the update (silent — no toast)
-        moveIssue.mutate(
-          { id: draggableId, sprintId: destSprintId },
-          {
-            onError: () => {
-              // Revert on error
-              qc.invalidateQueries({ queryKey: ['issues'] })
-            },
-            onSuccess: () => {
-              qc.invalidateQueries({ queryKey: ['sprints', projectKey] })
-            },
+      reorderIssues.mutate(
+        { projectId: projectKey!, items },
+        {
+          onSuccess: () => {
+            reorderingRef.current = false
+            setOptimisticIssues(null)
           },
-        )
-      }
+          onError: () => {
+            reorderingRef.current = false
+            setOptimisticIssues(null)
+            qc.invalidateQueries({ queryKey: ['issues', issueFilters] })
+          },
+        },
+      )
     },
-    [projectKey, qc, moveIssue],
+    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues],
   )
 
   return (
@@ -1098,33 +1183,11 @@ export function ProjectBacklogPage() {
       <ProjectTabNav projectKey={projectKey!} />
 
       {/* Filter Bar */}
-      <div className="flex items-center gap-2 px-6 py-3 bg-card border-b border-border">
-        <Select value={typeFilter || '__all__'} onValueChange={(v) => setTypeFilter(v === '__all__' ? '' : v)}>
-          <SelectTrigger className={cn(
-            'w-auto gap-1.5 text-sm',
-            typeFilter ? 'border-primary/50 bg-primary/10 text-primary' : 'text-muted-foreground',
-          )}>
-            <Bug className="h-3.5 w-3.5" />
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            {/* "All types" maps to Story + Task + Bug — epics + subtasks are excluded at fetch time. */}
-            <SelectItem value="__all__">All types</SelectItem>
-            <SelectItem value="story">Story</SelectItem>
-            <SelectItem value="task">Task</SelectItem>
-            <SelectItem value="bug">Bug</SelectItem>
-          </SelectContent>
-        </Select>
-        {typeFilter && (
-          <button
-            onClick={() => setTypeFilter('')}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600 transition-colors"
-          >
-            <X className="h-3 w-3" />
-            Clear
-          </button>
-        )}
-      </div>
+      <BacklogQuickFilters
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        members={projectMembers}
+      />
 
       {(sprintsLoading || issuesLoading) ? <div className="p-6"><TableSkeleton rows={10} /></div> : <ContentFade className="flex-1 min-h-0 flex flex-col">
       {/* Drag-and-Drop Context */}
@@ -1137,12 +1200,12 @@ export function ProjectBacklogPage() {
                 {displaySprints.length} {displaySprints.length === 1 ? 'sprint' : 'sprints'}
               </span>
               <span className="text-muted-foreground/60">•</span>
-              <span>{filteredIssues.length} {typeFilter ? 'matching' : 'total'} issues</span>
+              <span>{allIssues.length} total issues</span>
               <span className="text-muted-foreground/60">•</span>
               <span>{backlogIssues.length} in backlog</span>
               <span className="text-muted-foreground/60">•</span>
               <span className="text-primary font-medium">
-                Drag issues between sprints to plan
+                Drag to reorder or move between sprints
               </span>
             </div>
           )}

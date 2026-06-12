@@ -4,14 +4,16 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Issue } from '../issues/entities/issue.entity';
+import { Sprint } from '../sprints/entities/sprint.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
+import { ActivityService } from '../activity/activity.service';
 
 @Injectable()
 export class BoardsService {
@@ -20,7 +22,10 @@ export class BoardsService {
     private issueStatusRepository: Repository<IssueStatus>,
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
+    @InjectRepository(Sprint)
+    private sprintRepository: Repository<Sprint>,
     private projectsService: ProjectsService,
+    private activityService: ActivityService,
   ) {}
 
   /** Applies shared filter predicates to an issue query builder. */
@@ -225,11 +230,40 @@ export class BoardsService {
     await this.issueStatusRepository.remove(status);
   }
 
-  async reorderIssues(projectId: string, organizationId: string, dto: ReorderIssuesDto): Promise<void> {
+  async reorderIssues(
+    projectId: string,
+    organizationId: string,
+    dto: ReorderIssuesDto,
+    userId?: string,
+  ): Promise<void> {
     await this.projectsService.findById(projectId, organizationId);
+
+    if (!dto.items?.length) {
+      return;
+    }
+
+    const issueIds = [...new Set(dto.items.map((item) => item.issueId))];
+    const existingIssues = issueIds.length
+      ? await this.issueRepository.find({
+          where: {
+            id: In(issueIds),
+            organizationId,
+            projectId,
+            deletedAt: IsNull(),
+          },
+          relations: ['status'],
+        })
+      : [];
+    const existingIssueById = new Map((existingIssues ?? []).map((issue) => [issue.id, issue]));
+
+    const missingIssueIds = issueIds.filter((id) => !existingIssueById.has(id));
+    if (missingIssueIds.length > 0) {
+      throw new NotFoundException(`Issues not found: ${missingIssueIds.join(', ')}`);
+    }
 
     // Check WIP limits for each target status
     const targetStatusIds = [...new Set(dto.items.map((item) => item.statusId))];
+    const targetStatusById = new Map<string, IssueStatus>();
 
     for (const statusId of targetStatusIds) {
       const status = await this.issueStatusRepository.findOne({
@@ -239,6 +273,8 @@ export class BoardsService {
       if (!status) {
         throw new NotFoundException(`Status ${statusId} not found`);
       }
+
+      targetStatusById.set(statusId, status);
 
       if (status.wipLimit > 0) {
         // Count how many issues will end up in this status after the reorder
@@ -277,16 +313,78 @@ export class BoardsService {
       }
     }
 
+    const sprintIdsToValidate = [
+      ...new Set(
+        dto.items
+          .filter((item) => item.sprintId)
+          .map((item) => item.sprintId as string),
+      ),
+    ];
+    for (const sprintId of sprintIdsToValidate) {
+      const sprint = await this.sprintRepository.findOne({
+        where: { id: sprintId, projectId },
+      });
+      if (!sprint) {
+        throw new NotFoundException(`Sprint ${sprintId} not found`);
+      }
+    }
+
+    const resolvedItems = dto.items.map((item) => {
+      const existing = existingIssueById.get(item.issueId);
+      return {
+        issueId: item.issueId,
+        statusId: item.statusId,
+        position: item.position,
+        sprintId: item.sprintId !== undefined ? item.sprintId : (existing?.sprintId ?? null),
+      };
+    });
+
     // Single bulk UPDATE using VALUES list — avoids N individual round trips
-    const values = dto.items
-      .map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}::uuid, $${i * 3 + 3}::float)`)
+    const values = resolvedItems
+      .map((_, i) => `($${i * 4 + 1}::uuid, $${i * 4 + 2}::uuid, $${i * 4 + 3}::float, $${i * 4 + 4}::uuid)`)
       .join(', ');
-    const params = dto.items.flatMap((item) => [item.issueId, item.statusId, item.position]);
+    const params = resolvedItems.flatMap((item) => [
+      item.issueId,
+      item.statusId,
+      item.position,
+      item.sprintId,
+    ]);
     await this.issueRepository.query(
-      `UPDATE issues SET status_id = v.status_id, position = v.position, updated_at = NOW()
-       FROM (VALUES ${values}) AS v(id, status_id, position)
+      `UPDATE issues SET status_id = v.status_id, position = v.position, sprint_id = v.sprint_id, updated_at = NOW()
+       FROM (VALUES ${values}) AS v(id, status_id, position, sprint_id)
        WHERE issues.id = v.id AND issues.organization_id = $${params.length + 1}`,
       [...params, organizationId],
+    );
+
+    if (!userId) {
+      return;
+    }
+
+    const latestByIssueId = new Map(dto.items.map((item) => [item.issueId, item]));
+    const changedStatusMoves = Array.from(latestByIssueId.values()).filter((item) => {
+      const issue = existingIssueById.get(item.issueId);
+      return !!issue && issue.statusId !== item.statusId;
+    });
+
+    if (changedStatusMoves.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      changedStatusMoves.map((item) => {
+        const issue = existingIssueById.get(item.issueId)!;
+        const oldStatusName = issue.status?.name ?? null;
+        const newStatusName = targetStatusById.get(item.statusId)?.name ?? null;
+        return this.activityService.log(
+          organizationId,
+          issue.id,
+          userId,
+          'updated',
+          'statusId',
+          oldStatusName,
+          newStatusName,
+        );
+      }),
     );
   }
 }
