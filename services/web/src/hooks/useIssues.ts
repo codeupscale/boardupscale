@@ -4,7 +4,6 @@ import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { mergeCreatedIssue } from '@/lib/issue-reorder'
 import {
-  resolveProjectTypeFromCache,
   shouldShowIssueOnBoard,
 } from '@/lib/project-workflow'
 import { BoardData, Issue, ProjectType, WorkLog } from '@/types'
@@ -45,14 +44,15 @@ function prependIssueToBoard(board: BoardData, issue: Issue): BoardData {
   }
 }
 
-/** In-memory board sync when sprint assignment changes — no extra API calls. */
+/** In-memory board sync when sprint assignment changes on the backlog — no extra API calls. */
 export function syncBoardCacheAfterSprintMove(
   board: BoardData,
   issue: Issue,
   destSprintId: string | null,
   position?: number,
-  retainOnBoardWithoutSprint = false,
 ): BoardData {
+  if (!board?.statuses?.length) return board
+
   const updatedIssue: Issue = {
     ...issue,
     sprintId: destSprintId ?? undefined,
@@ -70,10 +70,6 @@ export function syncBoardCacheAfterSprintMove(
     }),
   }
 
-  if (!destSprintId && !retainOnBoardWithoutSprint) {
-    return withoutIssue
-  }
-
   return prependIssueToBoard(withoutIssue, updatedIssue)
 }
 
@@ -82,17 +78,10 @@ export function patchBoardCachesForSprintMove(
   issue: Issue,
   destSprintId: string | null,
   position?: number,
-  options?: { retainOnBoardWithoutSprint?: boolean },
 ) {
   qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
     if (!old?.statuses) return old
-    return syncBoardCacheAfterSprintMove(
-      old,
-      issue,
-      destSprintId,
-      position,
-      options?.retainOnBoardWithoutSprint,
-    )
+    return syncBoardCacheAfterSprintMove(old, issue, destSprintId, position)
   })
 }
 
@@ -165,9 +154,7 @@ export function useCreateIssue() {
         return { ...old, data: mergeCreatedIssue(old.data, issue) }
       })
 
-      const projectType =
-        variables.projectType ?? resolveProjectTypeFromCache(qc, variables.projectId)
-      if (shouldShowIssueOnBoard(issue, projectType)) {
+      if (shouldShowIssueOnBoard(issue)) {
         qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
           if (!old?.statuses) return old
           return prependIssueToBoard(old, issue)

@@ -10,17 +10,9 @@ export function isKanbanProject(type?: string | ProjectType | null): boolean {
   return type === ProjectType.KANBAN
 }
 
-/** Scrum and all non-kanban templates use sprint-gated board visibility. */
-export function isScrumWorkflow(type?: string | ProjectType | null): boolean {
-  return !isKanbanProject(type)
-}
-
-export function shouldShowIssueOnBoard(
-  issue: { sprintId?: string | null; type?: string },
-  projectType?: string | ProjectType | null,
-): boolean {
-  if (issue.type === 'subtask' || issue.type === 'epic') return false
-  return !!issue.sprintId || isKanbanProject(projectType)
+/** Board cards: story / task / bug only — sprint assignment does not affect visibility. */
+export function shouldShowIssueOnBoard(issue: { type?: string }): boolean {
+  return issue.type !== 'subtask' && issue.type !== 'epic'
 }
 
 export function resolveProjectTypeFromCache(
