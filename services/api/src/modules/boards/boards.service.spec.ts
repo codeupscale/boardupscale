@@ -204,7 +204,7 @@ describe('BoardsService', () => {
       );
     });
 
-    it('should exclude backlog issues from the default scrum board (no sprint filter)', async () => {
+    it('should not filter by sprint on the default board (all issues visible)', async () => {
       projectsService.findById.mockResolvedValue(mockProject({ type: 'scrum' }));
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
       const mainQb = createMockQueryBuilder([]);
@@ -216,11 +216,11 @@ describe('BoardsService', () => {
 
       await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
 
-      expect(mainQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
-      expect(countQb.andWhere).toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
+      expect(mainQb.andWhere).not.toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
+      expect(countQb.andWhere).not.toHaveBeenCalledWith('issue.sprintId IS NOT NULL');
     });
 
-    it('should include all issues on the default kanban board (no sprint filter)', async () => {
+    it('should not filter by sprint on the default kanban board', async () => {
       projectsService.findById.mockResolvedValue(mockProject({ type: 'kanban' }));
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
       const mainQb = createMockQueryBuilder([]);

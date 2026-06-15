@@ -1147,9 +1147,7 @@ export function ProjectBacklogPage() {
           return { ...old, data: nextIssues }
         })
         if (isCrossContainer) {
-          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position, {
-            retainOnBoardWithoutSprint: isKanban,
-          })
+          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position)
         }
       })
 
@@ -1171,7 +1169,7 @@ export function ProjectBacklogPage() {
         },
       )
     },
-    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues, isKanban],
+    [projectKey, issueFilters, optimisticIssues, issuesData?.data, qc, reorderIssues, getContainerIssues],
   )
 
   if (!projectLoading && isKanban && projectKey) {
