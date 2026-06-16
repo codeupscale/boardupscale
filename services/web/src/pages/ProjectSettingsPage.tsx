@@ -333,7 +333,7 @@ export function ProjectSettingsPage() {
                   readOnly={!canUpdateProject}
                 />
               </div>
-              {project && pendingFormValues && (
+              {pendingFormValues && (
                 <ProjectKeyChangeDialog
                   open={showKeyChange}
                   onClose={() => {
