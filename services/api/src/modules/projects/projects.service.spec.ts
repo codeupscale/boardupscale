@@ -4,6 +4,7 @@ import { NotFoundException, ForbiddenException, ConflictException } from '@nestj
 import { ConfigService } from '@nestjs/config';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
+import { ProjectKeyAlias } from './entities/project-key-alias.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -18,6 +19,7 @@ import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../..
 describe('ProjectsService', () => {
   let service: ProjectsService;
   let projectRepo: ReturnType<typeof createMockRepository>;
+  let aliasRepo: ReturnType<typeof createMockRepository>;
   let memberRepo: ReturnType<typeof createMockRepository>;
   let statusRepo: ReturnType<typeof createMockRepository>;
   let organizationRepo: ReturnType<typeof createMockRepository>;
@@ -29,6 +31,7 @@ describe('ProjectsService', () => {
 
   beforeEach(async () => {
     projectRepo = createMockRepository();
+    aliasRepo = createMockRepository();
     memberRepo = createMockRepository();
     statusRepo = createMockRepository();
     organizationRepo = createMockRepository();
@@ -37,6 +40,7 @@ describe('ProjectsService', () => {
       providers: [
         ProjectsService,
         { provide: getRepositoryToken(Project), useValue: projectRepo },
+        { provide: getRepositoryToken(ProjectKeyAlias), useValue: aliasRepo },
         { provide: getRepositoryToken(ProjectMember), useValue: memberRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: getRepositoryToken(Organization), useValue: organizationRepo },
@@ -134,6 +138,7 @@ describe('ProjectsService', () => {
 
     it('should create project with default statuses and owner membership', async () => {
       projectRepo.findOne.mockResolvedValueOnce(null); // key not taken
+      aliasRepo.findOne.mockResolvedValueOnce(null); // alias not reserved
       const project = mockProject({ name: 'New Project', key: 'NEWPROJ' });
       projectRepo.create.mockReturnValue(project);
       projectRepo.save.mockResolvedValue(project);
@@ -167,10 +172,17 @@ describe('ProjectsService', () => {
 
       await expect(service.create(createDto, TEST_IDS.ORG_ID, TEST_IDS.USER_ID)).rejects.toThrow(ConflictException);
     });
+
+    it('should throw ConflictException when project key is reserved as an alias', async () => {
+      projectRepo.findOne.mockResolvedValueOnce(null);
+      aliasRepo.findOne.mockResolvedValueOnce({ projectId: 'other-project', oldKey: 'NEWPROJ' });
+
+      await expect(service.create(createDto, TEST_IDS.ORG_ID, TEST_IDS.USER_ID)).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('update', () => {
-    it('should update project fields', async () => {
+    it('should update project fields without key change', async () => {
       const project = mockProject();
       const updatedProject = mockProject({ name: 'Updated' });
       projectRepo.findOne.mockResolvedValue(project);
@@ -179,12 +191,80 @@ describe('ProjectsService', () => {
       const result = await service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { name: 'Updated' });
 
       expect(result).toEqual(updatedProject);
+      expect(projectRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('should re-key project and issues atomically when key changes', async () => {
+      const project = mockProject({ key: 'OLDKEY' });
+      const updatedProject = mockProject({ key: 'NEWKEY' });
+      projectRepo.findOne
+        .mockResolvedValueOnce(project)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(updatedProject);
+      aliasRepo.findOne.mockResolvedValueOnce(null);
+
+      const result = await service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { key: 'NEWKEY' });
+
+      expect(result).toEqual(updatedProject);
+      expect(projectRepo.manager.transaction).toHaveBeenCalledTimes(1);
+
+      const transactionCb = (projectRepo.manager.transaction as jest.Mock).mock.calls[0][0];
+      const em = { query: jest.fn().mockResolvedValue({}) };
+      await transactionCb(em);
+
+      expect(em.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO project_key_aliases'),
+        [TEST_IDS.ORG_ID, TEST_IDS.PROJECT_ID, 'OLDKEY'],
+      );
+      expect(em.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE issues'),
+        ['NEWKEY', TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID],
+      );
+    });
+
+    it('should reject type changes after creation', async () => {
+      projectRepo.findOne.mockResolvedValue(mockProject());
+
+      await expect(
+        service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { type: 'kanban' }),
+      ).rejects.toThrow('Project type/template cannot be changed after creation');
+    });
+
+    it('should throw ConflictException when new key is taken', async () => {
+      const project = mockProject({ key: 'OLDKEY' });
+      projectRepo.findOne
+        .mockResolvedValueOnce(project)
+        .mockResolvedValueOnce({ id: 'other-id' });
+      aliasRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, { key: 'TAKEN' }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should throw NotFoundException when project not found', async () => {
       projectRepo.findOne.mockResolvedValue(null);
 
       await expect(service.update('bad-id', TEST_IDS.ORG_ID, { name: 'x' })).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('resolveProjectId', () => {
+    it('should resolve by current project key', async () => {
+      projectRepo.findOne.mockResolvedValue({ id: TEST_IDS.PROJECT_ID });
+
+      const id = await service.resolveProjectId('MYPROJ', TEST_IDS.ORG_ID);
+
+      expect(id).toBe(TEST_IDS.PROJECT_ID);
+    });
+
+    it('should resolve by historical alias when current key not found', async () => {
+      projectRepo.findOne.mockResolvedValue(null);
+      aliasRepo.findOne.mockResolvedValue({ projectId: TEST_IDS.PROJECT_ID });
+
+      const id = await service.resolveProjectId('OLDKEY', TEST_IDS.ORG_ID);
+
+      expect(id).toBe(TEST_IDS.PROJECT_ID);
     });
   });
 

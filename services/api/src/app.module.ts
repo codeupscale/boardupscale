@@ -51,6 +51,7 @@ import { Organization } from './modules/organizations/entities/organization.enti
 import { User } from './modules/users/entities/user.entity';
 import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 import { Project } from './modules/projects/entities/project.entity';
+import { ProjectKeyAlias } from './modules/projects/entities/project-key-alias.entity';
 import { ProjectMember } from './modules/projects/entities/project-member.entity';
 import { IssueStatus } from './modules/issues/entities/issue-status.entity';
 import { Sprint } from './modules/sprints/entities/sprint.entity';
@@ -108,6 +109,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
           User,
           RefreshToken,
           Project,
+          ProjectKeyAlias,
           ProjectMember,
           IssueStatus,
           Sprint,

@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { ProjectLayout } from '@/components/layout/project-layout'
 import { ThemeTransitionOverlay } from '@/components/layout/theme-transition-overlay'
 import { useAuthStore } from '@/store/auth.store'
 import { RoleGuard } from '@/components/common/role-guard'
@@ -139,21 +140,23 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:key" element={<Navigate to="board" replace />} />
-          <Route path="/projects/:key/board" element={<ProjectBoardPage />} />
-          <Route path="/projects/:key/backlog" element={<ProjectBacklogPage />} />
-          <Route path="/projects/:key/issues" element={<ProjectIssuesPage />} />
-          <Route path="/projects/:key/epics" element={<ProjectEpicsPage />} />
-          <Route path="/projects/:key/reports" element={<ProjectReportsPage />} />
-          <Route path="/projects/:key/automations" element={<ProjectAutomationsPage />} />
-          <Route path="/projects/:key/settings" element={<ProjectSettingsPage />} />
-          <Route path="/projects/:key/webhooks" element={<WebhooksPage />} />
-          <Route path="/projects/:key/releases" element={<ProjectReleasesPage />} />
-          <Route path="/projects/:key/calendar" element={<ProjectCalendarPage />} />
-          <Route path="/projects/:key/timeline" element={<ProjectTimelinePage />} />
-          <Route path="/projects/:key/trash" element={<ProjectTrashPage />} />
-          <Route path="/projects/:key/pages" element={<ProjectPagesPage />} />
-          <Route path="/projects/:key/pages/:pageId" element={<PageDetailPage />} />
+          <Route path="/projects/:key" element={<ProjectLayout />}>
+            <Route index element={<Navigate to="board" replace />} />
+            <Route path="board" element={<ProjectBoardPage />} />
+            <Route path="backlog" element={<ProjectBacklogPage />} />
+            <Route path="issues" element={<ProjectIssuesPage />} />
+            <Route path="epics" element={<ProjectEpicsPage />} />
+            <Route path="reports" element={<ProjectReportsPage />} />
+            <Route path="automations" element={<ProjectAutomationsPage />} />
+            <Route path="settings" element={<ProjectSettingsPage />} />
+            <Route path="webhooks" element={<WebhooksPage />} />
+            <Route path="releases" element={<ProjectReleasesPage />} />
+            <Route path="calendar" element={<ProjectCalendarPage />} />
+            <Route path="timeline" element={<ProjectTimelinePage />} />
+            <Route path="trash" element={<ProjectTrashPage />} />
+            <Route path="pages" element={<ProjectPagesPage />} />
+            <Route path="pages/:pageId" element={<PageDetailPage />} />
+          </Route>
           <Route path="/timesheet" element={<TimesheetPage />} />
           <Route path="/issues" element={<MyIssuesPage />} />
           <Route path="/issues/:id" element={<IssueDetailPage />} />

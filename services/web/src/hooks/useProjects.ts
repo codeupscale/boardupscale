@@ -66,9 +66,11 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: async ({
       id,
+      previousKey: _previousKey,
       ...payload
     }: {
       id: string
+      previousKey?: string
       name?: string
       key?: string
       description?: string
@@ -78,10 +80,27 @@ export function useUpdateProject() {
       const { data } = await api.patch(`/projects/${id}`, payload)
       return data.data as Project
     },
-    onSuccess: (project) => {
+    onSuccess: (project, variables) => {
+      const keyChanged =
+        variables.previousKey !== undefined && variables.previousKey !== project.key
+
       qc.invalidateQueries({ queryKey: ['projects'] })
-      qc.invalidateQueries({ queryKey: ['project', project.id] })
-      toast('Project updated')
+      qc.setQueryData(['project', project.id], project)
+      qc.setQueryData(['project', project.key], project)
+
+      if (keyChanged) {
+        qc.removeQueries({ queryKey: ['project', variables.previousKey] })
+        qc.invalidateQueries({ queryKey: ['board', variables.previousKey] })
+        qc.invalidateQueries({ queryKey: ['board', project.key] })
+        qc.invalidateQueries({ queryKey: ['issues'] })
+        qc.invalidateQueries({ queryKey: ['sprints', variables.previousKey] })
+        qc.invalidateQueries({ queryKey: ['sprints', project.key] })
+        toast('Project key updated — all issues re-keyed')
+      } else {
+        qc.invalidateQueries({ queryKey: ['project', project.id] })
+        qc.invalidateQueries({ queryKey: ['project', project.key] })
+        toast('Project updated')
+      }
     },
     onError: (err: any) =>
       toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update project', 'error'),

@@ -43,6 +43,8 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { MemberList } from '@/components/projects/member-list'
 import { UserSelect } from '@/components/common/user-select'
 import { ProjectForm } from '@/components/projects/project-form'
+import { ProjectKeyChangeDialog } from '@/components/projects/project-key-change-dialog'
+import { renameRecentProjectKey } from '@/lib/recent-projects'
 import { CustomFieldSettings } from '@/components/projects/custom-field-settings'
 import { ComponentList } from '@/components/projects/component-list'
 import { VersionList } from '@/components/projects/version-list'
@@ -104,6 +106,12 @@ export function ProjectSettingsPage() {
   const [statusCategory, setStatusCategory] = useState(IssueStatusCategory.TODO)
   const [statusColor, setStatusColor] = useState(STATUS_COLORS[0])
   const [showDeleteProject, setShowDeleteProject] = useState(false)
+  const [showKeyChange, setShowKeyChange] = useState(false)
+  const [pendingFormValues, setPendingFormValues] = useState<{
+    name: string
+    key: string
+    description?: string
+  } | null>(null)
 
   const { data: project, isLoading } = useProject(projectKey!)
   const { data: board } = useBoard(projectKey!)
@@ -132,6 +140,58 @@ export function ProjectSettingsPage() {
   const createStatus = useCreateStatus()
   const updateStatus = useUpdateStatus()
   const deleteStatus = useDeleteStatus()
+
+  const handleGeneralSubmit = (values: {
+    name?: string
+    key?: string
+    description?: string
+    type?: string
+    templateType?: string
+  }) => {
+    if (!project || !values.name || !values.key) return
+    if (values.key !== project.key) {
+      setPendingFormValues({
+        name: values.name,
+        key: values.key,
+        description: values.description,
+      })
+      setShowKeyChange(true)
+      return
+    }
+    updateProject.mutate({
+      id: project.id,
+      name: values.name,
+      description: values.description,
+    })
+  }
+
+  const handleConfirmKeyChange = () => {
+    if (!project || !pendingFormValues) return
+    const previousKey = project.key
+    updateProject.mutate(
+      {
+        id: project.id,
+        previousKey,
+        name: pendingFormValues.name,
+        key: pendingFormValues.key,
+        description: pendingFormValues.description,
+      },
+      {
+        onSuccess: (updated) => {
+          setShowKeyChange(false)
+          setPendingFormValues(null)
+          const orgId = currentUser?.organizationId
+          const userId = currentUser?.id
+          if (orgId && userId) {
+            renameRecentProjectKey(orgId, userId, previousKey, updated.key, updated.name)
+          }
+          if (updated.key !== projectKey) {
+            navigate(`/projects/${updated.key}/settings`, { replace: true })
+          }
+        },
+      },
+    )
+  }
 
   if (isLoading) return <SettingsSkeleton />
 
@@ -266,13 +326,26 @@ export function ProjectSettingsPage() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <ProjectForm
                   project={project}
-                  onSubmit={(values) => updateProject.mutate({ id: project.id, ...values })}
+                  onSubmit={handleGeneralSubmit}
                   onCancel={() => {}}
                   isLoading={updateProject.isPending}
                   submitLabel={t('settings.saveChanges')}
                   readOnly={!canUpdateProject}
                 />
               </div>
+              {project && pendingFormValues && (
+                <ProjectKeyChangeDialog
+                  open={showKeyChange}
+                  onClose={() => {
+                    setShowKeyChange(false)
+                    setPendingFormValues(null)
+                  }}
+                  onConfirm={handleConfirmKeyChange}
+                  oldKey={project.key}
+                  newKey={pendingFormValues.key}
+                  isLoading={updateProject.isPending}
+                />
+              )}
             </div>
           )}
 
