@@ -27,6 +27,7 @@ import {
 import { ChartSkeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
+import { issueDetailPath } from '@/lib/routes'
 
 const LABEL_W = 260
 
@@ -329,7 +330,7 @@ export function ProjectTimelinePage() {
                       {issue.key}
                     </span>
                     <button
-                      onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
+                      onClick={() => navigate(issueDetailPath(issue.id))}
                       className="text-xs text-foreground truncate hover:text-primary dark:hover:text-primary text-left min-w-0"
                       title={issue.title}
                     >
@@ -357,7 +358,7 @@ export function ProjectTimelinePage() {
                         )}
                         style={{ left: barLeft, width: barWidth }}
                         title={`${issue.key}: ${issue.title}\n${format(barStart, 'MMM d')} → ${format(effectiveEnd, 'MMM d, yyyy')}${usingSprintDates ? ' (sprint dates)' : ''}`}
-                        onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
+                        onClick={() => navigate(issueDetailPath(issue.id))}
                       >
                         {barWidth >= 50 && (
                           <span className="text-white text-[10px] font-medium px-1.5 truncate">

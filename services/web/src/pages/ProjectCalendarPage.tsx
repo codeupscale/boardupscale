@@ -43,6 +43,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from '@/
 import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { cn } from '@/lib/utils'
+import { issueDetailPath } from '@/lib/routes'
 import { Issue } from '@/types'
 
 // ─── Heatmap colour scale ──────────────────────────────────────────────────
@@ -101,12 +102,12 @@ const CHIP_COLOR: Record<string, string> = {
   low:      'bg-muted text-muted-foreground',
 }
 
-function IssueChip({ issue, projectKey }: { issue: Issue; projectKey: string }) {
+function IssueChip({ issue }: { issue: Issue }) {
   const navigate = useNavigate()
   return (
     <button
       title={issue.title}
-      onClick={(e) => { e.stopPropagation(); navigate(`/projects/${projectKey}/issues/${issue.key}`) }}
+      onClick={(e) => { e.stopPropagation(); navigate(issueDetailPath(issue.id)) }}
       className={cn(
         'w-full text-left px-1.5 py-0.5 rounded text-xs truncate font-medium transition-opacity hover:opacity-75',
         CHIP_COLOR[issue.priority] ?? CHIP_COLOR.low,
@@ -119,11 +120,11 @@ function IssueChip({ issue, projectKey }: { issue: Issue; projectKey: string }) 
 }
 
 // ─── Issue side-panel card ─────────────────────────────────────────────────
-function IssuePanelCard({ issue, projectKey }: { issue: Issue; projectKey: string }) {
+function IssuePanelCard({ issue }: { issue: Issue }) {
   const navigate = useNavigate()
   return (
     <button
-      onClick={() => navigate(`/projects/${projectKey}/issues/${issue.key}`)}
+      onClick={() => navigate(issueDetailPath(issue.id))}
       className="w-full text-left p-3 rounded-lg border border-border bg-card hover:border-primary dark:hover:border-primary hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-2">
@@ -372,7 +373,7 @@ export function ProjectCalendarPage() {
 
                       {/* Issue chips */}
                       {visible.map((issue) => (
-                        <IssueChip key={issue.id} issue={issue} projectKey={projectKey!} />
+                        <IssueChip key={issue.id} issue={issue} />
                       ))}
 
                       {overflow > 0 && (
@@ -439,7 +440,7 @@ export function ProjectCalendarPage() {
                 </div>
               ) : (
                 selectedDayIssues.map((issue) => (
-                  <IssuePanelCard key={issue.id} issue={issue} projectKey={projectKey!} />
+                  <IssuePanelCard key={issue.id} issue={issue} />
                 ))
               )}
             </div>
