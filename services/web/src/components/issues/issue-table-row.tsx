@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from './issue-type-icon'
 import { PriorityBadge } from './priority-badge'
 import { StatusBadge } from './status-badge'
+import { hasStoryPoints, formatStoryPoints } from '@/lib/issue-display'
 import { useSelectionStore } from '@/store/selection.store'
 
 interface IssueTableRowProps {
@@ -147,9 +148,9 @@ export function IssueTableRow({
       {/* Story Points */}
       {showStoryPoints && (
         <td className="px-4 py-3 w-16 text-center">
-          {issue.storyPoints != null ? (
+          {hasStoryPoints(issue.storyPoints) ? (
             <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-              {issue.storyPoints}
+              {formatStoryPoints(issue.storyPoints!)}
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">--</span>

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from './issue-type-icon'
 import { PriorityBadge } from './priority-badge'
+import { IssueMetadataBadges } from './issue-metadata-badges'
 
 interface IssueCardProps {
   issue: Issue
@@ -36,11 +37,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
       <div className="flex items-center justify-between gap-2">
         <PriorityBadge priority={issue.priority} showLabel={false} />
         <div className="flex items-center gap-2 ml-auto">
-          {issue.storyPoints != null && (
-            <span className="text-xs font-medium text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-              {issue.storyPoints}
-            </span>
-          )}
+          <IssueMetadataBadges issue={issue} variant="compact" />
           {issue.assignee ? (
             <Avatar user={issue.assignee} size="xs" />
           ) : (

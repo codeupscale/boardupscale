@@ -135,7 +135,11 @@ export interface IssueStatus {
 
 export interface Sprint {
   id: string
-  projectId: string
+  /**
+   * Some API surfaces (e.g. board cards) return a lightweight sprint object
+   * with only id/name/status to keep payloads small.
+   */
+  projectId?: string
   name: string
   goal?: string
   status: SprintStatus
@@ -143,8 +147,8 @@ export interface Sprint {
   endDate?: string
   /** Timestamp stamped when the sprint is marked complete. Null until then. */
   completedAt?: string | null
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Issue {

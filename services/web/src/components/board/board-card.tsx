@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
+import { IssueMetadataBadges } from '@/components/issues/issue-metadata-badges'
 
 interface BoardCardProps {
   issue: Issue
@@ -85,15 +86,9 @@ export function BoardCard({ issue, index }: BoardCardProps) {
               </div>
             )}
 
-            {/* Bottom row: story points + assignee */}
+            {/* Bottom row: sprint / story points + assignee */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                {issue.storyPoints != null && (
-                  <span className="text-[10px] font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full">
-                    {issue.storyPoints} SP
-                  </span>
-                )}
-              </div>
+              <IssueMetadataBadges issue={issue} variant="board" />
               <div className="flex items-center gap-1.5">
                 {issue.assignee ? (
                   <>
