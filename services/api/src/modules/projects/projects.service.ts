@@ -3,12 +3,14 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
+import { ProjectKeyAlias } from './entities/project-key-alias.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -29,6 +31,8 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
+    @InjectRepository(ProjectKeyAlias)
+    private projectKeyAliasRepository: Repository<ProjectKeyAlias>,
     @InjectRepository(ProjectMember)
     private projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(IssueStatus)
@@ -106,12 +110,7 @@ export class ProjectsService {
   }
 
   async create(dto: CreateProjectDto, organizationId: string, userId: string): Promise<Project> {
-    const existing = await this.projectRepository.findOne({
-      where: { key: dto.key, organizationId },
-    });
-    if (existing) {
-      throw new ConflictException(`Project key "${dto.key}" is already taken in this organization`);
-    }
+    await this.assertProjectKeyAvailable(dto.key, organizationId);
 
     const project = this.projectRepository.create({
       name: dto.name,
@@ -196,17 +195,149 @@ export class ProjectsService {
 
   async update(id: string, organizationId: string, dto: UpdateProjectDto, userId?: string): Promise<Project> {
     const project = await this.findById(id, organizationId);
-    const prevValues = { name: project.name, description: project.description };
-    Object.assign(project, dto);
+    const prevValues = {
+      name: project.name,
+      description: project.description,
+      key: project.key,
+    };
+
+    if (dto.type !== undefined || (dto as any).templateType !== undefined) {
+      throw new BadRequestException('Project type/template cannot be changed after creation');
+    }
+
+    const { key: newKey, ...mutableFields } = dto;
+    const keyChanging = newKey !== undefined && newKey !== project.key;
+
+    if (keyChanging) {
+      await this.assertProjectKeyAvailable(newKey!, organizationId, id);
+    }
+
+    if (keyChanging) {
+      const oldKey = project.key;
+
+      await this.projectRepository.manager.transaction(async (em) => {
+        await em.query(
+          `SELECT id FROM projects WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+          [id, organizationId],
+        );
+
+        await em.query(
+          `INSERT INTO project_key_aliases (organization_id, project_id, old_key)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (organization_id, old_key) DO NOTHING`,
+          [organizationId, id, oldKey],
+        );
+
+        const setClauses = ['key = $1', 'updated_at = NOW()'];
+        const params: unknown[] = [newKey];
+        let paramIndex = 2;
+
+        if (mutableFields.name !== undefined) {
+          setClauses.push(`name = $${paramIndex++}`);
+          params.push(mutableFields.name);
+        }
+        if (mutableFields.description !== undefined) {
+          setClauses.push(`description = $${paramIndex++}`);
+          params.push(mutableFields.description);
+        }
+        if (mutableFields.status !== undefined) {
+          setClauses.push(`status = $${paramIndex++}`);
+          params.push(mutableFields.status);
+        }
+        if (mutableFields.color !== undefined) {
+          setClauses.push(`color = $${paramIndex++}`);
+          params.push(mutableFields.color);
+        }
+        if (mutableFields.iconUrl !== undefined) {
+          setClauses.push(`icon_url = $${paramIndex++}`);
+          params.push(mutableFields.iconUrl);
+        }
+
+        params.push(id, organizationId);
+        await em.query(
+          `UPDATE projects SET ${setClauses.join(', ')}
+            WHERE id = $${paramIndex++} AND organization_id = $${paramIndex}`,
+          params,
+        );
+
+        await em.query(
+          `UPDATE issues
+              SET key = $1 || '-' || number::text,
+                  updated_at = NOW()
+            WHERE project_id = $2
+              AND organization_id = $3`,
+          [newKey, id, organizationId],
+        );
+      });
+
+      this.auditService.log(organizationId, userId || null, 'project.key_changed', 'project', id, {
+        previousKey: oldKey,
+        newKey,
+        previous: prevValues,
+        updated: dto,
+      });
+
+      return this.findById(id, organizationId);
+    }
+
+    Object.assign(project, mutableFields);
     const saved = await this.projectRepository.save(project);
 
-    // Audit log for project update
     this.auditService.log(organizationId, userId || null, 'project.updated', 'project', id, {
       previous: prevValues,
       updated: dto,
     });
 
     return saved;
+  }
+
+  /**
+   * Resolve a project UUID from a key or historical alias, scoped to the org.
+   * Single source of truth for key → project id lookups.
+   */
+  async resolveProjectId(key: string, organizationId: string): Promise<string | null> {
+    const normalized = key.toUpperCase();
+
+    const project = await this.projectRepository.findOne({
+      where: { key: normalized, organizationId },
+      select: ['id'],
+    });
+    if (project) return project.id;
+
+    const alias = await this.projectKeyAliasRepository.findOne({
+      where: { oldKey: normalized, organizationId },
+      select: ['projectId'],
+    });
+    return alias?.projectId ?? null;
+  }
+
+  /**
+   * Ensure a project key is not used by another project or reserved as an alias.
+   */
+  async assertProjectKeyAvailable(
+    key: string,
+    organizationId: string,
+    excludeProjectId?: string,
+  ): Promise<void> {
+    const normalized = key.toUpperCase();
+
+    const existing = await this.projectRepository.findOne({
+      where: { key: normalized, organizationId },
+      select: ['id'],
+    });
+    if (existing && existing.id !== excludeProjectId) {
+      throw new ConflictException(`Project key "${normalized}" is already taken in this organization`);
+    }
+
+    const reserved = await this.projectKeyAliasRepository.findOne({
+      where: { oldKey: normalized, organizationId },
+      select: ['projectId'],
+    });
+    if (reserved && reserved.projectId !== excludeProjectId) {
+      throw new ConflictException(
+        `Project key "${normalized}" is reserved by a previous project key and cannot be reused`,
+      );
+    }
   }
 
   async archive(id: string, organizationId: string, userId?: string): Promise<void> {

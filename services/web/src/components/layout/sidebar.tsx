@@ -26,25 +26,7 @@ import {
 /* ── Recent-project localStorage helpers ─────────────────────────── */
 // Key is scoped per org + user so different users on the same browser
 // never share visit history.
-const recentProjectsKey = (orgId: string, userId: string) =>
-  `boardupscale:recent-projects:${orgId}:${userId}`
-
-type RecentProject = { key: string; name: string }
-
-function readRecentProjects(orgId: string, userId: string): RecentProject[] {
-  try {
-    return JSON.parse(localStorage.getItem(recentProjectsKey(orgId, userId)) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function pushRecentProject(orgId: string, userId: string, project: RecentProject) {
-  const list = readRecentProjects(orgId, userId).filter((p) => p.key !== project.key)
-  list.unshift(project)
-  localStorage.setItem(recentProjectsKey(orgId, userId), JSON.stringify(list.slice(0, 5)))
-}
-/* ────────────────────────────────────────────────────────────────── */
+import { readRecentProjects, pushRecentProject, type RecentProject } from '@/lib/recent-projects'
 
 import { Logo } from '@/components/Logo'
 import { OrgSwitcher } from '@/components/layout/org-switcher'

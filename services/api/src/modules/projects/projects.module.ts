@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { Project } from './entities/project.entity';
+import { ProjectKeyAlias } from './entities/project-key-alias.entity';
 import { ProjectMember } from './entities/project-member.entity';
 import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { PermissionsModule } from '../permissions/permissions.module';
@@ -15,7 +16,7 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Project, ProjectMember, IssueStatus, Organization]),
+    TypeOrmModule.forFeature([Project, ProjectKeyAlias, ProjectMember, IssueStatus, Organization]),
     forwardRef(() => PermissionsModule),
     forwardRef(() => OrganizationsModule),
     NotificationsModule,
