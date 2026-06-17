@@ -273,6 +273,22 @@ describe('BoardsService', () => {
       expect(countQb.andWhere).toHaveBeenCalledWith("issue.type NOT IN ('subtask', 'epic')");
     });
 
+    it('should load sprint metadata for board cards', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
+
+      expect(mainQb.leftJoin).toHaveBeenCalledWith('issue.sprint', 'sprint');
+      expect(mainQb.addSelect).toHaveBeenCalledWith(['sprint.id', 'sprint.name', 'sprint.status']);
+    });
+
     it('should keep the type-exclusion even when a type filter is also passed', async () => {
       // Passing type='story' must AND with the hardcoded exclusion — never replace it.
       projectsService.findById.mockResolvedValue(mockProject());

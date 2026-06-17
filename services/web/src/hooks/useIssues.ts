@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { mergeCreatedIssue } from '@/lib/issue-reorder'
+import { resolveIssueSprint } from '@/lib/issue-display'
 import {
   shouldShowIssueOnBoard,
 } from '@/lib/project-workflow'
-import { BoardData, Issue, ProjectType, WorkLog } from '@/types'
+import { BoardData, Issue, ProjectType, Sprint, WorkLog } from '@/types'
 
 export type CreateIssueVariables = {
   projectId: string
@@ -50,12 +51,14 @@ export function syncBoardCacheAfterSprintMove(
   issue: Issue,
   destSprintId: string | null,
   position?: number,
+  sprintLookup?: ReadonlyArray<Pick<Sprint, 'id' | 'name' | 'status'>>,
 ): BoardData {
   if (!board?.statuses?.length) return board
 
   const updatedIssue: Issue = {
     ...issue,
     sprintId: destSprintId ?? undefined,
+    sprint: resolveIssueSprint(destSprintId, issue, sprintLookup),
     ...(position !== undefined ? { position } : {}),
   }
 
@@ -78,10 +81,11 @@ export function patchBoardCachesForSprintMove(
   issue: Issue,
   destSprintId: string | null,
   position?: number,
+  sprintLookup?: ReadonlyArray<Pick<Sprint, 'id' | 'name' | 'status'>>,
 ) {
   qc.setQueriesData<BoardData>({ queryKey: ['board'] }, (old) => {
     if (!old?.statuses) return old
-    return syncBoardCacheAfterSprintMove(old, issue, destSprintId, position)
+    return syncBoardCacheAfterSprintMove(old, issue, destSprintId, position, sprintLookup)
   })
 }
 

@@ -5,6 +5,7 @@ import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { toast } from '@/store/ui.store'
 import { IssueType } from '@/types'
 import { cn } from '@/lib/utils'
+import { issueDetailUrl } from '@/lib/routes'
 
 const TYPE_LABELS: Record<IssueType, string> = {
   [IssueType.EPIC]: 'Epic',
@@ -24,7 +25,7 @@ interface CopyTicketLinkProps {
 
 function CopyLinkPopoverContent({ issueId, issueType }: { issueId: string; issueType?: IssueType }) {
   const [copied, setCopied] = useState(false)
-  const link = `${window.location.origin}/issues/${issueId}`
+  const link = issueDetailUrl(issueId)
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()

@@ -28,6 +28,21 @@ export class BoardsService {
     private activityService: ActivityService,
   ) {}
 
+  /**
+   * Shared issue query for board surfaces — loads card metadata only.
+   * Sprint is partial-selected (id, name, status) to avoid hauling goal/dates.
+   */
+  private createBoardIssueQueryBuilder(): SelectQueryBuilder<Issue> {
+    return this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoinAndSelect('issue.assignee', 'assignee')
+      .leftJoinAndSelect('issue.status', 'status')
+      .leftJoinAndSelect('issue.reporter', 'reporter')
+      .leftJoinAndSelect('issue.parent', 'parent')
+      .leftJoin('issue.sprint', 'sprint')
+      .addSelect(['sprint.id', 'sprint.name', 'sprint.status']);
+  }
+
   /** Applies shared filter predicates to an issue query builder. */
   private applyBoardFilters(
     qb: SelectQueryBuilder<Issue>,
@@ -78,12 +93,7 @@ export class BoardsService {
     }
 
     // Fetch enough issues to fill all columns up to columnLimit each
-    const qb = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.assignee', 'assignee')
-      .leftJoinAndSelect('issue.status', 'status')
-      .leftJoinAndSelect('issue.reporter', 'reporter')
-      .leftJoinAndSelect('issue.parent', 'parent')
+    const qb = this.createBoardIssueQueryBuilder()
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.deletedAt IS NULL');
 
@@ -141,12 +151,7 @@ export class BoardsService {
 
     const limit = query?.columnLimit ?? 50;
 
-    const qb = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.assignee', 'assignee')
-      .leftJoinAndSelect('issue.status', 'status')
-      .leftJoinAndSelect('issue.reporter', 'reporter')
-      .leftJoinAndSelect('issue.parent', 'parent')
+    const qb = this.createBoardIssueQueryBuilder()
       .where('issue.projectId = :projectId', { projectId })
       .andWhere('issue.statusId = :statusId', { statusId })
       .andWhere('issue.deletedAt IS NULL');

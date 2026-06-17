@@ -1147,7 +1147,13 @@ export function ProjectBacklogPage() {
           return { ...old, data: nextIssues }
         })
         if (isCrossContainer) {
-          patchBoardCachesForSprintMove(qc, movedIssue, destSprintId, movedItem?.position)
+          patchBoardCachesForSprintMove(
+            qc,
+            movedIssue,
+            destSprintId,
+            movedItem?.position,
+            sprints,
+          )
         }
       })
 
