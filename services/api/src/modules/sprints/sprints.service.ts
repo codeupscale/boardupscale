@@ -19,6 +19,7 @@ import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { SprintHandoffPolicy, buildSprintHandoffBlockedMessage } from '../../common/constants/sprint-handoff-policy';
 
 @Injectable()
 export class SprintsService {
@@ -88,49 +89,168 @@ export class SprintsService {
     const activeSprint = await this.sprintRepository.findOne({
       where: { projectId: sprint.projectId, status: 'active' },
     });
+
     if (activeSprint) {
-      throw new BadRequestException('There is already an active sprint in this project. Complete it before starting a new one.');
+      await this.assertSprintHandoffAllowed(activeSprint, sprint);
+
+      const saved = await this.sprintRepository.manager.transaction(async (em) => {
+        const lockedActive = await em.findOne(Sprint, {
+          where: { id: activeSprint.id, status: 'active' },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const lockedTarget = await em.findOne(Sprint, {
+          where: { id: sprint.id, status: 'planned' },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!lockedActive || !lockedTarget) {
+          throw new BadRequestException('Sprint state changed. Refresh and try again.');
+        }
+
+        lockedActive.status = 'inactive';
+        lockedTarget.status = 'active';
+        if (dto?.startDate) {
+          lockedTarget.startDate = dto.startDate;
+        } else if (!lockedTarget.startDate) {
+          lockedTarget.startDate = this.todayDateString();
+        }
+        if (dto?.endDate) {
+          lockedTarget.endDate = dto.endDate;
+        }
+
+        await em.save(Sprint, lockedActive);
+        return em.save(Sprint, lockedTarget);
+      });
+
+      return this.afterSprintStarted(saved, organizationId, id, sprint.projectId);
     }
 
     sprint.status = 'active';
     if (dto?.startDate) {
       sprint.startDate = dto.startDate;
     } else if (!sprint.startDate) {
-      sprint.startDate = new Date().toISOString().split('T')[0];
+      sprint.startDate = this.todayDateString();
     }
     if (dto?.endDate) {
       sprint.endDate = dto.endDate;
     }
     const saved = await this.sprintRepository.save(sprint);
 
+    return this.afterSprintStarted(saved, organizationId, id, sprint.projectId);
+  }
+
+  private async afterSprintStarted(
+    saved: Sprint,
+    organizationId: string,
+    sprintId: string,
+    projectId: string,
+  ): Promise<Sprint> {
     this.webhookEventEmitter.emit(
       organizationId,
-      sprint.projectId,
+      projectId,
       WebhookEventType.SPRINT_STARTED,
-      { sprint: saved, projectId: sprint.projectId },
+      { sprint: saved, projectId },
     );
 
-    // Send sprint reminder emails to all project members
-    this.sendSprintReminderEmails(sprint, organizationId).catch((err) =>
+    this.sendSprintReminderEmails(saved, organizationId).catch((err) =>
       this.logger.error('Failed to send sprint reminder emails:', err.message),
     );
 
-    // Trigger automation rules
     if (this.automationEngine) {
-      this.automationEngine.processTrigger(sprint.projectId, 'sprint.started', {
-        sprintId: id,
+      this.automationEngine.processTrigger(projectId, 'sprint.started', {
+        sprintId,
       });
     }
 
     return saved;
   }
 
+  private todayDateString(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  private isSprintEndDatePassed(endDate: string | null | undefined): boolean {
+    if (!endDate) {
+      return false;
+    }
+    return String(endDate).slice(0, 10) <= this.todayDateString();
+  }
+
+  private async assertSprintHandoffAllowed(activeSprint: Sprint, targetSprint: Sprint): Promise<void> {
+    if (!this.isSprintEndDatePassed(activeSprint.endDate)) {
+      throw new BadRequestException({
+        message: `Can't start ${targetSprint.name} — ${activeSprint.name} hasn't ended yet. Complete it before starting a new sprint.`,
+        code: 'SPRINT_ACTIVE_NOT_ENDED',
+        activeSprintId: activeSprint.id,
+        activeSprintName: activeSprint.name,
+        targetSprintId: targetSprint.id,
+        targetSprintName: targetSprint.name,
+      });
+    }
+
+    const blockerCount = await this.countSprintHandoffBlockers(activeSprint.id);
+    if (blockerCount > 0) {
+      const sampleBlockers = await this.getSprintHandoffSampleBlockers(activeSprint.id);
+      throw new BadRequestException({
+        message: buildSprintHandoffBlockedMessage(
+          targetSprint.name,
+          activeSprint.name,
+          sampleBlockers,
+          blockerCount,
+        ),
+        code: 'SPRINT_HANDOFF_BLOCKED',
+        activeSprintId: activeSprint.id,
+        activeSprintName: activeSprint.name,
+        targetSprintId: targetSprint.id,
+        targetSprintName: targetSprint.name,
+        blockerCount,
+        sampleBlockers,
+      });
+    }
+  }
+
+  private async countSprintHandoffBlockers(sprintId: string): Promise<number> {
+    return this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoin('issue.status', 'status')
+      .where('issue.sprintId = :sprintId', { sprintId })
+      .andWhere('issue.deletedAt IS NULL')
+      .andWhere(
+        '(issue.statusId IS NULL OR status.sprintHandoffPolicy = :blocks)',
+        { blocks: SprintHandoffPolicy.BLOCKS },
+      )
+      .getCount();
+  }
+
+  private async getSprintHandoffSampleBlockers(
+    sprintId: string,
+  ): Promise<Array<{ key: string; statusName: string }>> {
+    const rows = await this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoin('issue.status', 'status')
+      .select(['issue.key', 'status.name'])
+      .where('issue.sprintId = :sprintId', { sprintId })
+      .andWhere('issue.deletedAt IS NULL')
+      .andWhere(
+        '(issue.statusId IS NULL OR status.sprintHandoffPolicy = :blocks)',
+        { blocks: SprintHandoffPolicy.BLOCKS },
+      )
+      .orderBy('issue.key', 'ASC')
+      .limit(5)
+      .getMany();
+
+    return rows.map((issue) => ({
+      key: issue.key,
+      statusName: issue.status?.name ?? 'Unknown',
+    }));
+  }
+
   async complete(id: string, organizationId: string, moveToSprintId?: string): Promise<Sprint> {
     const sprint = await this.findById(id);
     await this.projectsService.findById(sprint.projectId, organizationId);
 
-    if (sprint.status !== 'active') {
-      throw new BadRequestException('Only active sprints can be completed');
+    if (sprint.status !== 'active' && sprint.status !== 'inactive') {
+      throw new BadRequestException('Only active or inactive sprints can be completed');
     }
 
     // Validate the target sprint if one was provided

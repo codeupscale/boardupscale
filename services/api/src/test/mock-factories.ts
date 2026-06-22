@@ -115,6 +115,7 @@ export function mockIssueStatus(overrides?: Partial<IssueStatus>): IssueStatus {
     position: 0,
     isDefault: true,
     wipLimit: 0,
+    sprintHandoffPolicy: 'blocks',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     ...overrides,

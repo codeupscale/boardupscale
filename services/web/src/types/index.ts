@@ -56,7 +56,14 @@ export enum ProjectRole {
 export enum SprintStatus {
   PLANNED = 'planned',
   ACTIVE = 'active',
+  INACTIVE = 'inactive',
   COMPLETED = 'completed',
+}
+
+export enum SprintHandoffPolicy {
+  BLOCKS = 'blocks',
+  ALLOWS = 'allows',
+  IGNORED = 'ignored',
 }
 
 export interface Organization {
@@ -129,6 +136,7 @@ export interface IssueStatus {
   position: number
   color: string
   wipLimit: number
+  sprintHandoffPolicy?: SprintHandoffPolicy
   createdAt: string
   updatedAt: string
 }

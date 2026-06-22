@@ -23,7 +23,7 @@ import { useMe } from '@/hooks/useAuth'
 import { useAuthStore } from '@/store/auth.store'
 import { useRoles, useAssignRole } from '@/hooks/usePermissions'
 import { useHasPermission } from '@/hooks/useHasPermission'
-import { IssueStatusCategory, UserRole } from '@/types'
+import { IssueStatusCategory, UserRole, SprintHandoffPolicy } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -104,6 +104,7 @@ export function ProjectSettingsPage() {
   const [editStatus, setEditStatus] = useState<any | null>(null)
   const [statusName, setStatusName] = useState('')
   const [statusCategory, setStatusCategory] = useState(IssueStatusCategory.TODO)
+  const [statusHandoffPolicy, setStatusHandoffPolicy] = useState(SprintHandoffPolicy.BLOCKS)
   const [statusColor, setStatusColor] = useState(STATUS_COLORS[0])
   const [showDeleteProject, setShowDeleteProject] = useState(false)
   const [showKeyChange, setShowKeyChange] = useState(false)
@@ -199,11 +200,26 @@ export function ProjectSettingsPage() {
     setEditStatus(status)
     setStatusName(status.name)
     setStatusCategory(status.category)
+    setStatusHandoffPolicy(status.sprintHandoffPolicy ?? SprintHandoffPolicy.BLOCKS)
     setStatusColor(status.color || STATUS_COLORS[0])
     setShowAddStatus(true)
   }
 
+  const handleOpenAddStatus = () => {
+    setEditStatus(null)
+    setStatusName('')
+    setStatusCategory(IssueStatusCategory.TODO)
+    setStatusHandoffPolicy(SprintHandoffPolicy.BLOCKS)
+    setStatusColor(STATUS_COLORS[0])
+    setShowAddStatus(true)
+  }
+
   const handleStatusSubmit = () => {
+    const handoffPolicy =
+      statusCategory === IssueStatusCategory.DONE
+        ? SprintHandoffPolicy.IGNORED
+        : statusHandoffPolicy
+
     if (editStatus) {
       updateStatus.mutate(
         {
@@ -212,6 +228,7 @@ export function ProjectSettingsPage() {
           name: statusName,
           category: statusCategory,
           color: statusColor,
+          sprintHandoffPolicy: handoffPolicy,
         },
         {
           onSuccess: () => {
@@ -227,6 +244,7 @@ export function ProjectSettingsPage() {
           name: statusName,
           category: statusCategory,
           color: statusColor,
+          sprintHandoffPolicy: handoffPolicy,
         },
         {
           onSuccess: () => {
@@ -395,13 +413,7 @@ export function ProjectSettingsPage() {
                 {canManageBoard && (
                   <Button
                     size="sm"
-                    onClick={() => {
-                      setEditStatus(null)
-                      setStatusName('')
-                      setStatusCategory(IssueStatusCategory.TODO)
-                      setStatusColor(STATUS_COLORS[0])
-                      setShowAddStatus(true)
-                    }}
+                    onClick={handleOpenAddStatus}
                   >
                     <Plus className="h-4 w-4" />
                     {t('settings.addStatus')}
@@ -414,6 +426,13 @@ export function ProjectSettingsPage() {
                     <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color || '#6b7280' }} />
                     <span className="flex-1 text-sm font-medium text-foreground">{status.name}</span>
                     <span className="text-xs text-muted-foreground capitalize">{status.category}</span>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {status.category === IssueStatusCategory.DONE
+                        ? t('settings.handoffIgnored')
+                        : status.sprintHandoffPolicy === SprintHandoffPolicy.ALLOWS
+                          ? t('settings.handoffAllows')
+                          : t('settings.handoffBlocks')}
+                    </span>
                     {canManageBoard && (
                       <Button variant="ghost" size="icon-sm" onClick={() => handleOpenEditStatus(status)}>
                         <Edit2 className="h-3.5 w-3.5" />
@@ -679,7 +698,18 @@ export function ProjectSettingsPage() {
             />
             <div className="w-full">
               <Label className="mb-1">{t('settings.category')}</Label>
-              <Select value={statusCategory} onValueChange={(v) => setStatusCategory(v as IssueStatusCategory)}>
+              <Select
+                value={statusCategory}
+                onValueChange={(v) => {
+                  const category = v as IssueStatusCategory
+                  setStatusCategory(category)
+                  if (category === IssueStatusCategory.DONE) {
+                    setStatusHandoffPolicy(SprintHandoffPolicy.IGNORED)
+                  } else if (category === IssueStatusCategory.TODO) {
+                    setStatusHandoffPolicy(SprintHandoffPolicy.BLOCKS)
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -690,6 +720,24 @@ export function ProjectSettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {statusCategory !== IssueStatusCategory.DONE && (
+              <div className="w-full">
+                <Label className="mb-1">{t('settings.sprintHandoff')}</Label>
+                <Select
+                  value={statusHandoffPolicy}
+                  onValueChange={(v) => setStatusHandoffPolicy(v as SprintHandoffPolicy)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SprintHandoffPolicy.BLOCKS}>{t('settings.handoffBlocks')}</SelectItem>
+                    <SelectItem value={SprintHandoffPolicy.ALLOWS}>{t('settings.handoffAllows')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">{t('settings.sprintHandoffHint')}</p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">{t('settings.color')}</label>
               <div className="flex gap-2 flex-wrap">

@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsInt, Min, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsInt, Min, MaxLength, IsIn } from 'class-validator';
+import { SprintHandoffPolicy } from '../../../common/constants/sprint-handoff-policy';
 
 export class UpdateStatusDto {
   @ApiPropertyOptional({ example: 'In Review' })
@@ -29,4 +30,13 @@ export class UpdateStatusDto {
   @IsInt()
   @Min(0)
   wipLimit?: number;
+
+  @ApiPropertyOptional({
+    example: SprintHandoffPolicy.ALLOWS,
+    enum: SprintHandoffPolicy,
+    description: 'Whether non-done issues in this column block overdue sprint handoff',
+  })
+  @IsOptional()
+  @IsIn(Object.values(SprintHandoffPolicy))
+  sprintHandoffPolicy?: SprintHandoffPolicy;
 }

@@ -10,6 +10,10 @@ import { Issue } from '../issues/entities/issue.entity';
 import { Sprint } from '../sprints/entities/sprint.entity';
 import { CreateStatusDto } from './dto/create-status.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import {
+  normalizeSprintHandoffPolicyForCategory,
+  resolveDefaultSprintHandoffPolicy,
+} from '../../common/constants/sprint-handoff-policy';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
@@ -181,6 +185,11 @@ export class BoardsService {
       ...dto,
       projectId,
       position,
+      sprintHandoffPolicy: normalizeSprintHandoffPolicyForCategory(
+        dto.category ?? 'todo',
+        dto.sprintHandoffPolicy,
+        dto.name,
+      ),
     });
     return this.issueStatusRepository.save(status);
   }
@@ -200,7 +209,21 @@ export class BoardsService {
       throw new NotFoundException('Status not found');
     }
 
+    const nextCategory = dto.category ?? status.category;
+    const nextName = dto.name ?? status.name;
+    const explicitPolicy = dto.sprintHandoffPolicy;
+
     Object.assign(status, dto);
+    status.sprintHandoffPolicy = explicitPolicy
+      ? normalizeSprintHandoffPolicyForCategory(nextCategory, explicitPolicy, nextName)
+      : dto.category !== undefined
+        ? resolveDefaultSprintHandoffPolicy(nextCategory, nextName)
+        : status.sprintHandoffPolicy;
+
+    if (nextCategory === 'done') {
+      status.sprintHandoffPolicy = normalizeSprintHandoffPolicyForCategory('done', undefined, nextName);
+    }
+
     return this.issueStatusRepository.save(status);
   }
 

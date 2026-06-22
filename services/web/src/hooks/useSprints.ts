@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import { toast } from '@/store/ui.store'
 import { Sprint } from '@/types'
 
@@ -91,7 +92,7 @@ export function useStartSprint() {
       toast('Sprint started')
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to start sprint', 'error'),
+      toast(getApiErrorMessage(err, 'Failed to start sprint'), 'error'),
   })
 }
 
