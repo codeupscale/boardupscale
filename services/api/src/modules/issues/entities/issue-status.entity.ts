@@ -39,6 +39,9 @@ export class IssueStatus {
   @Column({ name: 'wip_limit', type: 'int', default: 0 })
   wipLimit: number;
 
+  @Column({ name: 'sprint_handoff_policy', type: 'varchar', length: 20, default: 'blocks' })
+  sprintHandoffPolicy: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

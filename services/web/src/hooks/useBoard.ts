@@ -95,6 +95,7 @@ export function useCreateStatus() {
       category: string
       color?: string
       wipLimit?: number
+      sprintHandoffPolicy?: string
     }) => {
       const { data } = await api.post(`/projects/${projectId}/statuses`, payload)
       return data.data as IssueStatus
@@ -123,6 +124,7 @@ export function useUpdateStatus() {
       color?: string
       position?: number
       wipLimit?: number
+      sprintHandoffPolicy?: string
     }) => {
       const { data } = await api.patch(`/projects/${projectId}/statuses/${statusId}`, payload)
       return data.data as IssueStatus

@@ -166,9 +166,9 @@ describe('SprintsService', () => {
       );
     });
 
-    it('should throw BadRequestException when another sprint is already active', async () => {
+    it('should throw BadRequestException when active sprint has not ended', async () => {
       const sprint = mockSprint({ status: 'planned' });
-      const activeSprint = mockSprint({ id: 'other-sprint', status: 'active' });
+      const activeSprint = mockSprint({ id: 'other-sprint', status: 'active', endDate: null });
 
       sprintRepo.findOne.mockImplementation((opts: any) => {
         if (opts?.where?.id) return Promise.resolve(sprint);
@@ -177,10 +177,76 @@ describe('SprintsService', () => {
       });
       projectsService.findById.mockResolvedValue(mockProject());
 
-      await expect(service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(BadRequestException);
-      await expect(service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(
-        'There is already an active sprint',
-      );
+      await expect(service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toMatchObject({
+        message: expect.stringContaining("hasn't ended yet"),
+      });
+    });
+
+    it('should throw BadRequestException when overdue active sprint has blocking issues', async () => {
+      const sprint = mockSprint({ status: 'planned' });
+      const activeSprint = mockSprint({
+        id: 'other-sprint',
+        status: 'active',
+        name: 'Sprint 1',
+        endDate: '2020-01-01',
+      });
+
+      sprintRepo.findOne.mockImplementation((opts: any) => {
+        if (opts?.where?.id) return Promise.resolve(sprint);
+        if (opts?.where?.status === 'active') return Promise.resolve(activeSprint);
+        return Promise.resolve(null);
+      });
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const blockerQb = createMockQueryBuilder();
+      blockerQb.getCount.mockResolvedValue(2);
+      const sampleQb = createMockQueryBuilder([
+        mockIssue({ key: 'TPROJ-9', status: mockIssueStatus({ name: 'To Do' }) }),
+      ]);
+      sampleQb.getMany.mockResolvedValue([
+        mockIssue({ key: 'TPROJ-9', status: mockIssueStatus({ name: 'To Do' }) }),
+      ]);
+      issueRepo.createQueryBuilder.mockReturnValueOnce(blockerQb).mockReturnValueOnce(sampleQb);
+
+      await expect(service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toMatchObject({
+        message: expect.stringContaining('TPROJ-9 in To Do'),
+      });
+    });
+
+    it('should hand off overdue active sprint to inactive when only allowing statuses remain', async () => {
+      const sprint = mockSprint({ status: 'planned' });
+      const activeSprint = mockSprint({
+        id: 'other-sprint',
+        status: 'active',
+        endDate: '2020-01-01',
+      });
+
+      sprintRepo.findOne.mockImplementation((opts: any) => {
+        if (opts?.where?.id) return Promise.resolve(sprint);
+        if (opts?.where?.status === 'active') return Promise.resolve(activeSprint);
+        return Promise.resolve(null);
+      });
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const blockerQb = createMockQueryBuilder();
+      blockerQb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(blockerQb);
+
+      (sprintRepo.manager.transaction as jest.Mock).mockImplementation(async (cb: any) => {
+        const em = {
+          findOne: jest
+            .fn()
+            .mockResolvedValueOnce({ ...activeSprint })
+            .mockResolvedValueOnce({ ...sprint }),
+          save: jest.fn().mockImplementation((_entity, data) => Promise.resolve(data)),
+        };
+        return cb(em);
+      });
+
+      const result = await service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+
+      expect(result.status).toBe('active');
+      expect(sprintRepo.manager.transaction).toHaveBeenCalled();
     });
 
     it('should set startDate to today if not already set', async () => {
@@ -222,15 +288,34 @@ describe('SprintsService', () => {
       expect(result).toEqual(completedSprint);
     });
 
-    it('should throw BadRequestException when sprint is not active', async () => {
+    it('should throw BadRequestException when sprint is not active or inactive', async () => {
       const sprint = mockSprint({ status: 'planned' });
       sprintRepo.findOne.mockResolvedValue(sprint);
       projectsService.findById.mockResolvedValue(mockProject());
 
-      await expect(service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(BadRequestException);
-      await expect(service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(
-        'Only active sprints can be completed',
-      );
+      await expect(service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID)).rejects.toMatchObject({
+        message: 'Only active or inactive sprints can be completed',
+      });
+    });
+
+    it('should complete an inactive sprint', async () => {
+      const sprint = mockSprint({ status: 'inactive' });
+      sprintRepo.findOne.mockResolvedValue(sprint);
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const doneStatus = mockIssueStatus({ id: 'done-status', category: 'done' });
+      statusRepo.find.mockResolvedValue([doneStatus]);
+
+      const incompleteQb = createMockQueryBuilder([]);
+      incompleteQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValueOnce(incompleteQb);
+
+      const completedSprint = mockSprint({ status: 'completed' });
+      sprintRepo.save.mockResolvedValue(completedSprint);
+
+      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+
+      expect(result).toEqual(completedSprint);
     });
 
     it('should move incomplete issues to backlog and complete sprint', async () => {

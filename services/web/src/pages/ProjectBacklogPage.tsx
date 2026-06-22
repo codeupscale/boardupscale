@@ -331,8 +331,10 @@ function SprintSection({
 }) {
   const { t } = useTranslation()
   const { hasPermission } = useHasPermission(projectId)
-  // Completed sprints start collapsed — they're historical reference, not active planning.
-  const [collapsed, setCollapsed] = useState(sprint.status === SprintStatus.COMPLETED)
+  // Completed/inactive sprints start collapsed — historical reference, not active planning.
+  const [collapsed, setCollapsed] = useState(
+    sprint.status === SprintStatus.COMPLETED || sprint.status === SprintStatus.INACTIVE,
+  )
   const [showConfirm, setShowConfirm] = useState<'start' | 'complete' | 'delete' | null>(null)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -356,7 +358,9 @@ function SprintSection({
 
   const isActive = sprint.status === SprintStatus.ACTIVE
   const isPlanned = sprint.status === SprintStatus.PLANNED
+  const isInactive = sprint.status === SprintStatus.INACTIVE
   const isCompleted = sprint.status === SprintStatus.COMPLETED
+  const isClosed = isCompleted || isInactive
 
   const issueIds = issues.map((i) => i.id)
   const allSelected = issueIds.length > 0 && issueIds.every((id) => selectedIssueIds.has(id))
@@ -394,7 +398,7 @@ function SprintSection({
   return (
     // Completed sprints accept no drops — incomplete issues moved during completion
     // already left this sprint, and you can't add work to a closed sprint.
-    <Droppable droppableId={sprint.id} type="ISSUE" isDropDisabled={isCompleted}>
+    <Droppable droppableId={sprint.id} type="ISSUE" isDropDisabled={isClosed}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -405,6 +409,7 @@ function SprintSection({
               ? 'border-primary/50 dark:border-primary bg-primary/5 dark:bg-primary/10'
               : 'border-border',
             isCompleted && 'opacity-90',
+            isInactive && 'opacity-90',
           )}
         >
           {/* Sprint Header — active gets the primary tint, completed gets a muted tint, planned is neutral */}
@@ -413,7 +418,8 @@ function SprintSection({
               'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
               isActive && 'bg-primary/10 border-b border-primary/20 dark:border-primary/30',
               isCompleted && 'bg-muted/30 border-b border-border',
-              !isActive && !isCompleted && 'bg-muted/50 border-b border-border',
+              isInactive && 'bg-muted/30 border-b border-border',
+              !isActive && !isClosed && 'bg-muted/50 border-b border-border',
             )}
             onClick={() => setCollapsed((c) => !c)}
           >
@@ -427,6 +433,11 @@ function SprintSection({
               {isActive && (
                 <span className="px-2 py-0.5 bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium rounded-full flex-shrink-0">
                   {t('sprints.active')}
+                </span>
+              )}
+              {isInactive && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs font-medium rounded-full flex-shrink-0">
+                  {t('sprints.inactive')}
                 </span>
               )}
               {isCompleted && (
@@ -511,7 +522,7 @@ function SprintSection({
                   {t('sprints.startSprint')}
                 </Button>
               )}
-              {isActive && hasPermission('sprint', 'manage') && (
+              {(isActive || isInactive) && hasPermission('sprint', 'manage') && (
                 // outline variant (matches "Start Sprint") so the action reads as a button,
                 // not as another status badge alongside the green "Active" pill.
                 <Button size="sm" variant="outline" onClick={() => setShowConfirm('complete')}>
@@ -704,7 +715,7 @@ function SprintSection({
                   const doneCount = issues.filter((i) => i.status?.category === 'done').length
                   const incompleteCount = issues.length - doneCount
                   const otherSprints = allSprints.filter(
-                    (s) => s.id !== sprint.id && s.status !== 'completed',
+                    (s) => s.id !== sprint.id && s.status === SprintStatus.PLANNED,
                   )
                   return (
                     <>
@@ -1027,7 +1038,10 @@ export function ProjectBacklogPage() {
   // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
   // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
   const activeSprints = useMemo(
-    () => sprints?.filter((s) => s.status !== SprintStatus.COMPLETED) || [],
+    () =>
+      sprints?.filter(
+        (s) => s.status === SprintStatus.ACTIVE || s.status === SprintStatus.PLANNED,
+      ) || [],
     [sprints],
   )
 
@@ -1040,15 +1054,18 @@ export function ProjectBacklogPage() {
     const order: Record<string, number> = {
       [SprintStatus.ACTIVE]: 0,
       [SprintStatus.PLANNED]: 1,
-      [SprintStatus.COMPLETED]: 2,
+      [SprintStatus.INACTIVE]: 2,
+      [SprintStatus.COMPLETED]: 3,
     }
     return [...sprints].sort((a, b) => {
       const oa = order[a.status] ?? 99
       const ob = order[b.status] ?? 99
       if (oa !== ob) return oa - ob
-      if (a.status === SprintStatus.COMPLETED) {
-        // Newest-finished first inside the completed group.
-        return (b.completedAt || b.endDate || '').localeCompare(a.completedAt || a.endDate || '')
+      if (a.status === SprintStatus.COMPLETED || a.status === SprintStatus.INACTIVE) {
+        // Newest-finished / most-recently-inactivated first in historical groups.
+        const aDate = a.completedAt || a.endDate || ''
+        const bDate = b.completedAt || b.endDate || ''
+        return bDate.localeCompare(aDate)
       }
       return (a.startDate || '').localeCompare(b.startDate || '')
     })

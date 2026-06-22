@@ -72,6 +72,8 @@ export function createMockQueryBuilder<T = any>(result?: T | T[]): Record<string
     addOrderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    getExists: jest.fn().mockResolvedValue(false),
     getMany: jest.fn().mockResolvedValue(Array.isArray(result) ? result : []),
     getOne: jest.fn().mockResolvedValue(Array.isArray(result) ? result[0] : result),
     getManyAndCount: jest.fn().mockResolvedValue([Array.isArray(result) ? result : [], Array.isArray(result) ? result.length : 0]),

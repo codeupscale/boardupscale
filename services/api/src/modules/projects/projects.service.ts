@@ -22,6 +22,7 @@ import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
+import { resolveDefaultSprintHandoffPolicy } from '../../common/constants/sprint-handoff-policy';
 import { PosthogService } from '../telemetry/posthog.service';
 
 @Injectable()
@@ -136,7 +137,11 @@ export class ProjectsService {
     const statuses = this.getStatusesForTemplate(templateKey);
 
     const statusEntities = statuses.map((s) =>
-      this.issueStatusRepository.create({ ...s, projectId: saved.id }),
+      this.issueStatusRepository.create({
+        ...s,
+        projectId: saved.id,
+        sprintHandoffPolicy: resolveDefaultSprintHandoffPolicy(s.category, s.name),
+      }),
     );
     await this.issueStatusRepository.save(statusEntities);
 

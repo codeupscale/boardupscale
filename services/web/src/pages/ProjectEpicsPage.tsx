@@ -64,7 +64,9 @@ export function ProjectEpicsPage() {
   const { data: projectMembers } = useProjectMembers(projectKey!)
   const users = projectMembers?.map((m) => m.user)
   const { data: sprints } = useSprints(projectKey!)
-  const activeSprints = (sprints || []).filter((s) => s.status !== SprintStatus.COMPLETED)
+  const activeSprints = (sprints || []).filter(
+    (s) => s.status === SprintStatus.ACTIVE || s.status === SprintStatus.PLANNED,
+  )
   const createIssue = useCreateIssue()
   const { hasPermission } = useHasPermission(projectKey)
 
