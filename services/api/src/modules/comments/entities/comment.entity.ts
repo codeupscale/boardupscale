@@ -41,6 +41,9 @@ export class Comment {
   @Column({ name: 'jira_comment_id', type: 'varchar', length: 100, nullable: true })
   jiraCommentId: string | null;
 
+  @Column({ name: 'portability_source_id', type: 'uuid', nullable: true })
+  portabilitySourceId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

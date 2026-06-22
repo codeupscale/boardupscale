@@ -38,6 +38,9 @@ export class WorkLog {
   @Column({ name: 'logged_at', type: 'timestamp' })
   loggedAt: Date;
 
+  @Column({ name: 'portability_source_id', type: 'uuid', nullable: true })
+  portabilitySourceId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

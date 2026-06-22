@@ -46,6 +46,9 @@ export class Attachment {
   @Column({ name: 'storage_bucket', type: 'varchar', length: 255 })
   storageBucket: string;
 
+  @Column({ name: 'portability_source_id', type: 'uuid', nullable: true })
+  portabilitySourceId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

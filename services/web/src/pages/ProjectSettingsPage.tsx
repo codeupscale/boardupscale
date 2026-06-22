@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   Plus, Trash2, Edit2, AlertTriangle, Shield, Globe,
   Settings, Users, GitBranch, SlidersHorizontal, Layers,
-  Tag, Sparkles, Github, Zap, RefreshCw,
+  Tag, Sparkles, Github, Zap, RefreshCw, ArrowDownUp,
 } from 'lucide-react'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { AutomationsContent } from '@/pages/ProjectAutomationsPage'
@@ -50,6 +50,7 @@ import { ComponentList } from '@/components/projects/component-list'
 import { VersionList } from '@/components/projects/version-list'
 import { GitHubConnection } from '@/components/projects/github-connection'
 import { AiUsageDashboard } from '@/components/ai/AiUsageDashboard'
+import { ProjectPortabilityPanel } from '@/components/projects/project-portability-panel'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS = [
@@ -79,6 +80,7 @@ const SETTINGS_GROUPS: Array<{ label: string; items: SettingItem[] }> = [
     label: 'Integrations',
     items: [
       { id: 'github', label: 'GitHub', icon: Github },
+      { id: 'portability', label: 'Import / Export', icon: ArrowDownUp },
       { id: 'webhooks', label: 'Webhooks', icon: Globe },
       { id: 'ai', label: 'AI Usage', icon: Sparkles },
     ],
@@ -120,6 +122,8 @@ export function ProjectSettingsPage() {
   const currentUser = useAuthStore((s) => s.user)
   const canManageOrgRoles = currentUser?.role === UserRole.OWNER
   const canUpdateProject = hasPermission('project', 'update')
+  const canExportProject = hasPermission('project', 'read')
+  const canImportProject = hasPermission('project', 'create')
   const canManageBoard = hasPermission('board', 'manage')
   const canManageGithub = hasPermission('project', 'manage')
   const canManageWebhook = hasPermission('webhook', 'manage')
@@ -531,6 +535,18 @@ export function ProjectSettingsPage() {
               </div>
               <GitHubConnection projectId={projectKey!} canManage={canManageGithub} />
             </div>
+          )}
+
+          {/* Import / Export */}
+          {activeTab === 'portability' && project && (
+            <ProjectPortabilityPanel
+              projectId={project.id}
+              projectKey={projectKey!}
+              projectName={project.name}
+              projectType={project.type}
+              canExport={canExportProject}
+              canImport={canImportProject}
+            />
           )}
 
           {/* AI Usage */}

@@ -37,7 +37,9 @@ import { ImportModule } from './modules/import/import.module';
 import { JiraConnection } from './modules/import/entities/jira-connection.entity';
 import { JiraImportJob } from './modules/import/entities/jira-import-job.entity';
 import { MigrationModule } from './modules/migration/migration.module';
+import { ProjectPortabilityModule } from './modules/project-portability/project-portability.module';
 import { JiraMigrationRun } from './modules/migration/entities/jira-migration-run.entity';
+import { ProjectPortabilityJob } from './modules/project-portability/entities/project-portability-job.entity';
 import { PagesModule } from './modules/pages/pages.module';
 import { SavedViewsModule } from './modules/saved-views/saved-views.module';
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
@@ -147,6 +149,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
           JiraConnection,
           JiraImportJob,
           JiraMigrationRun,
+          ProjectPortabilityJob,
           OrganizationMember,
           MessagingChannel,
           MessagingChannelMember,
@@ -225,6 +228,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
     BillingModule,
     ImportModule,
     MigrationModule,
+    ProjectPortabilityModule,
     PagesModule,
     SavedViewsModule,
     TelemetryModule,

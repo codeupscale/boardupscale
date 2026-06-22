@@ -41,6 +41,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     this.initRedisAdapter(server);
     // Subscribe to worker notification events via Redis pub/sub
     this.subscribeToWorkerNotifications();
+    this.subscribeToPortabilityProgress();
     this.logger.log('WebSocket Gateway initialized');
   }
 
@@ -111,6 +112,38 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       });
     } catch (err: any) {
       this.logger.warn(`Worker notification subscription failed: ${err.message}`);
+    }
+  }
+
+  private async subscribeToPortabilityProgress() {
+    try {
+      const redisUrl = this.configService.get<string>('redis.url');
+      if (!redisUrl) return;
+
+      const IORedis = (await import('ioredis')).default;
+      const subClient = new IORedis(redisUrl);
+
+      subClient.subscribe('portability:progress', (err) => {
+        if (err) {
+          this.logger.warn(`Failed to subscribe to portability:progress: ${err.message}`);
+          return;
+        }
+        this.logger.log('Subscribed to Redis channel: portability:progress');
+      });
+
+      subClient.on('message', (channel: string, message: string) => {
+        if (channel !== 'portability:progress') return;
+        try {
+          const data = JSON.parse(message);
+          const organizationId = data.organizationId;
+          if (!organizationId) return;
+          this.emitToOrg(organizationId, 'portability:progress', data);
+        } catch (err: any) {
+          this.logger.warn(`Failed to parse portability progress: ${err.message}`);
+        }
+      });
+    } catch (err: any) {
+      this.logger.warn(`Portability progress subscription failed: ${err.message}`);
     }
   }
 
