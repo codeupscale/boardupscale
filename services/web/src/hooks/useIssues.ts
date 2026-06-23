@@ -101,6 +101,8 @@ export interface IssueFilters {
   limit?: number
   deleted?: boolean
   parentless?: boolean
+  /** Return only issues whose parent_id matches this UUID. */
+  parentId?: string
   /** Comma-separated list of issue types to omit, e.g. "epic,subtask". */
   excludeTypes?: string
   /**
@@ -144,6 +146,24 @@ export function useIssue(id: string) {
   })
 }
 
+/** Direct children/subtasks of an issue — uses GET /issues/:id/children (not paginated list). */
+export function useIssueChildren(issueId: string | undefined) {
+  return useQuery({
+    queryKey: ['issue-children', issueId],
+    queryFn: async () => {
+      const { data } = await api.get(`/issues/${issueId}/children`)
+      return data.data as Issue[]
+    },
+    enabled: !!issueId,
+  })
+}
+
+export function invalidateIssueChildren(qc: QueryClient, parentId: string | null | undefined) {
+  if (parentId) {
+    qc.invalidateQueries({ queryKey: ['issue-children', parentId] })
+  }
+}
+
 export function useCreateIssue() {
   const qc = useQueryClient()
   const { t } = useTranslation()
@@ -164,6 +184,8 @@ export function useCreateIssue() {
           return prependIssueToBoard(old, issue)
         })
       }
+
+      invalidateIssueChildren(qc, variables.parentId)
 
       const key = issue.key || `#${issue.number}`
       toast(t('issues.createdSuccess', { key }), 'success', { duration: 3000 })
@@ -206,11 +228,15 @@ export function useUpdateIssue() {
       }
       return { previous, id }
     },
-    onSuccess: (issue) => {
+    onSuccess: (issue, variables, context) => {
       // Replace cache with server response (authoritative)
       qc.setQueryData(['issue', issue.id], issue)
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.invalidateQueries({ queryKey: ['board'] })
+      if ('parentId' in variables) {
+        invalidateIssueChildren(qc, variables.parentId)
+        invalidateIssueChildren(qc, context?.previous?.parentId)
+      }
       toast('Issue updated')
     },
     onError: (err: any, _variables, context) => {

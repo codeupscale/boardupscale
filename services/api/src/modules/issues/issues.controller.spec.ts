@@ -120,6 +120,29 @@ describe('IssuesController', () => {
       );
     });
 
+    it('should forward parentId to the service', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(
+        TEST_IDS.ORG_ID,
+        { page: 1, limit: 20 } as any,
+        TEST_IDS.PROJECT_ID,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        TEST_IDS.ISSUE_ID,
+      );
+
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: TEST_IDS.ISSUE_ID }),
+      );
+    });
+
     it('should forward excludeTypes string verbatim to the service', async () => {
       issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
 
@@ -135,7 +158,8 @@ describe('IssuesController', () => {
         undefined,
         undefined,
         undefined, // parentless
-        'epic,subtask',
+        undefined, // parentId
+        'epic,subtask', // excludeTypes
       );
 
       expect(issuesService.findAll).toHaveBeenCalledWith(

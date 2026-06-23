@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Project } from '../../projects/entities/project.entity';
@@ -66,6 +67,12 @@ export class Issue {
   @ManyToOne(() => Issue, { nullable: true })
   @JoinColumn({ name: 'parent_id' })
   parent: Issue;
+
+  @OneToMany(() => Issue, (child) => child.parent)
+  children: Issue[];
+
+  /** Populated via loadRelationCountAndMap — not a DB column. */
+  childrenCount?: number;
 
   // DB column is "number" (integer, auto-seq per project)
   @Column({ name: 'number', type: 'int' })

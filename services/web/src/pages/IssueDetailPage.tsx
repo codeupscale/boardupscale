@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { getSocket } from '@/lib/socket'
@@ -22,7 +22,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   useIssue,
-  useIssues,
+  useIssueChildren,
   useCreateIssue,
   useUpdateIssue,
   useDeleteIssue,
@@ -46,7 +46,12 @@ import { isKanbanProject } from '@/lib/project-workflow'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
-import { RichTextDisplay } from '@/components/ui/rich-text-display'
+import {
+  RichTextDisplay,
+  RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT,
+  RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT,
+  RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT,
+} from '@/components/ui/rich-text-display'
 import {
   IssueType,
   IssuePriority,
@@ -172,7 +177,8 @@ function CommentItem({
               value={editContent}
               onChange={setEditContent}
               users={users || []}
-              minHeight={80}
+              minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+              maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
               autoFocus
               issueId={comment.issueId}
             />
@@ -195,7 +201,11 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <RichTextDisplay content={comment.content} className="text-sm text-foreground" />
+          <RichTextDisplay
+            content={comment.content}
+            className="text-sm text-foreground"
+            maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
+          />
         )}
         {(currentUserId === comment.authorId || canModifyAny) && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -324,6 +334,7 @@ export function IssueDetailPage() {
     const handleIssueUpdated = (updated: { id: string }) => {
       if (updated?.id !== issueId) return
       qc.invalidateQueries({ queryKey: ['issue', issueId] })
+      qc.invalidateQueries({ queryKey: ['issue-children', issueId] })
       qc.invalidateQueries({ queryKey: ['activities', issueId] })
     }
 
@@ -389,14 +400,8 @@ export function IssueDetailPage() {
   const createComment = useCreateComment()
   const addWorkLog = useAddWorkLog()
 
-  // Child issues — use the dedicated children endpoint via filter
-  const { data: childIssuesData } = useIssues(
-    issue ? { projectId: issue.projectId } : undefined,
-  )
-  const childIssues = useMemo(
-    () => (childIssuesData?.data || []).filter((i) => i.parentId === issueId),
-    [childIssuesData, issueId],
-  )
+  // Child issues — dedicated children endpoint (not paginated project list)
+  const { data: childIssues = [], isLoading: childrenLoading } = useIssueChildren(issueId)
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
@@ -552,7 +557,8 @@ export function IssueDetailPage() {
                   value={descValue}
                   onChange={setDescValue}
                   users={orgUsers || []}
-                  minHeight={150}
+                  minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+                  maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
                   autoFocus
                   issueId={issue.id}
                 />
@@ -581,7 +587,10 @@ export function IssueDetailPage() {
                 }}
               >
                 {issue.description ? (
-                  <RichTextDisplay content={issue.description} />
+                  <RichTextDisplay
+                    content={issue.description}
+                    maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground italic">{t('issues.clickToAddDescription')}</p>
                 )}
@@ -626,8 +635,13 @@ export function IssueDetailPage() {
                   </Button>
                 }
               />
-              {childIssues.length > 0 ? (
-                <div className="rounded-xl border border-border/60 divide-y divide-border overflow-hidden">
+              {childrenLoading ? (
+                <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading…')}</p>
+              ) : childIssues.length > 0 ? (
+                <div
+                  className="rounded-xl border border-border/60 divide-y divide-border overflow-y-auto"
+                  style={{ maxHeight: RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT }}
+                >
                   {childIssues.map((child) => (
                     <Link
                       key={child.id}
@@ -723,7 +737,8 @@ export function IssueDetailPage() {
                       value={commentText}
                       onChange={setCommentText}
                       users={orgUsers || []}
-                      minHeight={80}
+                      minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+                      maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
                       issueId={issue.id}
                     />
                     <div className="flex justify-end">
@@ -891,13 +906,11 @@ export function IssueDetailPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">{t('common.noSprint')}</SelectItem>
-                      {sprints
-                        ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
-                        .map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
-                          </SelectItem>
-                        ))}
+                      {sprints?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </SidebarField>
@@ -1338,16 +1351,7 @@ export function IssueDetailPage() {
                 const handleLink = (subtaskId: string) => {
                   updateIssue.mutate(
                     { id: subtaskId, parentId: issue.id },
-                    {
-                      onSuccess: () => {
-                        // Refresh both the parent issue (children list) and the broader
-                        // issues caches so the linked subtask leaves any "parentless"
-                        // queries on other surfaces.
-                        qc.invalidateQueries({ queryKey: ['issue', issue.id] })
-                        qc.invalidateQueries({ queryKey: ['issues'] })
-                        setShowCreateChild(false)
-                      },
-                    },
+                    { onSuccess: () => setShowCreateChild(false) },
                   )
                 }
 

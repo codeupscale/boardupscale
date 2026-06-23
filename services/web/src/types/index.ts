@@ -186,6 +186,8 @@ export interface Issue {
   reporter?: User
   parent?: Issue
   sprint?: Sprint
+  /** Direct non-deleted children count — populated on list/board queries. */
+  childrenCount?: number
   deletedAt?: string
   createdAt: string
   updatedAt: string

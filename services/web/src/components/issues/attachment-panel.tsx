@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useAttachments, useUploadAttachment, useDeleteAttachment } from '@/hooks/useAttachments'
 import { getFileViewUrl } from '@/components/ui/rich-text-editor'
+import { RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT } from '@/components/ui/rich-text-display'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Attachment } from '@/types'
@@ -326,6 +327,10 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
         )}
       </div>
 
+      <div
+        className="overflow-y-auto space-y-4"
+        style={{ maxHeight: RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT }}
+      >
       {isLoading && (
         <div className="text-sm text-muted-foreground text-center py-6">Loading attachments...</div>
       )}
@@ -411,6 +416,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
           </div>
         </div>
       )}
+      </div>
 
       {/* Lightbox / Video Player */}
       {lightbox?.type === 'image' && (

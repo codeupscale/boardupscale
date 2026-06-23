@@ -32,8 +32,9 @@ export function useCreateIssueLink() {
       })
       return data.data as IssueLink
     },
-    onSuccess: (_, { issueId }) => {
+    onSuccess: (_, { issueId, targetIssueId }) => {
       qc.invalidateQueries({ queryKey: ['issue-links', issueId] })
+      qc.invalidateQueries({ queryKey: ['issue-links', targetIssueId] })
       toast('Issue linked')
     },
     onError: (err: any) =>
@@ -47,15 +48,20 @@ export function useDeleteIssueLink() {
     mutationFn: async ({
       issueId,
       linkId,
+      linkedIssueId,
     }: {
       issueId: string
       linkId: string
+      linkedIssueId?: string
     }) => {
       await api.delete(`/issues/${issueId}/links/${linkId}`)
-      return { issueId }
+      return { issueId, linkedIssueId }
     },
-    onSuccess: ({ issueId }) => {
+    onSuccess: ({ issueId, linkedIssueId }) => {
       qc.invalidateQueries({ queryKey: ['issue-links', issueId] })
+      if (linkedIssueId) {
+        qc.invalidateQueries({ queryKey: ['issue-links', linkedIssueId] })
+      }
       toast('Link removed')
     },
     onError: (err: any) =>
