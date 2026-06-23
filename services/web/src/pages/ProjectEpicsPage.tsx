@@ -8,7 +8,7 @@ import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
 import { useHasPermission } from '@/hooks/useHasPermission'
-import { IssueType, IssueStatusCategory, SprintStatus } from '@/types'
+import { IssueType, IssueStatusCategory } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
@@ -64,9 +64,6 @@ export function ProjectEpicsPage() {
   const { data: projectMembers } = useProjectMembers(projectKey!)
   const users = projectMembers?.map((m) => m.user)
   const { data: sprints } = useSprints(projectKey!)
-  const activeSprints = (sprints || []).filter(
-    (s) => s.status === SprintStatus.ACTIVE || s.status === SprintStatus.PLANNED,
-  )
   const createIssue = useCreateIssue()
   const { hasPermission } = useHasPermission(projectKey)
 
@@ -185,7 +182,7 @@ export function ProjectEpicsPage() {
                 ref={issueFormRef}
                 projectId={project?.id || projectKey!}
                 statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-                sprints={activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+                sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
                 users={users || []}
                 defaultValues={{
                   type: IssueType.EPIC,

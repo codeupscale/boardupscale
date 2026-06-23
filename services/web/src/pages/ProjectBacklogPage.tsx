@@ -1035,16 +1035,6 @@ export function ProjectBacklogPage() {
     }
   }, [issuesData])
 
-  // `activeSprints` keeps its narrower meaning: "sprints you can still add work to",
-  // used by Create-Issue / Edit-Issue dropdowns. Completed sprints are excluded there.
-  const activeSprints = useMemo(
-    () =>
-      sprints?.filter(
-        (s) => s.status === SprintStatus.ACTIVE || s.status === SprintStatus.PLANNED,
-      ) || [],
-    [sprints],
-  )
-
   // `displaySprints` is what we render on the page — includes completed sprints
   // so users keep a chronological view. Ordering: Active → Planned → Completed.
   // Within each group: Active/Planned by start date ascending, Completed by
@@ -1295,7 +1285,7 @@ export function ProjectBacklogPage() {
         statuses={board?.statuses}
         users={users}
         projects={projects}
-        sprints={isKanban ? [] : activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+        sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
         projectId={projectKey}
       />
       </ContentFade>}
@@ -1367,7 +1357,7 @@ export function ProjectBacklogPage() {
               ref={issueFormRef}
               projectId={project?.id || projectKey!}
               statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={isKanban ? [] : activeSprints.map((s) => ({ id: s.id, name: s.name }))}
+              sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
               users={users || []}
               // Default Status to the project's first "To Do" category status
               // so the dropdown isn't empty on open. Same fallback the Board

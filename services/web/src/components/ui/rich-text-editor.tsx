@@ -146,14 +146,11 @@ interface RichTextEditorProps {
   users?: User[]
   minHeight?: number
   /**
-   * Optional cap for the editor's content area. When set, the editor will
-   * scroll internally once content exceeds this height instead of growing
-   * to push surrounding UI off-screen. Used by modal-hosted editors
-   * (Create Ticket, etc.) where ambient space is limited. Leave unset
-   * for full-page surfaces (issue detail description, page editor) where
-   * unbounded growth is desirable.
+   * Cap for the overall editor chrome (toolbar + content). When set, only the
+   * content area scrolls internally; the formatting toolbar stays pinned at the
+   * top of the box. Accepts a number (px) or any valid CSS length expression.
    */
-  maxHeight?: number
+  maxHeight?: number | string
   autoFocus?: boolean
   className?: string
   issueId?: string
@@ -516,17 +513,29 @@ export function RichTextEditor({
   if (!editor) return null
 
   const iconSize = 14
+  const isScrollable = maxHeight != null
+  const resolvedMaxHeight =
+    typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight
+  // Toolbar row height — used so the content scroller caps correctly without
+  // flex-1 stretching the empty editor to the full maxHeight.
+  const scrollAreaMaxHeight = isScrollable
+    ? typeof maxHeight === 'number'
+      ? `${Math.max(maxHeight - 42, minHeight)}px`
+      : `calc(${resolvedMaxHeight} - 2.625rem)`
+    : undefined
 
   return (
     <div
       ref={editorContainerRef}
       className={cn(
         'relative rounded-md border bg-card focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-colors',
+        isScrollable && 'overflow-hidden',
         isDragOver
           ? 'border-primary ring-2 ring-ring/20'
           : 'border-input',
         className,
       )}
+      style={isScrollable ? { maxHeight: resolvedMaxHeight } : undefined}
       onDragOver={handleContainerDragOver}
       onDragLeave={handleContainerDragLeave}
       onDrop={handleContainerDrop}
@@ -548,8 +557,13 @@ export function RichTextEditor({
         onChange={handleAttachSelect}
       />
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted rounded-t-md">
+      {/* Toolbar — stays fixed when content scrolls inside a capped editor */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted rounded-t-md',
+          isScrollable && 'sticky top-0 z-10 flex-shrink-0',
+        )}
+      >
         <ToolbarButton
           title="Bold (Ctrl+B)"
           active={editor.isActive('bold')}
@@ -701,17 +715,21 @@ export function RichTextEditor({
         )}
       </div>
 
-      {/* Editor content area.
-          When maxHeight is set, the content scrolls internally instead of
-          pushing surrounding UI (e.g. modal action buttons) off-screen. */}
-      <EditorContent
-        editor={editor}
-        className="rich-text-editor-content px-3 py-2 focus:outline-none"
-        style={{
-          minHeight,
-          ...(maxHeight ? { maxHeight, overflowY: 'auto' } : {}),
-        }}
-      />
+      {isScrollable ? (
+        <div className="overflow-y-auto" style={{ maxHeight: scrollAreaMaxHeight }}>
+          <EditorContent
+            editor={editor}
+            className="rich-text-editor-content px-3 py-2 focus:outline-none"
+            style={{ minHeight }}
+          />
+        </div>
+      ) : (
+        <EditorContent
+          editor={editor}
+          className="rich-text-editor-content px-3 py-2 focus:outline-none"
+          style={{ minHeight }}
+        />
+      )}
 
       {/* Drag overlay */}
       {isDragOver && (

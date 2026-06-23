@@ -46,7 +46,12 @@ import { isKanbanProject } from '@/lib/project-workflow'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
-import { RichTextDisplay } from '@/components/ui/rich-text-display'
+import {
+  RichTextDisplay,
+  RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT,
+  RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT,
+  RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT,
+} from '@/components/ui/rich-text-display'
 import {
   IssueType,
   IssuePriority,
@@ -172,7 +177,8 @@ function CommentItem({
               value={editContent}
               onChange={setEditContent}
               users={users || []}
-              minHeight={80}
+              minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+              maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
               autoFocus
               issueId={comment.issueId}
             />
@@ -195,7 +201,11 @@ function CommentItem({
             </div>
           </div>
         ) : (
-          <RichTextDisplay content={comment.content} className="text-sm text-foreground" />
+          <RichTextDisplay
+            content={comment.content}
+            className="text-sm text-foreground"
+            maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
+          />
         )}
         {(currentUserId === comment.authorId || canModifyAny) && !editing && (
           <div className="flex gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -552,7 +562,8 @@ export function IssueDetailPage() {
                   value={descValue}
                   onChange={setDescValue}
                   users={orgUsers || []}
-                  minHeight={150}
+                  minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+                  maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
                   autoFocus
                   issueId={issue.id}
                 />
@@ -581,7 +592,10 @@ export function IssueDetailPage() {
                 }}
               >
                 {issue.description ? (
-                  <RichTextDisplay content={issue.description} />
+                  <RichTextDisplay
+                    content={issue.description}
+                    maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground italic">{t('issues.clickToAddDescription')}</p>
                 )}
@@ -723,7 +737,8 @@ export function IssueDetailPage() {
                       value={commentText}
                       onChange={setCommentText}
                       users={orgUsers || []}
-                      minHeight={80}
+                      minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+                      maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
                       issueId={issue.id}
                     />
                     <div className="flex justify-end">
@@ -891,13 +906,11 @@ export function IssueDetailPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">{t('common.noSprint')}</SelectItem>
-                      {sprints
-                        ?.filter((s) => s.status !== 'completed' || s.id === issue.sprintId)
-                        .map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}{s.status === 'completed' ? ' (completed)' : s.status === 'active' ? ' (active)' : ''}
-                          </SelectItem>
-                        ))}
+                      {sprints?.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </SidebarField>
