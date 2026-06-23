@@ -131,7 +131,6 @@ export class IssuesService {
     search?: string;
     page?: number;
     limit?: number;
-    backlog?: boolean;
     deleted?: boolean;
     parentless?: boolean;
     parentId?: string;
@@ -149,7 +148,7 @@ export class IssuesService {
      */
     noLimit?: boolean;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, parentId, excludeTypes, noLimit } = filters;
+    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, deleted, parentless, parentId, excludeTypes, noLimit } = filters;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
