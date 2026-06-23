@@ -94,6 +94,7 @@ import { StatusBadge } from '@/components/issues/status-badge'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
+import { IssueChildrenIndicator } from '@/components/issues/issue-children-indicator'
 
 /* ------------------------------------------------------------------ */
 /*  Draggable Issue Row                                                */
@@ -193,6 +194,14 @@ function DraggableIssueRow({
             </Link>
           </td>
 
+          {/* Child issues */}
+          <td className="px-3 py-3 w-16" onClick={(e) => e.stopPropagation()}>
+            <IssueChildrenIndicator
+              issueId={issue.id}
+              childrenCount={issue.childrenCount}
+            />
+          </td>
+
           {/* Epic */}
           <td className="px-3 py-3 w-40" onClick={(e) => e.stopPropagation()}>
             {issue.parent && issue.parent.type === IssueType.EPIC && (
@@ -204,9 +213,7 @@ function DraggableIssueRow({
                 <IssueTypeIcon type={IssueType.EPIC} className="h-3 w-3 shrink-0" />
                 <span className="truncate">{issue.parent.title}</span>
               </Link>
-            // ) : (
-            //   <span className="text-xs text-muted-foreground">--</span>
-          )}
+            )}
           </td>
 
           {/* Priority */}
@@ -636,6 +643,7 @@ function SprintSection({
                       </th>
                       <th className="px-3 py-1 w-28 text-left text-sm font-bold text-muted-foreground uppercase tracking-wide">Key</th>
                       <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                      <th className="px-3 py-1 w-16 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                       <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                       <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
                       <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>
@@ -912,6 +920,7 @@ function BacklogSection({
                     </th>
                     <th className="px-3 py-1 w-28 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Key</th>
                     <th className="px-3 py-1 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Title</th>
+                    <th className="px-3 py-1 w-16 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                     <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide"></th>
                     <th className="px-3 py-1 w-24 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Priority</th>
                     <th className="px-3 py-1 w-40 text-left text-xs font-bold text-muted-foreground uppercase tracking-wide">Status</th>

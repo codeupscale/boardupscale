@@ -33,6 +33,7 @@ import { EventsGateway } from '../../websocket/events.gateway';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
+import { withChildrenCount } from './issues-query.utils';
 import { ActivityService } from '../activity/activity.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService } from '../ai/ai.service';
@@ -133,6 +134,7 @@ export class IssuesService {
     backlog?: boolean;
     deleted?: boolean;
     parentless?: boolean;
+    parentId?: string;
     /**
      * Comma-separated list of issue types to omit (e.g. "epic,subtask").
      * Used by the Backlog view to hide containers (Epic) and child-only
@@ -147,7 +149,7 @@ export class IssuesService {
      */
     noLimit?: boolean;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, excludeTypes, noLimit } = filters;
+    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, backlog, deleted, parentless, parentId, excludeTypes, noLimit } = filters;
 
     const qb = this.issueRepository
       .createQueryBuilder('issue')
@@ -195,6 +197,9 @@ export class IssuesService {
     if (parentless) {
       qb.andWhere('issue.parent_id IS NULL');
     }
+    if (parentId) {
+      qb.andWhere('issue.parent_id = :parentId', { parentId });
+    }
     if (excludeTypes) {
       const types = excludeTypes.split(',').map((t) => t.trim()).filter(Boolean);
       if (types.length > 0) {
@@ -209,6 +214,8 @@ export class IssuesService {
     if (!noLimit) {
       qb.skip((page - 1) * limit).take(limit);
     }
+
+    withChildrenCount(qb);
 
     const items = await qb.getMany();
 

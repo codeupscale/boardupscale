@@ -35,6 +35,7 @@ describe('IssuesService', () => {
   let issueRepo: ReturnType<typeof createMockRepository>;
   let statusRepo: ReturnType<typeof createMockRepository>;
   let workLogRepo: ReturnType<typeof createMockRepository>;
+  let issueLinkRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
@@ -46,6 +47,7 @@ describe('IssuesService', () => {
     issueRepo = createMockRepository();
     statusRepo = createMockRepository();
     workLogRepo = createMockRepository();
+    issueLinkRepo = createMockRepository();
     projectsService = createMockProjectsService();
     projectsService.isMember.mockResolvedValue(true);
     notificationsService = createMockNotificationsService();
@@ -74,7 +76,7 @@ describe('IssuesService', () => {
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: getRepositoryToken(IssueStatus), useValue: statusRepo },
         { provide: getRepositoryToken(WorkLog), useValue: workLogRepo },
-        { provide: getRepositoryToken(IssueLink), useValue: createMockRepository() },
+        { provide: getRepositoryToken(IssueLink), useValue: issueLinkRepo },
         { provide: getRepositoryToken(IssueWatcher), useValue: createMockRepository() },
         { provide: ProjectsService, useValue: projectsService },
         { provide: NotificationsService, useValue: notificationsService },
@@ -237,6 +239,21 @@ describe('IssuesService', () => {
       });
 
       expect(qb.andWhere).not.toHaveBeenCalledWith('issue.parent_id IS NULL');
+    });
+
+    it('should apply parentId filter when set', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        parentId: TEST_IDS.ISSUE_ID,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.parent_id = :parentId', {
+        parentId: TEST_IDS.ISSUE_ID,
+      });
     });
 
     it('should apply excludeTypes with a single value', async () => {
@@ -690,6 +707,114 @@ describe('IssuesService', () => {
         relations: ['status', 'assignee'],
         order: { position: 'ASC' },
       });
+    });
+  });
+
+  describe('issue links', () => {
+    it('getLinks should return outward and inward links with labels', async () => {
+      const sourceIssue = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      const targetIssue = mockIssue({ id: 'target-1', key: 'PROJ-2' });
+      const inwardSource = mockIssue({ id: 'source-1', key: 'PROJ-3' });
+
+      issueRepo.findOne.mockResolvedValue(sourceIssue);
+      issueLinkRepo.find
+        .mockResolvedValueOnce([
+          {
+            id: 'link-out',
+            linkType: 'blocks',
+            targetIssue,
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'link-in',
+            linkType: 'blocks',
+            sourceIssue: inwardSource,
+          },
+        ]);
+
+      const result = await service.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+
+      expect(result.outward).toHaveLength(1);
+      expect(result.outward[0]).toMatchObject({
+        id: 'link-out',
+        linkType: 'blocks',
+        label: 'blocks',
+        issue: targetIssue,
+      });
+      expect(result.inward).toHaveLength(1);
+      expect(result.inward[0]).toMatchObject({
+        id: 'link-in',
+        linkType: 'is_blocked_by',
+        label: 'is blocked by',
+        issue: inwardSource,
+      });
+    });
+
+    it('createLink should persist link between two issues', async () => {
+      const source = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      const target = mockIssue({ id: 'target-1' });
+      const savedLink = {
+        id: 'link-1',
+        sourceIssueId: TEST_IDS.ISSUE_ID,
+        targetIssueId: 'target-1',
+        linkType: 'relates_to',
+      };
+
+      issueRepo.findOne
+        .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce(target);
+      issueLinkRepo.create.mockReturnValue(savedLink);
+      issueLinkRepo.save.mockResolvedValue(savedLink);
+      issueLinkRepo.findOne.mockResolvedValue({
+        ...savedLink,
+        sourceIssue: source,
+        targetIssue: target,
+      });
+
+      const result = await service.createLink(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        { targetIssueId: 'target-1', linkType: 'relates_to' },
+        TEST_IDS.USER_ID,
+      );
+
+      expect(issueLinkRepo.create).toHaveBeenCalledWith({
+        sourceIssueId: TEST_IDS.ISSUE_ID,
+        targetIssueId: 'target-1',
+        linkType: 'relates_to',
+        createdBy: TEST_IDS.USER_ID,
+      });
+      expect(result).toMatchObject({ id: 'link-1' });
+    });
+
+    it('createLink should reject self-links', async () => {
+      const issue = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      issueRepo.findOne.mockResolvedValue(issue);
+
+      await expect(
+        service.createLink(
+          TEST_IDS.ISSUE_ID,
+          TEST_IDS.ORG_ID,
+          { targetIssueId: TEST_IDS.ISSUE_ID, linkType: 'relates_to' },
+          TEST_IDS.USER_ID,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deleteLink should remove link scoped to issue', async () => {
+      const issue = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      issueRepo.findOne.mockResolvedValue(issue);
+      issueLinkRepo.findOne.mockResolvedValue({
+        id: 'link-1',
+        sourceIssueId: TEST_IDS.ISSUE_ID,
+        targetIssueId: 'target-1',
+      });
+      issueLinkRepo.delete.mockResolvedValue(undefined);
+
+      await service.deleteLink(TEST_IDS.ISSUE_ID, 'link-1', TEST_IDS.ORG_ID);
+
+      expect(issueLinkRepo.delete).toHaveBeenCalledWith('link-1');
     });
   });
 

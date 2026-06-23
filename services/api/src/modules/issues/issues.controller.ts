@@ -53,6 +53,7 @@ export class IssuesController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'deleted', required: false })
   @ApiQuery({ name: 'parentless', required: false, description: 'When "true", only returns issues with parent_id IS NULL' })
+  @ApiQuery({ name: 'parentId', required: false, description: 'When set, only returns direct children of this issue UUID' })
   @ApiQuery({ name: 'excludeTypes', required: false, description: 'Comma-separated list of issue types to omit, e.g. "epic,subtask"' })
   @ApiQuery({ name: 'noLimit', required: false, description: 'When "true", bypasses LIMIT/OFFSET and returns every matching row. Used by the Backlog page; other callers should keep pagination.' })
   async findAll(
@@ -67,6 +68,7 @@ export class IssuesController {
     @Query('search') search?: string,
     @Query('deleted') deleted?: string,
     @Query('parentless') parentless?: string,
+    @Query('parentId', new ParseUUIDPipe({ optional: true })) parentId?: string,
     @Query('excludeTypes') excludeTypes?: string,
     @Query('noLimit') noLimit?: string,
   ) {
@@ -83,6 +85,7 @@ export class IssuesController {
       limit: pagination.limit,
       deleted: deleted === 'true',
       parentless: parentless === 'true',
+      parentId,
       excludeTypes,
       noLimit: noLimit === 'true',
     });

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
+import { RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT } from '@/components/ui/rich-text-display'
 
 const LINK_TYPES: { value: IssueLinkType; label: string }[] = [
   { value: 'blocks', label: 'Blocks' },
@@ -28,7 +29,7 @@ function LinkItem({
 }: {
   link: IssueLink
   issueId: string
-  onDelete: (linkId: string) => void
+  onDelete: (linkId: string, linkedIssueId: string) => void
   isDeleting: boolean
 }) {
   return (
@@ -46,7 +47,7 @@ function LinkItem({
       {link.issue.status && <StatusBadge status={link.issue.status} />}
       <button
         className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 flex-shrink-0 transition-opacity"
-        onClick={() => onDelete(link.id)}
+        onClick={() => onDelete(link.id, link.issue.id)}
         disabled={isDeleting}
       >
         <Trash2 className="h-3.5 w-3.5" />
@@ -57,7 +58,7 @@ function LinkItem({
 
 export function IssueLinksList({ issueId, projectId }: { issueId: string; projectId?: string }) {
   const { t } = useTranslation()
-  const { data: linksData } = useIssueLinks(issueId)
+  const { data: linksData, isLoading, isError, error } = useIssueLinks(issueId)
   const createLink = useCreateIssueLink()
   const deleteLink = useDeleteIssueLink()
 
@@ -85,8 +86,8 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
     return acc
   }, {})
 
-  const handleDelete = (linkId: string) => {
-    deleteLink.mutate({ issueId, linkId })
+  const handleDelete = (linkId: string, linkedIssueId: string) => {
+    deleteLink.mutate({ issueId, linkId, linkedIssueId })
   }
 
   const handleCreate = () => {
@@ -123,10 +124,21 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
         </Button>
       </div>
 
-      {allLinks.length === 0 ? (
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{t('common.loading', 'Loading…')}</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive">
+          {(error as any)?.response?.data?.message ||
+            (error as Error)?.message ||
+            t('issues.linksLoadFailed', 'Failed to load linked issues.')}
+        </p>
+      ) : allLinks.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('issues.noLinks', 'No linked issues.')}</p>
       ) : (
-        <div className="space-y-3">
+        <div
+          className="overflow-y-auto space-y-3"
+          style={{ maxHeight: RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT }}
+        >
           {Object.entries(grouped).map(([label, links]) => (
             <div key={label}>
               <div className="space-y-0.5">

@@ -2241,19 +2241,19 @@ async function importIssueLinks(
          VALUES ${placeholders}
          ON CONFLICT (source_issue_id, target_issue_id, link_type) DO NOTHING`,
         chunk.flat(),
-      ).catch(() => {}); // silently skip duplicate / FK violations
+      ).catch((err: any) => console.error(`[Migration] issue links batch: ${err.message}`));
     }
   }
   console.log(`[Migration] Issue links imported: ${allLinks.length}`);
 }
 
 function mapIssueLinkType(name?: string): string {
-  if (!name) return 'relates';
+  if (!name) return 'relates_to';
   const n = name.toLowerCase();
   if (n.includes('block')) return 'blocks';
   if (n.includes('duplicat')) return 'duplicates';
-  if (n.includes('clone')) return 'clones';
-  return 'relates';
+  if (n.includes('clone')) return 'relates_to';
+  return 'relates_to';
 }
 
 // ─── Phase 5: Comments ────────────────────────────────────────────────────────
