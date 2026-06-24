@@ -22,6 +22,10 @@ import { UserSelect } from '@/components/common/user-select'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { AiSuggestionsPanel } from '@/components/issues/ai-suggestions-panel'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import {
+  RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT,
+  RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT,
+} from '@/components/ui/rich-text-display'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
@@ -172,11 +176,9 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
           onChange={(val) => setValue('description', val)}
           placeholder={t('issues.describeIssue')}
           users={users}
-          minHeight={100}
-          // Cap the description so long content scrolls internally instead
-          // of pushing Type / Priority / Status / Assignee / action buttons
-          // out of the modal viewport.
-          maxHeight={400}
+          minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
+          maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
+          projectId={projectId}
         />
       </div>
 

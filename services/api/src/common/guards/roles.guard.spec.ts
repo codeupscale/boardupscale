@@ -138,5 +138,26 @@ describe('RolesGuard', () => {
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
     });
+
+    it('should resolve project hint from body.projectId for create-time attachment uploads', async () => {
+      const projectId = 'project-uuid-or-key';
+      const context = createMockExecutionContext(
+        { id: 'user-id', organizationId: 'org-123' },
+        undefined,
+        { resource: 'attachment', action: 'create' },
+        {},
+        { projectId },
+      );
+      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      const result = await guard.canActivate(context);
+      expect(result).toBe(true);
+      expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
+        'user-id',
+        projectId,
+        'attachment',
+        'create',
+        'org-123',
+      );
+    });
   });
 });

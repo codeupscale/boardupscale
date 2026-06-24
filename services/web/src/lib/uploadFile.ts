@@ -17,6 +17,8 @@ export interface UploadedAttachment {
 export interface UploadOptions {
   issueId?: string
   commentId?: string
+  /** Project UUID or key — used for permission check before an issue exists */
+  projectId?: string
   onProgress?: (loaded: number, total: number) => void
 }
 
@@ -38,6 +40,7 @@ export async function uploadFile(
     mimeType: file.type || 'application/octet-stream',
     fileSize: file.size,
     issueId: opts.issueId,
+    projectId: opts.projectId,
   })
   const presign: PresignResponse = presignRes.data
 
@@ -69,6 +72,7 @@ export async function uploadFile(
     fileSize: file.size,
     issueId: opts.issueId,
     commentId: opts.commentId,
+    projectId: opts.projectId,
   })
 
   return confirmRes.data as UploadedAttachment
