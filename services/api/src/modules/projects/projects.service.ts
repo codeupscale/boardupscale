@@ -23,7 +23,9 @@ import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 import { resolveDefaultSprintHandoffPolicy } from '../../common/constants/sprint-handoff-policy';
+import { SPRINT_PLANNING_ISSUE_TYPES } from '../../common/constants/sprint-planning-issue-types';
 import { PosthogService } from '../telemetry/posthog.service';
+import { ProjectListItem, toProjectListItem } from './project-list.types';
 
 @Injectable()
 export class ProjectsService {
@@ -60,10 +62,52 @@ export class ProjectsService {
     userId: string,
     orgRole?: string,
     options?: { search?: string; page?: number; limit?: number },
-  ): Promise<{ items: Project[]; total: number; page: number; limit: number }> {
+  ): Promise<{ items: ProjectListItem[]; total: number; page: number; limit: number }> {
     const page = Math.max(1, options?.page ?? 1);
     const limit = Math.min(100, Math.max(1, options?.limit ?? 20));
 
+    const qb = this.buildVisibleProjectsQuery(organizationId, userId, orgRole, options?.search);
+
+    const total = await qb.clone().getCount();
+
+    const memberCountSubQuery = qb
+      .subQuery()
+      .select('COUNT(pm_count.id)')
+      .from('project_members', 'pm_count')
+      .where('pm_count.project_id = project.id')
+      .getQuery();
+
+    const issueCountSubQuery = qb
+      .subQuery()
+      .select('COUNT(issue_count.id)')
+      .from('issues', 'issue_count')
+      .where('issue_count.project_id = project.id')
+      .andWhere('issue_count.organization_id = :organizationId')
+      .andWhere('issue_count.deleted_at IS NULL')
+      .andWhere('issue_count.type IN (:...planningIssueTypes)')
+      .getQuery();
+
+    const { entities, raw } = await qb
+      .addSelect(`COALESCE((${memberCountSubQuery}), 0)`, 'memberCount')
+      .addSelect(`COALESCE((${issueCountSubQuery}), 0)`, 'issueCount')
+      .setParameter('planningIssueTypes', [...SPRINT_PLANNING_ISSUE_TYPES])
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getRawAndEntities();
+
+    const items = entities.map((project, index) =>
+      toProjectListItem(project, raw[index] ?? {}),
+    );
+
+    return { items, total, page, limit };
+  }
+
+  private buildVisibleProjectsQuery(
+    organizationId: string,
+    userId: string,
+    orgRole: string | undefined,
+    search?: string,
+  ) {
     const qb = this.projectRepository
       .createQueryBuilder('project')
       .leftJoinAndSelect('project.owner', 'owner')
@@ -83,20 +127,13 @@ export class ProjectsService {
       );
     }
 
-    if (options?.search) {
-      qb.andWhere(
-        '(project.name ILIKE :search OR project.key ILIKE :search)',
-        { search: `%${options.search}%` },
-      );
+    if (search) {
+      qb.andWhere('(project.name ILIKE :search OR project.key ILIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
-    const total = await qb.getCount();
-    const items = await qb
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
-
-    return { items, total, page, limit };
+    return qb;
   }
 
   async findById(id: string, organizationId: string): Promise<Project> {

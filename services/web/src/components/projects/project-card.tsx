@@ -7,6 +7,7 @@ import { formatRelativeTime } from '@/lib/utils'
 
 interface ProjectCardProps {
   project: Project
+  /** Optional overrides — defaults to counts on `project`. */
   memberCount?: number
   issueCount?: number
   /** Compact row layout for list view */
@@ -55,6 +56,23 @@ function TypeBadge({ type }: { type: ProjectType }) {
 
 export function ProjectCard({ project, memberCount, issueCount, listView = false }: ProjectCardProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const resolvedMemberCount = memberCount ?? project.memberCount
+  const resolvedIssueCount = issueCount ?? project.issueCount
+  const issueCountLabel =
+    resolvedIssueCount != null
+      ? t(
+          resolvedIssueCount === 1 ? 'projects.issues_count' : 'projects.issues_count_plural',
+          { count: resolvedIssueCount },
+        )
+      : null
+  const memberCountLabel =
+    resolvedMemberCount != null
+      ? t(
+          resolvedMemberCount === 1 ? 'projects.members_count' : 'projects.members_count_plural',
+          { count: resolvedMemberCount },
+        )
+      : null
   const gradientIdx = getGradientIndex(project.key)
   const gradient = gradients[gradientIdx]
   const accent = accentColors[gradientIdx]
@@ -105,25 +123,28 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
 
         {/* Issues */}
         <div className="text-xs text-muted-foreground">
-          {issueCount !== undefined ? (
-            <span className="flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              {issueCount}
+          {resolvedIssueCount != null ? (
+            <span className="flex items-center gap-1" aria-label={issueCountLabel ?? undefined}>
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              {resolvedIssueCount.toLocaleString()}
             </span>
           ) : (
-            <span className="text-muted-foreground/40">—</span>
+            <span className="text-muted-foreground/40" aria-hidden="true">—</span>
           )}
         </div>
 
         {/* Members */}
         <div className="text-xs text-muted-foreground text-center">
-          {memberCount !== undefined ? (
-            <span className="flex items-center justify-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              {memberCount}
+          {resolvedMemberCount != null ? (
+            <span
+              className="flex items-center justify-center gap-1"
+              aria-label={memberCountLabel ?? undefined}
+            >
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+              {resolvedMemberCount.toLocaleString()}
             </span>
           ) : (
-            <span className="text-muted-foreground/40">—</span>
+            <span className="text-muted-foreground/40" aria-hidden="true">—</span>
           )}
         </div>
 
@@ -191,16 +212,16 @@ export function ProjectCard({ project, memberCount, issueCount, listView = false
 
         {/* Stats row */}
         <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border text-xs text-muted-foreground">
-          {issueCount !== undefined && (
-            <span className="flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              <span>{issueCount} issues</span>
+          {issueCountLabel != null && (
+            <span className="flex items-center gap-1" aria-label={issueCountLabel}>
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{issueCountLabel}</span>
             </span>
           )}
-          {memberCount !== undefined && (
-            <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              <span>{memberCount} members</span>
+          {memberCountLabel != null && (
+            <span className="flex items-center gap-1" aria-label={memberCountLabel}>
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{memberCountLabel}</span>
             </span>
           )}
           <span className="flex items-center gap-1 ml-auto">
