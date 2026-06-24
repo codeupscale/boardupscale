@@ -418,6 +418,35 @@ describe('IssuesService', () => {
       );
     });
 
+    it('should strip sprint assignment when creating an epic', async () => {
+      const project = mockProject({ key: 'TPROJ' });
+      projectsService.findById.mockResolvedValue(project);
+      statusRepo.findOne.mockResolvedValue(mockIssueStatus({ id: 'status-1' }));
+      projectsService.getNextIssueNumber.mockResolvedValue(11);
+
+      const minQb = createMockQueryBuilder();
+      minQb.getRawOne.mockResolvedValue({ min: null });
+      issueRepo.createQueryBuilder.mockReturnValue(minQb);
+
+      const issue = mockIssue({ key: 'TPROJ-11', number: 11, type: 'epic' });
+      issueRepo.create.mockReturnValue(issue);
+      issueRepo.save.mockResolvedValue(issue);
+      issueRepo.findOne.mockResolvedValue(issue);
+
+      await service.create(
+        { ...createDto, type: 'epic', sprintId: 'sprint-1' } as any,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+      );
+
+      expect(issueRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'epic',
+          sprintId: null,
+        }),
+      );
+    });
+
     it('should send notification when assignee is different from reporter', async () => {
       const project = mockProject({ key: 'TPROJ' });
       projectsService.findById.mockResolvedValue(project);

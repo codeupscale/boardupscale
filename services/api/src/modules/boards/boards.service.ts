@@ -14,6 +14,7 @@ import {
   normalizeSprintHandoffPolicyForCategory,
   resolveDefaultSprintHandoffPolicy,
 } from '../../common/constants/sprint-handoff-policy';
+import { normalizeSprintIdForIssueType } from '../../common/constants/sprint-planning-issue-types';
 import { ReorderIssuesDto } from './dto/reorder-issues.dto';
 import { BoardQueryDto } from './dto/board-query.dto';
 import { ProjectsService } from '../projects/projects.service';
@@ -359,11 +360,13 @@ export class BoardsService {
 
     const resolvedItems = dto.items.map((item) => {
       const existing = existingIssueById.get(item.issueId);
+      const requestedSprintId =
+        item.sprintId !== undefined ? item.sprintId : (existing?.sprintId ?? null);
       return {
         issueId: item.issueId,
         statusId: item.statusId,
         position: item.position,
-        sprintId: item.sprintId !== undefined ? item.sprintId : (existing?.sprintId ?? null),
+        sprintId: normalizeSprintIdForIssueType(existing?.type, requestedSprintId),
       };
     });
 

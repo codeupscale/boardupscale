@@ -557,6 +557,30 @@ describe('BoardsService', () => {
       );
     });
 
+    it('should not assign sprint when reordering an epic into a sprint bucket', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const status = mockIssueStatus({ id: 'status-1', wipLimit: 0 });
+      statusRepo.findOne.mockResolvedValue(status);
+      sprintRepo.findOne.mockResolvedValue({ id: 'sprint-b', projectId: TEST_IDS.PROJECT_ID });
+
+      issueRepo.find.mockResolvedValue([
+        mockIssue({ id: 'issue-1', type: 'epic', statusId: 'status-1', sprintId: null }),
+      ]);
+      issueRepo.query.mockResolvedValue([]);
+
+      await service.reorderIssues(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        items: [
+          { issueId: 'issue-1', statusId: 'status-1', position: 0, sprintId: 'sprint-b' },
+        ],
+      });
+
+      expect(issueRepo.query).toHaveBeenCalledWith(
+        expect.stringContaining('sprint_id'),
+        expect.arrayContaining(['issue-1', 'status-1', 0, null, TEST_IDS.ORG_ID]),
+      );
+    });
+
     it('should throw BadRequestException when WIP limit exceeded', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
 

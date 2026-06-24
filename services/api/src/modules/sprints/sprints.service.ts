@@ -20,6 +20,7 @@ import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { SprintHandoffPolicy, buildSprintHandoffBlockedMessage } from '../../common/constants/sprint-handoff-policy';
+import { SPRINT_INELIGIBLE_ISSUE_TYPES } from '../../common/constants/sprint-planning-issue-types';
 
 @Injectable()
 export class SprintsService {
@@ -209,8 +210,14 @@ export class SprintsService {
     }
   }
 
+  private applySprintPlanningIssueFilter(qb: ReturnType<typeof this.issueRepository.createQueryBuilder>) {
+    return qb.andWhere('issue.type NOT IN (:...sprintIneligibleTypes)', {
+      sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
+    });
+  }
+
   private async countSprintHandoffBlockers(sprintId: string): Promise<number> {
-    return this.issueRepository
+    const qb = this.issueRepository
       .createQueryBuilder('issue')
       .leftJoin('issue.status', 'status')
       .where('issue.sprintId = :sprintId', { sprintId })
@@ -218,14 +225,15 @@ export class SprintsService {
       .andWhere(
         '(issue.statusId IS NULL OR status.sprintHandoffPolicy = :blocks)',
         { blocks: SprintHandoffPolicy.BLOCKS },
-      )
-      .getCount();
+      );
+
+    return this.applySprintPlanningIssueFilter(qb).getCount();
   }
 
   private async getSprintHandoffSampleBlockers(
     sprintId: string,
   ): Promise<Array<{ key: string; statusName: string }>> {
-    const rows = await this.issueRepository
+    const qb = this.issueRepository
       .createQueryBuilder('issue')
       .leftJoin('issue.status', 'status')
       .select(['issue.key', 'status.name'])
@@ -236,8 +244,9 @@ export class SprintsService {
         { blocks: SprintHandoffPolicy.BLOCKS },
       )
       .orderBy('issue.key', 'ASC')
-      .limit(5)
-      .getMany();
+      .limit(5);
+
+    const rows = await this.applySprintPlanningIssueFilter(qb).getMany();
 
     return rows.map((issue) => ({
       key: issue.key,
@@ -276,6 +285,9 @@ export class SprintsService {
         .createQueryBuilder('issue')
         .where('issue.sprint_id = :sprintId', { sprintId: id })
         .andWhere('issue.deleted_at IS NULL')
+        .andWhere('issue.type NOT IN (:...sprintIneligibleTypes)', {
+          sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
+        })
         .andWhere('issue.status_id NOT IN (:...doneStatusIds)', { doneStatusIds })
         .getMany();
 

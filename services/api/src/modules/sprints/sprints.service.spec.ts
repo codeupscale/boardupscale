@@ -249,6 +249,44 @@ describe('SprintsService', () => {
       expect(sprintRepo.manager.transaction).toHaveBeenCalled();
     });
 
+    it('should exclude epic and subtask issues from sprint handoff blocker queries', async () => {
+      const sprint = mockSprint({ status: 'planned' });
+      const activeSprint = mockSprint({
+        id: 'other-sprint',
+        status: 'active',
+        endDate: '2020-01-01',
+      });
+
+      sprintRepo.findOne.mockImplementation((opts: any) => {
+        if (opts?.where?.id) return Promise.resolve(sprint);
+        if (opts?.where?.status === 'active') return Promise.resolve(activeSprint);
+        return Promise.resolve(null);
+      });
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const blockerQb = createMockQueryBuilder();
+      blockerQb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(blockerQb);
+
+      (sprintRepo.manager.transaction as jest.Mock).mockImplementation(async (cb: any) => {
+        const em = {
+          findOne: jest
+            .fn()
+            .mockResolvedValueOnce({ ...activeSprint })
+            .mockResolvedValueOnce({ ...sprint }),
+          save: jest.fn().mockImplementation((_entity, data) => Promise.resolve(data)),
+        };
+        return cb(em);
+      });
+
+      await service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+
+      expect(blockerQb.andWhere).toHaveBeenCalledWith(
+        'issue.type NOT IN (:...sprintIneligibleTypes)',
+        { sprintIneligibleTypes: ['epic', 'subtask'] },
+      );
+    });
+
     it('should set startDate to today if not already set', async () => {
       const sprint = mockSprint({ status: 'planned', startDate: null });
       sprintRepo.findOne.mockImplementation((opts: any) => {
