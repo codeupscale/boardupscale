@@ -38,6 +38,11 @@ import { ActivityService } from '../activity/activity.service';
 import { AuditService } from '../audit/audit.service';
 import { AiService } from '../ai/ai.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  isSprintEligibleIssueType,
+  normalizeSprintIdForIssueType,
+  SPRINT_INELIGIBLE_ISSUE_TYPES,
+} from '../../common/constants/sprint-planning-issue-types';
 
 @Injectable()
 export class IssuesService {
@@ -350,7 +355,8 @@ export class IssuesService {
 
     const issueNumber = await this.projectsService.getNextIssueNumber(dto.projectId);
     const key = `${project.key}-${issueNumber}`;
-    const sprintId = dto.sprintId ?? null;
+    const issueType = dto.type || 'task';
+    const sprintId = normalizeSprintIdForIssueType(issueType, dto.sprintId ?? null);
     const position = await this.resolveCreatePosition(dto.projectId, statusId, sprintId);
 
     const issue = this.issueRepository.create({
@@ -478,6 +484,13 @@ export class IssuesService {
         throw new BadRequestException('Parent issue must be in the same project');
       }
       this.validateChildTypeHierarchy(parent.type, issue.type);
+    }
+
+    const nextType = dto.type ?? issue.type;
+    if ('sprintId' in dto) {
+      dto.sprintId = normalizeSprintIdForIssueType(nextType, dto.sprintId);
+    } else if (!isSprintEligibleIssueType(nextType)) {
+      dto.sprintId = null;
     }
 
     Object.assign(issue, dto);
@@ -926,30 +939,72 @@ export class IssuesService {
     const updateFields: Partial<Issue> = {};
     if (dto.assigneeId !== undefined) updateFields.assigneeId = dto.assigneeId;
     if (dto.statusId !== undefined) updateFields.statusId = dto.statusId;
-    if (dto.sprintId !== undefined) updateFields.sprintId = dto.sprintId;
     if (dto.type !== undefined) updateFields.type = dto.type;
     if (dto.priority !== undefined) updateFields.priority = dto.priority;
     if (dto.labels !== undefined) updateFields.labels = dto.labels;
     if (dto.storyPoints !== undefined) updateFields.storyPoints = dto.storyPoints;
 
-    if (Object.keys(updateFields).length === 0) {
+    if (Object.keys(updateFields).length === 0 && dto.sprintId === undefined) {
       throw new BadRequestException('At least one field to update must be provided');
     }
 
-    const result = await this.issueRepository
-      .createQueryBuilder()
-      .update(Issue)
-      .set(updateFields)
-      .where('id IN (:...ids)', { ids: dto.issueIds })
-      .andWhere('organization_id = :organizationId', { organizationId })
-      .andWhere('deleted_at IS NULL')
-      .execute();
+    let affected = 0;
+
+    if (Object.keys(updateFields).length > 0) {
+      const result = await this.issueRepository
+        .createQueryBuilder()
+        .update(Issue)
+        .set(updateFields)
+        .where('id IN (:...ids)', { ids: dto.issueIds })
+        .andWhere('organization_id = :organizationId', { organizationId })
+        .andWhere('deleted_at IS NULL')
+        .execute();
+      affected = Math.max(affected, result.affected || 0);
+    }
+
+    if (dto.sprintId !== undefined) {
+      const sprintResult = await this.issueRepository
+        .createQueryBuilder()
+        .update(Issue)
+        .set({ sprintId: dto.sprintId })
+        .where('id IN (:...ids)', { ids: dto.issueIds })
+        .andWhere('organization_id = :organizationId', { organizationId })
+        .andWhere('deleted_at IS NULL')
+        .andWhere('type NOT IN (:...sprintIneligibleTypes)', {
+          sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
+        })
+        .execute();
+      affected = Math.max(affected, sprintResult.affected || 0);
+
+      await this.issueRepository
+        .createQueryBuilder()
+        .update(Issue)
+        .set({ sprintId: null })
+        .where('id IN (:...ids)', { ids: dto.issueIds })
+        .andWhere('organization_id = :organizationId', { organizationId })
+        .andWhere('deleted_at IS NULL')
+        .andWhere('type IN (:...sprintIneligibleTypes)', {
+          sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
+        })
+        .execute();
+    }
+
+    if (dto.type !== undefined && !isSprintEligibleIssueType(dto.type)) {
+      await this.issueRepository
+        .createQueryBuilder()
+        .update(Issue)
+        .set({ sprintId: null })
+        .where('id IN (:...ids)', { ids: dto.issueIds })
+        .andWhere('organization_id = :organizationId', { organizationId })
+        .andWhere('deleted_at IS NULL')
+        .execute();
+    }
 
     this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-updated', {
       issueIds: dto.issueIds,
     });
 
-    return { affected: result.affected || 0 };
+    return { affected };
   }
 
   async bulkMove(organizationId: string, dto: BulkMoveIssuesDto): Promise<{ affected: number }> {

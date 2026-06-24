@@ -5,6 +5,7 @@ import { useState, useImperativeHandle, forwardRef } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { IssueType, IssuePriority, CustomFieldDefinition, ProjectComponent, ProjectVersion, User } from '@/types'
+import { isSprintEligibleIssueType } from '@/lib/project-workflow'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { ParentIssueSelect, childTypeAllowsParent } from '@/components/issues/parent-issue-select'
 import { Input } from '@/components/ui/input'
@@ -278,7 +279,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         />
       )}
 
-      {sprints.length > 0 && (
+      {sprints.length > 0 && isSprintEligibleIssueType({ type: watchedType }) && (
         <Controller
           name="sprintId"
           control={control}

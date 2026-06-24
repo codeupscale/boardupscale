@@ -42,7 +42,7 @@ import {
 import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hooks/useComponents'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { useProject } from '@/hooks/useProjects'
-import { isKanbanProject } from '@/lib/project-workflow'
+import { isKanbanProject, isSprintEligibleIssueType } from '@/lib/project-workflow'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -898,7 +898,7 @@ export function IssueDetailPage() {
 
             {/* ── Planning ── */}
             <IssueSection icon={CalendarDays} title="Planning">
-              {project && !isKanban && (
+              {project && !isKanban && isSprintEligibleIssueType(issue) && (
                 <SidebarField label={t('issues.sprint')}>
                   <Select value={issue.sprintId || '__none__'} disabled={!canEdit} onValueChange={(v) => updateIssue.mutate({ id: issue.id, sprintId: v === '__none__' ? null : v })}>
                     <SelectTrigger className="w-full text-sm">

@@ -15,6 +15,11 @@ export function shouldShowIssueOnBoard(issue: { type?: string }): boolean {
   return issue.type !== 'subtask' && issue.type !== 'epic'
 }
 
+/** Story / task / bug only — epics and subtasks are never sprint-planned. */
+export function isSprintEligibleIssueType(issue: { type?: string | null }): boolean {
+  return shouldShowIssueOnBoard(issue)
+}
+
 export function resolveProjectTypeFromCache(
   qc: QueryClient,
   projectId: string,
