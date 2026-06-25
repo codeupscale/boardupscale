@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
+import { invalidateProjectList } from '@/lib/invalidate-project-list'
 import { Project, ProjectMember } from '@/types'
 
 interface ProjectFilters {
@@ -150,6 +151,7 @@ export function useAddProjectMember() {
     },
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['project-members', projectId] })
+      invalidateProjectList(qc)
       toast('Member added')
     },
     onError: (err: any) =>
@@ -165,6 +167,7 @@ export function useRemoveProjectMember() {
     },
     onSuccess: (_, { projectId }) => {
       qc.invalidateQueries({ queryKey: ['project-members', projectId] })
+      invalidateProjectList(qc)
       toast('Member removed')
     },
     onError: (err: any) => {

@@ -92,6 +92,7 @@ export class FilesController {
         file: { type: 'string', format: 'binary' },
         issueId: { type: 'string' },
         commentId: { type: 'string' },
+        projectId: { type: 'string' },
       },
     },
   })

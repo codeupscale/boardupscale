@@ -28,10 +28,23 @@ export class PresignUploadDto {
   @Max(50 * 1024 * 1024)
   fileSize: number;
 
-  @ApiPropertyOptional({ example: 'uuid-of-issue', description: 'Required for permission check — the issue this file will be attached to' })
+  @ApiPropertyOptional({
+    example: 'uuid-of-issue',
+    description: 'Issue this file will be attached to (edit / comment flows)',
+  })
   @IsOptional()
   @IsUUID()
   issueId?: string;
+
+  @ApiPropertyOptional({
+    example: 'uuid-or-key-of-project',
+    description:
+      'Project context for permission check when issueId is not yet available (create-issue flow)',
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  projectId?: string;
 }
 
 export class PresignUploadResponseDto {

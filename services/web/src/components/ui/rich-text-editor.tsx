@@ -79,9 +79,12 @@ export function getFileViewUrl(fileId: string): string {
   return `${baseURL}/files/${fileId}/view`
 }
 
-async function uploadFileAndGetUrl(file: File, issueId?: string): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
+async function uploadFileAndGetUrl(
+  file: File,
+  opts: { issueId?: string; projectId?: string } = {},
+): Promise<{ id: string; url: string; fileName: string; mimeType: string }> {
   const { uploadFile } = await import('@/lib/uploadFile')
-  const attachment = await uploadFile(file, { issueId })
+  const attachment = await uploadFile(file, opts)
   return {
     id: attachment.id,
     url: getFileViewUrl(attachment.id),
@@ -154,6 +157,8 @@ interface RichTextEditorProps {
   autoFocus?: boolean
   className?: string
   issueId?: string
+  /** Project UUID or key — required for uploads before an issue exists (create flow) */
+  projectId?: string
   onFileUploaded?: (attachment: { id: string; fileName: string }) => void
 }
 
@@ -167,6 +172,7 @@ export function RichTextEditor({
   autoFocus = false,
   className,
   issueId,
+  projectId,
   onFileUploaded,
 }: RichTextEditorProps) {
   // ── Upload state ─────────────────────────────
@@ -178,6 +184,8 @@ export function RichTextEditor({
   // ── Stable refs for values that change but need to be read from plugins ──
   const issueIdRef = useRef(issueId)
   issueIdRef.current = issueId
+  const projectIdRef = useRef(projectId)
+  projectIdRef.current = projectId
   const onFileUploadedRef = useRef(onFileUploaded)
   onFileUploadedRef.current = onFileUploaded
 
@@ -210,7 +218,10 @@ export function RichTextEditor({
 
     try {
       // Upload first — server determines the real MIME type
-      const result = await uploadFileAndGetUrl(file, issueIdRef.current)
+      const result = await uploadFileAndGetUrl(file, {
+        issueId: issueIdRef.current,
+        projectId: projectIdRef.current,
+      })
       const mime = result.mimeType || file.type
 
       if (mime.startsWith('image/')) {

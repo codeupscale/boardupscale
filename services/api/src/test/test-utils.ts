@@ -78,7 +78,25 @@ export function createMockQueryBuilder<T = any>(result?: T | T[]): Record<string
     getMany: jest.fn().mockResolvedValue(Array.isArray(result) ? result : []),
     getOne: jest.fn().mockResolvedValue(Array.isArray(result) ? result[0] : result),
     getManyAndCount: jest.fn().mockResolvedValue([Array.isArray(result) ? result : [], Array.isArray(result) ? result.length : 0]),
+    getRawAndEntities: jest.fn().mockResolvedValue({
+      entities: Array.isArray(result) ? result : [],
+      raw: (Array.isArray(result) ? result : []).map(() => ({
+        memberCount: '0',
+        issueCount: '0',
+      })),
+    }),
     getCount: jest.fn().mockResolvedValue(Array.isArray(result) ? result.length : 0),
+    clone: jest.fn().mockImplementation(function (this: any) {
+      return this;
+    }),
+    subQuery: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      from: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getQuery: jest.fn().mockReturnValue('SELECT 0'),
+    }),
+    setParameter: jest.fn().mockReturnThis(),
     getRawOne: jest.fn().mockResolvedValue(null),
     getRawMany: jest.fn().mockResolvedValue([]),
     execute: jest.fn().mockResolvedValue({ affected: 1 } as UpdateResult),

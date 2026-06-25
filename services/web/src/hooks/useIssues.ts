@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { mergeCreatedIssue } from '@/lib/issue-reorder'
+import { invalidateProjectList } from '@/lib/invalidate-project-list'
 import { resolveIssueSprint } from '@/lib/issue-display'
 import {
   shouldShowIssueOnBoard,
@@ -186,6 +187,7 @@ export function useCreateIssue() {
       }
 
       invalidateIssueChildren(qc, variables.parentId)
+      invalidateProjectList(qc)
 
       const key = issue.key || `#${issue.number}`
       toast(t('issues.createdSuccess', { key }), 'success', { duration: 3000 })
@@ -233,6 +235,7 @@ export function useUpdateIssue() {
       qc.setQueryData(['issue', issue.id], issue)
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.invalidateQueries({ queryKey: ['board'] })
+      invalidateProjectList(qc)
       if ('parentId' in variables) {
         invalidateIssueChildren(qc, variables.parentId)
         invalidateIssueChildren(qc, context?.previous?.parentId)
@@ -282,6 +285,7 @@ export function useDeleteIssue() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.invalidateQueries({ queryKey: ['board'] })
+      invalidateProjectList(qc)
       toast('Issue deleted')
     },
     onError: (err: any) =>

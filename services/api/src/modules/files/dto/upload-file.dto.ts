@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UploadFileDto {
   @ApiPropertyOptional({ example: 'uuid-of-issue' })
@@ -11,4 +11,10 @@ export class UploadFileDto {
   @IsOptional()
   @IsUUID()
   commentId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-or-key-of-project' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  projectId?: string;
 }

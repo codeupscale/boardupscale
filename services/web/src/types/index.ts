@@ -114,6 +114,8 @@ export interface Project {
   ownerId?: string
   owner?: User
   settings: Record<string, any>
+  memberCount?: number
+  issueCount?: number
   createdAt: string
   updatedAt: string
 }

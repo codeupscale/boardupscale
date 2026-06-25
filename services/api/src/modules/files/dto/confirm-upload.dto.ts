@@ -42,6 +42,15 @@ export class ConfirmUploadDto {
   commentId?: string;
 
   @ApiPropertyOptional({
+    example: 'uuid-or-key-of-project',
+    description: 'Project context used during create-issue uploads (issueId may be absent)',
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  projectId?: string;
+
+  @ApiPropertyOptional({
     description: 'Client-reported size (verified against S3 HEAD)',
     example: 1048576,
   })

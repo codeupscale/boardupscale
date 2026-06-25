@@ -61,34 +61,46 @@ describe('ProjectsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return projects for organization where user is a member (non-admin)', async () => {
+    it('should return projects with aggregate counts for organization member (non-admin)', async () => {
       const projects = [mockProject()];
       const qb = createMockQueryBuilder(projects);
-      // Service calls getCount() then getMany() separately
       qb.getCount.mockResolvedValue(projects.length);
-      qb.getMany.mockResolvedValue(projects);
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: projects,
+        raw: [{ memberCount: '2', issueCount: '5' }],
+      });
       projectRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'member');
 
-      expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
+      expect(result.items).toEqual([
+        expect.objectContaining({ id: projects[0].id, memberCount: 2, issueCount: 5 }),
+      ]);
+      expect(result.total).toBe(projects.length);
       expect(qb.where).toHaveBeenCalledWith('project.organizationId = :organizationId', {
         organizationId: TEST_IDS.ORG_ID,
       });
       expect(qb.innerJoin).toHaveBeenCalled();
+      expect(qb.addSelect).toHaveBeenCalledTimes(2);
+      expect(qb.getRawAndEntities).toHaveBeenCalled();
     });
 
     it('should return all org projects for owner without membership join', async () => {
       const projects = [mockProject()];
       const qb = createMockQueryBuilder(projects);
-      // Service calls getCount() then getMany() separately
       qb.getCount.mockResolvedValue(projects.length);
-      qb.getMany.mockResolvedValue(projects);
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: projects,
+        raw: [{ memberCount: '1', issueCount: '0' }],
+      });
       projectRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner');
 
-      expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({ memberCount: 1, issueCount: 0 }),
+      );
+      expect(result.total).toBe(projects.length);
       expect(qb.innerJoin).not.toHaveBeenCalled();
     });
 
@@ -96,13 +108,32 @@ describe('ProjectsService', () => {
       const projects = [mockProject()];
       const qb = createMockQueryBuilder(projects);
       qb.getCount.mockResolvedValue(projects.length);
-      qb.getMany.mockResolvedValue(projects);
+      qb.getRawAndEntities.mockResolvedValue({
+        entities: projects,
+        raw: [{ memberCount: '3', issueCount: '9' }],
+      });
       projectRepo.createQueryBuilder.mockReturnValue(qb);
 
       const result = await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator');
 
-      expect(result).toEqual({ items: projects, total: projects.length, page: 1, limit: 20 });
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({ memberCount: 3, issueCount: 9 }),
+      );
+      expect(result.total).toBe(projects.length);
       expect(qb.innerJoin).not.toHaveBeenCalled();
+    });
+
+    it('should scope issue counts to organization and planning issue types', async () => {
+      const projects = [mockProject()];
+      const qb = createMockQueryBuilder(projects);
+      qb.getCount.mockResolvedValue(projects.length);
+      qb.getRawAndEntities.mockResolvedValue({ entities: projects, raw: [{}] });
+      projectRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner');
+
+      expect(qb.subQuery).toHaveBeenCalled();
+      expect(qb.setParameter).toHaveBeenCalledWith('planningIssueTypes', ['story', 'task', 'bug']);
     });
   });
 
