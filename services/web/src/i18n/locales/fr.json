@@ -316,11 +316,35 @@
     "validationError": "Veuillez v\u00e9rifier votre saisie"
   },
   "search": {
-    "placeholder": "Rechercher des tickets, projets...",
+    "placeholder": "Rechercher tickets, projets, membres...",
+    "dialogLabel": "Recherche globale",
     "searching": "Recherche en cours...",
-    "noResultsFor": "Aucun r\u00e9sultat trouv\u00e9 pour \"{{query}}\"",
-    "startTyping": "Commencez \u00e0 taper pour rechercher...",
-    "issues": "Tickets"
+    "noResultsFor": "Aucun résultat trouvé pour \"{{query}}\"",
+    "startTyping": "Commencez à taper pour rechercher tickets, projets et membres...",
+    "issues": "Tickets",
+    "projects": "Projets",
+    "members": "Membres",
+    "clear": "Effacer la recherche",
+    "error": "Échec de la recherche. Veuillez réessayer.",
+    "matchedFormerKey": "Correspond à l'ancienne clé {{formerKey}}",
+    "highlightFields": {
+      "title": "Titre",
+      "description": "Description",
+      "assigneeName": "Assigné",
+      "labels": "Libellés",
+      "name": "Nom",
+      "key": "Clé",
+      "displayName": "Nom",
+      "email": "E-mail"
+    },
+    "reindex": {
+      "title": "Index de recherche",
+      "description": "Reconstruire Elasticsearch pour ce projet. S'exécute en arrière-plan sans ralentir la recherche.",
+      "start": "Réindexer",
+      "cancel": "Annuler",
+      "retry": "Réessayer",
+      "progress": "{{issues}}/{{issueTotal}} tickets · {{members}}/{{memberTotal}} membres"
+    }
   },
   "languages": {
     "en": "Anglais",

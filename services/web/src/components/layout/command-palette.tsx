@@ -30,7 +30,7 @@ import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { isKanbanProject } from '@/lib/project-workflow'
 import { useThemeStore } from '@/store/theme.store'
-import { useSearch, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
+import { useSearch, flattenSearchResults, getMemberSearchPath, SearchResultItem, SearchHighlight } from '@/hooks/useSearch'
 import { useProjects } from '@/hooks/useProjects'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueType, UserRole } from '@/types'
@@ -49,31 +49,7 @@ interface CommandItem {
   onSelect: () => void
 }
 
-// ─── Highlighted text renderer ──────────────────────────────
-
-function HighlightedText({ html }: { html: string }) {
-  const parts = html.split(/(<mark>|<\/mark>)/)
-  let inside = false
-  const elements: React.ReactNode[] = []
-
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i]
-    if (part === '<mark>') { inside = true; continue }
-    if (part === '</mark>') { inside = false; continue }
-    if (inside) {
-      elements.push(
-        <mark key={i} className="bg-yellow-200/80 dark:bg-yellow-700/40 text-yellow-900 dark:text-yellow-200 rounded-sm px-0.5">
-          {part}
-        </mark>
-      )
-    } else {
-      elements.push(part)
-    }
-  }
-  return <>{elements}</>
-}
-
-// ─── Main Component ─────────────────────────────────────────
+import { HighlightedText } from '@/components/search/highlighted-text'
 
 export function CommandPalette() {
   const { isSearchOpen, setSearchOpen } = useUiStore()
@@ -107,7 +83,7 @@ export function CommandPalette() {
   const isCommandMode = query.startsWith('>')
   const searchQuery = isCommandMode ? '' : query
   const { data: searchData, isLoading: isSearching } = useSearch(searchQuery)
-  const searchResults: SearchResultItem[] = searchData?.items || []
+  const searchResults: SearchResultItem[] = flattenSearchResults(searchData)
 
   // ─── Navigation helper ───────────────────────────────────
 
@@ -547,35 +523,82 @@ export function CommandPalette() {
                 const isActive = flatIndex === activeIndex
 
                 if (type === 'search-result') {
-                  const issue = item as SearchResultItem
+                  const result = item as SearchResultItem
+                  if (result.kind === 'issue') {
+                    return (
+                      <button
+                        key={`sr-issue-${result.id}`}
+                        data-active={isActive}
+                        onClick={() => go(`/issues/${result.id}`)}
+                        onMouseEnter={() => setActiveIndex(flatIndex)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
+                          isActive ? 'bg-primary/10' : 'hover:bg-accent',
+                        )}
+                      >
+                        <IssueTypeIcon type={result.type as IssueType} className="h-4 w-4 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-primary flex-shrink-0">{result.key}</span>
+                            <span className="text-sm text-foreground truncate">{result.title}</span>
+                          </div>
+                          {result.highlights && result.highlights.length > 0 && (
+                            <div className="mt-0.5 text-xs text-muted-foreground truncate">
+                              <HighlightedText html={result.highlights[0].snippets[0]} />
+                            </div>
+                          )}
+                        </div>
+                        {result.projectName && (
+                          <span className="text-[10px] text-muted-foreground flex-shrink-0 font-medium">
+                            {result.projectName}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  }
+                  if (result.kind === 'project') {
+                    return (
+                      <button
+                        key={`sr-project-${result.id}`}
+                        data-active={isActive}
+                        onClick={() => go(`/projects/${result.key}/board`)}
+                        onMouseEnter={() => setActiveIndex(flatIndex)}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
+                          isActive ? 'bg-primary/10' : 'hover:bg-accent',
+                        )}
+                      >
+                        <FolderOpen className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <span className="text-xs font-mono text-primary flex-shrink-0">{result.key}</span>
+                        <span className="text-sm text-foreground truncate">{result.name}</span>
+                      </button>
+                    )
+                  }
+                  const memberPath = getMemberSearchPath(result, isAdmin)
+                  if (!memberPath) {
+                    return (
+                      <div
+                        key={`sr-member-${result.id}`}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-left opacity-60 cursor-not-allowed"
+                      >
+                        <span className="text-sm text-foreground truncate">{result.displayName}</span>
+                        <span className="text-xs text-muted-foreground truncate">{result.email}</span>
+                      </div>
+                    )
+                  }
                   return (
                     <button
-                      key={`sr-${issue.id}`}
+                      key={`sr-member-${result.id}`}
                       data-active={isActive}
-                      onClick={() => go(`/issues/${issue.id}`)}
+                      onClick={() => go(memberPath)}
                       onMouseEnter={() => setActiveIndex(flatIndex)}
                       className={cn(
                         'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors',
                         isActive ? 'bg-primary/10' : 'hover:bg-accent',
                       )}
                     >
-                      <IssueTypeIcon type={issue.type as IssueType} className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-primary flex-shrink-0">{issue.key}</span>
-                          <span className="text-sm text-foreground truncate">{issue.title}</span>
-                        </div>
-                        {issue.highlights && issue.highlights.length > 0 && (
-                          <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                            <HighlightedText html={issue.highlights[0].snippets[0]} />
-                          </div>
-                        )}
-                      </div>
-                      {issue.projectName && (
-                        <span className="text-[10px] text-muted-foreground flex-shrink-0 font-medium">
-                          {issue.projectName}
-                        </span>
-                      )}
+                      <span className="text-sm text-foreground truncate">{result.displayName}</span>
+                      <span className="text-xs text-muted-foreground truncate">{result.email}</span>
                     </button>
                   )
                 }

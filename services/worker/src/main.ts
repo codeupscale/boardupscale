@@ -1,3 +1,4 @@
+import './load-env';
 import { Worker } from 'bullmq';
 import { connectDb, db } from './db';
 import { connectElasticsearch, esClient } from './elasticsearch';

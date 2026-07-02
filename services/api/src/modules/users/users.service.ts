@@ -9,12 +9,14 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { SearchIndexQueueService } from '@/modules/search/search-index-queue.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private searchIndexQueueService: SearchIndexQueueService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -117,8 +119,12 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto): Promise<{ data: User }> {
     const user = await this.findById(id);
+    const searchableChanged = dto.displayName !== undefined || dto.avatarUrl !== undefined;
     Object.assign(user, dto);
     const saved = await this.usersRepository.save(user);
+    if (searchableChanged && saved.organizationId) {
+      void this.searchIndexQueueService.refreshMember(saved.organizationId, saved.id);
+    }
     return { data: saved };
   }
 

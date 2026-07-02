@@ -13,6 +13,7 @@ import { UsersModule } from '../users/users.module';
 import { Organization } from '../organizations/entities/organization.entity';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OrganizationsModule } from '../organizations/organizations.module';
     UsersModule,
     ConfigModule,
     TelemetryModule,
+    SearchModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],
