@@ -94,7 +94,7 @@ UUID in URL still works without alias lookup.
 | Key reserved as old alias | `409 Conflict` |
 | Old URL bookmark | API works via alias; `ProjectLayout` updates the address bar to the new key (same project, not a copy) |
 | Comments mentioning old key | Not rewritten (documented in dialog) |
-| Search | PostgreSQL search uses `issues.key` — updated automatically |
+| Search | PostgreSQL + Elasticsearch refreshed via `reindex-project` on key change; former issue keys (e.g. `OLD-2`) resolve via alias + issue number; former project keys searchable via `project_key_aliases` |
 | Exports | Next export uses new `project.key` in filename |
 | Type / template | Still immutable after creation |
 

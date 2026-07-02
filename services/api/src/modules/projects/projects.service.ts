@@ -25,7 +25,10 @@ import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
 import { resolveDefaultSprintHandoffPolicy } from '../../common/constants/sprint-handoff-policy';
 import { SPRINT_PLANNING_ISSUE_TYPES } from '../../common/constants/sprint-planning-issue-types';
 import { PosthogService } from '../telemetry/posthog.service';
+import { hasOrgWideAccess } from '@/common/constants/org-roles';
 import { ProjectListItem, toProjectListItem } from './project-list.types';
+import { SearchIndexQueueService } from '@/modules/search/search-index-queue.service';
+import { SearchReindexService } from '@/modules/search/search-reindex.service';
 
 @Injectable()
 export class ProjectsService {
@@ -48,6 +51,8 @@ export class ProjectsService {
     private organizationsService: OrganizationsService,
     private configService: ConfigService,
     private posthogService: PosthogService,
+    private searchIndexQueueService: SearchIndexQueueService,
+    private searchReindexService: SearchReindexService,
   ) {}
 
   /**
@@ -117,8 +122,7 @@ export class ProjectsService {
 
     // O21: Owner and Administrator bypass project membership — they see all projects.
     // Everyone else can only see projects where they have an explicit membership row.
-    const isOrgAdmin = orgRole === 'owner' || orgRole === 'administrator';
-    if (!isOrgAdmin) {
+    if (!hasOrgWideAccess(orgRole)) {
       qb.innerJoin(
         'project_members',
         'pm',
@@ -196,6 +200,9 @@ export class ProjectsService {
       projectType: saved.type,
       organizationId,
     });
+
+    void this.searchIndexQueueService.indexProject(saved);
+    void this.searchIndexQueueService.refreshMember(organizationId, userId);
 
     return saved;
   }
@@ -319,7 +326,11 @@ export class ProjectsService {
         updated: dto,
       });
 
-      return this.findById(id, organizationId);
+      return this.syncProjectSearchAfterKeyChange(
+        organizationId,
+        await this.findById(id, organizationId),
+        userId,
+      );
     }
 
     Object.assign(project, mutableFields);
@@ -330,7 +341,26 @@ export class ProjectsService {
       updated: dto,
     });
 
-    return saved;
+    return this.syncProjectSearchAfterUpdate(organizationId, saved);
+  }
+
+  /** Light index update for name/description changes — no issue re-keying. */
+  private syncProjectSearchAfterUpdate(organizationId: string, project: Project): Project {
+    void this.searchIndexQueueService.indexProject(project);
+    return project;
+  }
+
+  /**
+   * Full project + issues + members reindex after key rename.
+   * Issues are bulk-updated in SQL; ES must be refreshed via reindex-project.
+   */
+  private syncProjectSearchAfterKeyChange(
+    organizationId: string,
+    project: Project,
+    triggeredById?: string,
+  ): Project {
+    void this.searchReindexService.startReindex(project.id, organizationId, triggeredById);
+    return project;
   }
 
   /**
@@ -419,6 +449,8 @@ export class ProjectsService {
       name: project.name,
       key: project.key,
     });
+
+    void this.searchIndexQueueService.deleteProject(project.id);
   }
 
   async getMembers(projectId: string, organizationId: string) {
@@ -489,6 +521,7 @@ export class ProjectsService {
         );
       }
 
+      void this.searchIndexQueueService.refreshMember(organizationId, orgUser.id);
       return saved;
     }
 
@@ -505,7 +538,9 @@ export class ProjectsService {
       userId: invited.id,
       role: projectRole,
     });
-    return this.projectMemberRepository.save(member);
+    const savedInvite = await this.projectMemberRepository.save(member);
+    void this.searchIndexQueueService.refreshMember(organizationId, invited.id);
+    return savedInvite;
   }
 
   async addMember(projectId: string, organizationId: string, dto: AddMemberDto, actorId?: string) {
@@ -527,6 +562,8 @@ export class ProjectsService {
     this.sendProjectMemberEmail(dto.userId, project, organizationId, actorId).catch((err) => {
       this.logger.warn(`Failed to send project-member-added email: ${err.message}`);
     });
+
+    void this.searchIndexQueueService.refreshMember(organizationId, dto.userId);
 
     return saved;
   }
@@ -577,6 +614,7 @@ export class ProjectsService {
       throw new ForbiddenException('Cannot remove the project owner');
     }
     await this.projectMemberRepository.remove(member);
+    void this.searchIndexQueueService.refreshMember(organizationId, userId);
   }
 
   async isMember(projectId: string, userId: string): Promise<boolean> {

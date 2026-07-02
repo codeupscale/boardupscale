@@ -94,9 +94,10 @@ export function useUpdateProject() {
         qc.invalidateQueries({ queryKey: ['board', variables.previousKey] })
         qc.invalidateQueries({ queryKey: ['board', project.key] })
         qc.invalidateQueries({ queryKey: ['issues'] })
+        qc.invalidateQueries({ queryKey: ['search'] })
         qc.invalidateQueries({ queryKey: ['sprints', variables.previousKey] })
         qc.invalidateQueries({ queryKey: ['sprints', project.key] })
-        toast('Project key updated — all issues re-keyed')
+        toast('Project key updated — issues re-keyed and search index refreshed')
       } else {
         qc.invalidateQueries({ queryKey: ['project', project.id] })
         qc.invalidateQueries({ queryKey: ['project', project.key] })

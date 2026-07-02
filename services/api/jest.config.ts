@@ -17,6 +17,7 @@ const config: Config = {
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
     '^src/(.*)$': '<rootDir>/$1',
   },
 };

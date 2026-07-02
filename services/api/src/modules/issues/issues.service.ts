@@ -87,6 +87,7 @@ export class IssuesService {
       projectId: issue.projectId,
       projectName: issue.project?.name || '',
       key: issue.key,
+      number: issue.number,
       title: issue.title,
       description: issue.description || '',
       type: issue.type,

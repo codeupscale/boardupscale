@@ -50,6 +50,7 @@ import { ComponentList } from '@/components/projects/component-list'
 import { VersionList } from '@/components/projects/version-list'
 import { GitHubConnection } from '@/components/projects/github-connection'
 import { AiUsageDashboard } from '@/components/ai/AiUsageDashboard'
+import { SearchReindexPanel } from '@/components/search/search-reindex-panel'
 import { cn } from '@/lib/utils'
 
 const STATUS_COLORS = [
@@ -120,6 +121,8 @@ export function ProjectSettingsPage() {
   const { hasPermission } = useHasPermission(projectKey)
   const currentUser = useAuthStore((s) => s.user)
   const canManageOrgRoles = currentUser?.role === UserRole.OWNER
+  const canManageIntegrations =
+    currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMINISTRATOR
   const canUpdateProject = hasPermission('project', 'update')
   const canManageBoard = hasPermission('board', 'manage')
   const canManageGithub = hasPermission('project', 'manage')
@@ -363,6 +366,9 @@ export function ProjectSettingsPage() {
                   newKey={pendingFormValues.key}
                   isLoading={updateProject.isPending}
                 />
+              )}
+              {canManageIntegrations && project.id && (
+                <SearchReindexPanel projectId={project.id} />
               )}
             </div>
           )}

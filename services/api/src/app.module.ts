@@ -87,6 +87,7 @@ import { Subscription } from './modules/billing/entities/subscription.entity';
 import { Page } from './modules/pages/entities/page.entity';
 import { SavedView } from './modules/saved-views/entities/saved-view.entity';
 import { OrganizationMember } from './modules/organizations/entities/organization-member.entity';
+import { SearchReindexJob } from './modules/search/entities/search-reindex-job.entity';
 
 @Module({
   imports: [
@@ -151,6 +152,7 @@ import { OrganizationMember } from './modules/organizations/entities/organizatio
           MessagingChannel,
           MessagingChannelMember,
           MessagingMessage,
+          SearchReindexJob,
         ],
         synchronize: false,
         logging: configService.get<string>('app.nodeEnv') === 'development',

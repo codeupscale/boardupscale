@@ -1,33 +1,43 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { getQueueToken } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
-import { SearchService } from './search.service';
-import { Issue } from '../issues/entities/issue.entity';
-import { ProjectMember } from '../projects/entities/project-member.entity';
-import { createMockRepository, createMockQueryBuilder } from '../../test/test-utils';
-import { mockIssue, TEST_IDS } from '../../test/mock-factories';
+import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { SearchService } from '@/modules/search/search.service';
+import { Issue } from '@/modules/issues/entities/issue.entity';
+import { Project } from '@/modules/projects/entities/project.entity';
+import { ProjectMember } from '@/modules/projects/entities/project-member.entity';
+import { ProjectKeyAlias } from '@/modules/projects/entities/project-key-alias.entity';
+import { User } from '@/modules/users/entities/user.entity';
+import { createMockRepository, createMockQueryBuilder } from '@/test/test-utils';
+import { mockIssue, TEST_IDS } from '@/test/mock-factories';
 
 describe('SearchService', () => {
   let service: SearchService;
   let issueRepo: ReturnType<typeof createMockRepository>;
-  let mockSearchQueue: { add: jest.Mock };
+  let projectRepo: ReturnType<typeof createMockRepository>;
+  let projectMemberRepo: ReturnType<typeof createMockRepository>;
+  let userRepo: ReturnType<typeof createMockRepository>;
+  let aliasRepo: ReturnType<typeof createMockRepository>;
 
   beforeEach(async () => {
     issueRepo = createMockRepository();
-    mockSearchQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    projectRepo = createMockRepository();
+    projectMemberRepo = createMockRepository();
+    userRepo = createMockRepository();
+    aliasRepo = createMockRepository();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SearchService,
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
-        { provide: getRepositoryToken(ProjectMember), useValue: createMockRepository() },
-        { provide: getQueueToken('search-index'), useValue: mockSearchQueue },
+        { provide: getRepositoryToken(Project), useValue: projectRepo },
+        { provide: getRepositoryToken(ProjectMember), useValue: projectMemberRepo },
+        { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(ProjectKeyAlias), useValue: aliasRepo },
         {
           provide: ConfigService,
           useValue: {
             get: jest.fn().mockImplementation((key: string) => {
-              // Return null for ES URL so it falls back to PostgreSQL in tests
               if (key === 'elasticsearch.url') return null;
               return undefined;
             }),
@@ -37,7 +47,6 @@ describe('SearchService', () => {
     }).compile();
 
     service = module.get<SearchService>(SearchService);
-    // Manually trigger onModuleInit (won't connect to ES since URL is null)
     await service.onModuleInit();
   });
 
@@ -45,129 +54,337 @@ describe('SearchService', () => {
     jest.clearAllMocks();
   });
 
+  describe('resolveSearchScope', () => {
+    it('grants org-wide scope to owner', async () => {
+      const scope = await service.resolveSearchScope({
+        organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'owner',
+      });
+      expect(scope.orgWide).toBe(true);
+      expect(scope.accessibleProjectIds).toBeNull();
+    });
+
+    it('grants org-wide scope to administrator regardless of membership', async () => {
+      const scope = await service.resolveSearchScope({
+        organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'administrator',
+      });
+      expect(scope.orgWide).toBe(true);
+      expect(scope.accessibleProjectIds).toBeNull();
+      expect(projectMemberRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('restricts org user to accessible project memberships', async () => {
+      const pmQb = createMockQueryBuilder([]);
+      pmQb.getRawMany.mockResolvedValue([{ projectId: TEST_IDS.PROJECT_ID }]);
+      projectMemberRepo.createQueryBuilder.mockReturnValue(pmQb);
+
+      const scope = await service.resolveSearchScope({
+        organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
+      });
+
+      expect(scope.orgWide).toBe(false);
+      expect(scope.accessibleProjectIds).toEqual([TEST_IDS.PROJECT_ID]);
+    });
+
+    it('rejects projectId outside accessible projects for org user', async () => {
+      const pmQb = createMockQueryBuilder([]);
+      pmQb.getRawMany.mockResolvedValue([{ projectId: TEST_IDS.PROJECT_ID }]);
+      projectMemberRepo.createQueryBuilder.mockReturnValue(pmQb);
+
+      await expect(
+        service.resolveSearchScope({
+          organizationId: TEST_IDS.ORG_ID,
+          userId: TEST_IDS.USER_ID,
+          orgRole: 'user',
+          projectId: '99999999-9999-9999-9999-999999999999',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('validates projectId belongs to org for owner', async () => {
+      projectRepo.exist.mockResolvedValue(false);
+
+      await expect(
+        service.resolveSearchScope({
+          organizationId: TEST_IDS.ORG_ID,
+          userId: TEST_IDS.USER_ID,
+          orgRole: 'owner',
+          projectId: '99999999-9999-9999-9999-999999999999',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('search', () => {
-    it('should return matching issues by title (PostgreSQL fallback)', async () => {
+    function mockScopedMembership(projectIds: string[] = [TEST_IDS.PROJECT_ID]) {
+      const pmQb = createMockQueryBuilder([]);
+      pmQb.getRawMany.mockResolvedValue(projectIds.map((projectId) => ({ projectId })));
+      projectMemberRepo.createQueryBuilder.mockReturnValue(pmQb);
+    }
+
+    it('returns matching issues for org user (PostgreSQL fallback)', async () => {
+      mockScopedMembership();
       const issue = mockIssue({ title: 'Login bug fix' });
-      const issues = [issue];
-      const qb = createMockQueryBuilder(issues);
-      qb.getManyAndCount.mockResolvedValue([issues, 1]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+      const issueQb = createMockQueryBuilder([issue]);
+      issueQb.getMany.mockResolvedValue([issue]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       const result = await service.search({
         q: 'login',
         organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(result.items).toHaveLength(1);
-      expect(result.items[0].id).toBe(issue.id);
-      expect(result.total).toBe(1);
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].kind).toBe('issue');
+      expect(result.totals.issues).toBe(1);
       expect(result.source).toBe('postgresql');
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        '(issue.title ILIKE :q OR issue.key ILIKE :q OR issue.description ILIKE :q)',
-        { q: '%login%' },
+      expect(issueQb.andWhere).toHaveBeenCalledWith(
+        'issue.project_id IN (:...projectIds)',
+        { projectIds: [TEST_IDS.PROJECT_ID] },
       );
     });
 
-    it('should return empty results for empty query', async () => {
+    it('returns empty results for empty query', async () => {
       const result = await service.search({
         q: '',
         organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(result).toEqual({ items: [], total: 0, source: 'postgresql' });
+      expect(result).toEqual({
+        issues: [],
+        projects: [],
+        members: [],
+        totals: { issues: 0, projects: 0, members: 0 },
+        source: 'postgresql',
+      });
       expect(issueRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
-    it('should return empty results for whitespace-only query', async () => {
+    it('returns empty when org user has no project memberships', async () => {
+      mockScopedMembership([]);
+
       const result = await service.search({
-        q: '   ',
+        q: 'test',
         organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(result).toEqual({ items: [], total: 0, source: 'postgresql' });
+      expect(result.totals).toEqual({ issues: 0, projects: 0, members: 0 });
+      expect(issueRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
-    it('should filter by projectId when provided', async () => {
-      const qb = createMockQueryBuilder([]);
-      qb.getManyAndCount.mockResolvedValue([[], 0]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+    it('does not apply membership filter for owner', async () => {
+      const issueQb = createMockQueryBuilder([]);
+      issueQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       await service.search({
         q: 'test',
         organizationId: TEST_IDS.ORG_ID,
-        projectId: TEST_IDS.PROJECT_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'owner',
       });
 
-      expect(qb.andWhere).toHaveBeenCalledWith('issue.project_id = :projectId', {
-        projectId: TEST_IDS.PROJECT_ID,
-      });
+      expect(projectMemberRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(issueQb.andWhere).not.toHaveBeenCalledWith(
+        'issue.project_id IN (:...projectIds)',
+        expect.anything(),
+      );
     });
 
-    it('should filter by type when provided', async () => {
-      const qb = createMockQueryBuilder([]);
-      qb.getManyAndCount.mockResolvedValue([[], 0]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+    it('scopes project search to accessible projects for org user', async () => {
+      mockScopedMembership([TEST_IDS.PROJECT_ID]);
+
+      const issueQb = createMockQueryBuilder([]);
+      issueQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       await service.search({
-        q: 'test',
+        q: 'alpha',
         organizationId: TEST_IDS.ORG_ID,
-        type: 'bug',
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(qb.andWhere).toHaveBeenCalledWith('issue.type = :type', { type: 'bug' });
+      expect(projectQb.andWhere).toHaveBeenCalledWith(
+        'project.id IN (:...projectIds)',
+        { projectIds: [TEST_IDS.PROJECT_ID] },
+      );
     });
 
-    it('should respect custom limit', async () => {
-      const qb = createMockQueryBuilder([]);
-      qb.getManyAndCount.mockResolvedValue([[], 0]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+    it('scopes member search to project memberships for org user', async () => {
+      mockScopedMembership([TEST_IDS.PROJECT_ID]);
+
+      const issueQb = createMockQueryBuilder([]);
+      issueQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       await service.search({
-        q: 'test',
+        q: 'alice',
         organizationId: TEST_IDS.ORG_ID,
-        limit: 5,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(qb.take).toHaveBeenCalledWith(5);
+      expect(memberQb.innerJoin).toHaveBeenCalledWith('project_members', 'pm', 'pm.user_id = user.id');
+      expect(memberQb.innerJoin).toHaveBeenCalledWith(
+        'projects',
+        'p',
+        'p.id = pm.project_id AND p.organization_id = :organizationId',
+        { organizationId: TEST_IDS.ORG_ID },
+      );
+      expect(memberQb.andWhere).toHaveBeenCalledWith('pm.project_id IN (:...projectIds)', {
+        projectIds: [TEST_IDS.PROJECT_ID],
+      });
+      expect(memberQb.innerJoin).not.toHaveBeenCalledWith(
+        'organization_members',
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
     });
 
-    it('should default limit to 20', async () => {
-      const qb = createMockQueryBuilder([]);
-      qb.getManyAndCount.mockResolvedValue([[], 0]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+    it('searches org-wide members for administrator without membership lookup', async () => {
+      const issueQb = createMockQueryBuilder([]);
+      issueQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       await service.search({
-        q: 'test',
+        q: 'bob',
         organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'administrator',
       });
 
-      expect(qb.take).toHaveBeenCalledWith(20);
+      expect(projectMemberRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(memberQb.innerJoin).toHaveBeenCalledWith(
+        'organization_members',
+        'om',
+        'om.user_id = user.id AND om.organization_id = :organizationId',
+        { organizationId: TEST_IDS.ORG_ID },
+      );
     });
 
-    it('should scope search to organization', async () => {
-      const qb = createMockQueryBuilder([]);
-      qb.getManyAndCount.mockResolvedValue([[], 0]);
-      issueRepo.createQueryBuilder.mockReturnValue(qb);
+    it('always scopes issue queries to the requesting organization', async () => {
+      mockScopedMembership();
+
+      const issueQb = createMockQueryBuilder([]);
+      issueQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValue(issueQb);
+
+      const projectQb = createMockQueryBuilder([]);
+      projectQb.getMany.mockResolvedValue([]);
+      projectRepo.createQueryBuilder.mockReturnValue(projectQb);
+
+      const memberQb = createMockQueryBuilder([]);
+      memberQb.getRawMany.mockResolvedValue([]);
+      userRepo.createQueryBuilder.mockReturnValue(memberQb);
 
       await service.search({
-        q: 'test',
+        q: 'tenant',
         organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
       });
 
-      expect(qb.where).toHaveBeenCalledWith('issue.organization_id = :organizationId', {
+      expect(issueQb.where).toHaveBeenCalledWith(
+        'issue.organization_id = :organizationId',
+        { organizationId: TEST_IDS.ORG_ID },
+      );
+      expect(projectQb.where).toHaveBeenCalledWith(
+        'project.organization_id = :organizationId',
+        { organizationId: TEST_IDS.ORG_ID },
+      );
+    });
+  });
+
+  describe('tenant isolation', () => {
+    it('filters accessible projects by organization when resolving scope', async () => {
+      const pmQb = createMockQueryBuilder([]);
+      pmQb.getRawMany.mockResolvedValue([{ projectId: TEST_IDS.PROJECT_ID }]);
+      projectMemberRepo.createQueryBuilder.mockReturnValue(pmQb);
+
+      await service.resolveSearchScope({
+        organizationId: TEST_IDS.ORG_ID,
+        userId: TEST_IDS.USER_ID,
+        orgRole: 'user',
+      });
+
+      expect(pmQb.innerJoin).toHaveBeenCalledWith('projects', 'p', 'p.id = pm.project_id');
+      expect(pmQb.where).toHaveBeenCalledWith('pm.user_id = :userId', {
+        userId: TEST_IDS.USER_ID,
+      });
+      expect(pmQb.andWhere).toHaveBeenCalledWith('p.organization_id = :organizationId', {
         organizationId: TEST_IDS.ORG_ID,
       });
     });
   });
 
-  describe('reindexProject', () => {
-    it('should enqueue a reindex-project job', async () => {
-      await service.reindexProject(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
+  describe('findSimilar', () => {
+    it('rejects projectId outside accessible projects for org user', async () => {
+      const pmQb = createMockQueryBuilder([]);
+      pmQb.getRawMany.mockResolvedValue([{ projectId: TEST_IDS.PROJECT_ID }]);
+      projectMemberRepo.createQueryBuilder.mockReturnValue(pmQb);
 
-      expect(mockSearchQueue.add).toHaveBeenCalledWith('reindex-project', {
-        projectId: TEST_IDS.PROJECT_ID,
-        organizationId: TEST_IDS.ORG_ID,
-      });
+      await expect(
+        service.findSimilar({
+          text: 'login regression bug',
+          organizationId: TEST_IDS.ORG_ID,
+          userId: TEST_IDS.USER_ID,
+          orgRole: 'user',
+          projectId: '99999999-9999-9999-9999-999999999999',
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

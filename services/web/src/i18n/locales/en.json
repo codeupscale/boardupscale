@@ -323,11 +323,35 @@
     "validationError": "Please check your input"
   },
   "search": {
-    "placeholder": "Search issues, projects...",
+    "placeholder": "Search issues, projects, members...",
+    "dialogLabel": "Global search",
     "searching": "Searching...",
     "noResultsFor": "No results found for \"{{query}}\"",
-    "startTyping": "Start typing to search...",
-    "issues": "Issues"
+    "startTyping": "Start typing to search issues, projects, and members...",
+    "issues": "Issues",
+    "projects": "Projects",
+    "members": "Members",
+    "clear": "Clear search",
+    "error": "Search failed. Please try again.",
+    "matchedFormerKey": "Matched former key {{formerKey}}",
+    "highlightFields": {
+      "title": "Title",
+      "description": "Description",
+      "assigneeName": "Assignee",
+      "labels": "Labels",
+      "name": "Name",
+      "key": "Key",
+      "displayName": "Name",
+      "email": "Email"
+    },
+    "reindex": {
+      "title": "Search index",
+      "description": "Rebuild Elasticsearch for this project. Runs in the background and does not slow down search.",
+      "start": "Reindex",
+      "cancel": "Cancel",
+      "retry": "Retry",
+      "progress": "{{issues}}/{{issueTotal}} issues · {{members}}/{{memberTotal}} members"
+    }
   },
   "languages": {
     "en": "English",

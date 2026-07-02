@@ -15,6 +15,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
+import { SearchIndexQueueService } from '@/modules/search/search-index-queue.service';
+import { SearchReindexService } from '@/modules/search/search-reindex.service';
 
 describe('ProjectsService', () => {
   let service: ProjectsService;
@@ -28,6 +30,14 @@ describe('ProjectsService', () => {
   const mockUsersService = { findById: jest.fn() };
   const mockOrganizationsService = { inviteMember: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
+  const mockSearchIndexQueueService = {
+    indexProject: jest.fn().mockResolvedValue(undefined),
+    deleteProject: jest.fn().mockResolvedValue(undefined),
+    refreshMember: jest.fn().mockResolvedValue(undefined),
+  };
+  const mockSearchReindexService = {
+    startReindex: jest.fn().mockResolvedValue({ jobId: TEST_IDS.ISSUE_ID, projectId: TEST_IDS.PROJECT_ID }),
+  };
 
   beforeEach(async () => {
     projectRepo = createMockRepository();
@@ -50,6 +60,8 @@ describe('ProjectsService', () => {
         { provide: OrganizationsService, useValue: mockOrganizationsService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PosthogService, useValue: { identify: jest.fn(), capture: jest.fn(), shutdown: jest.fn() } },
+        { provide: SearchIndexQueueService, useValue: mockSearchIndexQueueService },
+        { provide: SearchReindexService, useValue: mockSearchReindexService },
       ],
     }).compile();
 
@@ -251,6 +263,12 @@ describe('ProjectsService', () => {
         expect.stringContaining('UPDATE issues'),
         ['NEWKEY', TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID],
       );
+      expect(mockSearchReindexService.startReindex).toHaveBeenCalledWith(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.ORG_ID,
+        undefined,
+      );
+      expect(mockSearchIndexQueueService.indexProject).not.toHaveBeenCalled();
     });
 
     it('should reject type changes after creation', async () => {
