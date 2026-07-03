@@ -1,16 +1,10 @@
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { IssueType } from '@/types'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import { getIssueTypeLabel } from '@/lib/issue-type-labels'
 import { cn } from '@/lib/utils'
-
-const TYPE_LABELS: Record<string, string> = {
-  [IssueType.EPIC]: 'Epic',
-  [IssueType.STORY]: 'Story',
-  [IssueType.TASK]: 'Task',
-  [IssueType.BUG]: 'Bug',
-  [IssueType.SUBTASK]: 'Subtask',
-}
 
 interface IssueTypeSelectProps {
   value: string
@@ -31,7 +25,8 @@ export function IssueTypeSelect({
   className,
   disabled,
 }: IssueTypeSelectProps) {
-  const typeOptions = options || Object.values(IssueType)
+  const { t } = useTranslation()
+  const typeOptions = options || Object.values(IssueType)
 
   return (
     <div className={cn('w-full', className)}>
@@ -56,7 +51,7 @@ export function IssueTypeSelect({
         >
           <SelectPrimitive.Value>
             <IssueTypeIcon type={value as IssueType} />
-            <span>{TYPE_LABELS[value] || value}</span>
+            <span>{getIssueTypeLabel(value, t)}</span>
           </SelectPrimitive.Value>
           <ChevronDown className="h-4 w-4 text-muted-foreground ml-auto" />
         </SelectPrimitive.Trigger>
@@ -90,7 +85,7 @@ export function IssueTypeSelect({
                   <SelectPrimitive.ItemText asChild>
                     <span className="flex items-center gap-2">
                       <IssueTypeIcon type={type as IssueType} />
-                      <span>{TYPE_LABELS[type] || type}</span>
+                      <span>{getIssueTypeLabel(type, t)}</span>
                     </span>
                   </SelectPrimitive.ItemText>
                 </SelectPrimitive.Item>
