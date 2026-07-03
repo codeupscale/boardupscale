@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, User, Settings, LogOut, Globe, Sun, Moon, Monitor } from 'lucide-react'
+import { Menu, Bell, User, Settings, LogOut, Globe, Sun, Moon, Monitor } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/ui.store'
@@ -16,6 +16,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { GlobalSearchBar } from './global-search-bar'
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -28,7 +29,7 @@ const SUPPORTED_LANGUAGES = [
 export function Topbar() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { toggleSidebar, setSearchOpen } = useUiStore()
+  const { toggleSidebar } = useUiStore()
   const user = useAuthStore((s) => s.user)
   const { theme, setTheme } = useThemeStore()
   const { data: unreadData } = useUnreadCount()
@@ -38,7 +39,7 @@ export function Topbar() {
   const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur-md grid grid-cols-[auto_minmax(0,1fr)_auto] items-center px-4 gap-4 flex-shrink-0 sticky top-0 z-20">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
@@ -50,21 +51,13 @@ export function Topbar() {
         </button>
       </div>
 
-      {/* Right */}
-      <div className="flex items-center gap-1.5">
-        {/* Search */}
-        <button
-          onClick={() => setSearchOpen(true)}
-          aria-label="Search (Cmd+K)"
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-muted/80 hover:bg-accent rounded-xl transition-colors border border-transparent hover:border-border"
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('common.search')}</span>
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-background border border-border rounded-md font-mono text-muted-foreground">
-            ⌘K
-          </kbd>
-        </button>
+      {/* Center — global search */}
+      <div className="flex justify-center px-2 sm:px-6">
+        <GlobalSearchBar />
+      </div>
 
+      {/* Right */}
+      <div className="flex items-center gap-1.5 justify-end">
         {/* Theme Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -4,7 +4,6 @@ import { Search, X, FolderOpen, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/ui/avatar'
-import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import {
   useSearch,
@@ -18,7 +17,6 @@ import {
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueType, UserRole } from '@/types'
 import { cn } from '@/lib/utils'
-
 import { HighlightedText } from '@/components/search/highlighted-text'
 
 function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] }) {
@@ -50,12 +48,13 @@ interface FlatResult {
   section: 'issues' | 'projects' | 'members'
 }
 
-export function SearchModal() {
+export function GlobalSearchBar() {
   const { t } = useTranslation()
-  const { isSearchOpen, setSearchOpen } = useUiStore()
   const user = useAuthStore((s) => s.user)
   const [query, setQuery] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { data, isLoading, isError } = useSearch(query)
@@ -67,24 +66,24 @@ export function SearchModal() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setSearchOpen(true)
-      }
-      if (e.key === 'Escape') {
-        setSearchOpen(false)
+        setIsOpen(true)
+        inputRef.current?.focus()
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [setSearchOpen])
+  }, [])
 
   useEffect(() => {
-    if (isSearchOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50)
-    } else {
-      setQuery('')
-      setActiveIndex(-1)
+    const handlePointerDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+        setActiveIndex(-1)
+      }
     }
-  }, [isSearchOpen])
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
 
   const flatResults = useMemo<FlatResult[]>(() => {
     if (!data) return []
@@ -101,24 +100,40 @@ export function SearchModal() {
     members: t('search.members'),
   }
 
+  const closeSearch = () => {
+    setIsOpen(false)
+    setActiveIndex(-1)
+    inputRef.current?.blur()
+  }
+
   const handleSelect = (item: SearchResultItem) => {
     if (item.kind === 'issue') {
       navigate(`/issues/${item.id}`)
-      setSearchOpen(false)
+      setQuery('')
+      closeSearch()
       return
     }
     if (item.kind === 'project') {
       navigate(`/projects/${item.key}/board`)
-      setSearchOpen(false)
+      setQuery('')
+      closeSearch()
       return
     }
     const path = getMemberSearchPath(item, canOpenOrgTeam)
     if (!path) return
     navigate(path)
-    setSearchOpen(false)
+    setQuery('')
+    closeSearch()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setQuery('')
+      closeSearch()
+      return
+    }
+
     if (flatResults.length === 0) return
 
     if (e.key === 'ArrowDown') {
@@ -133,140 +148,151 @@ export function SearchModal() {
     }
   }
 
-  if (!isSearchOpen) return null
-
   const searchSource = data?.source
   const hasResults = flatResults.length > 0
-
   let lastSection: FlatResult['section'] | null = null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-20"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('search.dialogLabel')}
-    >
+    <div ref={containerRef} className="relative w-full max-w-2xl">
       <div
-        className="absolute inset-0 bg-black/40 dark:bg-black/60"
-        onClick={() => setSearchOpen(false)}
-      />
-
-      <div className="relative w-full max-w-xl bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <Search className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder={t('search.placeholder')}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
+        className={cn(
+          'flex items-center gap-3 px-4 py-2 text-sm bg-muted/80 rounded-xl border transition-colors',
+          isOpen
+            ? 'border-primary/40 ring-2 ring-primary/15 bg-background'
+            : 'border-border/60 hover:border-border hover:bg-accent',
+        )}
+      >
+        <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder={t('search.placeholder')}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setActiveIndex(-1)
+            setIsOpen(true)
+          }}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
+          aria-activedescendant={
+            activeIndex >= 0 && flatResults[activeIndex]
+              ? `search-option-${flatResults[activeIndex].item.id}`
+              : undefined
+          }
+          aria-controls="search-results-listbox"
+          aria-autocomplete="list"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-label={t('search.dialogLabel')}
+          className="flex-1 min-w-0 text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('')
               setActiveIndex(-1)
+              inputRef.current?.focus()
             }}
-            onKeyDown={handleKeyDown}
-            aria-activedescendant={
-              activeIndex >= 0 && flatResults[activeIndex]
-                ? `search-option-${flatResults[activeIndex].item.id}`
-                : undefined
-            }
-            aria-controls="search-results-listbox"
-            aria-autocomplete="list"
-            role="combobox"
-            aria-expanded={hasResults}
-            className="flex-1 text-sm text-foreground placeholder:text-muted-foreground outline-none bg-transparent"
-          />
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              aria-label={t('search.clear')}
-              className="text-muted-foreground hover:text-foreground/80"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          <kbd className="text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 font-mono">
-            ESC
-          </kbd>
-        </div>
-
-        <div className="max-h-96 overflow-y-auto">
-          {isLoading && query.length >= 2 && (
-            <div className="space-y-2 p-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-3/4" />
-            </div>
-          )}
-
-          {isError && query.length >= 2 && (
-            <div className="py-8 text-center text-sm text-destructive">
-              {t('search.error')}
-            </div>
-          )}
-
-          {!isLoading && !isError && query.length >= 2 && !hasResults && (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              {t('search.noResultsFor', { query })}
-            </div>
-          )}
-
-          {hasResults && (
-            <div>
-              {searchSource === 'elasticsearch' && (
-                <div className="flex justify-end px-4 py-1 border-b border-border">
-                  <span className="text-[10px] text-muted-foreground/50 font-mono">ES</span>
-                </div>
-              )}
-              <div id="search-results-listbox" role="listbox" aria-label={t('search.dialogLabel')}>
-                {flatResults.map(({ item, section }, index) => {
-                  const showHeader = section !== lastSection
-                  lastSection = section
-
-                  return (
-                    <div key={`${section}-${item.id}`}>
-                      {showHeader && (
-                        <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
-                          {sectionLabels[section]}
-                        </div>
-                      )}
-                      <button
-                        id={`search-option-${item.id}`}
-                        role="option"
-                        aria-selected={index === activeIndex}
-                        aria-disabled={item.kind === 'member' && !getMemberSearchPath(item, canOpenOrgTeam)}
-                        onClick={() => handleSelect(item)}
-                        className={cn(
-                          'w-full flex flex-col px-4 py-2.5 hover:bg-accent transition-colors text-left',
-                          index === activeIndex && 'bg-primary/10',
-                          item.kind === 'member' &&
-                            !getMemberSearchPath(item, canOpenOrgTeam) &&
-                            'opacity-60 cursor-not-allowed hover:bg-transparent',
-                        )}
-                      >
-                        {item.kind === 'issue' && <IssueRow item={item} />}
-                        {item.kind === 'project' && <ProjectRow item={item} />}
-                        {item.kind === 'member' && (
-                          <MemberRow
-                            item={item}
-                            navigable={!!getMemberSearchPath(item, canOpenOrgTeam)}
-                          />
-                        )}
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {!query && (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              {t('search.startTyping')}
-            </div>
-          )}
-        </div>
+            aria-label={t('search.clear')}
+            className="text-muted-foreground hover:text-foreground/80"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] bg-background border border-border rounded-md font-mono text-muted-foreground flex-shrink-0">
+          ⌘K
+        </kbd>
       </div>
+
+      {isOpen && (
+        <div
+          className="absolute top-full left-0 right-0 mt-2 z-50 bg-card rounded-xl shadow-2xl border border-border overflow-hidden"
+          role="dialog"
+          aria-label={t('search.dialogLabel')}
+        >
+          <div className="max-h-96 overflow-y-auto">
+            {isLoading && query.length >= 2 && (
+              <div className="space-y-2 p-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-3/4" />
+              </div>
+            )}
+
+            {isError && query.length >= 2 && (
+              <div className="py-8 text-center text-sm text-destructive">
+                {t('search.error')}
+              </div>
+            )}
+
+            {!isLoading && !isError && query.length >= 2 && !hasResults && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                {t('search.noResultsFor', { query })}
+              </div>
+            )}
+
+            {hasResults && (
+              <div>
+                {searchSource === 'elasticsearch' && (
+                  <div className="flex justify-end px-4 py-1 border-b border-border">
+                    <span className="text-[10px] text-muted-foreground/50 font-mono">ES</span>
+                  </div>
+                )}
+                <div id="search-results-listbox" role="listbox" aria-label={t('search.dialogLabel')}>
+                  {flatResults.map(({ item, section }, index) => {
+                    const showHeader = section !== lastSection
+                    lastSection = section
+
+                    return (
+                      <div key={`${section}-${item.id}`}>
+                        {showHeader && (
+                          <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
+                            {sectionLabels[section]}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          id={`search-option-${item.id}`}
+                          role="option"
+                          aria-selected={index === activeIndex}
+                          aria-disabled={
+                            item.kind === 'member' && !getMemberSearchPath(item, canOpenOrgTeam)
+                          }
+                          onClick={() => handleSelect(item)}
+                          className={cn(
+                            'w-full flex flex-col px-4 py-2.5 hover:bg-accent transition-colors text-left',
+                            index === activeIndex && 'bg-primary/10',
+                            item.kind === 'member' &&
+                              !getMemberSearchPath(item, canOpenOrgTeam) &&
+                              'opacity-60 cursor-not-allowed hover:bg-transparent',
+                          )}
+                        >
+                          {item.kind === 'issue' && <IssueRow item={item} />}
+                          {item.kind === 'project' && <ProjectRow item={item} />}
+                          {item.kind === 'member' && (
+                            <MemberRow
+                              item={item}
+                              navigable={!!getMemberSearchPath(item, canOpenOrgTeam)}
+                            />
+                          )}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {!query && (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {t('search.startTyping')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
