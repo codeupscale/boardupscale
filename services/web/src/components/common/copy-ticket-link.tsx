@@ -86,8 +86,8 @@ export function CopyTicketLink({ issueKey, issueId, issueType, className, done }
     >
       <span
         className={cn(
-          'text-[10px] font-mono font-medium text-primary tracking-wide',
-          'hover:underline cursor-pointer',
+          'inline-flex items-center text-[10px] font-mono font-medium text-primary tracking-wide',
+          'hover:underline cursor-pointer align-middle',
           done && 'line-through opacity-60',
           className,
         )}

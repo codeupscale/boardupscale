@@ -43,6 +43,12 @@ import { useComponents, useIssueComponents, useSetIssueComponents } from '@/hook
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { useProject } from '@/hooks/useProjects'
 import { isKanbanProject, isSprintEligibleIssueType } from '@/lib/project-workflow'
+import { getIssueTypeLabel } from '@/lib/issue-type-labels'
+import {
+  projectBoardHref,
+  resolveProjectDisplayName,
+  resolveProjectRouteKey,
+} from '@/lib/project-route'
 import { useVersions, useIssueVersions, useSetIssueVersions } from '@/hooks/useVersions'
 import { CustomFieldsForm } from '@/components/issues/custom-fields-form'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -441,12 +447,19 @@ export function IssueDetailPage() {
 
   // Can this issue have children?
   const childConfig = CHILD_TYPE_MAP[issue.type]
+  const projectRouteKey = resolveProjectRouteKey(issue, project)
+  const projectDisplayName = resolveProjectDisplayName(issue, project)
+  const boardHref = projectRouteKey ? projectBoardHref(projectRouteKey) : undefined
+  const issueTypeLabel = getIssueTypeLabel(issue.type, t)
 
 
   return (
     <ContentFade className="h-full"><div className="flex flex-col h-full bg-background">
       {/* Top Bar — Breadcrumb */}
-      <div className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap">
+      <nav
+        aria-label={t('common.breadcrumb', 'Breadcrumb')}
+        className="px-6 py-3 border-b border-border bg-card flex items-center gap-2 text-sm flex-wrap"
+      >
         <button
           type="button"
           onClick={() => {
@@ -454,7 +467,7 @@ export function IssueDetailPage() {
               navigate(-1)
               return
             }
-            navigate(issue.projectId ? `/projects/${issue.projectId}/board` : '/projects')
+            navigate(boardHref ?? '/projects')
           }}
           aria-label={t('common.back', 'Back')}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
@@ -464,27 +477,42 @@ export function IssueDetailPage() {
         <Link to="/projects" className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors">
           {t('nav.projects')}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
-        {issue.projectId && (
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden="true" />
+        {projectRouteKey && boardHref && (
           <>
             <Link
-              to={`/projects/${issue.projectId}/board`}
+              to={boardHref}
+              className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors truncate max-w-[200px]"
+              title={projectDisplayName}
+            >
+              {projectDisplayName}
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden="true" />
+            <Link
+              to={boardHref}
               className="text-muted-foreground hover:text-foreground dark:hover:text-foreground transition-colors"
             >
               {t('nav.board')}
             </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60" aria-hidden="true" />
           </>
         )}
 
         {/* Parent breadcrumb chain */}
         <IssueBreadcrumbChain issue={issue} />
 
-        <span className="inline-flex items-center gap-1.5">
-          <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5" />
-          <CopyTicketLink issueKey={issue.key} issueId={issue.id} issueType={issue.type} className="font-mono text-primary font-semibold" />
+        <span className="inline-flex items-center gap-1.5 text-sm" aria-current="page">
+          <IssueTypeIcon type={issue.type} className="h-3.5 w-3.5 flex-shrink-0" />
+          <span className="text-muted-foreground">{issueTypeLabel}</span>
+          <span className="text-muted-foreground/60 select-none" aria-hidden="true">/</span>
+          <CopyTicketLink
+            issueKey={issue.key}
+            issueId={issue.id}
+            issueType={issue.type}
+            className="text-sm font-mono text-primary font-medium"
+          />
         </span>
-      </div>
+      </nav>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* ================================================================ */}
