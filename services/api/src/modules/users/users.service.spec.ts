@@ -6,20 +6,24 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
 import { mockUser, TEST_IDS } from '../../test/mock-factories';
+import { SearchIndexQueueService } from '@/modules/search/search-index-queue.service';
 
 jest.mock('bcryptjs');
 
 describe('UsersService', () => {
   let service: UsersService;
   let userRepo: ReturnType<typeof createMockRepository>;
+  let searchIndexQueueService: { refreshMember: jest.Mock };
 
   beforeEach(async () => {
     userRepo = createMockRepository();
+    searchIndexQueueService = { refreshMember: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: SearchIndexQueueService, useValue: searchIndexQueueService },
       ],
     }).compile();
 

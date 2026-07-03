@@ -316,11 +316,35 @@
     "validationError": "Por favor, verifica tu entrada"
   },
   "search": {
-    "placeholder": "Buscar incidencias, proyectos...",
+    "placeholder": "Buscar incidencias, proyectos, miembros...",
+    "dialogLabel": "Búsqueda global",
     "searching": "Buscando...",
     "noResultsFor": "No se encontraron resultados para \"{{query}}\"",
-    "startTyping": "Comienza a escribir para buscar...",
-    "issues": "Incidencias"
+    "startTyping": "Empieza a escribir para buscar incidencias, proyectos y miembros...",
+    "issues": "Incidencias",
+    "projects": "Proyectos",
+    "members": "Miembros",
+    "clear": "Borrar búsqueda",
+    "error": "Error en la búsqueda. Inténtalo de nuevo.",
+    "matchedFormerKey": "Coincide con la clave anterior {{formerKey}}",
+    "highlightFields": {
+      "title": "Título",
+      "description": "Descripción",
+      "assigneeName": "Asignado",
+      "labels": "Etiquetas",
+      "name": "Nombre",
+      "key": "Clave",
+      "displayName": "Nombre",
+      "email": "Correo"
+    },
+    "reindex": {
+      "title": "Índice de búsqueda",
+      "description": "Reconstruir Elasticsearch para este proyecto. Se ejecuta en segundo plano y no ralentiza la búsqueda.",
+      "start": "Reindexar",
+      "cancel": "Cancelar",
+      "retry": "Reintentar",
+      "progress": "{{issues}}/{{issueTotal}} incidencias · {{members}}/{{memberTotal}} miembros"
+    }
   },
   "languages": {
     "en": "Ingl\u00e9s",

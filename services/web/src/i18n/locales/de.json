@@ -316,11 +316,35 @@
     "validationError": "Bitte \u00fcberpr\u00fcfen Sie Ihre Eingabe"
   },
   "search": {
-    "placeholder": "Vorg\u00e4nge, Projekte suchen...",
-    "searching": "Suche l\u00e4uft...",
-    "noResultsFor": "Keine Ergebnisse f\u00fcr \"{{query}}\" gefunden",
-    "startTyping": "Beginnen Sie zu tippen, um zu suchen...",
-    "issues": "Vorg\u00e4nge"
+    "placeholder": "Vorgänge, Projekte, Mitglieder suchen...",
+    "dialogLabel": "Globale Suche",
+    "searching": "Suche läuft...",
+    "noResultsFor": "Keine Ergebnisse für \"{{query}}\" gefunden",
+    "startTyping": "Tippen Sie, um Vorgänge, Projekte und Mitglieder zu suchen...",
+    "issues": "Vorgänge",
+    "projects": "Projekte",
+    "members": "Mitglieder",
+    "clear": "Suche löschen",
+    "error": "Suche fehlgeschlagen. Bitte erneut versuchen.",
+    "matchedFormerKey": "Übereinstimmung mit früherem Schlüssel {{formerKey}}",
+    "highlightFields": {
+      "title": "Titel",
+      "description": "Beschreibung",
+      "assigneeName": "Zugewiesen",
+      "labels": "Labels",
+      "name": "Name",
+      "key": "Schlüssel",
+      "displayName": "Name",
+      "email": "E-Mail"
+    },
+    "reindex": {
+      "title": "Suchindex",
+      "description": "Elasticsearch für dieses Projekt neu aufbauen. Läuft im Hintergrund und verlangsamt die Suche nicht.",
+      "start": "Neu indexieren",
+      "cancel": "Abbrechen",
+      "retry": "Erneut versuchen",
+      "progress": "{{issues}}/{{issueTotal}} Vorgänge · {{members}}/{{memberTotal}} Mitglieder"
+    }
   },
   "languages": {
     "en": "Englisch",

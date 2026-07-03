@@ -82,6 +82,11 @@ export function ProjectKeyChangeDialog({
               Issue links (<span className="font-mono">/issues/…</span>) are unchanged.
             </li>
             <li>
+              Global search is refreshed automatically. Former keys (e.g.{' '}
+              <span className="font-mono">{oldKey}-1</span>) still find re-keyed issues for a
+              while.
+            </li>
+            <li>
               Text in comments or exports that mention the old key is not updated automatically.
             </li>
           </ul>

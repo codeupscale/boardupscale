@@ -229,6 +229,7 @@ export class ChatService {
         conversation.projectId,
         organizationId,
         content,
+        userId,
       );
 
       // Get conversation history (last 20 messages)
@@ -360,9 +361,15 @@ export class ChatService {
     projectId: string,
     organizationId: string,
     userQuery: string,
+    userId: string,
   ): Promise<string> {
     const staticContext = await this.getStaticContext(projectId, organizationId);
-    const dynamicContext = await this.buildDynamicContext(projectId, organizationId, userQuery);
+    const dynamicContext = await this.buildDynamicContext(
+      projectId,
+      organizationId,
+      userQuery,
+      userId,
+    );
     return `${staticContext}\n\n${dynamicContext}`;
   }
 
@@ -519,6 +526,7 @@ export class ChatService {
     projectId: string,
     organizationId: string,
     userQuery: string,
+    userId: string,
   ): Promise<string> {
     const parts: string[] = [];
 
@@ -527,12 +535,13 @@ export class ChatService {
       const searchResult = await this.searchService.search({
         q: userQuery,
         organizationId,
+        userId,
         projectId,
         limit: 5,
       });
-      if (searchResult.items.length > 0) {
+      if (searchResult.issues.length > 0) {
         parts.push('RELEVANT ISSUES:');
-        for (const item of searchResult.items) {
+        for (const item of searchResult.issues) {
           parts.push(
             `  ${item.key}: ${item.title} [${item.type}/${item.priority}] Status: ${item.statusName || 'Unknown'} Assignee: ${item.assigneeName || 'Unassigned'}`,
           );

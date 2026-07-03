@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ExternalLink, Sparkles } from 'lucide-react'
-import { useSimilarIssues, SearchResultItem } from '@/hooks/useSearch'
+import { useSimilarIssues, SearchIssueItem } from '@/hooks/useSearch'
 import { IssueTypeIcon } from './issue-type-icon'
 import { IssueType } from '@/types'
 import { cn } from '@/lib/utils'
@@ -56,7 +56,7 @@ export function SimilarIssuesPanel({
   )
 }
 
-function SimilarIssueItem({ item }: { item: SearchResultItem }) {
+function SimilarIssueItem({ item }: { item: SearchIssueItem }) {
   return (
     <Link
       to={`/issues/${item.id}`}
