@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { SearchService } from '@/modules/search/search.service';
 import { Issue } from '@/modules/issues/entities/issue.entity';
 import { Project } from '@/modules/projects/entities/project.entity';
