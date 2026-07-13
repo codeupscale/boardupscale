@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { ListTree } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Issue } from '@/types'
@@ -7,6 +6,7 @@ import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { useIssueChildren } from '@/hooks/useIssues'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
+import { IssueDetailLink } from '@/components/issues/issue-detail-link'
 
 const INDICATOR_CLASS =
   'inline-flex items-center gap-1 max-w-full px-2 py-0.5 rounded text-xs bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20 transition-colors cursor-default'
@@ -48,8 +48,8 @@ function IssueChildrenTooltipContent({
           <ul className="divide-y divide-border">
             {children.map((child: Issue) => (
               <li key={child.id}>
-                <Link
-                  to={`/issues/${child.id}`}
+                <IssueDetailLink
+                  issueId={child.id}
                   className="flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -62,7 +62,7 @@ function IssueChildrenTooltipContent({
                   />
                   <span className="text-xs text-foreground truncate flex-1">{child.title}</span>
                   {child.status && <StatusBadge status={child.status} />}
-                </Link>
+                </IssueDetailLink>
               </li>
             ))}
           </ul>

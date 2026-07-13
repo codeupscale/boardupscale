@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
@@ -6,17 +6,16 @@ import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
-import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
+import { useIssues } from '@/hooks/useIssues'
 import { useHasPermission } from '@/hooks/useHasPermission'
-import { IssueType, IssueStatusCategory } from '@/types'
+import { IssueType } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
-import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
+import { CreateIssueDialog, mapTicketStatuses } from '@/components/issues/ticket-modal'
 import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { Pagination } from '@/components/ui/pagination'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 25
 
@@ -57,14 +56,12 @@ export function ProjectEpicsPage() {
   const { key: projectKey } = useParams<{ key: string }>()
   const [page, setPage] = useState(1)
   const [showCreateIssue, setShowCreateIssue] = useState(false)
-  const issueFormRef = useRef<IssueFormHandle>(null)
 
   const { data: project } = useProject(projectKey!)
   const { data: board } = useBoard(projectKey!)
   const { data: projectMembers } = useProjectMembers(projectKey!)
   const users = projectMembers?.map((m) => m.user)
   const { data: sprints } = useSprints(projectKey!)
-  const createIssue = useCreateIssue()
   const { hasPermission } = useHasPermission(projectKey)
 
   const { data, isLoading } = useIssues({
@@ -166,46 +163,16 @@ export function ProjectEpicsPage() {
           )}
         </div>
 
-        {/* Create Issue Dialog — pre-defaults type to Epic since this is the
-            Epics tab. User can still change type to Story/Task/Bug in the
-            form if needed. Mirrors the Backlog page's modal wiring. */}
-        <Dialog
+        <CreateIssueDialog
           open={showCreateIssue}
-          onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
-        >
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-            </DialogHeader>
-            <DialogBody>
-              <IssueForm
-                ref={issueFormRef}
-                projectId={project?.id || projectKey!}
-                statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-                sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-                users={users || []}
-                defaultValues={{
-                  type: IssueType.EPIC,
-                  // Default Status to the project's first "To Do" status so
-                  // the dropdown isn't empty on open. Matches Board/Backlog/Issues.
-                  statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
-                }}
-                onSubmit={(values) =>
-                  createIssue.mutate(
-                    {
-                      ...values,
-                      projectId: project?.id || projectKey!,
-                      projectType: project?.type,
-                    } as CreateIssueVariables,
-                    { onSuccess: () => setShowCreateIssue(false) },
-                  )
-                }
-                onCancel={() => setShowCreateIssue(false)}
-                isLoading={createIssue.isPending}
-              />
-            </DialogBody>
-          </DialogContent>
-        </Dialog>
+          onOpenChange={setShowCreateIssue}
+          projectId={project?.id || projectKey!}
+          projectType={project?.type}
+          statuses={mapTicketStatuses(board?.statuses)}
+          sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+          users={users || []}
+          defaultValues={{ type: IssueType.EPIC }}
+        />
       </div>
     </ProjectMemberGuard>
   )

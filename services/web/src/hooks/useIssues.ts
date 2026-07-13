@@ -235,6 +235,7 @@ export function useUpdateIssue() {
       qc.setQueryData(['issue', issue.id], issue)
       qc.invalidateQueries({ queryKey: ['issues'] })
       qc.invalidateQueries({ queryKey: ['board'] })
+      qc.invalidateQueries({ queryKey: ['activities', issue.id] })
       invalidateProjectList(qc)
       if ('parentId' in variables) {
         invalidateIssueChildren(qc, variables.parentId)

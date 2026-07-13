@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Droppable } from '@hello-pangea/dnd'
 import { useTranslation } from 'react-i18next'
-import { BoardColumn as BoardColumnType, Issue, SwimlaneGroupBy } from '@/types'
+import { BoardColumn as BoardColumnType, Issue, SwimlaneGroupBy, User } from '@/types'
 import { cn } from '@/lib/utils'
 import { BoardCard } from './board-card'
 
@@ -18,9 +18,20 @@ interface BoardSwimlaneProps {
   columns: BoardColumnType[]
   onAddIssue?: (statusId: string) => void
   isWipExceeded: (columnId: string, extraCount?: number) => boolean
+  members?: User[]
+  onAssigneeChange?: (issueId: string, assigneeId: string | null) => void
+  canEditAssignee?: boolean
 }
 
-export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: BoardSwimlaneProps) {
+export function BoardSwimlane({
+  group,
+  columns,
+  onAddIssue,
+  isWipExceeded,
+  members = [],
+  onAssigneeChange,
+  canEditAssignee = false,
+}: BoardSwimlaneProps) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(true)
 
@@ -80,7 +91,14 @@ export function BoardSwimlane({ group, columns, onAddIssue, isWipExceeded }: Boa
                       )}
                     >
                       {columnIssues.map((issue, index) => (
-                        <BoardCard key={issue.id} issue={issue} index={index} />
+                        <BoardCard
+                          key={issue.id}
+                          issue={issue}
+                          index={index}
+                          members={members}
+                          onAssigneeChange={onAssigneeChange}
+                          canEditAssignee={canEditAssignee}
+                        />
                       ))}
                       {provided.placeholder}
                       {columnIssues.length === 0 && !snapshot.isDraggingOver && (

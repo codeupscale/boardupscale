@@ -1,5 +1,6 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   format,
   startOfMonth,
@@ -26,7 +27,8 @@ import {
 } from 'lucide-react'
 import { useProject } from '@/hooks/useProjects'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
-import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
+import { useIssues } from '@/hooks/useIssues'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { useBoard } from '@/hooks/useBoard'
 import { useUsers } from '@/hooks/useUsers'
 import { PageHeader } from '@/components/common/page-header'
@@ -39,8 +41,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from '@/components/ui/dialog'
-import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
+import { CreateIssueDialog, mapTicketStatuses } from '@/components/issues/ticket-modal'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { cn } from '@/lib/utils'
 import { issueDetailPath } from '@/lib/routes'
@@ -152,13 +153,14 @@ function IssuePanelCard({ issue }: { issue: Issue }) {
 
 // ─── Main page ─────────────────────────────────────────────────────────────
 export function ProjectCalendarPage() {
+  const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [showCreate, setShowCreate] = useState(false)
-  const issueFormRef = useRef<IssueFormHandle>(null)
-  const createIssue = useCreateIssue()
+  const { hasPermission } = useHasPermission(projectKey)
+  const canCreateIssue = hasPermission('issue', 'create')
   const { data: board } = useBoard(projectKey!)
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
@@ -306,10 +308,12 @@ export function ProjectCalendarPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4" />
-            Create Ticket
-          </Button>
+          {canCreateIssue && (
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" />
+              {t('issues.createIssue')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -448,33 +452,14 @@ export function ProjectCalendarPage() {
         )}
       </div>
 
-      <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && issueFormRef.current?.requestClose()}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create Ticket</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <IssueForm
-              ref={issueFormRef}
-              projectId={project?.id || projectKey!}
-              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              users={orgUsers || []}
-              onSubmit={(values) =>
-                createIssue.mutate(
-                  {
-                    ...values,
-                    projectId: project?.id || projectKey!,
-                    projectType: project?.type,
-                  } as CreateIssueVariables,
-                  { onSuccess: () => setShowCreate(false) },
-                )
-              }
-              onCancel={() => setShowCreate(false)}
-              isLoading={createIssue.isPending}
-            />
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
+      <CreateIssueDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        projectId={project?.id || projectKey!}
+        projectType={project?.type}
+        statuses={mapTicketStatuses(board?.statuses)}
+        users={orgUsers || []}
+      />
     </div>
     </ProjectMemberGuard>
   )

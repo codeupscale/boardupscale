@@ -29,6 +29,8 @@ import {
 import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
+
 const schema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
   description: z.string().optional(),
@@ -54,7 +56,7 @@ interface IssueFormProps {
   versions?: ProjectVersion[]
   users?: User[]
   defaultValues?: Partial<FormValues>
-  onSubmit: (values: FormValues) => void
+  onSubmit: (values: FormValues, attachments: File[]) => void
   onCancel: () => void
   isLoading?: boolean
   submitLabel?: string
@@ -85,6 +87,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
   const [selectedComponents, setSelectedComponents] = useState<string[]>([])
   const [selectedFixVersions, setSelectedFixVersions] = useState<string[]>([])
+  const [attachments, setAttachments] = useState<File[]>([])
 
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
@@ -105,7 +108,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
   })
 
   const handleCancel = () => {
-    const hasAnyInput = isDirty || labels.length > 0
+    const hasAnyInput = isDirty || labels.length > 0 || attachments.length > 0
     if (hasAnyInput) {
       setShowDiscardConfirm(true)
     } else {
@@ -144,7 +147,7 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         .map(([fieldId, value]) => ({ fieldId, value })),
       componentIds: selectedComponents.length > 0 ? selectedComponents : undefined,
       fixVersionIds: selectedFixVersions.length > 0 ? selectedFixVersions : undefined,
-    } as any)
+    } as any, attachments)
   }
 
   return (
@@ -333,6 +336,72 @@ export const IssueForm = forwardRef<IssueFormHandle, IssueFormProps>(function Is
         placeholder="e.g. 120"
         {...register('timeEstimate')}
       />
+
+      {/* Attachments */}
+      <div>
+        <label className="block text-sm font-medium text-foreground/80 mb-1">
+          {t('common.attachments', 'Attachments')}
+          <span className="text-xs text-muted-foreground font-normal ml-2">
+            {t('issues.attachmentsHint', 'Optional — files upload after the ticket is created')}
+          </span>
+        </label>
+
+        {attachments.length > 0 && (
+          <div className="mb-2 space-y-1.5">
+            {attachments.map((file) => (
+              <div
+                key={`${file.name}-${file.size}-${file.lastModified}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(file.size / (1024 * 1024)).toFixed(1)} MB
+                    {file.size > MAX_ATTACHMENT_BYTES ? ` — ${t('common.tooLarge', 'Too large')}` : ''}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setAttachments((prev) =>
+                      prev.filter((f) => f !== file),
+                    )
+                  }
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label={t('common.remove', 'Remove')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Input
+          type="file"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || [])
+            if (files.length === 0) return
+            setAttachments((prev) => {
+              const next = [...prev]
+              for (const f of files) {
+                const exists = next.some(
+                  (x) => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified,
+                )
+                if (!exists) next.push(f)
+              }
+              return next
+            })
+            e.target.value = ''
+          }}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          {t('issues.attachmentsLimitHint', 'Max file size: 50 MB')}
+        </p>
+      </div>
 
       {/* Labels */}
       <div>

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useScrollPagination } from '@/hooks/useScrollPagination'
 import { useTranslation } from 'react-i18next'
-import { BoardColumn as BoardColumnType, Issue } from '@/types'
+import { BoardColumn as BoardColumnType, Issue, User } from '@/types'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -35,6 +35,9 @@ interface BoardColumnProps {
   onDeleteColumn?: (statusId: string) => void
   onLoadMore?: (statusId: string) => void
   isLoadingMore?: boolean
+  members?: User[]
+  onAssigneeChange?: (issueId: string, assigneeId: string | null) => void
+  canEditAssignee?: boolean
 }
 
 export function BoardColumn({
@@ -47,6 +50,9 @@ export function BoardColumn({
   onDeleteColumn,
   onLoadMore,
   isLoadingMore,
+  members = [],
+  onAssigneeChange,
+  canEditAssignee = false,
 }: BoardColumnProps) {
   const { t } = useTranslation()
   const [showWipSettings, setShowWipSettings] = useState(false)
@@ -228,7 +234,14 @@ export function BoardColumn({
               )}
             >
               {displayedIssues.map((issue, index) => (
-                <BoardCard key={issue.id} issue={issue} index={index} />
+                <BoardCard
+                  key={issue.id}
+                  issue={issue}
+                  index={index}
+                  members={members}
+                  onAssigneeChange={onAssigneeChange}
+                  canEditAssignee={canEditAssignee}
+                />
               ))}
               {provided.placeholder}
 

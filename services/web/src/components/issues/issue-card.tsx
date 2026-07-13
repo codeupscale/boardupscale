@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Issue } from '@/types'
 import { cn } from '@/lib/utils'
+import { useOpenIssue, prefetchIssue } from '@/lib/issue-navigation'
 import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from './issue-type-icon'
 import { PriorityBadge } from './priority-badge'
@@ -12,11 +13,13 @@ interface IssueCardProps {
 }
 
 export function IssueCard({ issue, className }: IssueCardProps) {
-  const navigate = useNavigate()
+  const openIssue = useOpenIssue()
+  const queryClient = useQueryClient()
 
   return (
     <div
-      onClick={() => navigate(`/issues/${issue.id}`)}
+      onClick={() => openIssue(issue.id)}
+      onMouseEnter={() => prefetchIssue(queryClient, issue.id)}
       className={cn(
         'bg-card rounded-lg border border-border p-3 shadow-sm hover:shadow-md hover:border-border cursor-pointer transition-all group',
         className,

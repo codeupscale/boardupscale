@@ -494,14 +494,23 @@ export class IssuesService {
       dto.sprintId = null;
     }
 
-    Object.assign(issue, dto);
+    // IMPORTANT:
+    // DTO instances may contain properties with value `undefined` even when the
+    // request did not include them. `Object.assign()` would then overwrite
+    // existing entity fields with `undefined` which TypeORM can persist as NULL
+    // for nullable columns (e.g. status_id). Only apply defined keys.
+    const cleanedDto = Object.fromEntries(
+      Object.entries(dto).filter(([, v]) => v !== undefined),
+    ) as UpdateIssueDto;
+
+    Object.assign(issue, cleanedDto);
 
     // When updating FK columns, clear the loaded relation so TypeORM uses the
     // raw FK value instead of deriving it from the (stale) relation object.
-    if ('assigneeId' in dto) issue.assignee = null;
-    if ('sprintId' in dto) issue.sprint = null;
-    if ('statusId' in dto) issue.status = null;
-    if ('parentId' in dto) issue.parent = null;
+    if ('assigneeId' in cleanedDto) issue.assignee = null;
+    if ('sprintId' in cleanedDto) issue.sprint = null;
+    if ('statusId' in cleanedDto) issue.status = null;
+    if ('parentId' in cleanedDto) issue.parent = null;
 
     await this.issueRepository.save(issue);
 
@@ -522,7 +531,7 @@ export class IssuesService {
       labels: 'labels',
     };
     if (issue.jiraKey) {
-      const newLockedFields = Object.keys(dto)
+      const newLockedFields = Object.keys(cleanedDto)
         .filter((k) => LOCKABLE_FIELD_MAP[k])
         .map((k) => LOCKABLE_FIELD_MAP[k]);
       if (newLockedFields.length > 0) {

@@ -1,16 +1,20 @@
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Draggable } from '@hello-pangea/dnd'
-import { Issue, IssuePriority, IssueStatusCategory } from '@/types'
+import { Issue, IssuePriority, IssueStatusCategory, User } from '@/types'
 import { cn } from '@/lib/utils'
-import { Avatar } from '@/components/ui/avatar'
+import { useOpenIssue, prefetchIssue } from '@/lib/issue-navigation'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 import { IssueMetadataBadges } from '@/components/issues/issue-metadata-badges'
+import { IssueAssigneePicker } from '@/components/issues/issue-assignee-picker'
 
 interface BoardCardProps {
   issue: Issue
   index: number
+  members?: User[]
+  onAssigneeChange?: (issueId: string, assigneeId: string | null) => void
+  canEditAssignee?: boolean
 }
 
 const priorityBorderClass: Record<IssuePriority, string> = {
@@ -21,8 +25,15 @@ const priorityBorderClass: Record<IssuePriority, string> = {
   [IssuePriority.NONE]: 'border-l-[3px] border-l-border',
 }
 
-export function BoardCard({ issue, index }: BoardCardProps) {
-  const navigate = useNavigate()
+export function BoardCard({
+  issue,
+  index,
+  members = [],
+  onAssigneeChange,
+  canEditAssignee = false,
+}: BoardCardProps) {
+  const openIssue = useOpenIssue()
+  const queryClient = useQueryClient()
   const borderClass = priorityBorderClass[issue.priority] ?? priorityBorderClass[IssuePriority.NONE]
   const labels = issue.labels ?? []
 
@@ -33,7 +44,8 @@ export function BoardCard({ issue, index }: BoardCardProps) {
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={() => navigate(`/issues/${issue.id}`)}
+          onClick={() => openIssue(issue.id)}
+          onMouseEnter={() => prefetchIssue(queryClient, issue.id)}
           className={cn(
             'group relative bg-card rounded-xl border border-border/80',
             'shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer',
@@ -89,18 +101,14 @@ export function BoardCard({ issue, index }: BoardCardProps) {
             {/* Bottom row: sprint / story points + assignee */}
             <div className="flex items-center justify-between gap-2">
               <IssueMetadataBadges issue={issue} variant="board" />
-              <div className="flex items-center gap-1.5">
-                {issue.assignee ? (
-                  <>
-                    <span className="text-[10px] text-muted-foreground truncate max-w-[80px] hidden group-hover:inline">
-                      {issue.assignee.displayName}
-                    </span>
-                    <Avatar user={issue.assignee} size="xs" />
-                  </>
-                ) : (
-                  <div className="w-5 h-5 rounded-full border border-dashed border-border flex-shrink-0" />
-                )}
-              </div>
+              <IssueAssigneePicker
+                assigneeId={issue.assigneeId}
+                assignee={issue.assignee}
+                members={members}
+                onAssigneeChange={(assigneeId) => onAssigneeChange?.(issue.id, assigneeId)}
+                disabled={!canEditAssignee || !onAssigneeChange || members.length === 0}
+                showNameOnHover
+              />
             </div>
           </div>
         </div>

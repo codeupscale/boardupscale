@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Issue } from '@/types'
 import { cn, formatDate } from '@/lib/utils'
+import { useOpenIssue, prefetchIssue } from '@/lib/issue-navigation'
 import { Avatar } from '@/components/ui/avatar'
 import { IssueTypeIcon } from './issue-type-icon'
 import { PriorityBadge } from './priority-badge'
@@ -35,18 +36,22 @@ export function IssueTableRow({
   showStatus = true,
   showStoryPoints = true,
 }: IssueTableRowProps) {
-  const navigate = useNavigate()
+  const openIssue = useOpenIssue()
+  const queryClient = useQueryClient()
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
   const isSelected = selectedIssueIds.has(issue.id)
+  const open = () => openIssue(issue.id)
+  const prefetch = () => prefetchIssue(queryClient, issue.id)
 
   return (
     <tr
       onClick={() => {
         if (!selectable) {
-          navigate(`/issues/${issue.id}`)
+          open()
         }
       }}
+      onMouseEnter={prefetch}
       className={cn(
         'cursor-pointer transition-colors border-b border-border last:border-0',
         'hover:bg-primary/5',
@@ -73,7 +78,7 @@ export function IssueTableRow({
       {/* Type + Key */}
       <td
         className="px-4 py-3 w-32"
-        onClick={() => navigate(`/issues/${issue.id}`)}
+        onClick={open}
       >
         <div className="flex items-center gap-1.5">
           <IssueTypeIcon type={issue.type} />
@@ -87,7 +92,7 @@ export function IssueTableRow({
       {showProject && (
         <td
           className="px-4 py-3 w-40"
-          onClick={() => navigate(`/issues/${issue.id}`)}
+          onClick={open}
         >
           {issue.project ? (
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded truncate block max-w-[140px]" title={issue.project.name}>
@@ -102,7 +107,7 @@ export function IssueTableRow({
       {/* Title */}
       <td
         className="px-4 py-3"
-        onClick={() => navigate(`/issues/${issue.id}`)}
+        onClick={open}
       >
         <span className="text-sm text-foreground font-medium line-clamp-1">{issue.title}</span>
       </td>

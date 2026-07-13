@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Search, X, FolderOpen, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,6 +17,8 @@ import {
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueType, UserRole } from '@/types'
 import { cn } from '@/lib/utils'
+import { issueDetailPath } from '@/lib/routes'
+import { getIssueModalNavigateState } from '@/lib/issue-navigation'
 import { HighlightedText } from '@/components/search/highlighted-text'
 
 function SearchResultHighlights({ highlights }: { highlights: SearchHighlight[] }) {
@@ -57,6 +59,7 @@ export function GlobalSearchBar() {
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const { data, isLoading, isError } = useSearch(query)
 
   const canOpenOrgTeam =
@@ -108,7 +111,9 @@ export function GlobalSearchBar() {
 
   const handleSelect = (item: SearchResultItem) => {
     if (item.kind === 'issue') {
-      navigate(`/issues/${item.id}`)
+      navigate(issueDetailPath(item.id), {
+        state: getIssueModalNavigateState(location),
+      })
       setQuery('')
       closeSearch()
       return
