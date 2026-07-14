@@ -55,7 +55,6 @@ import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { BacklogQuickFilters } from '@/components/backlog/backlog-filters'
 import { Button } from '@/components/ui/button'
-import { toast } from '@/store/ui.store'
 import {
   Select,
   SelectTrigger,
