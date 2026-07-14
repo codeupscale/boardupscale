@@ -269,6 +269,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
           )}
         </h3>
         <Button
+          type="button"
           size="sm"
           variant="outline"
           onClick={() => fileInputRef.current?.click()}
@@ -314,6 +315,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
             <p className="text-sm text-muted-foreground">
               Drop files here or{' '}
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="text-primary hover:underline font-medium"
               >
@@ -354,6 +356,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
                   })}
                 />
                 <button
+                  type="button"
                   onClick={() => deleteAttachment.mutate({ id: attachment.id, issueId })}
                   className="absolute top-1.5 right-1.5 p-1 rounded-md bg-background/80 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors z-10 shadow-sm"
                   title="Delete"
@@ -385,6 +388,7 @@ export function AttachmentPanel({ issueId }: AttachmentPanelProps) {
                   })}
                 />
                 <button
+                  type="button"
                   onClick={() => deleteAttachment.mutate({ id: attachment.id, issueId })}
                   className="absolute top-1.5 right-1.5 p-1 rounded-md bg-background/80 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors z-10 shadow-sm"
                   title="Delete"

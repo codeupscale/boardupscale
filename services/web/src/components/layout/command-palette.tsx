@@ -35,6 +35,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { IssueType, UserRole } from '@/types'
 import { cn } from '@/lib/utils'
+import { getIssueModalNavigateState } from '@/lib/issue-navigation'
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -88,9 +89,10 @@ export function CommandPalette() {
   // ─── Navigation helper ───────────────────────────────────
 
   const go = useCallback((path: string) => {
-    navigate(path)
+    const isIssuePath = !!path.match(/^\/issues\/[^/]+$/)
+    navigate(path, isIssuePath ? { state: getIssueModalNavigateState(location) } : undefined)
     setSearchOpen(false)
-  }, [navigate, setSearchOpen])
+  }, [navigate, setSearchOpen, location])
 
   // ─── Command definitions ─────────────────────────────────
 

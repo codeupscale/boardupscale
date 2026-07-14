@@ -284,34 +284,52 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
   )
 }
 
-export function ActivityList({ issueId }: { issueId: string }) {
+const COMMENT_ACTIONS = new Set(['commented', 'comment_updated', 'comment_deleted'])
+
+export type ActivityListFilter = 'all' | 'changelog'
+
+export function ActivityList({
+  issueId,
+  filter = 'all',
+}: {
+  issueId: string
+  filter?: ActivityListFilter
+}) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const { data, isLoading } = useActivities(issueId, page)
 
   const activities = data?.data || []
+  const displayedActivities =
+    filter === 'changelog'
+      ? activities.filter((activity) => !COMMENT_ACTIONS.has(activity.action))
+      : activities
   const meta = data?.meta
 
   if (isLoading) {
     return <ListSkeleton rows={4} />
   }
 
-  if (activities.length === 0) {
+  if (displayedActivities.length === 0) {
     return (
       <div className="text-center py-10">
         <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">{t('activity.noActivity')}</p>
+        <p className="text-sm text-muted-foreground">
+          {filter === 'changelog'
+            ? t('issues.noHistory', 'No field changes yet.')
+            : t('activity.noActivity')}
+        </p>
       </div>
     )
   }
 
   return (
     <div>
-      {activities.map((activity, idx) => (
+      {displayedActivities.map((activity, idx) => (
         <ActivityEntry
           key={activity.id}
           activity={activity}
-          isLast={idx === activities.length - 1}
+          isLast={idx === displayedActivities.length - 1}
         />
       ))}
 

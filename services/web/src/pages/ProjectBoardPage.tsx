@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useQueryClient } from '@tanstack/react-query'
@@ -6,7 +6,7 @@ import { Plus, CheckCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useBoard, useReorderIssues, useUpdateStatus, useCreateStatus, useDeleteStatus } from '@/hooks/useBoard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
-import { useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
+import { useUpdateIssue } from '@/hooks/useIssues'
 import { useSprints, useCompleteSprint, useCreateSprint } from '@/hooks/useSprints'
 import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
@@ -19,7 +19,7 @@ import { BoardQuickFilters } from '@/components/board/board-filters'
 import { BoardSwimlane, groupIssuesBySwimlane } from '@/components/board/board-swimlane'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
+import { CreateIssueDialog, mapTicketStatuses } from '@/components/issues/ticket-modal'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select'
 import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue, IssueStatusCategory } from '@/types'
+import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
 import { isKanbanProject } from '@/lib/project-workflow'
 import { toast } from '@/store/ui.store'
 
@@ -55,7 +55,6 @@ export function ProjectBoardPage() {
   const qc = useQueryClient()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [createStatusId, setCreateStatusId] = useState<string | undefined>()
-  const issueFormRef = useRef<IssueFormHandle>(null)
   const [groupBy, setGroupBy] = useState<SwimlaneGroupBy>('none')
 
   // Column management dialogs
@@ -130,7 +129,7 @@ export function ProjectBoardPage() {
   const { data: usersResult } = useUsers()
   const orgUsers = usersResult?.data
   const reorderIssues = useReorderIssues()
-  const createIssue = useCreateIssue()
+  const updateIssue = useUpdateIssue()
   const updateStatus = useUpdateStatus()
   const createStatus = useCreateStatus()
   const deleteStatus = useDeleteStatus()
@@ -138,6 +137,23 @@ export function ProjectBoardPage() {
   const createSprintMutation = useCreateSprint()
 
   const { data: board, isLoading } = useBoard(projectKey!, filters)
+
+  const memberUsers = useMemo(
+    () =>
+      (members ?? [])
+        .map((m) => m.user)
+        .filter((user): user is NonNullable<typeof user> => !!user),
+    [members],
+  )
+
+  const canEditAssignee = hasPermission('issue', 'update')
+
+  const handleAssigneeChange = useCallback(
+    (issueId: string, assigneeId: string | null) => {
+      updateIssue.mutate({ id: issueId, assigneeId })
+    },
+    [updateIssue],
+  )
 
   const handleLoadMore = useCallback(
     async (statusId: string) => {
@@ -522,6 +538,9 @@ export function ProjectBoardPage() {
                     columns={board.statuses}
                     onAddIssue={handleAddIssue}
                     isWipExceeded={isWipExceeded}
+                    members={memberUsers}
+                    onAssigneeChange={handleAssigneeChange}
+                    canEditAssignee={canEditAssignee}
                   />
                 ))
               ) : (
@@ -568,6 +587,9 @@ export function ProjectBoardPage() {
                               onDeleteColumn={board.statuses.length > 1 ? handleDeleteColumn : undefined}
                               onLoadMore={handleLoadMore}
                               isLoadingMore={loadingMoreColumn === column.id}
+                              members={memberUsers}
+                              onAssigneeChange={handleAssigneeChange}
+                              canEditAssignee={canEditAssignee}
                             />
                           </div>
                         )}
@@ -593,49 +615,19 @@ export function ProjectBoardPage() {
         </ContentFade>
       )}
 
-      {/* Create Issue Dialog */}
-      <Dialog
+      <CreateIssueDialog
         open={showCreateDialog}
-        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <IssueForm
-              ref={issueFormRef}
-              projectId={project?.id || projectKey!}
-              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
-              users={orgUsers || []}
-              defaultValues={{
-                statusId: createStatusId ?? board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
-              }}
-              onSubmit={(values) => {
-                createIssue.mutate(
-                  {
-                    ...values,
-                    projectId: project?.id || projectKey!,
-                    projectType: project?.type,
-                  } as CreateIssueVariables,
-                  {
-                    onSuccess: () => {
-                      setShowCreateDialog(false)
-                      setCreateStatusId(undefined)
-                    },
-                  },
-                )
-              }}
-              onCancel={() => {
-                setShowCreateDialog(false)
-                setCreateStatusId(undefined)
-              }}
-              isLoading={createIssue.isPending}
-            />
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={(open) => {
+          setShowCreateDialog(open)
+          if (!open) setCreateStatusId(undefined)
+        }}
+        projectId={project?.id || projectKey!}
+        projectType={project?.type}
+        statuses={mapTicketStatuses(board?.statuses)}
+        sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
+        users={orgUsers || []}
+        defaultValues={{ statusId: createStatusId }}
+      />
 
       {/* Add Column Dialog */}
       <Dialog open={showAddColumn} onOpenChange={(o) => !o && setShowAddColumn(false)}>

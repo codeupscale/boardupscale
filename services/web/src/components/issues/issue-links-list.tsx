@@ -1,25 +1,18 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Link2, Plus, X, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useIssueLinks, useCreateIssueLink, useDeleteIssueLink } from '@/hooks/useIssueLinks'
 import { useIssues } from '@/hooks/useIssues'
 import { IssueLink, IssueLinkType } from '@/types'
+import { ISSUE_LINK_TYPE_OPTIONS } from '@/lib/issue-link-config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { StatusBadge } from '@/components/issues/status-badge'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
+import { IssueDetailLink } from '@/components/issues/issue-detail-link'
 import { RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT } from '@/components/ui/rich-text-display'
-
-const LINK_TYPES: { value: IssueLinkType; label: string }[] = [
-  { value: 'blocks', label: 'Blocks' },
-  { value: 'is_blocked_by', label: 'Is blocked by' },
-  { value: 'duplicates', label: 'Duplicates' },
-  { value: 'is_duplicated_by', label: 'Is duplicated by' },
-  { value: 'relates_to', label: 'Relates to' },
-]
 
 function LinkItem({
   link,
@@ -37,13 +30,13 @@ function LinkItem({
       <span className="text-xs text-muted-foreground w-28 flex-shrink-0 truncate" title={link.label}>
         {link.label}
       </span>
-      <Link
-        to={`/issues/${link.issue.id}`}
+      <IssueDetailLink
+        issueId={link.issue.id}
         className="flex items-center gap-2 min-w-0 flex-1 hover:text-primary"
       >
         <CopyTicketLink issueKey={link.issue.key} issueId={link.issue.id} issueType={link.issue.type} className="text-xs font-mono text-primary flex-shrink-0" />
         <span className="text-sm text-foreground/80 truncate">{link.issue.title}</span>
-      </Link>
+      </IssueDetailLink>
       {link.issue.status && <StatusBadge status={link.issue.status} />}
       <button
         className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 flex-shrink-0 transition-opacity"
@@ -183,9 +176,9 @@ export function IssueLinksList({ issueId, projectId }: { issueId: string; projec
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {LINK_TYPES.map((lt) => (
+                  {ISSUE_LINK_TYPE_OPTIONS.map((lt) => (
                     <SelectItem key={lt.value} value={lt.value}>
-                      {lt.label}
+                      {t(lt.labelKey, lt.fallbackLabel)}
                     </SelectItem>
                   ))}
                 </SelectContent>

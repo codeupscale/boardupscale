@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom'
 import { CheckCircle, XCircle, Target, Clock } from 'lucide-react'
 import type { SprintReportData } from '@/hooks/useReports'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { IssueDetailLink } from '@/components/issues/issue-detail-link'
 
 interface SprintReportProps {
   data: SprintReportData
@@ -185,8 +185,8 @@ function IssueRow({
   }
 }) {
   return (
-    <Link
-      to={`/issues/${issue.id}`}
+    <IssueDetailLink
+      issueId={issue.id}
       className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
     >
       <span className="text-xs font-mono text-muted-foreground w-20">{issue.key}</span>
@@ -205,7 +205,7 @@ function IssueRow({
       {issue.status && (
         <span className="text-xs text-muted-foreground">{issue.status.name}</span>
       )}
-    </Link>
+    </IssueDetailLink>
   )
 }
 

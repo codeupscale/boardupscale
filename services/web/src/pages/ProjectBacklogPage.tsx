@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
-import { useParams, Link, useSearchParams, Navigate } from 'react-router-dom'
+import { useParams, useSearchParams, Navigate } from 'react-router-dom'
 import {
   DragDropContext,
   Droppable,
@@ -20,7 +20,6 @@ import {
   Pencil,
   Check,
   X,
-  User as UserIcon,
   Bug,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -35,10 +34,8 @@ import {
 } from '@/hooks/useSprints'
 import {
   useIssues,
-  useCreateIssue,
   useUpdateIssue,
   patchBoardCachesForSprintMove,
-  type CreateIssueVariables,
   type IssueFilters,
 } from '@/hooks/useIssues'
 import { useBoard, useReorderIssues } from '@/hooks/useBoard'
@@ -82,12 +79,12 @@ import {
   DialogContent,
   DialogBody,
 } from '@/components/ui/dialog'
-import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
+import { CreateIssueDialog, mapTicketStatuses } from '@/components/issues/ticket-modal'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Avatar } from '@/components/ui/avatar'
+import { IssueAssigneePicker } from '@/components/issues/issue-assignee-picker'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
 import { PriorityBadge } from '@/components/issues/priority-badge'
 import { StatusBadge } from '@/components/issues/status-badge'
@@ -95,6 +92,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import { CopyTicketLink } from '@/components/common/copy-ticket-link'
 import { IssueChildrenIndicator } from '@/components/issues/issue-children-indicator'
+import { IssueDetailLink } from '@/components/issues/issue-detail-link'
 
 /* ------------------------------------------------------------------ */
 /*  Draggable Issue Row                                                */
@@ -120,9 +118,6 @@ function DraggableIssueRow({
   const selectedIssueIds = useSelectionStore((s) => s.selectedIssueIds)
   const toggleIssue = useSelectionStore((s) => s.toggleIssue)
   const isSelected = selectedIssueIds.has(issue.id)
-  const selectedAssignee = issue.assigneeId
-    ? (issue.assignee ?? members?.find((m) => m.id === issue.assigneeId) ?? null)
-    : null
 
   return (
     <Draggable draggableId={issue.id} index={index}>
@@ -167,8 +162,8 @@ function DraggableIssueRow({
 
           {/* Type + Key */}
           <td className="px-3 py-3 w-28">
-            <Link
-              to={`/issues/${issue.id}`}
+            <IssueDetailLink
+              issueId={issue.id}
               className="flex items-center gap-1.5 hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
@@ -180,18 +175,18 @@ function DraggableIssueRow({
                 done={issue.status?.category === 'done'}
                 className="text-xs font-mono text-primary font-medium"
               />
-            </Link>
+            </IssueDetailLink>
           </td>
 
           {/* Title */}
           <td className="px-3 py-3">
-            <Link
-              to={`/issues/${issue.id}`}
+            <IssueDetailLink
+              issueId={issue.id}
               className="text-sm text-foreground font-medium line-clamp-1 hover:text-primary dark:hover:text-primary transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               {issue.title}
-            </Link>
+            </IssueDetailLink>
           </td>
 
           {/* Child issues */}
@@ -205,14 +200,14 @@ function DraggableIssueRow({
           {/* Epic */}
           <td className="px-3 py-3 w-40" onClick={(e) => e.stopPropagation()}>
             {issue.parent && issue.parent.type === IssueType.EPIC && (
-              <Link
-                to={`/issues/${issue.parent.id}`}
+              <IssueDetailLink
+                issueId={issue.parent.id}
                 title={`${issue.parent.key} · ${issue.parent.title}`}
                 className="inline-flex items-center gap-1 max-w-full px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/20 transition-colors"
               >
                 <IssueTypeIcon type={IssueType.EPIC} className="h-3 w-3 shrink-0" />
                 <span className="truncate">{issue.parent.title}</span>
-              </Link>
+              </IssueDetailLink>
             )}
           </td>
 
@@ -261,54 +256,13 @@ function DraggableIssueRow({
 
           {/* Assignee */}
           <td className="px-3 py-3 w-12" onClick={(e) => e.stopPropagation()}>
-            {members && onUpdateIssue ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      'h-7 w-7 p-0 border-0 rounded-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                      selectedAssignee
-                        ? 'bg-transparent hover:bg-muted'
-                        : 'bg-muted/60 hover:bg-muted',
-                    )}
-                  >
-                    {selectedAssignee ? (
-                      <Avatar user={selectedAssignee} size="xs" />
-                    ) : (
-                      <div className="h-6 w-6 rounded-full bg-muted/80 border border-dashed border-border flex items-center justify-center">
-                        <UserIcon className="h-3.5 w-3.5 text-muted-foreground/70" />
-                      </div>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[200px]" align="start">
-                  <DropdownMenuItem
-                    onClick={() => onUpdateIssue(issue.id, { assigneeId: null })}
-                    className="flex items-center gap-2"
-                  >
-                    <span className="text-muted-foreground">Unassigned</span>
-                    {issue.assigneeId == null && <Check className="h-4 w-4 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {members.map((member) => (
-                    <DropdownMenuItem
-                      key={member.id}
-                      onClick={() => onUpdateIssue(issue.id, { assigneeId: member.id })}
-                      className="flex items-center gap-2"
-                    >
-                      <Avatar user={member} size="xs" />
-                      <span className="truncate">{member.displayName}</span>
-                      {issue.assigneeId === member.id && <Check className="h-4 w-4 ml-auto" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : issue.assignee ? (
-              <Avatar user={issue.assignee} size="xs" />
-            ) : (
-              <div className="h-6 w-6 rounded-full bg-muted border border-dashed border-border" />
-            )}
+            <IssueAssigneePicker
+              assigneeId={issue.assigneeId}
+              assignee={issue.assignee}
+              members={members ?? []}
+              onAssigneeChange={(assigneeId) => onUpdateIssue?.(issue.id, { assigneeId })}
+              disabled={!members || !onUpdateIssue}
+            />
           </td>
 
         </tr>
@@ -959,7 +913,6 @@ export function ProjectBacklogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const qc = useQueryClient()
   const [showCreateIssue, setShowCreateIssue] = useState(false)
-  const issueFormRef = useRef<IssueFormHandle>(null)
   const [showCreateSprint, setShowCreateSprint] = useState(false)
   const [sprintName, setSprintName] = useState('')
   const [sprintGoal, setSprintGoal] = useState('')
@@ -1022,7 +975,6 @@ export function ProjectBacklogPage() {
     structuralSharing: false,
   })
   const createSprint = useCreateSprint()
-  const createIssue = useCreateIssue()
   const updateIssue = useUpdateIssue()
   const reorderIssues = useReorderIssues({
     invalidateOnSuccess: false,
@@ -1352,44 +1304,15 @@ export function ProjectBacklogPage() {
         </DialogContent>
       </Dialog>}
 
-      {/* Create Issue Dialog */}
-      <Dialog
+      <CreateIssueDialog
         open={showCreateIssue}
-        onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <IssueForm
-              ref={issueFormRef}
-              projectId={project?.id || projectKey!}
-              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
-              users={users || []}
-              // Default Status to the project's first "To Do" category status
-              // so the dropdown isn't empty on open. Same fallback the Board
-              // page uses when "+ Add" is clicked outside a specific column.
-              defaultValues={{
-                statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
-              }}
-              onSubmit={(values) =>
-                createIssue.mutate(
-                  {
-                    ...values,
-                    projectId: project?.id || projectKey!,
-                    projectType: project?.type,
-                  } as CreateIssueVariables,
-                  { onSuccess: () => setShowCreateIssue(false) },
-                )
-              }
-              onCancel={() => setShowCreateIssue(false)}
-              isLoading={createIssue.isPending}
-            />
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setShowCreateIssue}
+        projectId={project?.id || projectKey!}
+        projectType={project?.type}
+        statuses={mapTicketStatuses(board?.statuses)}
+        sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
+        users={users || []}
+      />
     </div>
     </ProjectMemberGuard>
   )

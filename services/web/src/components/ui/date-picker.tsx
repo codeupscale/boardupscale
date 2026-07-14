@@ -13,6 +13,7 @@ interface DatePickerProps {
   label?: string
   disabled?: boolean
   className?: string
+  triggerClassName?: string
 }
 
 export function DatePicker({
@@ -22,6 +23,7 @@ export function DatePicker({
   label,
   disabled,
   className,
+  triggerClassName,
 }: DatePickerProps) {
   const generatedId = useId()
   const inputId = label ? `datepicker-${generatedId}` : undefined
@@ -50,6 +52,7 @@ export function DatePicker({
                 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                 'disabled:cursor-not-allowed disabled:opacity-50',
                 !value ? 'text-muted-foreground' : 'text-foreground',
+                triggerClassName,
               )}
             >
               <CalendarDays className="h-4 w-4 flex-shrink-0 text-muted-foreground" />

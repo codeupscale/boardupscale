@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Plus, Download, Bookmark, BookmarkPlus, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useProjects } from '@/hooks/useProjects'
-import { useIssues, useCreateIssue, type CreateIssueVariables } from '@/hooks/useIssues'
+import { useIssues } from '@/hooks/useIssues'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
 import { useSelectionStore } from '@/store/selection.store'
-import { IssueType, IssuePriority, IssueStatusCategory } from '@/types'
+import { IssueType, IssuePriority } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { Button } from '@/components/ui/button'
@@ -23,26 +23,26 @@ import {
 } from '@/components/ui/select'
 import { TableSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogBody } from '@/components/ui/dialog'
+import { CreateIssueDialog, mapTicketStatuses } from '@/components/issues/ticket-modal'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { IssueForm, IssueFormHandle } from '@/components/issues/issue-form'
 import { IssueTableRow } from '@/components/issues/issue-table-row'
 import { BulkActionsBar } from '@/components/issues/bulk-actions-bar'
 import { useExportIssues } from '@/hooks/useReports'
 import { useSavedViews, useCreateSavedView, useDeleteSavedView } from '@/hooks/useSavedViews'
 import { useAuthStore } from '@/store/auth.store'
+import { useHasPermission } from '@/hooks/useHasPermission'
 import { Pagination } from '@/components/ui/pagination'
 
 export function ProjectIssuesPage() {
   const { t } = useTranslation()
   const { key: projectKey } = useParams<{ key: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showCreate, setShowCreate] = useState(false)
-  const issueFormRef = useRef<IssueFormHandle>(null)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
@@ -55,6 +55,8 @@ export function ProjectIssuesPage() {
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
 
   const currentUser = useAuthStore((s) => s.user)
+  const { hasPermission } = useHasPermission(projectKey)
+  const canCreateIssue = hasPermission('issue', 'create')
   const { data: project } = useProject(projectKey!)
   const { data: projectsResult } = useProjects()
   const projects = projectsResult?.data
@@ -77,7 +79,6 @@ export function ProjectIssuesPage() {
     page,
     limit: 25,
   })
-  const createIssue = useCreateIssue()
   const { exportCsv, exportJson } = useExportIssues(projectKey || '')
   const [exporting, setExporting] = useState(false)
   const { data: savedViews } = useSavedViews(project?.id || '')
@@ -170,6 +171,15 @@ export function ProjectIssuesPage() {
     }
   }, [search, filterType, filterPriority, filterStatus, filterAssignee, filterSprint, activeViewId, savedViews])
 
+  useEffect(() => {
+    if (searchParams.get('create') === 'true' && canCreateIssue) {
+      setShowCreate(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('create')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams, canCreateIssue])
+
   return (
     <ProjectMemberGuard projectKey={projectKey!}>
     <div className="flex flex-col h-full">
@@ -200,10 +210,12 @@ export function ProjectIssuesPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4" />
-              {t('issues.createIssue')}
-            </Button>
+            {canCreateIssue && (
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-4 w-4" />
+                {t('issues.createIssue')}
+              </Button>
+            )}
           </div>
         }
       />
@@ -445,7 +457,11 @@ export function ProjectIssuesPage() {
           <EmptyState
             title={t('issues.noIssues')}
             description={t('issues.noIssuesFilter')}
-            action={{ label: t('issues.createIssue'), onClick: () => setShowCreate(true) }}
+            action={
+              canCreateIssue
+                ? { label: t('issues.createIssue'), onClick: () => setShowCreate(true) }
+                : undefined
+            }
           />
         )}
       </div>
@@ -459,39 +475,15 @@ export function ProjectIssuesPage() {
         projectId={projectKey}
       />
 
-      <Dialog open={showCreate} onOpenChange={(o) => !o && issueFormRef.current?.requestClose()}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('issues.createIssue')}</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            <IssueForm
-              ref={issueFormRef}
-              projectId={project?.id || projectKey!}
-              statuses={board?.statuses?.map((s) => ({ id: s.id, name: s.name }))}
-              sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
-              users={users || []}
-              // Default Status to the project's first "To Do" category status
-              // so the dropdown isn't empty on open. Matches the Board page.
-              defaultValues={{
-                statusId: board?.statuses?.find((s) => s.category === IssueStatusCategory.TODO)?.id,
-              }}
-              onSubmit={(values) =>
-                createIssue.mutate(
-                  {
-                    ...values,
-                    projectId: project?.id || projectKey!,
-                    projectType: project?.type,
-                  } as CreateIssueVariables,
-                  { onSuccess: () => setShowCreate(false) },
-                )
-              }
-              onCancel={() => setShowCreate(false)}
-              isLoading={createIssue.isPending}
-            />
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
+      <CreateIssueDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        projectId={project?.id || projectKey!}
+        projectType={project?.type}
+        statuses={mapTicketStatuses(board?.statuses)}
+        sprints={sprints?.map((s) => ({ id: s.id, name: s.name }))}
+        users={users || []}
+      />
     </div>
     </ProjectMemberGuard>
   )
