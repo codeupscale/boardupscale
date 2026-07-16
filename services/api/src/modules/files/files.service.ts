@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -321,11 +321,67 @@ export class FilesService {
   }
 
   async findByIssue(issueId: string): Promise<Attachment[]> {
+    // Ticket attachment panel — exclude comment-scoped media.
     return this.attachmentRepository.find({
-      where: { issueId },
+      where: { issueId, commentId: IsNull() },
       relations: ['uploader'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * Bind orphan / draft uploads to an issue (e.g. create-ticket description images).
+   * Only the uploader can bind; IDs that are already on another issue are skipped.
+   */
+  async linkToIssue(
+    attachmentIds: string[],
+    issueId: string,
+    userId: string,
+  ): Promise<{ linked: number }> {
+    const uniqueIds = [...new Set((attachmentIds || []).filter(Boolean))];
+    if (uniqueIds.length === 0) return { linked: 0 };
+
+    let linked = 0;
+    for (const id of uniqueIds) {
+      const attachment = await this.attachmentRepository.findOne({ where: { id } });
+      if (!attachment) continue;
+      if (attachment.uploadedBy !== userId) continue;
+      if (attachment.commentId) continue;
+      if (attachment.issueId && attachment.issueId !== issueId) continue;
+
+      attachment.issueId = issueId;
+      await this.attachmentRepository.save(attachment);
+      linked += 1;
+    }
+    return { linked };
+  }
+
+  /**
+   * Mark issue attachments as belonging to a comment so they leave the ticket
+   * attachment list (findByIssue excludes commentId IS NOT NULL).
+   */
+  async bindToComment(
+    attachmentIds: string[],
+    commentId: string,
+    issueId: string,
+    userId: string,
+  ): Promise<{ bound: number }> {
+    const uniqueIds = [...new Set((attachmentIds || []).filter(Boolean))];
+    if (uniqueIds.length === 0) return { bound: 0 };
+
+    let bound = 0;
+    for (const id of uniqueIds) {
+      const attachment = await this.attachmentRepository.findOne({ where: { id } });
+      if (!attachment) continue;
+      if (attachment.uploadedBy !== userId) continue;
+      if (attachment.issueId && attachment.issueId !== issueId) continue;
+
+      attachment.issueId = issueId;
+      attachment.commentId = commentId;
+      await this.attachmentRepository.save(attachment);
+      bound += 1;
+    }
+    return { bound };
   }
 
   async delete(id: string, userId: string, organizationId?: string): Promise<void> {

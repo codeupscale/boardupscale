@@ -193,12 +193,18 @@ export function useCreateIssue() {
       toast(t('issues.createdSuccess', { key }), 'success', { duration: 3000 })
     },
     onError: (err: any) =>
-      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to create issue', 'error'),
+      toast(
+        err?.response?.data?.message ||
+          err?.response?.data?.error?.message ||
+          t('issues.createFailed', 'Failed to create ticket'),
+        'error',
+      ),
   })
 }
 
 export function useUpdateIssue() {
   const qc = useQueryClient()
+  const { t } = useTranslation()
   return useMutation({
     mutationFn: async ({
       id,
@@ -241,14 +247,19 @@ export function useUpdateIssue() {
         invalidateIssueChildren(qc, variables.parentId)
         invalidateIssueChildren(qc, context?.previous?.parentId)
       }
-      toast('Issue updated')
+      toast(t('issues.updatedSuccess', 'Ticket updated successfully'))
     },
     onError: (err: any, _variables, context) => {
       // Roll back optimistic update
       if (context?.previous) {
         qc.setQueryData(['issue', context.id], context.previous)
       }
-      toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to update issue', 'error')
+      toast(
+        err?.response?.data?.message ||
+          err?.response?.data?.error?.message ||
+          t('issues.updateFailed', 'Failed to update ticket'),
+        'error',
+      )
     },
   })
 }

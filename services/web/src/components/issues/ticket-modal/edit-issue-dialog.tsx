@@ -156,6 +156,7 @@ export function EditIssueDialog({
     payload: IssueTicketFormPayload,
     attachments: File[],
     stagedLinks: StagedIssueLink[],
+    _descriptionAttachmentIds: string[],
   ) => {
     if (!issue || !canEdit) return
 
@@ -332,6 +333,7 @@ export function EditIssueDialog({
 
             <TicketActivityTabs
               issueId={issue.id}
+              projectId={issue.projectId}
               users={orgUsers}
               canModifyAnyComment={canModifyAnyComment}
             />

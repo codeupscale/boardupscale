@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IssueType } from '@/types'
@@ -25,14 +25,18 @@ function labelsEqual(a: string[], b: string[]): boolean {
 
 export function useIssueTicketForm({
   defaultValues,
-  initialLabels = [],
+  initialLabels,
 }: UseIssueTicketFormOptions = {}) {
-  const [labels, setLabels] = useState<string[]>(initialLabels)
-
-  useEffect(() => {
-    setLabels(initialLabels)
-  }, [initialLabels])
+  // Hydrate labels once on mount (form remounts via formKey on open).
+  // Do NOT sync on every initialLabels reference change — that wiped Enter-added chips.
+  const hydratedLabelsRef = useRef<string[]>(
+    Array.isArray(initialLabels) ? [...initialLabels] : [],
+  )
+  const [labels, setLabels] = useState<string[]>(() => [...hydratedLabelsRef.current])
   const [attachments, setAttachments] = useState<File[]>([])
+  const [descriptionAttachments, setDescriptionAttachments] = useState<
+    Array<{ id: string; fileName: string; mimeType?: string }>
+  >([])
   const [stagedLinks, setStagedLinks] = useState<StagedIssueLink[]>([])
 
   const form = useForm<IssueTicketFormValues>({
@@ -55,10 +59,13 @@ export function useIssueTicketForm({
 
   const watchedType = useWatch({ control, name: 'type' }) || IssueType.TASK
 
-  const labelsDirty = !labelsEqual(labels, initialLabels)
+  const labelsDirty = !labelsEqual(labels, hydratedLabelsRef.current)
 
   const hasLocalChanges =
-    labelsDirty || attachments.length > 0 || stagedLinks.length > 0
+    labelsDirty ||
+    attachments.length > 0 ||
+    descriptionAttachments.length > 0 ||
+    stagedLinks.length > 0
 
   const isFormDirty = isDirty || hasLocalChanges
 
@@ -75,11 +82,12 @@ export function useIssueTicketForm({
         ...defaultValues,
         ...nextDefaults,
       })
-      setLabels(initialLabels)
+      setLabels([...hydratedLabelsRef.current])
       setAttachments([])
+      setDescriptionAttachments([])
       setStagedLinks([])
     },
-    [reset, defaultValues, initialLabels],
+    [reset, defaultValues],
   )
 
   const addLabel = useCallback((label: string) => {
@@ -90,6 +98,33 @@ export function useIssueTicketForm({
 
   const removeLabel = useCallback((label: string) => {
     setLabels((prev) => prev.filter((l) => l !== label))
+  }, [])
+
+  const addDescriptionUpload = useCallback(
+    (
+      attachmentId: string,
+      meta?: { fileName?: string; mimeType?: string; file?: File },
+    ) => {
+      if (!attachmentId) return
+      setDescriptionAttachments((prev) => {
+        if (prev.some((a) => a.id === attachmentId)) return prev
+        return [
+          ...prev,
+          {
+            id: attachmentId,
+            fileName: meta?.fileName || attachmentId,
+            mimeType: meta?.mimeType,
+          },
+        ]
+      })
+      void meta?.file
+    },
+    [],
+  )
+
+  const removeDescriptionUpload = useCallback((attachmentId: string) => {
+    if (!attachmentId) return
+    setDescriptionAttachments((prev) => prev.filter((a) => a.id !== attachmentId))
   }, [])
 
   const addAttachment = useCallback((files: File[]) => {
@@ -129,23 +164,30 @@ export function useIssueTicketForm({
       setLabels,
       attachments,
       setAttachments,
+      descriptionAttachments,
+      descriptionAttachmentIds: descriptionAttachments.map((a) => a.id),
       stagedLinks,
       setStagedLinks,
       addLabel,
       removeLabel,
       addAttachment,
       removeAttachment,
+      addDescriptionUpload,
+      removeDescriptionUpload,
       addStagedLink,
       removeStagedLink,
     }),
     [
       labels,
       attachments,
+      descriptionAttachments,
       stagedLinks,
       addLabel,
       removeLabel,
       addAttachment,
       removeAttachment,
+      addDescriptionUpload,
+      removeDescriptionUpload,
       addStagedLink,
       removeStagedLink,
     ],

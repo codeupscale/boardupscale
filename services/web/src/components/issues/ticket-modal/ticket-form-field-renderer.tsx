@@ -1,5 +1,6 @@
 import { Controller, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { IssueType, User } from '@/types'
 import { IssueTypeSelect } from '@/components/issues/issue-type-select'
 import { ParentIssueSelect } from '@/components/issues/parent-issue-select'
@@ -24,7 +25,9 @@ import type { TicketFieldConfig, TicketFormMode } from './issue-ticket-form.conf
 import type { IssueTicketFormValues } from './issue-ticket-form.schema'
 import type { IssueTicketFormState } from './use-issue-ticket-form'
 import { TOP_LEVEL_ISSUE_TYPES } from './ticket-modal.constants'
-import { ticketModalFieldControl } from './ticket-modal.utils'
+import { ticketModalFieldControl, stripAttachmentFromHtml, extractAttachmentIdsFromHtml } from './ticket-modal.utils'
+import api from '@/lib/api'
+import { toast } from '@/store/ui.store'
 
 export interface TicketFormFieldRendererProps {
   field: TicketFieldConfig
@@ -34,7 +37,11 @@ export interface TicketFormFieldRendererProps {
   control: Control<IssueTicketFormValues>
   register: UseFormRegister<IssueTicketFormValues>
   errors: FieldErrors<IssueTicketFormValues>
-  setValue: (name: keyof IssueTicketFormValues, value: string) => void
+  setValue: (
+    name: keyof IssueTicketFormValues,
+    value: string,
+    options?: { shouldDirty?: boolean; shouldValidate?: boolean },
+  ) => void
   watch: (name: keyof IssueTicketFormValues) => string | undefined
   watchedType: IssueType | string
   statuses: TicketStatusOption[]
@@ -66,6 +73,7 @@ export function TicketFormFieldRenderer({
   disabled,
 }: TicketFormFieldRendererProps) {
   const { t } = useTranslation()
+  const qc = useQueryClient()
   const label = t(field.labelKey)
 
   switch (field.type) {
@@ -126,13 +134,42 @@ export function TicketFormFieldRenderer({
         <TicketFormField label={label}>
           <RichTextEditor
             value={watch('description') || ''}
-            onChange={(val) => setValue('description', val)}
+            onChange={(val) => {
+              const previous = watch('description') || ''
+              const prevIds = extractAttachmentIdsFromHtml(previous)
+              const nextIds = new Set(extractAttachmentIdsFromHtml(val))
+              setValue('description', val, { shouldDirty: true })
+
+              for (const removedId of prevIds.filter((id) => !nextIds.has(id))) {
+                localState.removeDescriptionUpload(removedId)
+                if (issueId) {
+                  void api.delete(`/files/${removedId}`).then(
+                    () => {
+                      qc.invalidateQueries({ queryKey: ['attachments', issueId] })
+                      qc.invalidateQueries({ queryKey: ['activities', issueId] })
+                    },
+                    () => {
+                      /* soft-fail — description already updated */
+                    },
+                  )
+                } else {
+                  void api.delete(`/files/${removedId}`).catch(() => undefined)
+                }
+              }
+            }}
             placeholder={t('issues.describeIssue')}
             users={users}
             minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
             maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
             projectId={projectId}
             issueId={issueId}
+            onFileUploaded={({ id, fileName, mimeType, file }) => {
+              localState.addDescriptionUpload(id, { fileName, mimeType, file })
+              if (issueId) {
+                qc.invalidateQueries({ queryKey: ['attachments', issueId] })
+                qc.invalidateQueries({ queryKey: ['activities', issueId] })
+              }
+            }}
           />
         </TicketFormField>
       )
@@ -250,9 +287,30 @@ export function TicketFormFieldRenderer({
         <TicketAttachmentField
           label={label}
           issueId={issueId}
-          files={localState.attachments}
-          onAdd={localState.addAttachment}
-          onRemove={localState.removeAttachment}
+          projectId={projectId}
+          remoteAttachments={localState.descriptionAttachments}
+          onUploaded={({ id, fileName, mimeType }) => {
+            localState.addDescriptionUpload(id, { fileName, mimeType })
+          }}
+          onRemoveRemote={async (attachmentId) => {
+            localState.removeDescriptionUpload(attachmentId)
+            const current = watch('description') || ''
+            setValue('description', stripAttachmentFromHtml(current, attachmentId), {
+              shouldDirty: true,
+            })
+            try {
+              await api.delete(`/files/${attachmentId}`)
+            } catch {
+              toast(t('issues.attachmentDeleteFailed', 'Failed to delete attachment'), 'error')
+            }
+          }}
+          onAttachmentDeleted={(attachmentId) => {
+            const current = watch('description') || ''
+            setValue('description', stripAttachmentFromHtml(current, attachmentId), {
+              shouldDirty: true,
+            })
+            localState.removeDescriptionUpload(attachmentId)
+          }}
           disabled={disabled}
         />
       )

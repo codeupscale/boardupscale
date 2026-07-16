@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MEDIA_LIGHTBOX_OPEN_ATTR, MEDIA_LIGHTBOX_SELECTOR } from '@/components/ui/media-lightbox'
 import { ticketModalTokens } from './ticket-modal.tokens'
 
 interface TicketModalProps {
@@ -11,6 +12,26 @@ interface TicketModalProps {
   className?: string
   /** When true, prevent closing via overlay/Escape (e.g. during submit) */
   preventClose?: boolean
+}
+
+/** True when the interact event originated from a nested portaled overlay (date picker, select, etc.). */
+function isNestedPortalTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest(
+      [
+        MEDIA_LIGHTBOX_SELECTOR,
+        '[data-radix-popper-content-wrapper]',
+        '[data-radix-select-content]',
+        '[role="listbox"]',
+        '[data-radix-menu-content]',
+      ].join(', '),
+    ),
+  )
+}
+
+function isMediaLightboxOpen(): boolean {
+  return document.body.hasAttribute(MEDIA_LIGHTBOX_OPEN_ATTR)
 }
 
 export function TicketModal({
@@ -32,10 +53,22 @@ export function TicketModal({
         <DialogPrimitive.Content
           className={cn(ticketModalTokens.content, className)}
           onPointerDownOutside={(e) => {
-            if (preventClose) e.preventDefault()
+            if (preventClose || isNestedPortalTarget(e.target) || isMediaLightboxOpen()) {
+              e.preventDefault()
+            }
+          }}
+          onInteractOutside={(e) => {
+            if (preventClose || isNestedPortalTarget(e.target) || isMediaLightboxOpen()) {
+              e.preventDefault()
+            }
+          }}
+          onFocusOutside={(e) => {
+            if (preventClose || isNestedPortalTarget(e.target) || isMediaLightboxOpen()) {
+              e.preventDefault()
+            }
           }}
           onEscapeKeyDown={(e) => {
-            if (preventClose) e.preventDefault()
+            if (preventClose || isMediaLightboxOpen()) e.preventDefault()
           }}
         >
           {children}

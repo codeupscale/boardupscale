@@ -30,6 +30,7 @@
     "pageOf": "Seite {{page}} von {{totalPages}} ({{total}} Vorg\u00e4nge)",
     "noStatus": "Kein Status",
     "noSprint": "Kein Sprint",
+    "unknownUser": "Unbekannter Benutzer",
     "collapse": "Einklappen"
   },
   "auth": {
@@ -155,7 +156,12 @@
   "issues": {
     "title": "Vorg\u00e4nge",
     "createIssue": "Vorgang erstellen",
-    "createdSuccess": "{{key}} wurde erfolgreich erstellt",
+    "createdSuccess": "Ticket {{key}} wurde erfolgreich erstellt",
+    "createFailed": "Ticket konnte nicht erstellt werden",
+    "updatedSuccess": "Ticket erfolgreich aktualisiert",
+    "updateFailed": "Ticket konnte nicht aktualisiert werden",
+    "mediaImageFallback": "Bild",
+    "mediaVideoFallback": "Video",
     "editIssue": "Vorgang bearbeiten",
     "issueTitle": "Vorgangstitel",
     "issueType": "Vorgangstyp",

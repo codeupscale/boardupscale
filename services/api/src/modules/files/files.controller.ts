@@ -27,6 +27,7 @@ import {
   PresignUploadResponseDto,
 } from './dto/presign-upload.dto';
 import { ConfirmUploadDto } from './dto/confirm-upload.dto';
+import { LinkAttachmentsToIssueDto } from './dto/link-attachments-to-issue.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -108,6 +109,25 @@ export class FilesController {
       throw new BadRequestException('No file provided');
     }
     return this.filesService.upload(file, dto, user.id, organizationId);
+  }
+
+  @Post('link-to-issue')
+  @RequirePermission('attachment', 'create')
+  @ApiOperation({
+    summary: 'Bind previously uploaded (orphan) files to an issue',
+    description:
+      'Used after ticket create when description/images were uploaded before the issue existed.',
+  })
+  async linkToIssue(
+    @Body() dto: LinkAttachmentsToIssueDto,
+    @CurrentUser() user: any,
+  ) {
+    const result = await this.filesService.linkToIssue(
+      dto.attachmentIds,
+      dto.issueId,
+      user.id,
+    );
+    return { data: result };
   }
 
   /**

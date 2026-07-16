@@ -9,5 +9,5 @@ export class CreateCommentDto {
   @ApiProperty({ example: 'This is a comment about the issue.' })
   @IsString()
   @MinLength(1)
-  content: string;
+  content: string; // FE/BE also accept image/video-only HTML as valid content
 }

@@ -23,6 +23,8 @@ export function useCreateComment() {
     },
     onSuccess: (comment) => {
       qc.invalidateQueries({ queryKey: ['comments', comment.issueId] })
+      qc.invalidateQueries({ queryKey: ['attachments', comment.issueId] })
+      qc.invalidateQueries({ queryKey: ['activities', comment.issueId] })
     },
     onError: (err: any) =>
       toast(err?.response?.data?.message || err?.response?.data?.error?.message || 'Failed to add comment', 'error'),

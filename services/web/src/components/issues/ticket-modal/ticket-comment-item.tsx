@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Comment, User } from '@/types'
 import { useUpdateComment, useDeleteComment } from '@/hooks/useComments'
@@ -10,6 +10,12 @@ import {
   RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT,
 } from '@/components/ui/rich-text-display'
 import { RichTextDisplay } from '@/components/ui/rich-text-display'
+import { MediaThumbnailGrid } from '@/components/ui/media-lightbox'
+import {
+  extractMediaFromHtml,
+  hasRichTextContent,
+  stripInlineMediaFromHtml,
+} from './ticket-modal.utils'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { formatRelativeTime } from '@/lib/utils'
@@ -34,13 +40,26 @@ export function TicketCommentItem({
   const updateComment = useUpdateComment()
   const deleteComment = useDeleteComment()
 
+  const viewMediaItems = useMemo(
+    () => extractMediaFromHtml(comment.content),
+    [comment.content],
+  )
+  const editMediaItems = useMemo(
+    () => extractMediaFromHtml(editContent),
+    [editContent],
+  )
+  const viewDisplayContent = useMemo(() => {
+    if (viewMediaItems.length === 0) return comment.content
+    return stripInlineMediaFromHtml(comment.content)
+  }, [comment.content, viewMediaItems.length])
+
   return (
     <div className="flex gap-3 group">
       <Avatar user={comment.author} size="sm" />
       <div className="flex-1 min-w-0 rounded-xl bg-card/60 border border-border p-3 shadow-sm">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-sm font-semibold text-foreground">
-            {comment.author?.displayName || 'Unknown'}
+            {comment.author?.displayName || t('common.unknownUser', 'Unknown user')}
           </span>
           <span className="text-xs text-muted-foreground">
             {formatRelativeTime(comment.createdAt)}
@@ -60,10 +79,14 @@ export function TicketCommentItem({
               autoFocus
               issueId={comment.issueId}
             />
+            {editMediaItems.length > 0 && (
+              <MediaThumbnailGrid items={editMediaItems} className="pt-1" />
+            )}
             <div className="flex gap-2">
               <Button
                 size="sm"
                 isLoading={updateComment.isPending}
+                disabled={!hasRichTextContent(editContent)}
                 onClick={() =>
                   updateComment.mutate(
                     { issueId: comment.issueId, commentId: comment.id, content: editContent },
@@ -79,11 +102,21 @@ export function TicketCommentItem({
             </div>
           </div>
         ) : (
-          <RichTextDisplay
-            content={comment.content}
-            className="text-sm text-foreground"
-            maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
-          />
+          <>
+            {hasRichTextContent(viewDisplayContent) && (
+              <RichTextDisplay
+                content={viewDisplayContent}
+                className="text-sm text-foreground"
+                maxHeight={RICH_TEXT_ISSUE_CONTENT_MAX_HEIGHT}
+              />
+            )}
+            {viewMediaItems.length > 0 && (
+              <MediaThumbnailGrid
+                items={viewMediaItems}
+                className={hasRichTextContent(viewDisplayContent) ? 'mt-2' : undefined}
+              />
+            )}
+          </>
         )}
         {(currentUserId === comment.authorId || canModifyAny) && !editing && (
           <div className="flex gap-3 mt-2">

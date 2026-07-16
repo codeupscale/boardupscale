@@ -13,3 +13,11 @@ export interface TicketSprintOption {
   id: string
   name: string
 }
+
+/** Uploaded attachment preview chip in create-ticket dropzone */
+export interface RemoteTicketAttachment {
+  id: string
+  fileName: string
+  mimeType?: string
+  url?: string
+}

@@ -33,6 +33,7 @@
     "attachments": "Attachments",
     "tooLarge": "Too large",
     "remove": "Remove",
+    "unknownUser": "Unknown user",
     "collapse": "Collapse"
   },
   "auth": {
@@ -187,7 +188,12 @@
     "attachmentsDropzoneHint": "Supports images, PDFs, docs and more (max 50MB per file)",
     "attachmentsPartialFail": "Ticket created. {{uploaded}}/{{total}} attachments uploaded. You can retry failed uploads from the ticket.",
     "linksPartialFail": "Ticket created. {{success}}/{{total}} links created. You can add remaining links from the ticket.",
-    "createdSuccess": "{{key}} is created successfully",
+    "createdSuccess": "Ticket {{key}} created successfully",
+    "createFailed": "Failed to create ticket",
+    "updatedSuccess": "Ticket updated successfully",
+    "updateFailed": "Failed to update ticket",
+    "mediaImageFallback": "Image",
+    "mediaVideoFallback": "Video",
     "editIssue": "Edit Ticket",
     "issueTitle": "Ticket Title",
     "issueType": "Issue Type",

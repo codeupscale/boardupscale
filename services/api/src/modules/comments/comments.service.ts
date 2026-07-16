@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Inject,
   Optional,
   Logger,
@@ -23,6 +24,7 @@ import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class CommentsService {
@@ -41,6 +43,7 @@ export class CommentsService {
     private webhookEventEmitter: WebhookEventEmitter,
     private activityService: ActivityService,
     private permissionsService: PermissionsService,
+    private filesService: FilesService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -56,6 +59,26 @@ export class CommentsService {
       .replace(/&#39;/g, "'")
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private extractAttachmentIds(html: string | null | undefined): string[] {
+    if (!html) return [];
+    const ids = new Set<string>();
+    const re =
+      /\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/view/gi;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(html)) !== null) {
+      if (match[1]) ids.add(match[1]);
+    }
+    return [...ids];
+  }
+
+  private hasCommentContent(html: string | null | undefined): boolean {
+    if (!html || typeof html !== 'string') return false;
+    const trimmed = html.trim();
+    if (!trimmed) return false;
+    if (/<(img|video|iframe)\b/i.test(trimmed)) return true;
+    return this.stripHtml(trimmed).length > 0;
   }
 
   async findAll(issueId: string, organizationId?: string): Promise<Comment[]> {
@@ -83,12 +106,33 @@ export class CommentsService {
       throw new NotFoundException('Issue not found');
     }
 
+    if (!this.hasCommentContent(dto.content)) {
+      throw new BadRequestException('Comment content is empty');
+    }
+
     const comment = this.commentRepository.create({
       issueId: dto.issueId,
       authorId: userId,
       content: dto.content,
     });
     const saved = await this.commentRepository.save(comment);
+
+    // Scope any embedded media to this comment so it leaves the ticket attachment list.
+    const attachmentIds = this.extractAttachmentIds(dto.content);
+    if (attachmentIds.length > 0) {
+      try {
+        await this.filesService.bindToComment(
+          attachmentIds,
+          saved.id,
+          dto.issueId,
+          userId,
+        );
+      } catch (err: any) {
+        this.logger.warn(
+          `Failed to bind comment attachments: ${err?.message || err}`,
+        );
+      }
+    }
 
     const full = await this.commentRepository.findOne({
       where: { id: saved.id },
