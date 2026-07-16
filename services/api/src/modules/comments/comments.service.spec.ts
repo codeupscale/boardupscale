@@ -13,6 +13,7 @@ import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { ActivityService } from '../activity/activity.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { FilesService } from '../files/files.service';
 import {
   createMockRepository,
   createMockNotificationsService,
@@ -31,6 +32,7 @@ describe('CommentsService', () => {
   let emailService: Record<string, jest.Mock>;
   let usersService: Record<string, jest.Mock>;
   let permissionsService: Record<string, jest.Mock>;
+  let filesService: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     commentRepo = createMockRepository();
@@ -38,6 +40,9 @@ describe('CommentsService', () => {
     notificationsService = createMockNotificationsService();
     eventsGateway = createMockEventsGateway();
     permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false), isProjectAdmin: jest.fn().mockResolvedValue(false) };
+    filesService = {
+      bindToComment: jest.fn().mockResolvedValue(undefined),
+    };
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -66,6 +71,7 @@ describe('CommentsService', () => {
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn().mockResolvedValue(undefined) } },
         { provide: PermissionsService, useValue: permissionsService },
+        { provide: FilesService, useValue: filesService },
       ],
     }).compile();
 
