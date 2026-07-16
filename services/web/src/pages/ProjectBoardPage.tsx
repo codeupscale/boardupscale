@@ -626,7 +626,7 @@ export function ProjectBoardPage() {
         statuses={mapTicketStatuses(board?.statuses)}
         sprints={isKanban ? [] : sprints?.map((s) => ({ id: s.id, name: s.name })) ?? []}
         users={orgUsers || []}
-        defaultValues={{ statusId: createStatusId }}
+        defaultValues={createStatusId ? { statusId: createStatusId } : undefined}
       />
 
       {/* Add Column Dialog */}

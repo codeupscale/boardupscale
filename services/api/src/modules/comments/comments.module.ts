@@ -11,6 +11,7 @@ import { EventsModule } from '../../websocket/events.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { AutomationModule } from '../automation/automation.module';
 import { ActivityModule } from '../activity/activity.module';
+import { FilesModule } from '../files/files.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ActivityModule } from '../activity/activity.module';
     WebhooksModule,
     forwardRef(() => AutomationModule),
     ActivityModule,
+    FilesModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

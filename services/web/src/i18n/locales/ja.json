@@ -30,6 +30,7 @@
     "pageOf": "\u30da\u30fc\u30b8 {{page}} / {{totalPages}} ({{total}}\u4ef6\u306e\u8ab2\u984c)",
     "noStatus": "\u30b9\u30c6\u30fc\u30bf\u30b9\u306a\u3057",
     "noSprint": "\u30b9\u30d7\u30ea\u30f3\u30c8\u306a\u3057",
+    "unknownUser": "\u4e0d\u660e\u306a\u30e6\u30fc\u30b6\u30fc",
     "collapse": "\u6298\u308a\u305f\u305f\u3080"
   },
   "auth": {
@@ -155,7 +156,12 @@
   "issues": {
     "title": "\u8ab2\u984c",
     "createIssue": "\u8ab2\u984c\u4f5c\u6210",
-    "createdSuccess": "{{key}} \u304c\u6b63\u5e38\u306b\u4f5c\u6210\u3055\u308c\u307e\u3057\u305f",
+    "createdSuccess": "チケット {{key}} が正常に作成されました",
+    "createFailed": "チケットを作成できませんでした",
+    "updatedSuccess": "チケットを更新しました",
+    "updateFailed": "チケットを更新できませんでした",
+    "mediaImageFallback": "画像",
+    "mediaVideoFallback": "動画",
     "editIssue": "\u8ab2\u984c\u7de8\u96c6",
     "issueTitle": "\u8ab2\u984c\u30bf\u30a4\u30c8\u30eb",
     "issueType": "\u8ab2\u984c\u30bf\u30a4\u30d7",

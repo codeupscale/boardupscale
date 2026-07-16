@@ -31,6 +31,7 @@ export interface IssueTicketFormProps {
     payload: IssueTicketFormPayload,
     attachments: File[],
     stagedLinks: StagedIssueLink[],
+    descriptionAttachmentIds: string[],
   ) => void
   onCancel: () => void
   disabled?: boolean
@@ -98,7 +99,12 @@ export const IssueTicketForm = forwardRef<IssueTicketFormHandle, IssueTicketForm
     useImperativeHandle(ref, () => ({ requestClose: handleCancel }))
 
     const handleFormSubmit = (values: IssueTicketFormValues) => {
-      onSubmit(buildPayload(values), localState.attachments, localState.stagedLinks)
+      onSubmit(
+        buildPayload(values),
+        localState.attachments,
+        localState.stagedLinks,
+        localState.descriptionAttachmentIds,
+      )
     }
 
     return (

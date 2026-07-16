@@ -151,7 +151,7 @@ describe('FilesService', () => {
 
       expect(result).toEqual(attachments);
       expect(attachmentRepo.find).toHaveBeenCalledWith({
-        where: { issueId: TEST_IDS.ISSUE_ID },
+        where: { issueId: TEST_IDS.ISSUE_ID, commentId: expect.anything() },
         relations: ['uploader'],
         order: { createdAt: 'DESC' },
       });

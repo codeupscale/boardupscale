@@ -1,4 +1,58 @@
 import api from '@/lib/api'
+import type { MediaKind, MediaThumbnailItem } from '@/types'
+
+/** Matches `/files/:uuid/view` in absolute or relative URLs. */
+export const FILE_VIEW_ID_CAPTURE_REGEX =
+  /\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/view/gi
+
+/** Build a permanent authenticated file view URL for img/video src. */
+export function getFileViewUrl(fileId: string): string {
+  const baseURL = api.defaults.baseURL || '/api'
+  return `${baseURL}/files/${fileId}/view`
+}
+
+/** Parse attachment UUID from a file view URL, or null when not a board file URL. */
+export function parseFileIdFromViewUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  const match = url.match(
+    /\/files\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/view/i,
+  )
+  return match?.[1] ?? null
+}
+
+/** Collect every file view id embedded in a string (e.g. rich-text HTML). */
+export function extractFileIdsFromText(text: string | null | undefined): string[] {
+  if (!text) return []
+  const ids = new Set<string>()
+  const re = new RegExp(FILE_VIEW_ID_CAPTURE_REGEX.source, 'gi')
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    if (match[1]) ids.add(match[1])
+  }
+  return [...ids]
+}
+
+export function resolveAttachmentMediaType(mimeType?: string): MediaKind {
+  if (!mimeType) return 'image'
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  return 'file'
+}
+
+export function buildMediaThumbnailItem(input: {
+  id: string
+  url: string
+  fileName: string
+  mimeType?: string
+}): MediaThumbnailItem {
+  return {
+    id: input.id,
+    url: input.url,
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    type: resolveAttachmentMediaType(input.mimeType),
+  }
+}
 
 /**
  * Uploads a file directly from the browser to object storage using a

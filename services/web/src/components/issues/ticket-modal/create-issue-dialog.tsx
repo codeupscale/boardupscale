@@ -18,7 +18,7 @@ import type {
   StagedIssueLink,
 } from './issue-ticket-form.schema'
 import type { TicketStatusOption, TicketSprintOption } from './ticket-modal.types'
-import { getDefaultTodoStatusId } from './ticket-modal.utils'
+import { resolveCreateTicketDefaults, extractAttachmentIdsFromHtml } from './ticket-modal.utils'
 import { isKanbanProject } from '@/lib/project-workflow'
 
 export interface CreateIssueDialogProps {
@@ -105,6 +105,7 @@ export function CreateIssueDialog({
     payload: IssueTicketFormPayload,
     attachments: File[],
     stagedLinks: StagedIssueLink[],
+    descriptionAttachmentIds: string[],
   ) => {
     const { labels, ...issuePayload } = payload
 
@@ -126,6 +127,31 @@ export function CreateIssueDialog({
       {
         onSuccess: async (created) => {
           try {
+            // Prefer linking files already uploaded during the modal (description +
+            // attachment section). Fall back to uploading any leftover staged Files.
+            const fromHtml = extractAttachmentIdsFromHtml(issuePayload.description)
+            const toLink = [
+              ...new Set([...(descriptionAttachmentIds || []), ...fromHtml]),
+            ].filter(Boolean)
+
+            if (toLink.length > 0) {
+              setUploadingAttachments(true)
+              try {
+                await api.post('/files/link-to-issue', {
+                  issueId: created.id,
+                  attachmentIds: toLink,
+                })
+              } catch {
+                toast(
+                  t(
+                    'issues.descriptionAttachmentsLinkFail',
+                    'Ticket created, but some files could not be linked. Re-open the ticket to retry.',
+                  ),
+                  'error',
+                )
+              }
+            }
+
             if (attachments.length > 0) {
               setUploadingAttachments(true)
               const result = await uploadIssueAttachments(attachments, {
@@ -172,10 +198,7 @@ export function CreateIssueDialog({
     )
   }
 
-  const resolvedDefaults = {
-    statusId: defaultValues?.statusId ?? getDefaultTodoStatusId(statuses),
-    ...defaultValues,
-  }
+  const resolvedDefaults = resolveCreateTicketDefaults(statuses, defaultValues)
 
   return (
     <TicketModal

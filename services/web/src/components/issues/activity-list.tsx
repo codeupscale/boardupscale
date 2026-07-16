@@ -135,7 +135,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
             </span>
           </div>
           {snippet && !isDeleted && (
-            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2 bg-muted rounded-md px-2.5 py-1.5">
+            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2 rounded-md px-2.5 py-1.5 border border-border/60">
               {snippet}
             </p>
           )}
@@ -173,7 +173,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
             </span>
           </div>
           {fileName && (
-            <p className="mt-1.5 text-xs text-muted-foreground bg-muted rounded-md px-2.5 py-1.5 truncate">
+            <p className="mt-1.5 text-xs text-muted-foreground rounded-md px-2.5 py-1.5 truncate border border-border/60">
               {fileName}
             </p>
           )}
@@ -212,7 +212,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
             </span>
           </div>
           {logDesc && (
-            <p className="mt-1.5 text-xs text-muted-foreground bg-muted rounded-md px-2.5 py-1.5 line-clamp-2">
+            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2 rounded-md px-2.5 py-1.5 border border-border/60">
               {logDesc}
             </p>
           )}
@@ -253,7 +253,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
         {!isDescriptionChange && (activity.oldValue || activity.newValue) && (
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {activity.oldValue && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-muted text-xs font-medium text-muted-foreground line-through decoration-gray-400/60">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-border/60 bg-transparent text-xs font-medium text-muted-foreground line-through decoration-gray-400/60">
                 {oldDisplay}
               </span>
             )}
@@ -263,7 +263,7 @@ function ActivityEntry({ activity, isLast }: { activity: Activity; isLast: boole
                 {newDisplay}
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-xs text-muted-foreground italic">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-border/60 bg-transparent text-xs text-muted-foreground italic">
                 None
               </span>
             )}

@@ -15,18 +15,21 @@ import { Button } from '@/components/ui/button'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { TicketCommentItem } from './ticket-comment-item'
+import { hasRichTextContent } from './ticket-modal.utils'
 import { ticketModalTokens } from './ticket-modal.tokens'
 
 type ActivityTab = 'comments' | 'history'
 
 interface TicketActivityTabsProps {
   issueId: string
+  projectId?: string
   users?: User[]
   canModifyAnyComment?: boolean
 }
 
 export function TicketActivityTabs({
   issueId,
+  projectId,
   users = [],
   canModifyAnyComment = false,
 }: TicketActivityTabsProps) {
@@ -50,8 +53,7 @@ export function TicketActivityTabs({
   ]
 
   const handleAddComment = () => {
-    const trimmed = commentText.replace(/<[^>]*>/g, '').trim()
-    if (!trimmed) return
+    if (!hasRichTextContent(commentText) || createComment.isPending) return
     createComment.mutate(
       { issueId, content: commentText },
       {
@@ -107,14 +109,17 @@ export function TicketActivityTabs({
                   users={users}
                   minHeight={RICH_TEXT_ISSUE_CONTENT_MIN_HEIGHT}
                   maxHeight={RICH_TEXT_ISSUE_EDITOR_MAX_HEIGHT}
-                  issueId={issueId}
+                  // Upload under project only — comment create binds issueId+commentId.
+                  // Never pass issueId here or drafts appear in ticket attachments.
+                  projectId={projectId}
                 />
                 <div className="flex justify-end">
                   <Button
                     size="sm"
                     onClick={handleAddComment}
                     isLoading={createComment.isPending}
-                    disabled={!commentText.replace(/<[^>]*>/g, '').trim()}
+                    disabled={!hasRichTextContent(commentText)}
+                    aria-disabled={!hasRichTextContent(commentText)}
                   >
                     {t('issues.addComment')}
                   </Button>

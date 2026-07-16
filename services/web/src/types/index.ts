@@ -220,6 +220,28 @@ export interface Attachment {
   createdAt: string
 }
 
+export type MediaKind = 'image' | 'video' | 'file'
+
+export type MediaLightboxItem =
+  | { type: 'image'; src: string; alt: string }
+  | { type: 'video'; src: string; alt?: string }
+
+export interface MediaThumbnailItem {
+  id: string
+  url: string
+  fileName?: string
+  type: MediaKind
+  mimeType?: string
+}
+
+export interface MediaThumbnailGridProps {
+  items: MediaThumbnailItem[]
+  className?: string
+  onRemove?: (id: string) => void
+  removeLabel?: string
+  disabled?: boolean
+}
+
 export interface Notification {
   id: string
   userId: string

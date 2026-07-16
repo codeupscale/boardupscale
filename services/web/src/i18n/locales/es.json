@@ -30,6 +30,7 @@
     "pageOf": "P\u00e1gina {{page}} de {{totalPages}} ({{total}} incidencias)",
     "noStatus": "Sin estado",
     "noSprint": "Sin sprint",
+    "unknownUser": "Usuario desconocido",
     "collapse": "Colapsar"
   },
   "auth": {
@@ -155,7 +156,12 @@
   "issues": {
     "title": "Incidencias",
     "createIssue": "Crear incidencia",
-    "createdSuccess": "{{key}} se ha creado correctamente",
+    "createdSuccess": "Ticket {{key}} creado correctamente",
+    "createFailed": "No se pudo crear el ticket",
+    "updatedSuccess": "Ticket actualizado correctamente",
+    "updateFailed": "No se pudo actualizar el ticket",
+    "mediaImageFallback": "Imagen",
+    "mediaVideoFallback": "Vídeo",
     "editIssue": "Editar incidencia",
     "issueTitle": "T\u00edtulo de la incidencia",
     "issueType": "Tipo de incidencia",

@@ -1,35 +1,52 @@
 import { AttachmentPanel } from '@/components/issues/attachment-panel'
 import { TicketAttachmentDropzone } from './ticket-attachment-dropzone'
+import { getFileViewUrl } from '@/lib/uploadFile'
+import type { RemoteTicketAttachment } from '../ticket-modal.types'
 
 interface TicketAttachmentFieldProps {
   label?: string
   issueId?: string
-  files: File[]
-  onAdd: (files: File[]) => void
-  onRemove: (file: File) => void
+  projectId: string
+  remoteAttachments?: RemoteTicketAttachment[]
+  onUploaded: (attachment: {
+    id: string
+    fileName: string
+    mimeType?: string
+  }) => void
+  onRemoveRemote?: (attachmentId: string) => void
+  onAttachmentDeleted?: (attachmentId: string) => void
   disabled?: boolean
 }
 
 export function TicketAttachmentField({
   label,
   issueId,
-  files,
-  onAdd,
-  onRemove,
+  projectId,
+  remoteAttachments = [],
+  onUploaded,
+  onRemoveRemote,
+  onAttachmentDeleted,
   disabled,
 }: TicketAttachmentFieldProps) {
   if (issueId) {
-    // Edit mode: upload/delete happens immediately via AttachmentPanel
-    return <AttachmentPanel issueId={issueId} />
+    return (
+      <AttachmentPanel
+        issueId={issueId}
+        onAttachmentDeleted={onAttachmentDeleted}
+      />
+    )
   }
 
-  // Create mode: stage uploads until ticket exists
   return (
     <TicketAttachmentDropzone
       label={label}
-      files={files}
-      onAdd={onAdd}
-      onRemove={onRemove}
+      projectId={projectId}
+      remoteAttachments={remoteAttachments.map((attachment) => ({
+        ...attachment,
+        url: attachment.url || getFileViewUrl(attachment.id),
+      }))}
+      onUploaded={onUploaded}
+      onRemoveRemote={onRemoveRemote}
       disabled={disabled}
     />
   )

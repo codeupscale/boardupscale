@@ -10,6 +10,7 @@ import { mergeAttributes } from '@tiptap/core'
 import Placeholder from '@tiptap/extension-placeholder'
 import Mention from '@tiptap/extension-mention'
 import { cn } from '@/lib/utils'
+import { getFileViewUrl } from '@/lib/uploadFile'
 import { Avatar } from '@/components/ui/avatar'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
@@ -73,11 +74,7 @@ function ImageNodeView({ node, deleteNode, selected }: NodeViewProps) {
 // ──────────────────────────────────────────────
 // File upload helper
 // ──────────────────────────────────────────────
-/** Build a permanent file view URL for <img src>, <video src>, etc. */
-export function getFileViewUrl(fileId: string): string {
-  const baseURL = api.defaults.baseURL || '/api'
-  return `${baseURL}/files/${fileId}/view`
-}
+export { getFileViewUrl } from '@/lib/uploadFile'
 
 async function uploadFileAndGetUrl(
   file: File,
@@ -159,7 +156,12 @@ interface RichTextEditorProps {
   issueId?: string
   /** Project UUID or key — required for uploads before an issue exists (create flow) */
   projectId?: string
-  onFileUploaded?: (attachment: { id: string; fileName: string }) => void
+  onFileUploaded?: (attachment: {
+    id: string
+    fileName: string
+    mimeType?: string
+    file?: File
+  }) => void
 }
 
 export function RichTextEditor({
@@ -240,7 +242,12 @@ export function RichTextEditor({
         ).run()
       }
 
-      onFileUploadedRef.current?.({ id: result.id, fileName: result.fileName })
+      onFileUploadedRef.current?.({
+        id: result.id,
+        fileName: result.fileName,
+        mimeType: result.mimeType || file.type,
+        file,
+      })
     } catch (err: any) {
       console.error('File upload failed:', err)
       toast(err?.response?.data?.message || 'Failed to upload file', 'error')

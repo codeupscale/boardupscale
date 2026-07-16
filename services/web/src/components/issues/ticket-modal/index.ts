@@ -7,7 +7,7 @@ export {
   TOP_LEVEL_ISSUE_TYPES,
 } from './ticket-modal.constants'
 
-export type { TicketStatusOption, TicketSprintOption } from './ticket-modal.types'
+export type { TicketStatusOption, TicketSprintOption, RemoteTicketAttachment } from './ticket-modal.types'
 
 export { IssueTicketForm } from './issue-ticket-form'
 export type { IssueTicketFormHandle, IssueTicketFormProps } from './issue-ticket-form'
@@ -40,6 +40,12 @@ export { useIssueTicketForm } from './use-issue-ticket-form'
 export {
   mapTicketStatuses,
   getDefaultTodoStatusId,
+  resolveCreateTicketDefaults,
+  hasRichTextContent,
+  extractAttachmentIdsFromHtml,
+  stripAttachmentFromHtml,
+  extractMediaFromHtml,
+  stripInlineMediaFromHtml,
   ticketModalFieldControl,
   issueToTicketFormValues,
 } from './ticket-modal.utils'
