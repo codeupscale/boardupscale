@@ -1,10 +1,11 @@
 import { Menu, Bell, User, Settings, LogOut, Globe, Sun, Moon, Monitor } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
 import { useThemeStore } from '@/store/theme.store'
 import { useUnreadCount } from '@/hooks/useNotifications'
+import { useNotificationsPanelStore } from '@/store/notifications.store'
 import { useLogout } from '@/hooks/useAuth'
 import { Avatar } from '@/components/ui/avatar'
 import {
@@ -35,6 +36,8 @@ export function Topbar() {
   const { data: unreadData } = useUnreadCount()
   const logout = useLogout()
   const unreadCount = unreadData?.count || 0
+  const toggleNotifications = useNotificationsPanelStore((s) => s.toggleOpen)
+  const notificationsOpen = useNotificationsPanelStore((s) => s.isOpen)
 
   const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
@@ -119,19 +122,21 @@ export function Topbar() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Notifications */}
-        <Link
-          to="/notifications"
+        {/* Notifications — opens inbox panel (Jira-style), does not navigate away */}
+        <button
+          type="button"
+          onClick={toggleNotifications}
           aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+          aria-expanded={notificationsOpen}
           className="relative p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground/80 transition-colors"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4.5 min-w-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] rounded-full font-bold px-1 ring-2 ring-background">
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-        </Link>
+        </button>
 
         {/* User dropdown */}
         <DropdownMenu>

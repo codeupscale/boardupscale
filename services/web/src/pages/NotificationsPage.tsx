@@ -1,71 +1,27 @@
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, CheckCheck, MessageCircle, GitMerge, AlertCircle, Info, Inbox, BellRing, Clock, Zap, UserPlus } from 'lucide-react'
+import { Bell, CheckCheck, Inbox, BellRing } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   useNotifications,
   useMarkRead,
   useMarkAllRead,
+  useUnreadCount,
+  type NotificationFilter,
 } from '@/hooks/useNotifications'
 import { Notification } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { ListSkeleton } from '@/components/ui/skeleton'
-import { EmptyState } from '@/components/ui/empty-state'
 import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-
-/**
- * Map backend notification types to icons.
- * Backend sends: issue:assigned, comment:created, mention, issue:status_changed,
- * sprint:started, sprint:completed, issue:due_soon, automation:notification
- */
-function getNotificationIcon(type: string) {
-  const map: Record<string, React.ReactNode> = {
-    // Backend types (namespaced with colon)
-    'comment:created':          <MessageCircle className="h-4 w-4 text-primary" />,
-    'mention':                  <BellRing className="h-4 w-4 text-purple-600" />,
-    'issue:assigned':           <UserPlus className="h-4 w-4 text-emerald-600" />,
-    'issue:status_changed':     <AlertCircle className="h-4 w-4 text-amber-600" />,
-    'sprint:started':           <Info className="h-4 w-4 text-primary" />,
-    'sprint:completed':         <CheckCheck className="h-4 w-4 text-emerald-600" />,
-    'issue:due_soon':           <Clock className="h-4 w-4 text-red-600" />,
-    'automation:notification':  <Zap className="h-4 w-4 text-indigo-600" />,
-    // Legacy short types (backwards-compatible)
-    'comment':                  <MessageCircle className="h-4 w-4 text-primary" />,
-    'assigned':                 <UserPlus className="h-4 w-4 text-emerald-600" />,
-    'status_changed':           <AlertCircle className="h-4 w-4 text-amber-600" />,
-    'sprint_started':           <Info className="h-4 w-4 text-primary" />,
-    'sprint_completed':         <CheckCheck className="h-4 w-4 text-emerald-600" />,
-  }
-  return map[type] || <Bell className="h-4 w-4 text-muted-foreground" />
-}
-
-function getNotificationIconBg(type: string) {
-  const map: Record<string, string> = {
-    'comment:created':          'bg-primary/10',
-    'mention':                  'bg-purple-50 dark:bg-purple-900/20',
-    'issue:assigned':           'bg-emerald-50 dark:bg-emerald-900/20',
-    'issue:status_changed':     'bg-amber-50 dark:bg-amber-900/20',
-    'sprint:started':           'bg-primary/10',
-    'sprint:completed':         'bg-emerald-50 dark:bg-emerald-900/20',
-    'issue:due_soon':           'bg-red-50 dark:bg-red-900/20',
-    'automation:notification':  'bg-indigo-50 dark:bg-indigo-900/20',
-    // Legacy short types
-    'comment':                  'bg-primary/10',
-    'assigned':                 'bg-emerald-50 dark:bg-emerald-900/20',
-    'status_changed':           'bg-amber-50 dark:bg-amber-900/20',
-    'sprint_started':           'bg-primary/10',
-    'sprint_completed':         'bg-emerald-50 dark:bg-emerald-900/20',
-  }
-  return map[type] || 'bg-muted'
-}
-
-function getNotificationLink(notification: Notification): string | null {
-  const data = notification.data || {}
-  if (data.issueId) return `/issues/${data.issueId}`
-  if (data.projectId) return `/projects/${data.projectId}/board`
-  return null
-}
+import {
+  getNotificationIcon,
+  getNotificationIconBg,
+  getNotificationLink,
+  groupNotificationsByDay,
+  notificationItemClass,
+} from '@/components/notifications/notification-utils'
 
 function StatCard({
   icon,
@@ -84,54 +40,42 @@ function StatCard({
         {icon}
       </div>
       <div>
-        <p className="text-2xl font-bold text-foreground">
-          {value}
-        </p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
         <p className="text-sm text-muted-foreground">{label}</p>
       </div>
     </div>
   )
 }
 
-function NotificationItem({ notification }: { notification: Notification }) {
+function NotificationItem({
+  notification,
+  onMarkRead,
+}: {
+  notification: Notification
+  onMarkRead: (id: string) => void
+}) {
   const navigate = useNavigate()
-  const markRead = useMarkRead()
   const link = getNotificationLink(notification)
 
   const handleClick = () => {
-    if (!notification.read) {
-      markRead.mutate(notification.id)
-    }
-    if (link) {
-      navigate(link)
-    }
+    if (!notification.read) onMarkRead(notification.id)
+    if (link) navigate(link)
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={cn(
-        'w-full flex items-start gap-4 px-5 py-4 transition-colors text-left',
-        'focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring',
-        !notification.read && 'bg-primary/5 dark:bg-primary/10',
-        'hover:bg-accent/50',
-        link && 'cursor-pointer',
-      )}
-    >
-      <div className={cn(
-        'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center mt-0.5',
-        getNotificationIconBg(notification.type),
-      )}>
+    <button type="button" onClick={handleClick} className={notificationItemClass(notification.read, !!link)}>
+      <div
+        className={cn(
+          'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center mt-0.5',
+          getNotificationIconBg(notification.type),
+        )}
+      >
         {getNotificationIcon(notification.type)}
       </div>
       <div className="flex-1 min-w-0">
         <p className={cn('text-sm', !notification.read ? 'font-semibold text-foreground' : 'text-foreground')}>
           {notification.title}
         </p>
-        {notification.body && (
-          <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
-        )}
         <p className="text-xs text-muted-foreground mt-1">{formatRelativeTime(notification.createdAt)}</p>
       </div>
       {!notification.read && (
@@ -145,12 +89,30 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
 export function NotificationsPage() {
   const { t } = useTranslation()
-  const { data: notificationsResult, isLoading } = useNotifications()
+  const [filter, setFilter] = useState<NotificationFilter>('all')
+  const { data: notificationsResult, isLoading } = useNotifications({ filter, limit: 50 })
+  const { data: unreadData } = useUnreadCount()
   const notifications = notificationsResult?.data
-  const unreadCount = notificationsResult?.meta?.unreadCount ?? notifications?.filter((n) => !n.read).length ?? 0
-  const readCount = notifications?.filter((n) => n.read).length ?? 0
-  const totalCount = notifications?.length ?? 0
+  const unreadCount =
+    unreadData?.count ??
+    notificationsResult?.meta?.unreadCount ??
+    notifications?.filter((n) => !n.read).length ??
+    0
+  const totalCount = notificationsResult?.meta?.total ?? notifications?.length ?? 0
+  const readCount = Math.max(0, totalCount - unreadCount)
   const markAllRead = useMarkAllRead()
+  const markRead = useMarkRead()
+  const groups = useMemo(
+    () => groupNotificationsByDay(notifications ?? []),
+    [notifications],
+  )
+
+  const tabs: { id: NotificationFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'unread', label: unreadCount > 0 ? `Unread ${unreadCount}` : 'Unread' },
+    { id: 'mentions', label: 'Mentions' },
+    { id: 'assigned', label: 'Assigned' },
+  ]
 
   return (
     <div className="flex flex-col h-full">
@@ -173,7 +135,6 @@ export function NotificationsPage() {
       />
 
       <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
             icon={<Inbox className="h-5 w-5 text-primary" />}
@@ -195,7 +156,24 @@ export function NotificationsPage() {
           />
         </div>
 
-        {/* Content */}
+        <div className="flex gap-1 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilter(tab.id)}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+                filter === tab.id
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <ListSkeleton rows={8} />
         ) : !notifications || notifications.length === 0 ? (
@@ -212,41 +190,24 @@ export function NotificationsPage() {
           </div>
         ) : (
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            {/* Unread section */}
-            {unreadCount > 0 && (
-              <>
+            {groups.map((group) => (
+              <div key={group.label}>
                 <div className="px-5 py-3 bg-muted border-b border-border">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t('notifications.unread', { count: unreadCount })}
+                    {group.label}
                   </p>
                 </div>
                 <div className="divide-y divide-border">
-                  {notifications
-                    .filter((n) => !n.read)
-                    .map((notification) => (
-                      <NotificationItem key={notification.id} notification={notification} />
-                    ))}
+                  {group.items.map((notification) => (
+                    <NotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onMarkRead={(id) => markRead.mutate(id)}
+                    />
+                  ))}
                 </div>
-              </>
-            )}
-
-            {/* Read section */}
-            {notifications.some((n) => n.read) && (
-              <>
-                <div className="px-5 py-3 bg-muted border-b border-border border-t border-t-gray-200 dark:border-t-gray-700">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t('notifications.earlier')}
-                  </p>
-                </div>
-                <div className="divide-y divide-border">
-                  {notifications
-                    .filter((n) => n.read)
-                    .map((notification) => (
-                      <NotificationItem key={notification.id} notification={notification} />
-                    ))}
-                </div>
-              </>
-            )}
+              </div>
+            ))}
           </div>
         )}
       </div>

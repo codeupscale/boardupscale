@@ -24,10 +24,12 @@ import {
   createMockQueryBuilder,
   createMockProjectsService,
   createMockNotificationsService,
+  createMockNotificationAudienceService,
   createMockEventsGateway,
   createMockConfigService,
   mockUpdateResult,
 } from '../../test/test-utils';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { mockIssue, mockIssueStatus, mockProject, mockWorkLog, mockUser, TEST_IDS } from '../../test/mock-factories';
 
 describe('IssuesService', () => {
@@ -38,6 +40,7 @@ describe('IssuesService', () => {
   let issueLinkRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
+  let notificationAudience: ReturnType<typeof createMockNotificationAudienceService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
   let permissionsService: Record<string, jest.Mock>;
   let emailService: Record<string, jest.Mock>;
@@ -51,6 +54,7 @@ describe('IssuesService', () => {
     projectsService = createMockProjectsService();
     projectsService.isMember.mockResolvedValue(true);
     notificationsService = createMockNotificationsService();
+    notificationAudience = createMockNotificationAudienceService();
     eventsGateway = createMockEventsGateway();
     permissionsService = {
       isAdminOrOwner: jest.fn().mockResolvedValue(false),
@@ -80,6 +84,7 @@ describe('IssuesService', () => {
         { provide: getRepositoryToken(IssueWatcher), useValue: createMockRepository() },
         { provide: ProjectsService, useValue: projectsService },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: NotificationAudienceService, useValue: notificationAudience },
         { provide: EmailService, useValue: emailService },
         { provide: UsersService, useValue: usersService },
         { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
@@ -447,11 +452,12 @@ describe('IssuesService', () => {
       );
     });
 
-    it('should send notification when assignee is different from reporter', async () => {
+    it('should send issue:created to creator, project admins, and assignee', async () => {
       const project = mockProject({ key: 'TPROJ' });
       projectsService.findById.mockResolvedValue(project);
       statusRepo.findOne.mockResolvedValue(mockIssueStatus());
       projectsService.getNextIssueNumber.mockResolvedValue(1);
+      notificationAudience.getProjectAdminUserIds.mockResolvedValue(['admin-1']);
 
       const minQb = createMockQueryBuilder();
       minQb.getRawOne.mockResolvedValue({ min: null });
@@ -469,19 +475,26 @@ describe('IssuesService', () => {
         TEST_IDS.USER_ID,
       );
 
-      expect(notificationsService.create).toHaveBeenCalledWith(
+      expect(notificationsService.notify).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: assigneeId,
-          type: 'issue:assigned',
+          type: 'issue:created',
+          recipientUserIds: [TEST_IDS.USER_ID, 'admin-1', assigneeId],
+          actorUserId: TEST_IDS.USER_ID,
+          organizationId: TEST_IDS.ORG_ID,
+          includeActor: true,
         }),
+      );
+      expect(notificationsService.notify).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'issue:assigned' }),
       );
     });
 
-    it('should not send notification when assignee is the reporter', async () => {
+    it('should include creator in issue:created when self-assigned', async () => {
       const project = mockProject({ key: 'TPROJ' });
       projectsService.findById.mockResolvedValue(project);
       statusRepo.findOne.mockResolvedValue(mockIssueStatus());
       projectsService.getNextIssueNumber.mockResolvedValue(1);
+      notificationAudience.getProjectAdminUserIds.mockResolvedValue([]);
 
       const minQb = createMockQueryBuilder();
       minQb.getRawOne.mockResolvedValue({ min: null });
@@ -498,7 +511,13 @@ describe('IssuesService', () => {
         TEST_IDS.USER_ID,
       );
 
-      expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'issue:created',
+          recipientUserIds: [TEST_IDS.USER_ID, TEST_IDS.USER_ID],
+          includeActor: true,
+        }),
+      );
     });
 
     it('should fall back to first status when no default status exists', async () => {
@@ -551,15 +570,16 @@ describe('IssuesService', () => {
 
       await service.update(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, { assigneeId: 'new-assignee' }, TEST_IDS.USER_ID);
 
-      expect(notificationsService.create).toHaveBeenCalledWith(
+      expect(notificationsService.notify).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: 'new-assignee',
           type: 'issue:assigned',
+          recipientUserIds: ['new-assignee'],
+          actorUserId: TEST_IDS.USER_ID,
         }),
       );
     });
 
-    it('should not send notification when assignee is the updater', async () => {
+    it('should call notify with actor as only assignee when self-assigning', async () => {
       const issue = mockIssue({ assigneeId: 'old-assignee' });
       issueRepo.findOne
         .mockResolvedValueOnce(issue)
@@ -569,7 +589,79 @@ describe('IssuesService', () => {
 
       await service.update(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, { assigneeId: TEST_IDS.USER_ID }, TEST_IDS.USER_ID);
 
-      expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'issue:assigned',
+          recipientUserIds: [TEST_IDS.USER_ID],
+          actorUserId: TEST_IDS.USER_ID,
+        }),
+      );
+    });
+
+    it('should notify stakeholders when status changes', async () => {
+      const issue = mockIssue({
+        assigneeId: 'assignee-1',
+        reporterId: 'reporter-1',
+        statusId: 'status-old',
+        status: mockIssueStatus({ id: 'status-old', name: 'To Do' }),
+      });
+      const updatedIssue = mockIssue({
+        assigneeId: 'assignee-1',
+        reporterId: 'reporter-1',
+        statusId: 'status-new',
+        status: mockIssueStatus({ id: 'status-new', name: 'In Progress' }),
+      });
+      issueRepo.findOne.mockResolvedValueOnce(issue).mockResolvedValueOnce(updatedIssue);
+      issueRepo.save.mockResolvedValue(issue);
+      notificationAudience.getIssueStakeholders.mockResolvedValue(['assignee-1', 'reporter-1', 'watcher-1']);
+
+      await service.update(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        { statusId: 'status-new' },
+        TEST_IDS.USER_ID,
+      );
+
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'issue:status_changed',
+          title: expect.stringContaining('status changed to In Progress'),
+          recipientUserIds: ['assignee-1', 'reporter-1', 'watcher-1'],
+          actorUserId: TEST_IDS.USER_ID,
+        }),
+      );
+    });
+
+    it('should notify stakeholders when priority changes', async () => {
+      const issue = mockIssue({
+        assigneeId: 'assignee-1',
+        reporterId: 'reporter-1',
+        priority: 'medium',
+      });
+      const updatedIssue = mockIssue({
+        assigneeId: 'assignee-1',
+        reporterId: 'reporter-1',
+        priority: 'high',
+      });
+      issueRepo.findOne.mockResolvedValueOnce(issue).mockResolvedValueOnce(updatedIssue);
+      issueRepo.save.mockResolvedValue(issue);
+      notificationAudience.getIssueStakeholders.mockResolvedValue(['assignee-1', 'reporter-1']);
+
+      await service.update(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        { priority: 'high' },
+        TEST_IDS.USER_ID,
+      );
+
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'issue:priority_changed',
+          title: expect.stringContaining('priority changed to high'),
+          recipientUserIds: ['assignee-1', 'reporter-1'],
+          actorUserId: TEST_IDS.USER_ID,
+        }),
+      );
     });
 
     // ─────────────────────────────────────────────────────────────────────────

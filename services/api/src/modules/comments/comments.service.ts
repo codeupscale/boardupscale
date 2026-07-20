@@ -16,6 +16,8 @@ import { User } from '../users/entities/user.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification.constants';
 import { EmailService } from '../notifications/email.service';
 import { UsersService } from '../users/users.service';
 import { EventsGateway } from '../../websocket/events.gateway';
@@ -36,6 +38,7 @@ export class CommentsService {
     @InjectRepository(Issue)
     private issueRepository: Repository<Issue>,
     private notificationsService: NotificationsService,
+    private notificationAudience: NotificationAudienceService,
     private emailService: EmailService,
     private usersService: UsersService,
     private configService: ConfigService,
@@ -151,32 +154,31 @@ export class CommentsService {
       { comment: full, issueId: dto.issueId, issueKey: issue.key },
     );
 
-    if (issue.reporterId && issue.reporterId !== userId) {
-      await this.notificationsService.create({
-        userId: issue.reporterId,
-        type: 'comment:created',
-        title: `New comment on ${issue.key}`,
-        body: dto.content.substring(0, 200),
-        data: { issueId: dto.issueId, commentId: saved.id },
-      });
-    }
-
-    if (
-      issue.assigneeId &&
-      issue.assigneeId !== userId &&
-      issue.assigneeId !== issue.reporterId
-    ) {
-      await this.notificationsService.create({
-        userId: issue.assigneeId,
-        type: 'comment:created',
-        title: `New comment on ${issue.key}`,
-        body: dto.content.substring(0, 200),
-        data: { issueId: dto.issueId, commentId: saved.id },
-      });
-    }
+    // Comment → assignee, reporter, watchers (actor excluded inside notify)
+    const stakeholders = await this.notificationAudience.getIssueStakeholders({
+      issueId: dto.issueId,
+      assigneeId: issue.assigneeId,
+      reporterId: issue.reporterId,
+      includeWatchers: true,
+    });
+    await this.notificationsService.notify({
+      organizationId,
+      actorUserId: userId,
+      type: NOTIFICATION_TYPES.COMMENT_CREATED,
+      title: `New comment on ${issue.key}`,
+      body: dto.content.substring(0, 200),
+      data: {
+        issueId: dto.issueId,
+        commentId: saved.id,
+        projectId: issue.projectId,
+        issueKey: issue.key,
+        priority: issue.priority,
+      },
+      recipientUserIds: stakeholders,
+    });
 
     // FR-NOT-006: @mention detection
-    this.processMentions(dto.content, userId, issue, saved.id, full?.author?.displayName || 'Someone').catch(
+    this.processMentions(dto.content, userId, issue, saved.id, full?.author?.displayName || 'Someone', organizationId).catch(
       (err) => this.logger.error('Failed to process @mentions:', err.message),
     );
 
@@ -306,7 +308,8 @@ export class CommentsService {
    * Parse @mentions from comment text and create in-app + email notifications.
    *
    * Supported mention formats:
-   *   - @[Display Name](userId)   — rich mention from autocomplete
+   *   - TipTap mention HTML with data-type="mention" and data-id="userId"
+   *   - @[Display Name](userId)   — legacy textarea mention format
    *   - @username / @displayname  — plain text mention (matched against org users)
    */
   private async processMentions(
@@ -315,10 +318,24 @@ export class CommentsService {
     issue: Issue,
     commentId: string,
     commenterName: string,
+    organizationId: string,
   ): Promise<void> {
     const mentionedUserIds = new Set<string>();
 
-    // Pattern 1: Rich mention @[DisplayName](userId)
+    // Pattern 1: TipTap rich-text mentions.
+    // Attribute order is not guaranteed, so inspect each mention element separately.
+    const richHtmlMentionRegex =
+      /<[^>]+\bdata-type=["']mention["'][^>]*>/gi;
+    let htmlMatch: RegExpExecArray | null;
+    while ((htmlMatch = richHtmlMentionRegex.exec(content)) !== null) {
+      const idMatch = /\bdata-id=["']([^"']+)["']/i.exec(htmlMatch[0]);
+      const userId = idMatch?.[1];
+      if (userId && userId !== authorId) {
+        mentionedUserIds.add(userId);
+      }
+    }
+
+    // Pattern 2: Legacy textarea format @[DisplayName](userId).
     const richMentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
     let match: RegExpExecArray | null;
     while ((match = richMentionRegex.exec(content)) !== null) {
@@ -328,10 +345,12 @@ export class CommentsService {
       }
     }
 
-    // Pattern 2: Plain @word mentions (matched against organization users)
+    // Pattern 3: Plain @word mentions (matched against organization users).
     const plainMentionRegex = /@(\w[\w.-]*\w|\w)/g;
-    // Strip out already-matched rich mentions before scanning plain ones
-    const strippedContent = content.replace(richMentionRegex, '');
+    // Strip tags and legacy rich mentions before scanning visible text.
+    const strippedContent = content
+      .replace(richMentionRegex, '')
+      .replace(/<[^>]*>/g, ' ');
     while ((match = plainMentionRegex.exec(strippedContent)) !== null) {
       const mentionText = match[1].toLowerCase();
       try {
@@ -356,21 +375,34 @@ export class CommentsService {
 
     if (mentionedUserIds.size === 0) return;
 
+    // Mentions are project-scoped: only notify users who are members of this project.
+    const projectScopedMentions = await this.notificationAudience.filterToProjectMembers(
+      issue.projectId,
+      [...mentionedUserIds],
+    );
+    if (projectScopedMentions.length === 0) return;
+
     const frontendUrl =
       this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
     const issueUrl = `${frontendUrl}/issues/${issue.id}`;
 
-    for (const mentionedUserId of mentionedUserIds) {
-      // In-app notification
-      await this.notificationsService.create({
-        userId: mentionedUserId,
-        type: 'mention',
-        title: `${commenterName} mentioned you in ${issue.key}`,
-        body: content.substring(0, 200),
-        data: { issueId: issue.id, commentId },
-      });
+    await this.notificationsService.notify({
+      organizationId,
+      actorUserId: authorId,
+      type: NOTIFICATION_TYPES.MENTION,
+      title: `${commenterName} mentioned you in ${issue.key}`,
+      body: content.substring(0, 200),
+      data: {
+        issueId: issue.id,
+        commentId,
+        projectId: issue.projectId,
+        issueKey: issue.key,
+        priority: issue.priority,
+      },
+      recipientUserIds: projectScopedMentions,
+    });
 
-      // Email notification
+    for (const mentionedUserId of projectScopedMentions) {
       try {
         const mentionedUser = await this.usersService.findById(mentionedUserId);
         await this.emailService.sendCommentMentionEmail(

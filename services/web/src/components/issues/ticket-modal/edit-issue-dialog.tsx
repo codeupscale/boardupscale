@@ -1,17 +1,17 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { useIssue, useUpdateIssue } from '@/hooks/useIssues'
-import { useProject } from '@/hooks/useProjects'
+import { useIssue, useUpdateIssue, useDeleteIssue } from '@/hooks/useIssues'
+import { useProject, useProjectMembers } from '@/hooks/useProjects'
 import { useBoard } from '@/hooks/useBoard'
 import { useSprints } from '@/hooks/useSprints'
-import { useUsers } from '@/hooks/useUsers'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { uploadIssueAttachments } from '@/lib/upload-attachments'
 import { getSocket } from '@/lib/socket'
 import { isKanbanProject } from '@/lib/project-workflow'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { TicketModal, TicketModalBody } from './ticket-modal'
 import { TicketModalHeader } from './ticket-modal-header'
@@ -68,9 +68,11 @@ export function EditIssueDialog({
   const qc = useQueryClient()
   const formRef = useRef<IssueTicketFormHandle>(null)
   const updateIssue = useUpdateIssue()
+  const deleteIssue = useDeleteIssue()
   const [formKey, setFormKey] = useState(0)
   const [uploadingAttachments, setUploadingAttachments] = useState(false)
   const [linkingIssues, setLinkingIssues] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: issue, isLoading, isError } = useIssue(issueId)
   const projectRef = issue?.project?.key || issue?.projectId || ''
@@ -80,13 +82,18 @@ export function EditIssueDialog({
   const { data: sprints } = useSprints(issue?.projectId || '', {
     enabled: !!issue?.projectId && !!project && !isKanban,
   })
-  const { data: usersResult } = useUsers()
-  const orgUsers = usersResult?.data ?? []
+  const { data: projectMembers = [] } = useProjectMembers(issue?.projectId || '')
+  const projectUsers = projectMembers.map((member) => member.user)
   const { hasPermission } = useHasPermission(issue?.projectId)
   const canEdit = hasPermission('issue', 'update')
+  const canDelete = hasPermission('issue', 'delete')
   const canModifyAnyComment = hasPermission('comment', 'update:any')
 
-  const isBusy = updateIssue.isPending || uploadingAttachments || linkingIssues
+  const isBusy =
+    updateIssue.isPending ||
+    deleteIssue.isPending ||
+    uploadingAttachments ||
+    linkingIssues
 
   useEffect(() => {
     if (open) setFormKey((k) => k + 1)
@@ -146,6 +153,20 @@ export function EditIssueDialog({
     if (isBusy) return
     onOpenChange(false)
   }, [isBusy, onOpenChange])
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!issue || !canDelete) return
+
+    deleteIssue.mutate(
+      { id: issue.id, projectId: issue.projectId },
+      {
+        onSuccess: () => {
+          setShowDeleteConfirm(false)
+          onOpenChange(false)
+        },
+      },
+    )
+  }, [issue, canDelete, deleteIssue, onOpenChange])
 
   const handleSubmit = () => {
     const form = document.getElementById('issue-ticket-form') as HTMLFormElement | null
@@ -320,7 +341,7 @@ export function EditIssueDialog({
               projectId={issue.projectId}
               statuses={statuses}
               sprints={sprintOptions}
-              users={orgUsers}
+              users={projectUsers}
               isKanban={isKanban}
               defaultValues={issueToTicketFormValues(issue) as Partial<IssueTicketFormValues>}
               initialLabels={issue.labels ?? []}
@@ -334,7 +355,7 @@ export function EditIssueDialog({
             <TicketActivityTabs
               issueId={issue.id}
               projectId={issue.projectId}
-              users={orgUsers}
+              users={projectUsers}
               canModifyAnyComment={canModifyAnyComment}
             />
           </>
@@ -351,8 +372,28 @@ export function EditIssueDialog({
         onCancel={() => formRef.current?.requestClose()}
         onSubmit={handleSubmit}
         submitLabel={t('issues.saveChanges', 'Save Changes')}
-        isLoading={isBusy}
+        isLoading={updateIssue.isPending || uploadingAttachments || linkingIssues}
         submitDisabled={!canEdit || !issue}
+        showDelete={canDelete && !!issue}
+        onDelete={() => setShowDeleteConfirm(true)}
+        deleteDisabled={!issue}
+        isDeleting={deleteIssue.isPending}
+      />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        title={t('issues.deleteIssue')}
+        description={
+          issue
+            ? t('issues.deleteIssueConfirm', { title: issue.title })
+            : t('issues.deleteConfirm')
+        }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        isLoading={deleteIssue.isPending}
       />
     </TicketModal>
   )

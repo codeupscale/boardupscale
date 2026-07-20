@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react'
+import { Check, ChevronDown, Loader2, Plus } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth.store'
@@ -45,39 +45,10 @@ export function OrgSwitcher() {
     ?? memberships?.[0]
   const currentOrgName = currentMembership?.organization?.name || 'My Workspace'
 
-  // Count distinct orgs — duplicate membership rows must not falsely trigger the dropdown
-  const uniqueOrgCount = new Set(memberships?.map((m) => m.organizationId)).size
-  const hasMultipleOrgs = uniqueOrgCount > 1
-
   if (isLoading) {
     return (
-      <div className="space-y-2 px-2">
-        <Skeleton className="h-8 w-full rounded-md" />
-        <Skeleton className="h-8 w-full rounded-md" />
-      </div>
-    )
-  }
-
-  // Single org — static display, no dropdown
-  if (!hasMultipleOrgs) {
-    return (
-      <div
-        className={cn(
-          'flex items-center gap-2.5 px-3 py-2.5 mx-2 mt-2',
-          !isSidebarOpen && 'justify-center px-2 mx-0',
-        )}
-      >
-        <span className={cn(
-          'h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
-          getOrgGradient(currentOrgName),
-        )}>
-          {currentOrgName.charAt(0).toUpperCase()}
-        </span>
-        {isSidebarOpen && (
-          <span className="flex-1 text-left font-semibold text-foreground truncate">
-            {currentOrgName}
-          </span>
-        )}
+      <div className="px-2 py-2">
+        <Skeleton className={cn('h-[74px] w-full rounded-xl', !isSidebarOpen && 'h-10')} />
       </div>
     )
   }
@@ -91,29 +62,44 @@ export function OrgSwitcher() {
           aria-label="Switch organization"
           disabled={switchOrg.isPending}
           className={cn(
-            'w-full flex items-center gap-2.5 px-3 py-2.5 mx-2 mt-2 rounded-xl text-sm transition-all duration-150',
-            'hover:bg-accent/70 active:scale-[0.98]',
-            'border border-transparent hover:border-border/60',
-            open && 'bg-accent/70 border-border/60',
-            !isSidebarOpen && 'justify-center px-2 mx-0',
+            'w-full flex items-center gap-3 mx-2 my-2 rounded-xl text-sm transition-all duration-150',
+            'border border-border/70 bg-card/70 shadow-sm',
+            'hover:bg-accent/70 hover:border-border active:scale-[0.99]',
+            open && 'bg-accent/70 border-primary/30 ring-1 ring-primary/10',
+            !isSidebarOpen && 'h-10 w-10 justify-center p-0 mx-auto',
+            isSidebarOpen && 'min-h-[74px] px-3 py-2.5',
             isSidebarOpen && 'max-w-[calc(100%-1rem)]',
           )}
         >
           <span className={cn(
-            'h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
+            'rounded-xl flex items-center justify-center font-bold text-white flex-shrink-0 bg-gradient-to-br shadow-sm',
+            isSidebarOpen ? 'h-10 w-10 text-base' : 'h-8 w-8 text-sm',
             getOrgGradient(currentOrgName),
           )}>
             {currentOrgName.charAt(0).toUpperCase()}
           </span>
           {isSidebarOpen && (
             <>
-              <span className="flex-1 text-left font-semibold text-foreground truncate">
-                {currentOrgName}
+              <span className="flex-1 min-w-0 text-left">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Organization
+                </span>
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {currentOrgName}
+                </span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  Current workspace
+                </span>
               </span>
               {switchOrg.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground flex-shrink-0" />
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground flex-shrink-0" />
               ) : (
-                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform',
+                    open && 'rotate-180',
+                  )}
+                />
               )}
             </>
           )}

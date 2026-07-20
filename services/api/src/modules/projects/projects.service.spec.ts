@@ -10,10 +10,18 @@ import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PosthogService } from '../telemetry/posthog.service';
-import { createMockRepository, createMockQueryBuilder, mockUpdateResult } from '../../test/test-utils';
+import {
+  createMockRepository,
+  createMockQueryBuilder,
+  createMockNotificationsService,
+  createMockNotificationAudienceService,
+  mockUpdateResult,
+} from '../../test/test-utils';
 import { mockProject, mockProjectMember, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 import { SearchIndexQueueService } from '@/modules/search/search-index-queue.service';
 import { SearchReindexService } from '@/modules/search/search-reindex.service';
@@ -25,6 +33,8 @@ describe('ProjectsService', () => {
   let memberRepo: ReturnType<typeof createMockRepository>;
   let statusRepo: ReturnType<typeof createMockRepository>;
   let organizationRepo: ReturnType<typeof createMockRepository>;
+  let notificationsService: ReturnType<typeof createMockNotificationsService>;
+  let notificationAudience: ReturnType<typeof createMockNotificationAudienceService>;
 
   const mockEmailService = { sendProjectMemberAddedEmail: jest.fn().mockResolvedValue(undefined) };
   const mockUsersService = { findById: jest.fn() };
@@ -45,6 +55,8 @@ describe('ProjectsService', () => {
     memberRepo = createMockRepository();
     statusRepo = createMockRepository();
     organizationRepo = createMockRepository();
+    notificationsService = createMockNotificationsService();
+    notificationAudience = createMockNotificationAudienceService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -56,6 +68,8 @@ describe('ProjectsService', () => {
         { provide: getRepositoryToken(Organization), useValue: organizationRepo },
         { provide: AuditService, useValue: { log: jest.fn() } },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: NotificationAudienceService, useValue: notificationAudience },
         { provide: UsersService, useValue: mockUsersService },
         { provide: OrganizationsService, useValue: mockOrganizationsService },
         { provide: ConfigService, useValue: mockConfigService },

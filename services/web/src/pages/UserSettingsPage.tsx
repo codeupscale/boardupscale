@@ -21,13 +21,20 @@ import {
   Moon,
   Monitor,
   Check,
+  Bell,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { useUpdateProfile, useChangePassword } from '@/hooks/useUsers'
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from '@/hooks/useNotifications'
 import { useThemeStore, COLOR_THEMES, type ColorTheme } from '@/store/theme.store'
 import { useMe, useSetup2FA, useConfirm2FA, useDisable2FA, useRegenerateBackupCodes } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectTrigger,
@@ -557,6 +564,95 @@ function SecurityTab() {
   )
 }
 
+// ─── Notifications Tab ───────────────────────────────────────────────────────
+
+function NotificationsTab() {
+  const { data: prefs, isLoading } = useNotificationPreferences()
+  const updatePrefs = useUpdateNotificationPreferences()
+
+  if (isLoading) return <SettingsSkeleton showNav={false} fields={3} />
+
+  const inAppEnabled = Boolean(prefs?.inApp)
+  const emailEnabled = Boolean(prefs?.email)
+  const soundEnabled = inAppEnabled && Boolean(prefs?.sound)
+
+  const handleToggle = (key: 'inApp' | 'email' | 'sound', checked: boolean) => {
+    if (key === 'inApp') {
+      // Sound depends on in-app — turning in-app off also disables sound.
+      updatePrefs.mutate(
+        checked ? { inApp: true } : { inApp: false, sound: false },
+      )
+      return
+    }
+    if (key === 'sound' && !inAppEnabled) return
+    updatePrefs.mutate({ [key]: checked })
+  }
+
+  const rows: {
+    key: 'inApp' | 'email' | 'sound'
+    label: string
+    description: string
+    enabled: boolean
+    disabled: boolean
+  }[] = [
+    {
+      key: 'inApp',
+      label: 'In-app notifications',
+      description: 'Show notifications in the inbox panel and badge',
+      enabled: inAppEnabled,
+      disabled: false,
+    },
+    {
+      key: 'email',
+      label: 'Email notifications',
+      description: 'Receive email for assigns and mentions',
+      enabled: emailEnabled,
+      disabled: false,
+    },
+    {
+      key: 'sound',
+      label: 'Notification sound',
+      description: inAppEnabled
+        ? 'Play a sound when a new notification arrives (visible tab only)'
+        : 'Requires in-app notifications to be enabled',
+      enabled: soundEnabled,
+      disabled: !inAppEnabled,
+    },
+  ]
+
+  return (
+    <>
+      <SectionHeader
+        title="Notification Preferences"
+        description="Control how Boardupscale alerts you. You never get notified for your own actions."
+      />
+      <div className="space-y-3 max-w-lg">
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={cn(
+              'flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card',
+              row.key === 'sound' && !inAppEnabled && 'opacity-60',
+            )}
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{row.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>
+            </div>
+            <Switch
+              checked={row.enabled}
+              disabled={row.disabled}
+              onCheckedChange={(checked) => handleToggle(row.key, checked)}
+              aria-label={row.label}
+              className="flex-shrink-0 data-[state=unchecked]:bg-muted-foreground/40 data-[state=checked]:bg-primary"
+            />
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 // ─── Appearance Tab ──────────────────────────────────────────────────────────
 
 function AppearanceTab() {
@@ -720,13 +816,20 @@ const NAV_ITEMS = [
   { id: 'profile', label: 'Profile', description: 'Avatar, name & preferences', icon: User },
   { id: 'account', label: 'Account', description: 'Password & credentials', icon: KeyRound },
   { id: 'appearance', label: 'Appearance', description: 'Themes & color schemes', icon: Palette },
+  { id: 'notifications', label: 'Notifications', description: 'In-app, email & sound', icon: Bell },
   { id: 'security', label: 'Security', description: 'Two-factor authentication', icon: ShieldCheck },
 ]
 
 export function UserSettingsPage() {
   const { t } = useTranslation()
   const { data: me, isLoading } = useMe()
-  const [activeTab, setActiveTab] = useState('profile')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl && ['profile', 'account', 'appearance', 'notifications', 'security', 'sso'].includes(tabFromUrl)
+      ? tabFromUrl
+      : 'profile',
+  )
 
   const isOrgAdmin = me?.role === UserRole.OWNER
 
@@ -736,6 +839,11 @@ export function UserSettingsPage() {
       ? [{ id: 'sso', label: 'SSO / SAML', description: 'Enterprise authentication', icon: Building2 }]
       : []),
   ]
+
+  const selectTab = (id: string) => {
+    setActiveTab(id)
+    setSearchParams(id === 'profile' ? {} : { tab: id }, { replace: true })
+  }
 
   if (isLoading) return <SettingsSkeleton />
 
@@ -814,7 +922,7 @@ export function UserSettingsPage() {
               return (
                 <button
                   key={id}
-                  onClick={() => setActiveTab(id)}
+                  onClick={() => selectTab(id)}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150',
@@ -866,6 +974,7 @@ export function UserSettingsPage() {
             {activeTab === 'profile' && <ProfileTab />}
             {activeTab === 'account' && <AccountTab />}
             {activeTab === 'appearance' && <AppearanceTab />}
+            {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'security' && <SecurityTab />}
             {activeTab === 'sso' && isOrgAdmin && (
               <>

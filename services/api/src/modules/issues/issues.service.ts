@@ -6,43 +6,45 @@ import {
   Inject,
   Optional,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { InjectQueue } from '@nestjs/bullmq';
-import { ConfigService } from '@nestjs/config';
-import { Repository, IsNull, In, Not } from 'typeorm';
-import { Queue } from 'bullmq';
-import { Issue } from './entities/issue.entity';
-import { IssueStatus } from './entities/issue-status.entity';
-import { WorkLog } from './entities/work-log.entity';
-import { IssueLink } from './entities/issue-link.entity';
-import { IssueWatcher } from './entities/issue-watcher.entity';
-import { CreateIssueDto } from './dto/create-issue.dto';
-import { UpdateIssueDto } from './dto/update-issue.dto';
-import { CreateWorkLogDto } from './dto/create-work-log.dto';
-import { CreateIssueLinkDto } from './dto/create-issue-link.dto';
-import { BulkUpdateIssuesDto } from './dto/bulk-update-issues.dto';
-import { BulkMoveIssuesDto } from './dto/bulk-move-issues.dto';
-import { BulkDeleteIssuesDto } from './dto/bulk-delete-issues.dto';
-import { BulkTransitionIssuesDto } from './dto/bulk-transition-issues.dto';
-import { ProjectsService } from '../projects/projects.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { EmailService } from '../notifications/email.service';
-import { UsersService } from '../users/users.service';
-import { EventsGateway } from '../../websocket/events.gateway';
-import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
-import { WebhookEventType } from '../webhooks/webhook-events.constants';
-import { AutomationEngineService } from '../automation/automation-engine.service';
-import { withChildrenCount } from './issues-query.utils';
-import { ActivityService } from '../activity/activity.service';
-import { AuditService } from '../audit/audit.service';
-import { AiService } from '../ai/ai.service';
-import { PermissionsService } from '../permissions/permissions.service';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { InjectQueue } from "@nestjs/bullmq";
+import { ConfigService } from "@nestjs/config";
+import { Repository, IsNull, In, Not } from "typeorm";
+import { Queue } from "bullmq";
+import { Issue } from "./entities/issue.entity";
+import { IssueStatus } from "./entities/issue-status.entity";
+import { WorkLog } from "./entities/work-log.entity";
+import { IssueLink } from "./entities/issue-link.entity";
+import { IssueWatcher } from "./entities/issue-watcher.entity";
+import { CreateIssueDto } from "./dto/create-issue.dto";
+import { UpdateIssueDto } from "./dto/update-issue.dto";
+import { CreateWorkLogDto } from "./dto/create-work-log.dto";
+import { CreateIssueLinkDto } from "./dto/create-issue-link.dto";
+import { BulkUpdateIssuesDto } from "./dto/bulk-update-issues.dto";
+import { BulkMoveIssuesDto } from "./dto/bulk-move-issues.dto";
+import { BulkDeleteIssuesDto } from "./dto/bulk-delete-issues.dto";
+import { BulkTransitionIssuesDto } from "./dto/bulk-transition-issues.dto";
+import { ProjectsService } from "../projects/projects.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationAudienceService } from "../notifications/notification-audience.service";
+import { NOTIFICATION_TYPES } from "../notifications/notification.constants";
+import { EmailService } from "../notifications/email.service";
+import { UsersService } from "../users/users.service";
+import { EventsGateway } from "../../websocket/events.gateway";
+import { WebhookEventEmitter } from "../webhooks/webhook-event-emitter.service";
+import { WebhookEventType } from "../webhooks/webhook-events.constants";
+import { AutomationEngineService } from "../automation/automation-engine.service";
+import { withChildrenCount } from "./issues-query.utils";
+import { ActivityService } from "../activity/activity.service";
+import { AuditService } from "../audit/audit.service";
+import { AiService } from "../ai/ai.service";
+import { PermissionsService } from "../permissions/permissions.service";
 import {
   isSprintEligibleIssueType,
   normalizeSprintIdForIssueType,
   SPRINT_INELIGIBLE_ISSUE_TYPES,
-} from '../../common/constants/sprint-planning-issue-types';
+} from "../../common/constants/sprint-planning-issue-types";
 
 @Injectable()
 export class IssuesService {
@@ -61,19 +63,22 @@ export class IssuesService {
     private issueWatcherRepository: Repository<IssueWatcher>,
     private projectsService: ProjectsService,
     private notificationsService: NotificationsService,
+    private notificationAudience: NotificationAudienceService,
     private emailService: EmailService,
     private usersService: UsersService,
     private configService: ConfigService,
     private eventsGateway: EventsGateway,
     private webhookEventEmitter: WebhookEventEmitter,
-    @InjectQueue('search-index')
+    @InjectQueue("search-index")
     private searchIndexQueue: Queue,
     private activityService: ActivityService,
     private auditService: AuditService,
     private permissionsService: PermissionsService,
-    @Optional() @Inject(AutomationEngineService)
+    @Optional()
+    @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
-    @Optional() @Inject(AiService)
+    @Optional()
+    @Inject(AiService)
     private aiService?: AiService,
   ) {}
 
@@ -85,15 +90,15 @@ export class IssuesService {
       id: issue.id,
       organizationId: issue.organizationId,
       projectId: issue.projectId,
-      projectName: issue.project?.name || '',
+      projectName: issue.project?.name || "",
       key: issue.key,
       number: issue.number,
       title: issue.title,
-      description: issue.description || '',
+      description: issue.description || "",
       type: issue.type,
       priority: issue.priority,
-      statusName: issue.status?.name || '',
-      assigneeName: issue.assignee?.displayName || '',
+      statusName: issue.status?.name || "",
+      assigneeName: issue.assignee?.displayName || "",
       labels: issue.labels || [],
       createdAt: issue.createdAt,
       updatedAt: issue.updatedAt,
@@ -105,11 +110,13 @@ export class IssuesService {
    */
   private async enqueueSearchIndex(issue: Issue): Promise<void> {
     try {
-      await this.searchIndexQueue.add('index-issue', {
+      await this.searchIndexQueue.add("index-issue", {
         issue: this.buildSearchDocument(issue),
       });
     } catch (err: any) {
-      this.logger.warn(`Failed to enqueue search index job for issue ${issue.id}: ${err.message}`);
+      this.logger.warn(
+        `Failed to enqueue search index job for issue ${issue.id}: ${err.message}`,
+      );
     }
   }
 
@@ -118,11 +125,13 @@ export class IssuesService {
    */
   private async enqueueSearchDelete(issueId: string): Promise<void> {
     try {
-      await this.searchIndexQueue.add('delete-issue', {
+      await this.searchIndexQueue.add("delete-issue", {
         issueId,
       });
     } catch (err: any) {
-      this.logger.warn(`Failed to enqueue search delete job for issue ${issueId}: ${err.message}`);
+      this.logger.warn(
+        `Failed to enqueue search delete job for issue ${issueId}: ${err.message}`,
+      );
     }
   }
 
@@ -154,67 +163,98 @@ export class IssuesService {
      */
     noLimit?: boolean;
   }) {
-    const { organizationId, projectId, sprintId, assigneeId, type, priority, statusId, search, page = 1, limit = 20, deleted, parentless, parentId, excludeTypes, noLimit } = filters;
+    const {
+      organizationId,
+      projectId,
+      sprintId,
+      assigneeId,
+      type,
+      priority,
+      statusId,
+      search,
+      page = 1,
+      limit = 20,
+      deleted,
+      parentless,
+      parentId,
+      excludeTypes,
+      noLimit,
+    } = filters;
 
     const qb = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.status', 'status')
-      .leftJoin('issue.assignee', 'assignee')
-      .addSelect(['assignee.id', 'assignee.displayName', 'assignee.avatarUrl', 'assignee.email'])
-      .leftJoin('issue.reporter', 'reporter')
-      .addSelect(['reporter.id', 'reporter.displayName', 'reporter.avatarUrl', 'reporter.email'])
-      .leftJoinAndSelect('issue.sprint', 'sprint')
-      .leftJoin('issue.parent', 'parent')
-      .addSelect(['parent.id', 'parent.key', 'parent.title', 'parent.type'])
-      .where('issue.organization_id = :organizationId', { organizationId });
+      .createQueryBuilder("issue")
+      .leftJoinAndSelect("issue.status", "status")
+      .leftJoin("issue.assignee", "assignee")
+      .addSelect([
+        "assignee.id",
+        "assignee.displayName",
+        "assignee.avatarUrl",
+        "assignee.email",
+      ])
+      .leftJoin("issue.reporter", "reporter")
+      .addSelect([
+        "reporter.id",
+        "reporter.displayName",
+        "reporter.avatarUrl",
+        "reporter.email",
+      ])
+      .leftJoinAndSelect("issue.sprint", "sprint")
+      .leftJoin("issue.parent", "parent")
+      .addSelect(["parent.id", "parent.key", "parent.title", "parent.type"])
+      .where("issue.organization_id = :organizationId", { organizationId });
 
     if (deleted) {
-      qb.andWhere('issue.deleted_at IS NOT NULL');
+      qb.andWhere("issue.deleted_at IS NOT NULL");
     } else {
-      qb.andWhere('issue.deleted_at IS NULL');
+      qb.andWhere("issue.deleted_at IS NULL");
     }
 
     if (projectId) {
-      qb.andWhere('issue.project_id = :projectId', { projectId });
+      qb.andWhere("issue.project_id = :projectId", { projectId });
     }
-    if (sprintId === 'backlog') {
-      qb.andWhere('issue.sprint_id IS NULL');
+    if (sprintId === "backlog") {
+      qb.andWhere("issue.sprint_id IS NULL");
     } else if (sprintId) {
-      qb.andWhere('issue.sprint_id = :sprintId', { sprintId });
+      qb.andWhere("issue.sprint_id = :sprintId", { sprintId });
     }
     if (assigneeId) {
-      qb.andWhere('issue.assignee_id = :assigneeId', { assigneeId });
+      qb.andWhere("issue.assignee_id = :assigneeId", { assigneeId });
     }
     if (type) {
-      qb.andWhere('issue.type = :type', { type });
+      qb.andWhere("issue.type = :type", { type });
     }
     if (priority) {
-      qb.andWhere('issue.priority = :priority', { priority });
+      qb.andWhere("issue.priority = :priority", { priority });
     }
     if (statusId) {
-      qb.andWhere('issue.status_id = :statusId', { statusId });
+      qb.andWhere("issue.status_id = :statusId", { statusId });
     }
     if (search) {
-      qb.andWhere('(issue.title ILIKE :search OR issue.key ILIKE :search)', {
+      qb.andWhere("(issue.title ILIKE :search OR issue.key ILIKE :search)", {
         search: `%${search}%`,
       });
     }
     if (parentless) {
-      qb.andWhere('issue.parent_id IS NULL');
+      qb.andWhere("issue.parent_id IS NULL");
     }
     if (parentId) {
-      qb.andWhere('issue.parent_id = :parentId', { parentId });
+      qb.andWhere("issue.parent_id = :parentId", { parentId });
     }
     if (excludeTypes) {
-      const types = excludeTypes.split(',').map((t) => t.trim()).filter(Boolean);
+      const types = excludeTypes
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
       if (types.length > 0) {
-        qb.andWhere('issue.type NOT IN (:...excludeTypeList)', { excludeTypeList: types });
+        qb.andWhere("issue.type NOT IN (:...excludeTypeList)", {
+          excludeTypeList: types,
+        });
       }
     }
 
     const total = await qb.getCount();
 
-    qb.orderBy('issue.position', 'ASC').addOrderBy('issue.createdAt', 'DESC');
+    qb.orderBy("issue.position", "ASC").addOrderBy("issue.createdAt", "DESC");
 
     if (!noLimit) {
       qb.skip((page - 1) * limit).take(limit);
@@ -232,10 +272,19 @@ export class IssuesService {
   async findById(id: string, organizationId: string): Promise<Issue> {
     const issue = await this.issueRepository.findOne({
       where: { id, organizationId, deletedAt: IsNull() },
-      relations: ['status', 'assignee', 'reporter', 'sprint', 'parent', 'parent.parent', 'parent.parent.parent', 'project'],
+      relations: [
+        "status",
+        "assignee",
+        "reporter",
+        "sprint",
+        "parent",
+        "parent.parent",
+        "parent.parent.parent",
+        "project",
+      ],
     });
     if (!issue) {
-      throw new NotFoundException('Issue not found');
+      throw new NotFoundException("Issue not found");
     }
     return issue;
   }
@@ -247,12 +296,15 @@ export class IssuesService {
    *   Subtask -> (none)
    * Epic explicitly cannot have Subtask children.
    */
-  private validateChildTypeHierarchy(parentType: string, childType: string): void {
+  private validateChildTypeHierarchy(
+    parentType: string,
+    childType: string,
+  ): void {
     const allowedChildren: Record<string, string[]> = {
-      epic: ['story', 'task', 'bug'],
-      story: ['subtask'],
-      task: ['subtask'],
-      bug: ['subtask'],
+      epic: ["story", "task", "bug"],
+      story: ["subtask"],
+      task: ["subtask"],
+      bug: ["subtask"],
     };
 
     const allowed = allowedChildren[parentType];
@@ -264,7 +316,7 @@ export class IssuesService {
 
     if (!allowed.includes(childType)) {
       throw new BadRequestException(
-        `A "${parentType}" can only have children of type: ${allowed.join(', ')}. Got "${childType}"`,
+        `A "${parentType}" can only have children of type: ${allowed.join(", ")}. Got "${childType}"`,
       );
     }
   }
@@ -281,11 +333,11 @@ export class IssuesService {
     const mins: number[] = [];
 
     const statusMin = await this.issueRepository
-      .createQueryBuilder('issue')
-      .select('MIN(issue.position)', 'min')
-      .where('issue.projectId = :projectId', { projectId })
-      .andWhere('issue.statusId = :statusId', { statusId })
-      .andWhere('issue.deletedAt IS NULL')
+      .createQueryBuilder("issue")
+      .select("MIN(issue.position)", "min")
+      .where("issue.projectId = :projectId", { projectId })
+      .andWhere("issue.statusId = :statusId", { statusId })
+      .andWhere("issue.deletedAt IS NULL")
       .getRawOne<{ min: string | null }>();
 
     if (statusMin?.min != null) {
@@ -293,15 +345,15 @@ export class IssuesService {
     }
 
     const sprintQb = this.issueRepository
-      .createQueryBuilder('issue')
-      .select('MIN(issue.position)', 'min')
-      .where('issue.projectId = :projectId', { projectId })
-      .andWhere('issue.deletedAt IS NULL');
+      .createQueryBuilder("issue")
+      .select("MIN(issue.position)", "min")
+      .where("issue.projectId = :projectId", { projectId })
+      .andWhere("issue.deletedAt IS NULL");
 
     if (sprintId) {
-      sprintQb.andWhere('issue.sprintId = :sprintId', { sprintId });
+      sprintQb.andWhere("issue.sprintId = :sprintId", { sprintId });
     } else {
-      sprintQb.andWhere('issue.sprintId IS NULL');
+      sprintQb.andWhere("issue.sprintId IS NULL");
     }
 
     const sprintMin = await sprintQb.getRawOne<{ min: string | null }>();
@@ -316,8 +368,15 @@ export class IssuesService {
     return Math.min(...mins) - 1;
   }
 
-  async create(dto: CreateIssueDto, organizationId: string, userId: string): Promise<Issue> {
-    const project = await this.projectsService.findById(dto.projectId, organizationId);
+  async create(
+    dto: CreateIssueDto,
+    organizationId: string,
+    userId: string,
+  ): Promise<Issue> {
+    const project = await this.projectsService.findById(
+      dto.projectId,
+      organizationId,
+    );
 
     // Validate parent-child hierarchy if parentId is set
     if (dto.parentId) {
@@ -325,21 +384,21 @@ export class IssuesService {
         where: { id: dto.parentId, organizationId },
       });
       if (!parent) {
-        throw new NotFoundException('Parent issue not found');
+        throw new NotFoundException("Parent issue not found");
       }
-      this.validateChildTypeHierarchy(parent.type, dto.type || 'task');
+      this.validateChildTypeHierarchy(parent.type, dto.type || "task");
     }
 
     let statusId = dto.statusId;
     if (!statusId) {
       const defaultStatus = await this.issueStatusRepository.findOne({
         where: { projectId: dto.projectId, isDefault: true },
-        order: { position: 'ASC' },
+        order: { position: "ASC" },
       });
       if (!defaultStatus) {
         const firstStatus = await this.issueStatusRepository.findOne({
           where: { projectId: dto.projectId },
-          order: { position: 'ASC' },
+          order: { position: "ASC" },
         });
         if (firstStatus) statusId = firstStatus.id;
       } else {
@@ -348,17 +407,31 @@ export class IssuesService {
     }
 
     if (dto.assigneeId) {
-      const isAssigneeMember = await this.projectsService.isMember(dto.projectId, dto.assigneeId);
+      const isAssigneeMember = await this.projectsService.isMember(
+        dto.projectId,
+        dto.assigneeId,
+      );
       if (!isAssigneeMember) {
-        throw new BadRequestException('Assignee is not a member of this project');
+        throw new BadRequestException(
+          "Assignee is not a member of this project",
+        );
       }
     }
 
-    const issueNumber = await this.projectsService.getNextIssueNumber(dto.projectId);
+    const issueNumber = await this.projectsService.getNextIssueNumber(
+      dto.projectId,
+    );
     const key = `${project.key}-${issueNumber}`;
-    const issueType = dto.type || 'task';
-    const sprintId = normalizeSprintIdForIssueType(issueType, dto.sprintId ?? null);
-    const position = await this.resolveCreatePosition(dto.projectId, statusId, sprintId);
+    const issueType = dto.type || "task";
+    const sprintId = normalizeSprintIdForIssueType(
+      issueType,
+      dto.sprintId ?? null,
+    );
+    const position = await this.resolveCreatePosition(
+      dto.projectId,
+      statusId,
+      sprintId,
+    );
 
     const issue = this.issueRepository.create({
       ...dto,
@@ -381,7 +454,7 @@ export class IssuesService {
       await this.addWatcherSilent(saved.id, dto.assigneeId);
     }
 
-    this.eventsGateway.emitToOrg(organizationId, 'issue:created', fullIssue);
+    this.eventsGateway.emitToOrg(organizationId, "issue:created", fullIssue);
 
     this.webhookEventEmitter.emit(
       organizationId,
@@ -390,14 +463,26 @@ export class IssuesService {
       { issue: fullIssue },
     );
 
+    // Ticket created → creator + project admins (+ assignee if set). Creator is included.
+    const projectAdminIds =
+      await this.notificationAudience.getProjectAdminUserIds(dto.projectId);
+    await this.notificationsService.notify({
+      organizationId,
+      actorUserId: userId,
+      type: NOTIFICATION_TYPES.ISSUE_CREATED,
+      title: `${key} was created`,
+      body: dto.title,
+      data: {
+        issueId: saved.id,
+        projectId: dto.projectId,
+        issueKey: key,
+        priority: fullIssue.priority,
+      },
+      recipientUserIds: [userId, ...projectAdminIds, dto.assigneeId],
+      includeActor: true,
+    });
+
     if (dto.assigneeId && dto.assigneeId !== userId) {
-      await this.notificationsService.create({
-        userId: dto.assigneeId,
-        type: 'issue:assigned',
-        title: `You have been assigned to ${key}`,
-        body: dto.title,
-        data: { issueId: saved.id, projectId: dto.projectId },
-      });
       this.sendAssigneeEmail(dto.assigneeId, fullIssue);
     }
 
@@ -410,22 +495,38 @@ export class IssuesService {
     }
 
     // Log activity
-    this.activityService.log(organizationId, saved.id, userId, 'created', null, null, null, {
-      key: fullIssue.key,
-      title: fullIssue.title,
-      type: fullIssue.type,
-    });
+    this.activityService.log(
+      organizationId,
+      saved.id,
+      userId,
+      "created",
+      null,
+      null,
+      null,
+      {
+        key: fullIssue.key,
+        title: fullIssue.title,
+        type: fullIssue.type,
+      },
+    );
 
     // Log audit
-    this.auditService.log(organizationId, userId, 'issue.created', 'issue', saved.id, {
-      key: fullIssue.key,
-      title: fullIssue.title,
-      projectId: dto.projectId,
-    });
+    this.auditService.log(
+      organizationId,
+      userId,
+      "issue.created",
+      "issue",
+      saved.id,
+      {
+        key: fullIssue.key,
+        title: fullIssue.title,
+        projectId: dto.projectId,
+      },
+    );
 
     // Trigger automation rules
     if (this.automationEngine) {
-      this.automationEngine.processTrigger(dto.projectId, 'issue.created', {
+      this.automationEngine.processTrigger(dto.projectId, "issue.created", {
         issueId: saved.id,
         userId,
       });
@@ -434,7 +535,12 @@ export class IssuesService {
     return fullIssue;
   }
 
-  async update(id: string, organizationId: string, dto: UpdateIssueDto, userId: string): Promise<Issue> {
+  async update(
+    id: string,
+    organizationId: string,
+    dto: UpdateIssueDto,
+    userId: string,
+  ): Promise<Issue> {
     const issue = await this.findById(id, organizationId);
     const prevAssigneeId = issue.assigneeId;
     const prevStatusId = issue.statusId;
@@ -463,32 +569,43 @@ export class IssuesService {
     };
 
     if (dto.assigneeId) {
-      const isAssigneeMember = await this.projectsService.isMember(issue.projectId, dto.assigneeId);
+      const isAssigneeMember = await this.projectsService.isMember(
+        issue.projectId,
+        dto.assigneeId,
+      );
       if (!isAssigneeMember) {
-        throw new BadRequestException('Assignee is not a member of this project');
+        throw new BadRequestException(
+          "Assignee is not a member of this project",
+        );
       }
     }
 
     // Validate parent-child hierarchy when parentId is being changed.
     // Mirrors the check in create() — same project, valid hierarchy, prevents self-parenting.
-    if ('parentId' in dto && dto.parentId !== null && dto.parentId !== undefined) {
+    if (
+      "parentId" in dto &&
+      dto.parentId !== null &&
+      dto.parentId !== undefined
+    ) {
       if (dto.parentId === issue.id) {
-        throw new BadRequestException('An issue cannot be its own parent');
+        throw new BadRequestException("An issue cannot be its own parent");
       }
       const parent = await this.issueRepository.findOne({
         where: { id: dto.parentId, organizationId },
       });
       if (!parent) {
-        throw new NotFoundException('Parent issue not found');
+        throw new NotFoundException("Parent issue not found");
       }
       if (parent.projectId !== issue.projectId) {
-        throw new BadRequestException('Parent issue must be in the same project');
+        throw new BadRequestException(
+          "Parent issue must be in the same project",
+        );
       }
       this.validateChildTypeHierarchy(parent.type, issue.type);
     }
 
     const nextType = dto.type ?? issue.type;
-    if ('sprintId' in dto) {
+    if ("sprintId" in dto) {
       dto.sprintId = normalizeSprintIdForIssueType(nextType, dto.sprintId);
     } else if (!isSprintEligibleIssueType(nextType)) {
       dto.sprintId = null;
@@ -507,10 +624,10 @@ export class IssuesService {
 
     // When updating FK columns, clear the loaded relation so TypeORM uses the
     // raw FK value instead of deriving it from the (stale) relation object.
-    if ('assigneeId' in cleanedDto) issue.assignee = null;
-    if ('sprintId' in cleanedDto) issue.sprint = null;
-    if ('statusId' in cleanedDto) issue.status = null;
-    if ('parentId' in cleanedDto) issue.parent = null;
+    if ("assigneeId" in cleanedDto) issue.assignee = null;
+    if ("sprintId" in cleanedDto) issue.sprint = null;
+    if ("statusId" in cleanedDto) issue.status = null;
+    if ("parentId" in cleanedDto) issue.parent = null;
 
     await this.issueRepository.save(issue);
 
@@ -518,17 +635,17 @@ export class IssuesService {
     // overwrite them during re-migration (locked_fields CASE WHEN pattern).
     // Only applies to Jira-sourced issues (jiraKey is set).
     const LOCKABLE_FIELD_MAP: Record<string, string> = {
-      title: 'title',
-      description: 'description',
-      type: 'type',
-      priority: 'priority',
-      statusId: 'status_id',
-      assigneeId: 'assignee_id',
-      sprintId: 'sprint_id',
-      dueDate: 'due_date',
-      storyPoints: 'story_points',
-      timeEstimate: 'time_estimate',
-      labels: 'labels',
+      title: "title",
+      description: "description",
+      type: "type",
+      priority: "priority",
+      statusId: "status_id",
+      assigneeId: "assignee_id",
+      sprintId: "sprint_id",
+      dueDate: "due_date",
+      storyPoints: "story_points",
+      timeEstimate: "time_estimate",
+      labels: "labels",
     };
     if (issue.jiraKey) {
       const newLockedFields = Object.keys(cleanedDto)
@@ -552,7 +669,7 @@ export class IssuesService {
     }
 
     const updatedIssue = await this.findById(id, organizationId);
-    this.eventsGateway.emitToOrg(organizationId, 'issue:updated', updatedIssue);
+    this.eventsGateway.emitToOrg(organizationId, "issue:updated", updatedIssue);
 
     this.webhookEventEmitter.emit(
       organizationId,
@@ -566,7 +683,11 @@ export class IssuesService {
         organizationId,
         updatedIssue.projectId,
         WebhookEventType.ISSUE_ASSIGNED,
-        { issue: updatedIssue, assigneeId: dto.assigneeId, previousAssigneeId: prevAssigneeId },
+        {
+          issue: updatedIssue,
+          assigneeId: dto.assigneeId,
+          previousAssigneeId: prevAssigneeId,
+        },
       );
     }
 
@@ -575,44 +696,99 @@ export class IssuesService {
         organizationId,
         updatedIssue.projectId,
         WebhookEventType.ISSUE_STATUS_CHANGED,
-        { issue: updatedIssue, statusId: dto.statusId, previousStatusId: prevStatusId },
+        {
+          issue: updatedIssue,
+          statusId: dto.statusId,
+          previousStatusId: prevStatusId,
+        },
       );
 
-      // Notify assignee about status change (if someone else changed it)
-      if (updatedIssue.assigneeId && updatedIssue.assigneeId !== userId) {
-        const oldStatusName = prevNames.statusId || 'Unknown';
-        const newStatusName = updatedIssue.status?.name || 'Unknown';
-        await this.notificationsService.create({
-          userId: updatedIssue.assigneeId,
-          type: 'issue:status_changed',
-          title: `${issue.key} moved to ${newStatusName}`,
-          body: `"${issue.title}" changed from ${oldStatusName} → ${newStatusName}`,
-          data: { issueId: id, projectId: issue.projectId, oldStatus: oldStatusName, newStatus: newStatusName },
+      const stakeholders = await this.notificationAudience.getIssueStakeholders(
+        {
+          issueId: id,
+          assigneeId: updatedIssue.assigneeId,
+          reporterId: updatedIssue.reporterId,
+          includeWatchers: true,
+        },
+      );
+      const statusName = updatedIssue.status?.name || "Unknown";
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.ISSUE_STATUS_CHANGED,
+        title: `${issue.key} status changed to ${statusName}`,
+        body: issue.title,
+        data: {
+          issueId: id,
+          projectId: issue.projectId,
+          issueKey: issue.key,
+          statusId: dto.statusId,
+          previousStatusId: prevStatusId,
+          priority: updatedIssue.priority,
+        },
+        recipientUserIds: stakeholders,
+      });
+    }
+
+    if (dto.priority && dto.priority !== prevPriority) {
+      const stakeholders = await this.notificationAudience.getIssueStakeholders(
+        {
+          issueId: id,
+          assigneeId: updatedIssue.assigneeId,
+          reporterId: updatedIssue.reporterId,
+          includeWatchers: true,
+        },
+      );
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.ISSUE_PRIORITY_CHANGED,
+        title: `${issue.key} priority changed to ${updatedIssue.priority}`,
+        body: issue.title,
+        data: {
+          issueId: id,
+          projectId: issue.projectId,
+          issueKey: issue.key,
+          priority: updatedIssue.priority,
+          previousPriority: prevPriority,
+        },
+        recipientUserIds: stakeholders,
+      });
+    }
+
+    if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.ISSUE_ASSIGNED,
+        title: `You have been assigned to ${issue.key}`,
+        body: issue.title,
+        data: {
+          issueId: id,
+          projectId: issue.projectId,
+          issueKey: issue.key,
+          priority: updatedIssue.priority,
+        },
+        recipientUserIds: [dto.assigneeId],
+      });
+
+      if (dto.assigneeId !== userId) {
+        this.sendAssigneeEmail(dto.assigneeId, updatedIssue).catch((err) => {
+          console.error("Failed to enqueue issue-assigned email:", err.message);
         });
       }
     }
 
-    if (dto.assigneeId && dto.assigneeId !== prevAssigneeId && dto.assigneeId !== userId) {
-      await this.notificationsService.create({
-        userId: dto.assigneeId,
-        type: 'issue:assigned',
-        title: `You have been assigned to ${issue.key}`,
-        body: issue.title,
-        data: { issueId: id, projectId: issue.projectId },
-      });
-
-      // Send issue-assigned email to the new assignee
-      this.sendAssigneeEmail(dto.assigneeId, updatedIssue).catch((err) => {
-        // Non-blocking: log but don't fail the update
-        console.error('Failed to enqueue issue-assigned email:', err.message);
-      });
-    }
+    // Due date changes: no in-app notification (product rule).
 
     // Enqueue search index job (update)
     this.enqueueSearchIndex(updatedIssue);
 
     // Re-generate AI embedding if title or description changed
-    if (this.aiService && (dto.title !== undefined || dto.description !== undefined)) {
+    if (
+      this.aiService &&
+      (dto.title !== undefined || dto.description !== undefined)
+    ) {
       this.aiService.enqueueEmbedding(id, organizationId);
     }
 
@@ -625,28 +801,47 @@ export class IssuesService {
 
     // Log activity for each changed field (using human-readable names for relation fields)
     const fieldsToTrack = [
-      'title', 'description', 'type', 'priority', 'statusId', 'assigneeId',
-      'sprintId', 'dueDate', 'storyPoints', 'timeEstimate',
+      "title",
+      "description",
+      "type",
+      "priority",
+      "statusId",
+      "assigneeId",
+      "sprintId",
+      "dueDate",
+      "storyPoints",
+      "timeEstimate",
     ];
-    const relationFields = new Set(['statusId', 'assigneeId', 'sprintId']);
+    const relationFields = new Set(["statusId", "assigneeId", "sprintId"]);
     const changes: Record<string, { old: any; new: any }> = {};
     for (const field of fieldsToTrack) {
-      if (dto[field] !== undefined && String(dto[field] ?? '') !== String(prevValues[field] ?? '')) {
+      if (
+        dto[field] !== undefined &&
+        String(dto[field] ?? "") !== String(prevValues[field] ?? "")
+      ) {
         let oldVal: string | null;
         let newVal: string | null;
         if (relationFields.has(field)) {
           oldVal = prevNames[field] || null;
           newVal = newNames[field] || null;
-        } else if (field === 'description') {
+        } else if (field === "description") {
           // Store a short summary instead of raw HTML
-          oldVal = prevValues[field] ? 'updated' : null;
-          newVal = dto[field] ? 'updated' : null;
+          oldVal = prevValues[field] ? "updated" : null;
+          newVal = dto[field] ? "updated" : null;
         } else {
           oldVal = prevValues[field] != null ? String(prevValues[field]) : null;
           newVal = dto[field] != null ? String(dto[field]) : null;
         }
         changes[field] = { old: oldVal, new: newVal };
-        this.activityService.log(organizationId, id, userId, 'updated', field, oldVal, newVal);
+        this.activityService.log(
+          organizationId,
+          id,
+          userId,
+          "updated",
+          field,
+          oldVal,
+          newVal,
+        );
       }
     }
     // Handle labels separately (array comparison)
@@ -654,14 +849,29 @@ export class IssuesService {
       const oldLabels = JSON.stringify(prevValues.labels || []);
       const newLabels = JSON.stringify(dto.labels || []);
       if (oldLabels !== newLabels) {
-        changes['labels'] = { old: oldLabels, new: newLabels };
-        this.activityService.log(organizationId, id, userId, 'updated', 'labels', oldLabels, newLabels);
+        changes["labels"] = { old: oldLabels, new: newLabels };
+        this.activityService.log(
+          organizationId,
+          id,
+          userId,
+          "updated",
+          "labels",
+          oldLabels,
+          newLabels,
+        );
       }
     }
 
     // Log audit for update
     if (Object.keys(changes).length > 0) {
-      this.auditService.log(organizationId, userId, 'issue.updated', 'issue', id, changes);
+      this.auditService.log(
+        organizationId,
+        userId,
+        "issue.updated",
+        "issue",
+        id,
+        changes,
+      );
     }
 
     // Trigger automation rules
@@ -669,75 +879,138 @@ export class IssuesService {
       const context = {
         issueId: id,
         userId,
-        previousValues: { assigneeId: prevAssigneeId, statusId: prevStatusId, priority: prevPriority },
+        previousValues: {
+          assigneeId: prevAssigneeId,
+          statusId: prevStatusId,
+          priority: prevPriority,
+        },
       };
 
       // General update trigger
-      this.automationEngine.processTrigger(issue.projectId, 'issue.updated', context);
+      this.automationEngine.processTrigger(
+        issue.projectId,
+        "issue.updated",
+        context,
+      );
 
       // Specific triggers for field changes
       if (dto.statusId && dto.statusId !== prevStatusId) {
-        this.automationEngine.processTrigger(issue.projectId, 'issue.status_changed', context);
+        this.automationEngine.processTrigger(
+          issue.projectId,
+          "issue.status_changed",
+          context,
+        );
       }
       if (dto.assigneeId && dto.assigneeId !== prevAssigneeId) {
-        this.automationEngine.processTrigger(issue.projectId, 'issue.assigned', context);
+        this.automationEngine.processTrigger(
+          issue.projectId,
+          "issue.assigned",
+          context,
+        );
       }
       if (dto.priority && dto.priority !== prevPriority) {
-        this.automationEngine.processTrigger(issue.projectId, 'issue.priority_changed', context);
+        this.automationEngine.processTrigger(
+          issue.projectId,
+          "issue.priority_changed",
+          context,
+        );
       }
     }
 
     return updatedIssue;
   }
 
-  async softDelete(id: string, organizationId: string, userId?: string): Promise<void> {
+  async softDelete(
+    id: string,
+    organizationId: string,
+    userId?: string,
+  ): Promise<void> {
     const issue = await this.findById(id, organizationId);
 
     // P27: Members may only delete their own issues; Admin/Manager/Owner bypass.
     if (userId && issue.reporterId !== userId) {
-      const isElevated = await this.permissionsService.isAdminOrOwner(userId, organizationId);
+      const isElevated = await this.permissionsService.isAdminOrOwner(
+        userId,
+        organizationId,
+      );
       if (!isElevated) {
-        throw new ForbiddenException('You can only delete your own issues');
+        throw new ForbiddenException("You can only delete your own issues");
       }
     }
 
     await this.issueRepository.update(id, { deletedAt: new Date() });
-    this.eventsGateway.emitToOrg(organizationId, 'issue:deleted', { id });
+    this.eventsGateway.emitToOrg(organizationId, "issue:deleted", { id });
 
     this.webhookEventEmitter.emit(
       organizationId,
       issue.projectId,
       WebhookEventType.ISSUE_DELETED,
-      { issue: { id: issue.id, key: issue.key, title: issue.title, projectId: issue.projectId } },
+      {
+        issue: {
+          id: issue.id,
+          key: issue.key,
+          title: issue.title,
+          projectId: issue.projectId,
+        },
+      },
     );
+
+    if (userId) {
+      const projectAdminIds =
+        await this.notificationAudience.getProjectAdminUserIds(issue.projectId);
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.ISSUE_DELETED,
+        title: `${issue.key} was deleted`,
+        body: issue.title,
+        data: {
+          issueId: issue.id,
+          projectId: issue.projectId,
+          issueKey: issue.key,
+        },
+        recipientUserIds: [
+          ...projectAdminIds,
+          issue.assigneeId,
+          issue.reporterId,
+        ],
+      });
+    }
 
     // Enqueue search delete job
     this.enqueueSearchDelete(id);
 
     // Log audit for deletion
-    this.auditService.log(organizationId, userId || null, 'issue.deleted', 'issue', id, {
-      key: issue.key,
-      title: issue.title,
-      projectId: issue.projectId,
-    });
+    this.auditService.log(
+      organizationId,
+      userId || null,
+      "issue.deleted",
+      "issue",
+      id,
+      {
+        key: issue.key,
+        title: issue.title,
+        projectId: issue.projectId,
+      },
+    );
   }
 
   // ── Issue Links ──
 
   private readonly LINK_TYPE_INVERSES: Record<string, string> = {
-    blocks: 'is_blocked_by',
-    is_blocked_by: 'blocks',
-    duplicates: 'is_duplicated_by',
-    is_duplicated_by: 'duplicates',
-    relates_to: 'relates_to',
+    blocks: "is_blocked_by",
+    is_blocked_by: "blocks",
+    duplicates: "is_duplicated_by",
+    is_duplicated_by: "duplicates",
+    relates_to: "relates_to",
   };
 
   private readonly LINK_TYPE_LABELS: Record<string, string> = {
-    blocks: 'blocks',
-    is_blocked_by: 'is blocked by',
-    duplicates: 'duplicates',
-    is_duplicated_by: 'is duplicated by',
-    relates_to: 'relates to',
+    blocks: "blocks",
+    is_blocked_by: "is blocked by",
+    duplicates: "duplicates",
+    is_duplicated_by: "is duplicated by",
+    relates_to: "relates to",
   };
 
   async createLink(
@@ -750,7 +1023,7 @@ export class IssuesService {
     await this.findById(dto.targetIssueId, organizationId);
 
     if (issueId === dto.targetIssueId) {
-      throw new BadRequestException('Cannot link an issue to itself');
+      throw new BadRequestException("Cannot link an issue to itself");
     }
 
     const link = this.issueLinkRepository.create({
@@ -763,7 +1036,7 @@ export class IssuesService {
     const saved = await this.issueLinkRepository.save(link);
     return this.issueLinkRepository.findOne({
       where: { id: saved.id },
-      relations: ['sourceIssue', 'targetIssue'],
+      relations: ["sourceIssue", "targetIssue"],
     });
   }
 
@@ -775,12 +1048,12 @@ export class IssuesService {
 
     const outward = await this.issueLinkRepository.find({
       where: { sourceIssueId: issueId },
-      relations: ['targetIssue', 'targetIssue.status'],
+      relations: ["targetIssue", "targetIssue.status"],
     });
 
     const inward = await this.issueLinkRepository.find({
       where: { targetIssueId: issueId },
-      relations: ['sourceIssue', 'sourceIssue.status'],
+      relations: ["sourceIssue", "sourceIssue.status"],
     });
 
     return {
@@ -793,7 +1066,10 @@ export class IssuesService {
       inward: inward.map((l) => ({
         id: l.id,
         linkType: this.LINK_TYPE_INVERSES[l.linkType] || l.linkType,
-        label: this.LINK_TYPE_LABELS[this.LINK_TYPE_INVERSES[l.linkType] || l.linkType] || l.linkType,
+        label:
+          this.LINK_TYPE_LABELS[
+            this.LINK_TYPE_INVERSES[l.linkType] || l.linkType
+          ] || l.linkType,
         issue: l.sourceIssue,
       })),
     };
@@ -809,17 +1085,20 @@ export class IssuesService {
       where: { id: linkId },
     });
     if (!link) {
-      throw new NotFoundException('Link not found');
+      throw new NotFoundException("Link not found");
     }
     if (link.sourceIssueId !== issueId && link.targetIssueId !== issueId) {
-      throw new NotFoundException('Link not found for this issue');
+      throw new NotFoundException("Link not found for this issue");
     }
     await this.issueLinkRepository.delete(linkId);
   }
 
   // ── Issue Watchers ──
 
-  private async addWatcherSilent(issueId: string, userId: string): Promise<void> {
+  private async addWatcherSilent(
+    issueId: string,
+    userId: string,
+  ): Promise<void> {
     try {
       await this.issueWatcherRepository.save(
         this.issueWatcherRepository.create({ issueId, userId }),
@@ -863,8 +1142,8 @@ export class IssuesService {
 
     const watchers = await this.issueWatcherRepository.find({
       where: { issueId },
-      relations: ['user'],
-      order: { createdAt: 'ASC' },
+      relations: ["user"],
+      order: { createdAt: "ASC" },
     });
 
     return {
@@ -886,15 +1165,23 @@ export class IssuesService {
     return count > 0;
   }
 
-  async getChildren(parentId: string, organizationId: string): Promise<Issue[]> {
+  async getChildren(
+    parentId: string,
+    organizationId: string,
+  ): Promise<Issue[]> {
     return this.issueRepository.find({
       where: { parentId, organizationId, deletedAt: IsNull() },
-      relations: ['status', 'assignee'],
-      order: { position: 'ASC' },
+      relations: ["status", "assignee"],
+      order: { position: "ASC" },
     });
   }
 
-  async createWorkLog(issueId: string, organizationId: string, dto: CreateWorkLogDto, userId: string): Promise<WorkLog> {
+  async createWorkLog(
+    issueId: string,
+    organizationId: string,
+    dto: CreateWorkLogDto,
+    userId: string,
+  ): Promise<WorkLog> {
     const issue = await this.findById(issueId, organizationId);
 
     const workLog = this.workLogRepository.create({
@@ -922,8 +1209,8 @@ export class IssuesService {
       issue.organizationId,
       issueId,
       userId,
-      'work_logged',
-      'timeSpent',
+      "work_logged",
+      "timeSpent",
       null,
       String(dto.timeSpent),
       { description: dto.description },
@@ -932,18 +1219,24 @@ export class IssuesService {
     return saved;
   }
 
-  async getWorkLogs(issueId: string, organizationId: string): Promise<WorkLog[]> {
+  async getWorkLogs(
+    issueId: string,
+    organizationId: string,
+  ): Promise<WorkLog[]> {
     await this.findById(issueId, organizationId);
     return this.workLogRepository.find({
       where: { issueId },
-      relations: ['user'],
-      order: { loggedAt: 'DESC' },
+      relations: ["user"],
+      order: { loggedAt: "DESC" },
     });
   }
 
-  async bulkUpdate(organizationId: string, dto: BulkUpdateIssuesDto): Promise<{ affected: number }> {
+  async bulkUpdate(
+    organizationId: string,
+    dto: BulkUpdateIssuesDto,
+  ): Promise<{ affected: number }> {
     if (!dto.issueIds || dto.issueIds.length === 0) {
-      throw new BadRequestException('issueIds must not be empty');
+      throw new BadRequestException("issueIds must not be empty");
     }
 
     const updateFields: Partial<Issue> = {};
@@ -952,10 +1245,13 @@ export class IssuesService {
     if (dto.type !== undefined) updateFields.type = dto.type;
     if (dto.priority !== undefined) updateFields.priority = dto.priority;
     if (dto.labels !== undefined) updateFields.labels = dto.labels;
-    if (dto.storyPoints !== undefined) updateFields.storyPoints = dto.storyPoints;
+    if (dto.storyPoints !== undefined)
+      updateFields.storyPoints = dto.storyPoints;
 
     if (Object.keys(updateFields).length === 0 && dto.sprintId === undefined) {
-      throw new BadRequestException('At least one field to update must be provided');
+      throw new BadRequestException(
+        "At least one field to update must be provided",
+      );
     }
 
     let affected = 0;
@@ -965,9 +1261,9 @@ export class IssuesService {
         .createQueryBuilder()
         .update(Issue)
         .set(updateFields)
-        .where('id IN (:...ids)', { ids: dto.issueIds })
-        .andWhere('organization_id = :organizationId', { organizationId })
-        .andWhere('deleted_at IS NULL')
+        .where("id IN (:...ids)", { ids: dto.issueIds })
+        .andWhere("organization_id = :organizationId", { organizationId })
+        .andWhere("deleted_at IS NULL")
         .execute();
       affected = Math.max(affected, result.affected || 0);
     }
@@ -977,10 +1273,10 @@ export class IssuesService {
         .createQueryBuilder()
         .update(Issue)
         .set({ sprintId: dto.sprintId })
-        .where('id IN (:...ids)', { ids: dto.issueIds })
-        .andWhere('organization_id = :organizationId', { organizationId })
-        .andWhere('deleted_at IS NULL')
-        .andWhere('type NOT IN (:...sprintIneligibleTypes)', {
+        .where("id IN (:...ids)", { ids: dto.issueIds })
+        .andWhere("organization_id = :organizationId", { organizationId })
+        .andWhere("deleted_at IS NULL")
+        .andWhere("type NOT IN (:...sprintIneligibleTypes)", {
           sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
         })
         .execute();
@@ -990,10 +1286,10 @@ export class IssuesService {
         .createQueryBuilder()
         .update(Issue)
         .set({ sprintId: null })
-        .where('id IN (:...ids)', { ids: dto.issueIds })
-        .andWhere('organization_id = :organizationId', { organizationId })
-        .andWhere('deleted_at IS NULL')
-        .andWhere('type IN (:...sprintIneligibleTypes)', {
+        .where("id IN (:...ids)", { ids: dto.issueIds })
+        .andWhere("organization_id = :organizationId", { organizationId })
+        .andWhere("deleted_at IS NULL")
+        .andWhere("type IN (:...sprintIneligibleTypes)", {
           sprintIneligibleTypes: [...SPRINT_INELIGIBLE_ISSUE_TYPES],
         })
         .execute();
@@ -1004,45 +1300,53 @@ export class IssuesService {
         .createQueryBuilder()
         .update(Issue)
         .set({ sprintId: null })
-        .where('id IN (:...ids)', { ids: dto.issueIds })
-        .andWhere('organization_id = :organizationId', { organizationId })
-        .andWhere('deleted_at IS NULL')
+        .where("id IN (:...ids)", { ids: dto.issueIds })
+        .andWhere("organization_id = :organizationId", { organizationId })
+        .andWhere("deleted_at IS NULL")
         .execute();
     }
 
-    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-updated', {
+    this.eventsGateway.emitToOrg(organizationId, "issues:bulk-updated", {
       issueIds: dto.issueIds,
     });
 
     return { affected };
   }
 
-  async bulkMove(organizationId: string, dto: BulkMoveIssuesDto): Promise<{ affected: number }> {
+  async bulkMove(
+    organizationId: string,
+    dto: BulkMoveIssuesDto,
+  ): Promise<{ affected: number }> {
     if (!dto.issueIds || dto.issueIds.length === 0) {
-      throw new BadRequestException('issueIds must not be empty');
+      throw new BadRequestException("issueIds must not be empty");
     }
 
-    const targetProject = await this.projectsService.findById(dto.targetProjectId, organizationId);
+    const targetProject = await this.projectsService.findById(
+      dto.targetProjectId,
+      organizationId,
+    );
 
     let targetStatusId = dto.targetStatusId;
     if (!targetStatusId) {
       const defaultStatus = await this.issueStatusRepository.findOne({
         where: { projectId: dto.targetProjectId, isDefault: true },
-        order: { position: 'ASC' },
+        order: { position: "ASC" },
       });
       if (defaultStatus) {
         targetStatusId = defaultStatus.id;
       } else {
         const firstStatus = await this.issueStatusRepository.findOne({
           where: { projectId: dto.targetProjectId },
-          order: { position: 'ASC' },
+          order: { position: "ASC" },
         });
         if (firstStatus) targetStatusId = firstStatus.id;
       }
     }
 
     if (!targetStatusId) {
-      throw new BadRequestException('Target project has no statuses configured');
+      throw new BadRequestException(
+        "Target project has no statuses configured",
+      );
     }
 
     // Re-key each issue with the target project's key prefix
@@ -1052,7 +1356,7 @@ export class IssuesService {
 
     const affected = issues.length;
     if (affected === 0) {
-      this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-moved', {
+      this.eventsGateway.emitToOrg(organizationId, "issues:bulk-moved", {
         issueIds: dto.issueIds,
         targetProjectId: dto.targetProjectId,
       });
@@ -1068,14 +1372,19 @@ export class IssuesService {
       [affected, dto.targetProjectId, organizationId],
     );
     if (!rows || rows.length === 0) {
-      throw new BadRequestException('Failed to reserve issue numbers in target project');
+      throw new BadRequestException(
+        "Failed to reserve issue numbers in target project",
+      );
     }
     const firstNumber: number = Number(rows[0].first_number);
 
     // Build a single bulk UPDATE assigning new keys and moving issues
     const valuesList = issues
-      .map((_, i) => `($${i * 3 + 1}::uuid, $${i * 3 + 2}::varchar, $${i * 3 + 3}::int)`)
-      .join(', ');
+      .map(
+        (_, i) =>
+          `($${i * 3 + 1}::uuid, $${i * 3 + 2}::varchar, $${i * 3 + 3}::int)`,
+      )
+      .join(", ");
     const bulkParams = issues.flatMap((issue, i) => {
       const issueNumber = firstNumber + i;
       const newKey = `${targetProject.key}-${issueNumber}`;
@@ -1092,10 +1401,15 @@ export class IssuesService {
          updated_at = NOW()
        FROM (VALUES ${valuesList}) AS v(id, new_key, new_number)
        WHERE issues.id = v.id AND issues.organization_id = $${bulkParams.length + 3}`,
-      [...bulkParams, dto.targetProjectId, targetStatusId ?? null, organizationId],
+      [
+        ...bulkParams,
+        dto.targetProjectId,
+        targetStatusId ?? null,
+        organizationId,
+      ],
     );
 
-    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-moved', {
+    this.eventsGateway.emitToOrg(organizationId, "issues:bulk-moved", {
       issueIds: dto.issueIds,
       targetProjectId: dto.targetProjectId,
     });
@@ -1103,9 +1417,13 @@ export class IssuesService {
     return { affected };
   }
 
-  async bulkDelete(organizationId: string, dto: BulkDeleteIssuesDto, callerId: string): Promise<{ affected: number }> {
+  async bulkDelete(
+    organizationId: string,
+    dto: BulkDeleteIssuesDto,
+    callerId: string,
+  ): Promise<{ affected: number }> {
     if (!dto.issueIds || dto.issueIds.length === 0) {
-      throw new BadRequestException('issueIds must not be empty');
+      throw new BadRequestException("issueIds must not be empty");
     }
 
     // Project Admins / Org Admins / Owners can delete any issue (issue:delete).
@@ -1113,8 +1431,8 @@ export class IssuesService {
     const canDeleteAny = await this.permissionsService.checkPermission(
       callerId,
       dto.issueIds[0],
-      'issue',
-      'delete',
+      "issue",
+      "delete",
       organizationId,
     );
 
@@ -1122,59 +1440,65 @@ export class IssuesService {
       .createQueryBuilder()
       .update(Issue)
       .set({ deletedAt: new Date() })
-      .where('id IN (:...ids)', { ids: dto.issueIds })
-      .andWhere('organization_id = :organizationId', { organizationId })
-      .andWhere('deleted_at IS NULL');
+      .where("id IN (:...ids)", { ids: dto.issueIds })
+      .andWhere("organization_id = :organizationId", { organizationId })
+      .andWhere("deleted_at IS NULL");
 
     if (!canDeleteAny) {
-      qb.andWhere('reporter_id = :callerId', { callerId });
+      qb.andWhere("reporter_id = :callerId", { callerId });
     }
 
     const result = await qb.execute();
 
-    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-deleted', {
+    this.eventsGateway.emitToOrg(organizationId, "issues:bulk-deleted", {
       issueIds: dto.issueIds,
     });
 
     return { affected: result.affected || 0 };
   }
 
-  async bulkRestore(organizationId: string, issueIds: string[]): Promise<{ affected: number }> {
+  async bulkRestore(
+    organizationId: string,
+    issueIds: string[],
+  ): Promise<{ affected: number }> {
     if (!issueIds || issueIds.length === 0) {
-      throw new BadRequestException('issueIds must not be empty');
+      throw new BadRequestException("issueIds must not be empty");
     }
 
     const result = await this.issueRepository
       .createQueryBuilder()
       .update(Issue)
       .set({ deletedAt: null as any })
-      .where('id IN (:...ids)', { ids: issueIds })
-      .andWhere('organization_id = :organizationId', { organizationId })
-      .andWhere('deleted_at IS NOT NULL')
+      .where("id IN (:...ids)", { ids: issueIds })
+      .andWhere("organization_id = :organizationId", { organizationId })
+      .andWhere("deleted_at IS NOT NULL")
       .execute();
 
-    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-restored', {
+    this.eventsGateway.emitToOrg(organizationId, "issues:bulk-restored", {
       issueIds,
     });
 
     return { affected: result.affected || 0 };
   }
 
-  async bulkTransition(organizationId: string, dto: BulkTransitionIssuesDto): Promise<{ affected: number }> {
+  async bulkTransition(
+    organizationId: string,
+    dto: BulkTransitionIssuesDto,
+  ): Promise<{ affected: number }> {
     if (!dto.issueIds || dto.issueIds.length === 0) {
-      throw new BadRequestException('issueIds must not be empty');
+      throw new BadRequestException("issueIds must not be empty");
     }
 
     const result = await this.issueRepository
       .createQueryBuilder()
       .update(Issue)
       .set({ statusId: dto.statusId })
-      .where('id IN (:...ids)', { ids: dto.issueIds })
-      .andWhere('organization_id = :organizationId', { organizationId })
-      .andWhere('deleted_at IS NULL')
+      .where("id IN (:...ids)", { ids: dto.issueIds })
+      .andWhere("organization_id = :organizationId", { organizationId })
+      .andWhere("deleted_at IS NULL")
       .execute();
 
-    this.eventsGateway.emitToOrg(organizationId, 'issues:bulk-transitioned', {
+    this.eventsGateway.emitToOrg(organizationId, "issues:bulk-transitioned", {
       issueIds: dto.issueIds,
       statusId: dto.statusId,
     });
@@ -1186,10 +1510,15 @@ export class IssuesService {
    * Send an issue-assigned email to the given user.
    * Looks up the user and project to fill in the email template fields.
    */
-  private async sendAssigneeEmail(assigneeId: string, issue: Issue): Promise<void> {
+  private async sendAssigneeEmail(
+    assigneeId: string,
+    issue: Issue,
+  ): Promise<void> {
     const assignee = await this.usersService.findById(assigneeId);
-    const projectName = issue.project?.name || 'Unknown Project';
-    const frontendUrl = this.configService.get<string>('app.frontendUrl') || 'http://localhost:3000';
+    const projectName = issue.project?.name || "Unknown Project";
+    const frontendUrl =
+      this.configService.get<string>("app.frontendUrl") ||
+      "http://localhost:3000";
     const issueUrl = `${frontendUrl}/issues/${issue.id}`;
 
     await this.emailService.sendIssueAssignedEmail(

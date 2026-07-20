@@ -345,19 +345,25 @@ export class AutomationEngineService {
   ): Promise<void> {
     const { userIds, message } = config;
     const targetIds = userIds || [];
-
-    for (const userId of targetIds) {
-      await this.notificationsService.create({
-        userId,
-        type: 'automation:notification',
-        title: message || 'Automation notification',
-        body: issue ? `Triggered on issue ${issue.key}` : 'Automation rule triggered',
-        data: {
-          issueId: issue?.id,
-          issueKey: issue?.key,
-        },
-      });
+    const organizationId = issue?.organizationId || context.organizationId;
+    if (!organizationId) {
+      this.logger.warn('Skipping automation notification — missing organizationId');
+      return;
     }
+
+    await this.notificationsService.notify({
+      organizationId,
+      actorUserId: context.userId || '00000000-0000-0000-0000-000000000000',
+      type: 'automation:notification',
+      title: message || 'Automation notification',
+      body: issue ? `Triggered on issue ${issue.key}` : 'Automation rule triggered',
+      data: {
+        issueId: issue?.id,
+        issueKey: issue?.key,
+        projectId: issue?.projectId,
+      },
+      recipientUserIds: targetIds,
+    });
     this.logger.log(`Sent notification to ${targetIds.length} user(s)`);
   }
 

@@ -25,6 +25,7 @@ function isNestedPortalTarget(target: EventTarget | null): boolean {
         '[data-radix-select-content]',
         '[role="listbox"]',
         '[data-radix-menu-content]',
+        '[data-mention-popup]',
       ].join(', '),
     ),
   )

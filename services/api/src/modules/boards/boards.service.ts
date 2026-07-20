@@ -2,23 +2,26 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository, SelectQueryBuilder } from 'typeorm';
-import { IssueStatus } from '../issues/entities/issue-status.entity';
-import { Issue } from '../issues/entities/issue.entity';
-import { Sprint } from '../sprints/entities/sprint.entity';
-import { CreateStatusDto } from './dto/create-status.dto';
-import { UpdateStatusDto } from './dto/update-status.dto';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, IsNull, Repository, SelectQueryBuilder } from "typeorm";
+import { IssueStatus } from "../issues/entities/issue-status.entity";
+import { Issue } from "../issues/entities/issue.entity";
+import { Sprint } from "../sprints/entities/sprint.entity";
+import { CreateStatusDto } from "./dto/create-status.dto";
+import { UpdateStatusDto } from "./dto/update-status.dto";
 import {
   normalizeSprintHandoffPolicyForCategory,
   resolveDefaultSprintHandoffPolicy,
-} from '../../common/constants/sprint-handoff-policy';
-import { normalizeSprintIdForIssueType } from '../../common/constants/sprint-planning-issue-types';
-import { ReorderIssuesDto } from './dto/reorder-issues.dto';
-import { BoardQueryDto } from './dto/board-query.dto';
-import { ProjectsService } from '../projects/projects.service';
-import { ActivityService } from '../activity/activity.service';
+} from "../../common/constants/sprint-handoff-policy";
+import { normalizeSprintIdForIssueType } from "../../common/constants/sprint-planning-issue-types";
+import { ReorderIssuesDto } from "./dto/reorder-issues.dto";
+import { BoardQueryDto } from "./dto/board-query.dto";
+import { ProjectsService } from "../projects/projects.service";
+import { ActivityService } from "../activity/activity.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { NotificationAudienceService } from "../notifications/notification-audience.service";
+import { NOTIFICATION_TYPES } from "../notifications/notification.constants";
 
 @Injectable()
 export class BoardsService {
@@ -31,6 +34,8 @@ export class BoardsService {
     private sprintRepository: Repository<Sprint>,
     private projectsService: ProjectsService,
     private activityService: ActivityService,
+    private notificationsService: NotificationsService,
+    private notificationAudience: NotificationAudienceService,
   ) {}
 
   /**
@@ -39,13 +44,13 @@ export class BoardsService {
    */
   private createBoardIssueQueryBuilder(): SelectQueryBuilder<Issue> {
     return this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.assignee', 'assignee')
-      .leftJoinAndSelect('issue.status', 'status')
-      .leftJoinAndSelect('issue.reporter', 'reporter')
-      .leftJoinAndSelect('issue.parent', 'parent')
-      .leftJoin('issue.sprint', 'sprint')
-      .addSelect(['sprint.id', 'sprint.name', 'sprint.status']);
+      .createQueryBuilder("issue")
+      .leftJoinAndSelect("issue.assignee", "assignee")
+      .leftJoinAndSelect("issue.status", "status")
+      .leftJoinAndSelect("issue.reporter", "reporter")
+      .leftJoinAndSelect("issue.parent", "parent")
+      .leftJoin("issue.sprint", "sprint")
+      .addSelect(["sprint.id", "sprint.name", "sprint.status"]);
   }
 
   /** Applies shared filter predicates to an issue query builder. */
@@ -54,25 +59,29 @@ export class BoardsService {
     query?: BoardQueryDto,
   ): void {
     if (query?.assigneeId) {
-      qb.andWhere('issue.assigneeId = :assigneeId', { assigneeId: query.assigneeId });
+      qb.andWhere("issue.assigneeId = :assigneeId", {
+        assigneeId: query.assigneeId,
+      });
     }
     if (query?.type) {
-      qb.andWhere('issue.type = :type', { type: query.type });
+      qb.andWhere("issue.type = :type", { type: query.type });
     }
     if (query?.priority) {
-      qb.andWhere('issue.priority = :priority', { priority: query.priority });
+      qb.andWhere("issue.priority = :priority", { priority: query.priority });
     }
     if (query?.label) {
-      qb.andWhere(':label = ANY(issue.labels)', { label: query.label });
+      qb.andWhere(":label = ANY(issue.labels)", { label: query.label });
     }
     if (query?.search) {
-      qb.andWhere('(issue.title ILIKE :search OR issue.key ILIKE :search)', { search: `%${query.search}%` });
+      qb.andWhere("(issue.title ILIKE :search OR issue.key ILIKE :search)", {
+        search: `%${query.search}%`,
+      });
     }
     if (query?.sprintId) {
-      if (query.sprintId === 'backlog') {
-        qb.andWhere('issue.sprintId IS NULL');
+      if (query.sprintId === "backlog") {
+        qb.andWhere("issue.sprintId IS NULL");
       } else {
-        qb.andWhere('issue.sprintId = :sprintId', { sprintId: query.sprintId });
+        qb.andWhere("issue.sprintId = :sprintId", { sprintId: query.sprintId });
       }
     }
 
@@ -83,14 +92,18 @@ export class BoardsService {
     qb.andWhere("issue.type NOT IN ('subtask', 'epic')");
   }
 
-  async getBoardData(projectId: string, organizationId: string, query?: BoardQueryDto) {
+  async getBoardData(
+    projectId: string,
+    organizationId: string,
+    query?: BoardQueryDto,
+  ) {
     await this.projectsService.findById(projectId, organizationId);
 
     const columnLimit = query?.columnLimit ?? 50;
 
     const statuses = await this.issueStatusRepository.find({
       where: { projectId },
-      order: { position: 'ASC' },
+      order: { position: "ASC" },
     });
 
     if (statuses.length === 0) {
@@ -99,11 +112,11 @@ export class BoardsService {
 
     // Fetch enough issues to fill all columns up to columnLimit each
     const qb = this.createBoardIssueQueryBuilder()
-      .where('issue.projectId = :projectId', { projectId })
-      .andWhere('issue.deletedAt IS NULL');
+      .where("issue.projectId = :projectId", { projectId })
+      .andWhere("issue.deletedAt IS NULL");
 
     this.applyBoardFilters(qb, query);
-    qb.orderBy('issue.position', 'ASC');
+    qb.orderBy("issue.position", "ASC");
 
     const allIssues = await qb
       .take(columnLimit * statuses.length + statuses.length)
@@ -120,14 +133,14 @@ export class BoardsService {
 
     // Count totals per column (same filters, grouped by statusId)
     const countQb = this.issueRepository
-      .createQueryBuilder('issue')
-      .select('issue.statusId', 'statusId')
-      .addSelect('COUNT(*)', 'total')
-      .where('issue.projectId = :projectId', { projectId })
-      .andWhere('issue.deletedAt IS NULL');
+      .createQueryBuilder("issue")
+      .select("issue.statusId", "statusId")
+      .addSelect("COUNT(*)", "total")
+      .where("issue.projectId = :projectId", { projectId })
+      .andWhere("issue.deletedAt IS NULL");
 
     this.applyBoardFilters(countQb, query);
-    countQb.groupBy('issue.statusId');
+    countQb.groupBy("issue.statusId");
 
     const countRows: Array<{ statusId: string; total: string }> =
       await countQb.getRawMany();
@@ -157,27 +170,37 @@ export class BoardsService {
     const limit = query?.columnLimit ?? 50;
 
     const qb = this.createBoardIssueQueryBuilder()
-      .where('issue.projectId = :projectId', { projectId })
-      .andWhere('issue.statusId = :statusId', { statusId })
-      .andWhere('issue.deletedAt IS NULL');
+      .where("issue.projectId = :projectId", { projectId })
+      .andWhere("issue.statusId = :statusId", { statusId })
+      .andWhere("issue.deletedAt IS NULL");
 
     this.applyBoardFilters(qb, query);
-    qb.orderBy('issue.position', 'ASC').skip(offset).take(limit);
+    qb.orderBy("issue.position", "ASC").skip(offset).take(limit);
 
     const [issues, total] = await qb.getManyAndCount();
 
-    return { issues, total, offset, limit, hasMore: offset + issues.length < total };
+    return {
+      issues,
+      total,
+      offset,
+      limit,
+      hasMore: offset + issues.length < total,
+    };
   }
 
-  async createStatus(projectId: string, organizationId: string, dto: CreateStatusDto): Promise<IssueStatus> {
+  async createStatus(
+    projectId: string,
+    organizationId: string,
+    dto: CreateStatusDto,
+  ): Promise<IssueStatus> {
     await this.projectsService.findById(projectId, organizationId);
 
     let position = dto.position;
     if (position === undefined) {
       const maxPosition = await this.issueStatusRepository
-        .createQueryBuilder('s')
-        .where('s.projectId = :projectId', { projectId })
-        .select('MAX(s.position)', 'max')
+        .createQueryBuilder("s")
+        .where("s.projectId = :projectId", { projectId })
+        .select("MAX(s.position)", "max")
         .getRawOne();
       position = (maxPosition?.max ?? -1) + 1;
     }
@@ -187,7 +210,7 @@ export class BoardsService {
       projectId,
       position,
       sprintHandoffPolicy: normalizeSprintHandoffPolicyForCategory(
-        dto.category ?? 'todo',
+        dto.category ?? "todo",
         dto.sprintHandoffPolicy,
         dto.name,
       ),
@@ -207,7 +230,7 @@ export class BoardsService {
       where: { id: statusId, projectId },
     });
     if (!status) {
-      throw new NotFoundException('Status not found');
+      throw new NotFoundException("Status not found");
     }
 
     const nextCategory = dto.category ?? status.category;
@@ -216,35 +239,47 @@ export class BoardsService {
 
     Object.assign(status, dto);
     status.sprintHandoffPolicy = explicitPolicy
-      ? normalizeSprintHandoffPolicyForCategory(nextCategory, explicitPolicy, nextName)
+      ? normalizeSprintHandoffPolicyForCategory(
+          nextCategory,
+          explicitPolicy,
+          nextName,
+        )
       : dto.category !== undefined
         ? resolveDefaultSprintHandoffPolicy(nextCategory, nextName)
         : status.sprintHandoffPolicy;
 
-    if (nextCategory === 'done') {
-      status.sprintHandoffPolicy = normalizeSprintHandoffPolicyForCategory('done', undefined, nextName);
+    if (nextCategory === "done") {
+      status.sprintHandoffPolicy = normalizeSprintHandoffPolicyForCategory(
+        "done",
+        undefined,
+        nextName,
+      );
     }
 
     return this.issueStatusRepository.save(status);
   }
 
-  async deleteStatus(projectId: string, statusId: string, organizationId: string): Promise<void> {
+  async deleteStatus(
+    projectId: string,
+    statusId: string,
+    organizationId: string,
+  ): Promise<void> {
     await this.projectsService.findById(projectId, organizationId);
 
     const status = await this.issueStatusRepository.findOne({
       where: { id: statusId, projectId },
     });
     if (!status) {
-      throw new NotFoundException('Status not found');
+      throw new NotFoundException("Status not found");
     }
 
     const statuses = await this.issueStatusRepository.find({
       where: { projectId },
-      order: { position: 'ASC' },
+      order: { position: "ASC" },
     });
 
     if (statuses.length <= 1) {
-      throw new BadRequestException('Cannot delete the last status column');
+      throw new BadRequestException("Cannot delete the last status column");
     }
 
     const fallbackStatus = statuses.find((s) => s.id !== statusId);
@@ -253,7 +288,7 @@ export class BoardsService {
       .createQueryBuilder()
       .update()
       .set({ statusId: fallbackStatus.id })
-      .where('statusId = :statusId', { statusId })
+      .where("statusId = :statusId", { statusId })
       .execute();
 
     await this.issueStatusRepository.remove(status);
@@ -280,18 +315,24 @@ export class BoardsService {
             projectId,
             deletedAt: IsNull(),
           },
-          relations: ['status'],
+          relations: ["status"],
         })
       : [];
-    const existingIssueById = new Map((existingIssues ?? []).map((issue) => [issue.id, issue]));
+    const existingIssueById = new Map(
+      (existingIssues ?? []).map((issue) => [issue.id, issue]),
+    );
 
     const missingIssueIds = issueIds.filter((id) => !existingIssueById.has(id));
     if (missingIssueIds.length > 0) {
-      throw new NotFoundException(`Issues not found: ${missingIssueIds.join(', ')}`);
+      throw new NotFoundException(
+        `Issues not found: ${missingIssueIds.join(", ")}`,
+      );
     }
 
     // Check WIP limits for each target status
-    const targetStatusIds = [...new Set(dto.items.map((item) => item.statusId))];
+    const targetStatusIds = [
+      ...new Set(dto.items.map((item) => item.statusId)),
+    ];
     const targetStatusById = new Map<string, IssueStatus>();
 
     for (const statusId of targetStatusIds) {
@@ -307,15 +348,17 @@ export class BoardsService {
 
       if (status.wipLimit > 0) {
         // Count how many issues will end up in this status after the reorder
-        const issuesMovingToStatus = dto.items.filter((item) => item.statusId === statusId);
+        const issuesMovingToStatus = dto.items.filter(
+          (item) => item.statusId === statusId,
+        );
         const issueIdsMoving = issuesMovingToStatus.map((item) => item.issueId);
 
         // Count existing issues in this status that are NOT being moved
         const currentCount = await this.issueRepository
-          .createQueryBuilder('issue')
-          .where('issue.statusId = :statusId', { statusId })
-          .andWhere('issue.projectId = :projectId', { projectId })
-          .andWhere('issue.deletedAt IS NULL')
+          .createQueryBuilder("issue")
+          .where("issue.statusId = :statusId", { statusId })
+          .andWhere("issue.projectId = :projectId", { projectId })
+          .andWhere("issue.deletedAt IS NULL")
           .getCount();
 
         // Count how many issues are being moved OUT of this status
@@ -325,10 +368,15 @@ export class BoardsService {
 
         // The issues moving into this column that aren't already there
         const existingInTarget = await this.issueRepository
-          .createQueryBuilder('issue')
-          .where('issue.statusId = :statusId', { statusId })
-          .andWhere('issue.id IN (:...ids)', { ids: issueIdsMoving.length > 0 ? issueIdsMoving : ['00000000-0000-0000-0000-000000000000'] })
-          .andWhere('issue.deletedAt IS NULL')
+          .createQueryBuilder("issue")
+          .where("issue.statusId = :statusId", { statusId })
+          .andWhere("issue.id IN (:...ids)", {
+            ids:
+              issueIdsMoving.length > 0
+                ? issueIdsMoving
+                : ["00000000-0000-0000-0000-000000000000"],
+          })
+          .andWhere("issue.deletedAt IS NULL")
           .getCount();
 
         const newIssuesCount = issuesMovingToStatus.length - existingInTarget;
@@ -361,19 +409,27 @@ export class BoardsService {
     const resolvedItems = dto.items.map((item) => {
       const existing = existingIssueById.get(item.issueId);
       const requestedSprintId =
-        item.sprintId !== undefined ? item.sprintId : (existing?.sprintId ?? null);
+        item.sprintId !== undefined
+          ? item.sprintId
+          : (existing?.sprintId ?? null);
       return {
         issueId: item.issueId,
         statusId: item.statusId,
         position: item.position,
-        sprintId: normalizeSprintIdForIssueType(existing?.type, requestedSprintId),
+        sprintId: normalizeSprintIdForIssueType(
+          existing?.type,
+          requestedSprintId,
+        ),
       };
     });
 
     // Single bulk UPDATE using VALUES list — avoids N individual round trips
     const values = resolvedItems
-      .map((_, i) => `($${i * 4 + 1}::uuid, $${i * 4 + 2}::uuid, $${i * 4 + 3}::float, $${i * 4 + 4}::uuid)`)
-      .join(', ');
+      .map(
+        (_, i) =>
+          `($${i * 4 + 1}::uuid, $${i * 4 + 2}::uuid, $${i * 4 + 3}::float, $${i * 4 + 4}::uuid)`,
+      )
+      .join(", ");
     const params = resolvedItems.flatMap((item) => [
       item.issueId,
       item.statusId,
@@ -391,15 +447,62 @@ export class BoardsService {
       return;
     }
 
-    const latestByIssueId = new Map(dto.items.map((item) => [item.issueId, item]));
-    const changedStatusMoves = Array.from(latestByIssueId.values()).filter((item) => {
-      const issue = existingIssueById.get(item.issueId);
-      return !!issue && issue.statusId !== item.statusId;
-    });
+    const latestByIssueId = new Map(
+      dto.items.map((item) => [item.issueId, item]),
+    );
+    const changedStatusMoves = Array.from(latestByIssueId.values()).filter(
+      (item) => {
+        const issue = existingIssueById.get(item.issueId);
+        return !!issue && issue.statusId !== item.statusId;
+      },
+    );
 
     if (changedStatusMoves.length === 0) {
       return;
     }
+
+    const issueIdsToNotify = Array.from(
+      new Set(changedStatusMoves.map((i) => i.issueId)),
+    );
+    const watcherUserIdsByIssueId =
+      await this.notificationAudience.getWatcherUserIdsByIssueIds(
+        issueIdsToNotify,
+      );
+
+    await Promise.all(
+      changedStatusMoves.map(async (item) => {
+        const issue = existingIssueById.get(item.issueId)!;
+        const newStatusName = targetStatusById.get(item.statusId)?.name ?? null;
+        const recipientUserIds = Array.from(
+          new Set([
+            issue.assigneeId ?? null,
+            issue.reporterId ?? null,
+            ...(watcherUserIdsByIssueId[item.issueId] ?? []),
+          ]),
+        );
+
+        // Best-effort: the board reorder itself must not fail because
+        // notifications DB/socket delivery failed.
+        try {
+          await this.notificationsService.notify({
+            organizationId,
+            actorUserId: userId,
+            type: NOTIFICATION_TYPES.ISSUE_STATUS_CHANGED,
+            title: `${issue.key} status changed to ${newStatusName ?? 'Unknown'}`,
+            body: issue.title,
+            data: {
+              issueId: issue.id,
+              projectId,
+              issueKey: issue.key,
+              statusId: item.statusId,
+            },
+            recipientUserIds,
+          });
+        } catch {
+          // Intentionally ignore — UI/board reorder should remain successful.
+        }
+      }),
+    );
 
     await Promise.all(
       changedStatusMoves.map((item) => {
@@ -410,8 +513,8 @@ export class BoardsService {
           organizationId,
           issue.id,
           userId,
-          'updated',
-          'statusId',
+          "updated",
+          "statusId",
           oldStatusName,
           newStatusName,
         );

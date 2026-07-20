@@ -98,6 +98,11 @@ export interface User {
   emailVerified: boolean
   twoFaEnabled: boolean
   jiraAccountId?: string | null
+  notificationPreferences?: {
+    email?: boolean
+    inApp?: boolean
+    sound?: boolean
+  }
   lastLoginAt?: string
   createdAt: string
   updatedAt: string
@@ -244,6 +249,7 @@ export interface MediaThumbnailGridProps {
 
 export interface Notification {
   id: string
+  organizationId?: string
   userId: string
   type: string
   title: string

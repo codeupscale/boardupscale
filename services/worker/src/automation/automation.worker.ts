@@ -173,15 +173,24 @@ async function executeAction(
 
     case 'notify': {
       const userIds: string[] = config.userIds || [];
+      const organizationId = issue.organization_id || config.organizationId;
+      if (!organizationId) {
+        throw new Error('Automation notify requires organizationId');
+      }
       for (const uid of userIds) {
         await pool.query(
-          `INSERT INTO notifications (user_id, type, title, body, data, read, created_at)
-           VALUES ($1, 'automation:notification', $2, $3, $4, false, NOW())`,
+          `INSERT INTO notifications (organization_id, user_id, type, title, body, data, read_at, created_at)
+           VALUES ($1, $2, 'automation:notification', $3, $4, $5::jsonb, NULL, NOW())`,
           [
+            organizationId,
             uid,
             config.message || 'Automation notification',
             `Triggered on issue ${issue.key}`,
-            JSON.stringify({ issueId: issue.id, issueKey: issue.key }),
+            JSON.stringify({
+              issueId: issue.id,
+              issueKey: issue.key,
+              organizationId,
+            }),
           ],
         );
       }

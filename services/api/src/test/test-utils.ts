@@ -149,10 +149,34 @@ export function createMockEventsGateway() {
 export function createMockNotificationsService() {
   return {
     create: jest.fn(),
+    notify: jest.fn().mockResolvedValue(undefined),
+    createBatch: jest.fn().mockResolvedValue(undefined),
     findAll: jest.fn(),
     getUnreadCount: jest.fn(),
     markRead: jest.fn(),
     markAllRead: jest.fn(),
+    getPreferences: jest.fn(),
+    updatePreferences: jest.fn(),
+  };
+}
+
+export function createMockNotificationAudienceService() {
+  return {
+    getWatcherUserIds: jest.fn().mockResolvedValue([]),
+    getProjectAdminUserIds: jest.fn().mockResolvedValue([]),
+    getOrgOwnerAdminUserIds: jest.fn().mockResolvedValue([]),
+    isProjectMember: jest.fn().mockResolvedValue(true),
+    filterToProjectMembers: jest.fn().mockImplementation(async (_projectId: string, userIds: string[]) => userIds),
+    getIssueStakeholders: jest.fn().mockImplementation(
+      async (params: {
+        assigneeId?: string | null;
+        reporterId?: string | null;
+      }) =>
+        [params.assigneeId, params.reporterId].filter(
+          (id): id is string => typeof id === 'string' && id.length > 0,
+        ),
+    ),
+    getProjectMemberUserIds: jest.fn().mockResolvedValue([]),
   };
 }
 
