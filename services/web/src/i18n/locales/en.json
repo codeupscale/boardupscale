@@ -221,7 +221,7 @@
     "noIssues": "No issues found",
     "noIssuesFilter": "Try adjusting your filters or create a new issue.",
     "deleteConfirm": "Are you sure you want to delete this issue?",
-    "deleteIssue": "Delete Issue",
+    "deleteIssue": "Delete Ticket",
     "deleteIssueConfirm": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone.",
     "noComments": "No comments yet.",
     "noTimeLogged": "No time logged yet.",

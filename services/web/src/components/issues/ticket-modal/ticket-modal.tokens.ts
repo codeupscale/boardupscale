@@ -12,7 +12,7 @@ export const ticketModalTokens = {
     '-translate-x-1/2 -translate-y-1/2',
     'rounded-xl border-2 border-violet-500/70 bg-card',
     'shadow-2xl shadow-violet-500/15 ring-1 ring-violet-400/25',
-    'duration-200',
+    'duration-200 overflow-visible',
     'data-[state=open]:animate-in data-[state=closed]:animate-out',
     'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
     'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

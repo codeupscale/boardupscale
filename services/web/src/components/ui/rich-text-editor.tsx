@@ -134,7 +134,7 @@ interface MentionPopupState {
   visible: boolean
   users: User[]
   selectedIndex: number
-  /** Viewport coordinates for fixed portal positioning */
+  /** Coordinates relative to the portal host (viewport for body, dialog box for modal) */
   position: { top: number; left: number }
 }
 
@@ -142,11 +142,23 @@ const MENTION_POPUP_MAX_HEIGHT = 192 // max-h-48
 const MENTION_POPUP_GAP = 4
 const MENTION_ITEM_HEIGHT = 44
 
+/**
+ * Radix Dialog marks non-dialog body children as `inert` and disables body
+ * pointer-events. Mentions must portal *inside* `[role="dialog"]` so hover/click
+ * work. Dialog content uses CSS transform, so coords must be host-relative + absolute.
+ */
+function getMentionPortalHost(editorEl: HTMLElement | null): HTMLElement {
+  return (
+    (editorEl?.closest('[role="dialog"]') as HTMLElement | null) ?? document.body
+  )
+}
+
 function resolveMentionPopupPosition(
   rect: DOMRect | null | undefined,
   itemCount = 1,
+  portalHost?: HTMLElement | null,
 ): { top: number; left: number } {
-  if (!rect || rect.width === 0 && rect.height === 0) return { top: 0, left: 0 }
+  if (!rect || (rect.width === 0 && rect.height === 0)) return { top: 0, left: 0 }
 
   const estimatedHeight = Math.min(
     MENTION_POPUP_MAX_HEIGHT,
@@ -158,16 +170,84 @@ function resolveMentionPopupPosition(
     spaceBelow < estimatedHeight + MENTION_POPUP_GAP &&
     spaceAbove > spaceBelow
 
-  const top = openAbove
+  const viewportTop = openAbove
     ? Math.max(8, rect.top - estimatedHeight - MENTION_POPUP_GAP)
     : rect.bottom + MENTION_POPUP_GAP
 
-  const left = Math.min(
+  const viewportLeft = Math.min(
     Math.max(8, rect.left),
     window.innerWidth - 272,
   )
 
-  return { top, left }
+  if (!portalHost || portalHost === document.body) {
+    return { top: viewportTop, left: viewportLeft }
+  }
+
+  const hostRect = portalHost.getBoundingClientRect()
+  return {
+    top: viewportTop - hostRect.top,
+    left: viewportLeft - hostRect.left,
+  }
+}
+
+function MentionSuggestionList({
+  users,
+  selectedIndex,
+  position,
+  positionMode,
+  onHover,
+  onSelect,
+}: {
+  users: User[]
+  selectedIndex: number
+  position: { top: number; left: number }
+  positionMode: 'fixed' | 'absolute'
+  onHover: (index: number) => void
+  onSelect: (user: User) => void
+}) {
+  return (
+    <div
+      data-mention-popup
+      role="listbox"
+      className={cn(
+        positionMode === 'fixed' ? 'fixed' : 'absolute',
+        'z-[200] w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg',
+        'pointer-events-auto',
+      )}
+      style={{ top: position.top, left: position.left }}
+      // Keep TipTap suggestion range alive — do not let the editor blur on pointerdown.
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
+      {users.map((user, idx) => (
+        <button
+          key={user.id}
+          type="button"
+          role="option"
+          aria-selected={idx === selectedIndex}
+          className={cn(
+            'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-foreground/80',
+            'hover:bg-primary/10 transition-colors cursor-pointer',
+            idx === selectedIndex && 'bg-primary/10',
+          )}
+          onPointerEnter={() => onHover(idx)}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onSelect(user)
+          }}
+        >
+          <Avatar user={user} size="xs" />
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-foreground truncate">{user.displayName}</div>
+            <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+          </div>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 // ──────────────────────────────────────────────
@@ -235,13 +315,31 @@ export function RichTextEditor({
 
   const mentionPopupRef = useRef(mentionPopup)
   mentionPopupRef.current = mentionPopup
+  /** Durable across TipTap onExit — cleared only after a successful select or a settled exit. */
   const selectMentionRef = useRef<((user: User) => void) | null>(null)
   const mentionClientRectRef = useRef<(() => DOMRect | null) | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const usersRef = useRef(users)
   usersRef.current = users
+  const mentionPortalHost =
+    typeof document !== 'undefined'
+      ? getMentionPortalHost(editorContainerRef.current)
+      : null
+  const mentionPositionMode: 'fixed' | 'absolute' =
+    mentionPortalHost && mentionPortalHost !== document.body ? 'absolute' : 'fixed'
 
-  // Keep the portaled mention menu glued to the caret while modal/page scrolls.
+  const applyMentionSelection = useCallback((user: User) => {
+    const select = selectMentionRef.current
+    if (!select) return
+    select(user)
+    selectMentionRef.current = null
+    mentionClientRectRef.current = null
+    setMentionPopup((prev) => ({ ...prev, visible: false }))
+  }, [])
+  const applyMentionSelectionRef = useRef(applyMentionSelection)
+  applyMentionSelectionRef.current = applyMentionSelection
+
+  // Keep the mention menu glued to the caret while modal/page scrolls.
   useEffect(() => {
     if (!mentionPopup.visible) return
 
@@ -259,9 +357,10 @@ export function RichTextEditor({
         return
       }
 
+      const host = getMentionPortalHost(editorContainerRef.current)
       setMentionPopup((prev) => ({
         ...prev,
-        position: resolveMentionPopupPosition(rect, prev.users.length),
+        position: resolveMentionPopupPosition(rect, prev.users.length, host),
       }))
     }
 
@@ -348,12 +447,13 @@ export function RichTextEditor({
             const filteredUsers = props.items as User[]
             const rect = props.clientRect?.()
             mentionClientRectRef.current = props.clientRect ?? null
+            const host = getMentionPortalHost(editorContainerRef.current)
 
             setMentionPopup({
               visible: true,
               users: filteredUsers,
               selectedIndex: 0,
-              position: resolveMentionPopupPosition(rect, filteredUsers.length),
+              position: resolveMentionPopupPosition(rect, filteredUsers.length, host),
             })
 
             selectMentionRef.current = (user: User) => {
@@ -365,13 +465,20 @@ export function RichTextEditor({
             const filteredUsers = props.items as User[]
             const rect = props.clientRect?.()
             mentionClientRectRef.current = props.clientRect ?? null
+            const host = getMentionPortalHost(editorContainerRef.current)
 
             setMentionPopup((prev) => ({
               ...prev,
               users: filteredUsers,
-              selectedIndex: 0,
+              // Preserve keyboard/hover highlight when the filtered list is unchanged;
+              // reset when query results change length/identity.
+              selectedIndex:
+                filteredUsers.length === prev.users.length &&
+                filteredUsers.every((u, i) => u.id === prev.users[i]?.id)
+                  ? Math.min(prev.selectedIndex, Math.max(filteredUsers.length - 1, 0))
+                  : 0,
               position: rect
-                ? resolveMentionPopupPosition(rect, filteredUsers.length)
+                ? resolveMentionPopupPosition(rect, filteredUsers.length, host)
                 : prev.position,
             }))
 
@@ -401,10 +508,7 @@ export function RichTextEditor({
             }
             if (event.key === 'Enter' || event.key === 'Tab') {
               const user = popup.users[popup.selectedIndex]
-              if (user && selectMentionRef.current) {
-                selectMentionRef.current(user)
-                setMentionPopup((prev) => ({ ...prev, visible: false }))
-              }
+              if (user) applyMentionSelectionRef.current(user)
               return true
             }
             if (event.key === 'Escape') {
@@ -417,7 +521,10 @@ export function RichTextEditor({
           onExit: () => {
             mentionClientRectRef.current = null
             setMentionPopup((prev) => ({ ...prev, visible: false }))
-            selectMentionRef.current = null
+            // Keep command briefly so a concurrent pointer select can still apply.
+            window.setTimeout(() => {
+              selectMentionRef.current = null
+            }, 0)
           },
         }
       },
@@ -818,51 +925,24 @@ export function RichTextEditor({
         </div>
       )}
 
-      {/* Mention popup — portaled so overflow:hidden parents (ticket modal / editor) cannot clip it */}
+      {/* Mention popup — inside dialog when present so Radix inert/pointer-lock don't kill mouse UX */}
       {mentionPopup.visible &&
         mentionPopup.users.length > 0 &&
+        mentionPortalHost &&
         createPortal(
-          <div
-            data-mention-popup
-            role="listbox"
-            className="fixed z-[200] w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
-            style={{
-              top: mentionPopup.position.top,
-              left: mentionPopup.position.left,
-            }}
-          >
-            {mentionPopup.users.map((user, idx) => (
-              <button
-                key={user.id}
-                type="button"
-                role="option"
-                aria-selected={idx === mentionPopup.selectedIndex}
-                className={cn(
-                  'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-primary/10 transition-colors',
-                  idx === mentionPopup.selectedIndex && 'bg-primary/10',
-                )}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  if (selectMentionRef.current) {
-                    selectMentionRef.current(user)
-                    setMentionPopup((prev) => ({ ...prev, visible: false }))
-                  }
-                }}
-                onMouseEnter={() =>
-                  setMentionPopup((prev) => ({ ...prev, selectedIndex: idx }))
-                }
-              >
-                <Avatar user={user} size="xs" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground truncate">
-                    {user.displayName}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                </div>
-              </button>
-            ))}
-          </div>,
-          document.body,
+          <MentionSuggestionList
+            users={mentionPopup.users}
+            selectedIndex={mentionPopup.selectedIndex}
+            position={mentionPopup.position}
+            positionMode={mentionPositionMode}
+            onHover={(idx) =>
+              setMentionPopup((prev) =>
+                prev.selectedIndex === idx ? prev : { ...prev, selectedIndex: idx },
+              )
+            }
+            onSelect={applyMentionSelection}
+          />,
+          mentionPortalHost,
         )}
     </div>
   )

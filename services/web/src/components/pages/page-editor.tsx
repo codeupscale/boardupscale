@@ -290,7 +290,9 @@ export function PageEditor({
         },
         onExit: () => {
           setMentionPopup((prev) => ({ ...prev, visible: false }))
-          selectMentionRef.current = null
+          queueMicrotask(() => {
+            selectMentionRef.current = null
+          })
         },
       }),
     },
@@ -543,6 +545,10 @@ export function PageEditor({
         <div
           className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
           style={{ top: mentionPopup.position.top, left: mentionPopup.position.left }}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
         >
           {mentionPopup.users.map((user, idx) => (
             <button
@@ -552,10 +558,12 @@ export function PageEditor({
                 'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
                 idx === mentionPopup.selectedIndex && 'bg-primary/10',
               )}
-              onMouseDown={(e) => {
+              onPointerDown={(e) => {
                 e.preventDefault()
-                if (selectMentionRef.current) {
-                  selectMentionRef.current(user)
+                e.stopPropagation()
+                const select = selectMentionRef.current
+                if (select) {
+                  select(user)
                   setMentionPopup((prev) => ({ ...prev, visible: false }))
                 }
               }}
