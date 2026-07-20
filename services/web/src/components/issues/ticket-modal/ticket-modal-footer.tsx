@@ -47,7 +47,6 @@ export function TicketModalFooter({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
           onClick={onDelete}
           disabled={deleteDisabled || footerBusy}
           isLoading={isDeleting}
@@ -55,6 +54,7 @@ export function TicketModalFooter({
           className="text-destructive hover:text-destructive hover:bg-destructive/10"
         >
           {!isDeleting && <Trash2 className="h-4 w-4" />}
+          {t('issues.deleteIssue')}
         </Button>
       )}
       <div className="flex items-center gap-3">

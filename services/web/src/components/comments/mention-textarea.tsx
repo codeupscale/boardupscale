@@ -164,6 +164,10 @@ export function MentionTextarea({
         <div
           ref={dropdownRef}
           className="absolute z-50 mt-1 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg dark:shadow-black/40"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
         >
           {filteredUsers.map((user, idx) => (
             <button
@@ -173,8 +177,9 @@ export function MentionTextarea({
                 'flex items-center gap-2 w-full px-3 py-2 text-left text-sm hover:bg-primary/10 transition-colors',
                 idx === selectedIndex && 'bg-primary/10',
               )}
-              onMouseDown={(e) => {
-                e.preventDefault() // Prevent textarea blur
+              onPointerDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
                 insertMention(user)
               }}
               onMouseEnter={() => setSelectedIndex(idx)}
