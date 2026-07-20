@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useEditor, EditorContent, Extension, NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
 import type { NodeViewProps } from '@tiptap/core'
 import { Plugin as PmPlugin, PluginKey } from '@tiptap/pm/state'
@@ -133,7 +134,40 @@ interface MentionPopupState {
   visible: boolean
   users: User[]
   selectedIndex: number
+  /** Viewport coordinates for fixed portal positioning */
   position: { top: number; left: number }
+}
+
+const MENTION_POPUP_MAX_HEIGHT = 192 // max-h-48
+const MENTION_POPUP_GAP = 4
+const MENTION_ITEM_HEIGHT = 44
+
+function resolveMentionPopupPosition(
+  rect: DOMRect | null | undefined,
+  itemCount = 1,
+): { top: number; left: number } {
+  if (!rect || rect.width === 0 && rect.height === 0) return { top: 0, left: 0 }
+
+  const estimatedHeight = Math.min(
+    MENTION_POPUP_MAX_HEIGHT,
+    Math.max(itemCount, 1) * MENTION_ITEM_HEIGHT + 8,
+  )
+  const spaceBelow = window.innerHeight - rect.bottom
+  const spaceAbove = rect.top
+  const openAbove =
+    spaceBelow < estimatedHeight + MENTION_POPUP_GAP &&
+    spaceAbove > spaceBelow
+
+  const top = openAbove
+    ? Math.max(8, rect.top - estimatedHeight - MENTION_POPUP_GAP)
+    : rect.bottom + MENTION_POPUP_GAP
+
+  const left = Math.min(
+    Math.max(8, rect.left),
+    window.innerWidth - 272,
+  )
+
+  return { top, left }
 }
 
 // ──────────────────────────────────────────────
@@ -202,9 +236,42 @@ export function RichTextEditor({
   const mentionPopupRef = useRef(mentionPopup)
   mentionPopupRef.current = mentionPopup
   const selectMentionRef = useRef<((user: User) => void) | null>(null)
+  const mentionClientRectRef = useRef<(() => DOMRect | null) | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const usersRef = useRef(users)
   usersRef.current = users
+
+  // Keep the portaled mention menu glued to the caret while modal/page scrolls.
+  useEffect(() => {
+    if (!mentionPopup.visible) return
+
+    const syncPosition = () => {
+      const getRect = mentionClientRectRef.current
+      const rect = getRect?.() ?? null
+      if (!rect || (rect.width === 0 && rect.height === 0)) {
+        setMentionPopup((prev) => ({ ...prev, visible: false }))
+        return
+      }
+
+      // Caret scrolled fully out of the viewport — dismiss.
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        setMentionPopup((prev) => ({ ...prev, visible: false }))
+        return
+      }
+
+      setMentionPopup((prev) => ({
+        ...prev,
+        position: resolveMentionPopupPosition(rect, prev.users.length),
+      }))
+    }
+
+    window.addEventListener('scroll', syncPosition, true)
+    window.addEventListener('resize', syncPosition)
+    return () => {
+      window.removeEventListener('scroll', syncPosition, true)
+      window.removeEventListener('resize', syncPosition)
+    }
+  }, [mentionPopup.visible])
 
   // ── Upload + insert — reads from refs so it's always current ──
   const uploadAndInsert = useCallback(async (file: File, editorInstance: any) => {
@@ -280,19 +347,13 @@ export function RichTextEditor({
           onStart: (props: any) => {
             const filteredUsers = props.items as User[]
             const rect = props.clientRect?.()
-            const containerRect = editorContainerRef.current?.getBoundingClientRect()
+            mentionClientRectRef.current = props.clientRect ?? null
 
             setMentionPopup({
               visible: true,
               users: filteredUsers,
               selectedIndex: 0,
-              position:
-                rect && containerRect
-                  ? {
-                      top: rect.bottom - containerRect.top + 4,
-                      left: rect.left - containerRect.left,
-                    }
-                  : { top: 0, left: 0 },
+              position: resolveMentionPopupPosition(rect, filteredUsers.length),
             })
 
             selectMentionRef.current = (user: User) => {
@@ -303,19 +364,15 @@ export function RichTextEditor({
           onUpdate: (props: any) => {
             const filteredUsers = props.items as User[]
             const rect = props.clientRect?.()
-            const containerRect = editorContainerRef.current?.getBoundingClientRect()
+            mentionClientRectRef.current = props.clientRect ?? null
 
             setMentionPopup((prev) => ({
               ...prev,
               users: filteredUsers,
               selectedIndex: 0,
-              position:
-                rect && containerRect
-                  ? {
-                      top: rect.bottom - containerRect.top + 4,
-                      left: rect.left - containerRect.left,
-                    }
-                  : prev.position,
+              position: rect
+                ? resolveMentionPopupPosition(rect, filteredUsers.length)
+                : prev.position,
             }))
 
             selectMentionRef.current = (user: User) => {
@@ -358,6 +415,7 @@ export function RichTextEditor({
           },
 
           onExit: () => {
+            mentionClientRectRef.current = null
             setMentionPopup((prev) => ({ ...prev, visible: false }))
             selectMentionRef.current = null
           },
@@ -760,45 +818,52 @@ export function RichTextEditor({
         </div>
       )}
 
-      {/* Mention popup */}
-      {mentionPopup.visible && mentionPopup.users.length > 0 && (
-        <div
-          className="absolute z-50 w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
-          style={{
-            top: mentionPopup.position.top,
-            left: mentionPopup.position.left,
-          }}
-        >
-          {mentionPopup.users.map((user, idx) => (
-            <button
-              key={user.id}
-              type="button"
-              className={cn(
-                'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-primary/10 transition-colors',
-                idx === mentionPopup.selectedIndex && 'bg-primary/10',
-              )}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                if (selectMentionRef.current) {
-                  selectMentionRef.current(user)
-                  setMentionPopup((prev) => ({ ...prev, visible: false }))
+      {/* Mention popup — portaled so overflow:hidden parents (ticket modal / editor) cannot clip it */}
+      {mentionPopup.visible &&
+        mentionPopup.users.length > 0 &&
+        createPortal(
+          <div
+            data-mention-popup
+            role="listbox"
+            className="fixed z-[200] w-64 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
+            style={{
+              top: mentionPopup.position.top,
+              left: mentionPopup.position.left,
+            }}
+          >
+            {mentionPopup.users.map((user, idx) => (
+              <button
+                key={user.id}
+                type="button"
+                role="option"
+                aria-selected={idx === mentionPopup.selectedIndex}
+                className={cn(
+                  'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-foreground/80 hover:bg-primary/10 transition-colors',
+                  idx === mentionPopup.selectedIndex && 'bg-primary/10',
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (selectMentionRef.current) {
+                    selectMentionRef.current(user)
+                    setMentionPopup((prev) => ({ ...prev, visible: false }))
+                  }
+                }}
+                onMouseEnter={() =>
+                  setMentionPopup((prev) => ({ ...prev, selectedIndex: idx }))
                 }
-              }}
-              onMouseEnter={() =>
-                setMentionPopup((prev) => ({ ...prev, selectedIndex: idx }))
-              }
-            >
-              <Avatar user={user} size="xs" />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-foreground truncate">
-                  {user.displayName}
+              >
+                <Avatar user={user} size="xs" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground truncate">
+                    {user.displayName}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">{user.email}</div>
                 </div>
-                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

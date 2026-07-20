@@ -298,7 +298,8 @@
     "noNotificationsDesc": "You're all caught up! Notifications will appear here.",
     "markRead": "Mark as Read",
     "unread": "Unread ({{count}})",
-    "earlier": "Earlier"
+    "earlier": "Earlier",
+    "viewAll": "View all notifications"
   },
   "settings": {
     "title": "Settings",

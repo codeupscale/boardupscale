@@ -53,4 +53,5 @@ export interface TriggerContext {
   userId?: string;
   commentId?: string;
   sprintId?: string;
+  organizationId?: string;
 }

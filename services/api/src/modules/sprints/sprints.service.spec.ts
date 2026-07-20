@@ -10,10 +10,14 @@ import { EmailService } from '../notifications/email.service';
 import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import {
   createMockRepository,
   createMockQueryBuilder,
   createMockProjectsService,
+  createMockNotificationsService,
+  createMockNotificationAudienceService,
 } from '../../test/test-utils';
 import { mockSprint, mockProject, mockIssue, mockIssueStatus, TEST_IDS } from '../../test/mock-factories';
 
@@ -24,6 +28,8 @@ describe('SprintsService', () => {
   let statusRepo: ReturnType<typeof createMockRepository>;
   let projectsService: ReturnType<typeof createMockProjectsService>;
   let emailService: Record<string, jest.Mock>;
+  let notificationsService: ReturnType<typeof createMockNotificationsService>;
+  let notificationAudience: ReturnType<typeof createMockNotificationAudienceService>;
 
   beforeEach(async () => {
     sprintRepo = createMockRepository();
@@ -31,6 +37,8 @@ describe('SprintsService', () => {
     statusRepo = createMockRepository();
     projectsService = createMockProjectsService();
     projectsService.getMembers.mockResolvedValue([]);
+    notificationsService = createMockNotificationsService();
+    notificationAudience = createMockNotificationAudienceService();
     emailService = {
       sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
       sendIssueAssignedEmail: jest.fn().mockResolvedValue(undefined),
@@ -49,6 +57,8 @@ describe('SprintsService', () => {
         { provide: EmailService, useValue: emailService },
         { provide: WebhookEventEmitter, useValue: { emit: jest.fn().mockResolvedValue(undefined) } },
         { provide: EventsGateway, useValue: { emitToOrg: jest.fn() } },
+        { provide: NotificationsService, useValue: notificationsService },
+        { provide: NotificationAudienceService, useValue: notificationAudience },
         { provide: AutomationEngineService, useValue: { processTrigger: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
@@ -150,7 +160,7 @@ describe('SprintsService', () => {
       const activatedSprint = mockSprint({ status: 'active' });
       sprintRepo.save.mockResolvedValue(activatedSprint);
 
-      const result = await service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+      const result = await service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
 
       expect(result).toEqual(activatedSprint);
     });
@@ -302,6 +312,30 @@ describe('SprintsService', () => {
       expect(result.status).toBe('active');
       expect(result.startDate).toBeTruthy();
     });
+
+    it('should notify all project members when sprint starts', async () => {
+      const sprint = mockSprint({ status: 'planned', name: 'Sprint 2' });
+      sprintRepo.findOne.mockImplementation((opts: any) => {
+        if (opts?.where?.id) return Promise.resolve(sprint);
+        if (opts?.where?.status === 'active') return Promise.resolve(null);
+        return Promise.resolve(null);
+      });
+      projectsService.findById.mockResolvedValue(mockProject());
+      const activatedSprint = mockSprint({ status: 'active', name: 'Sprint 2' });
+      sprintRepo.save.mockResolvedValue(activatedSprint);
+      notificationAudience.getProjectMemberUserIds.mockResolvedValue(['member-1', 'member-2']);
+
+      await service.start(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
+
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sprint:started',
+          title: 'Sprint "Sprint 2" started',
+          recipientUserIds: ['member-1', 'member-2'],
+          actorUserId: TEST_IDS.USER_ID,
+        }),
+      );
+    });
   });
 
   describe('complete', () => {
@@ -321,7 +355,7 @@ describe('SprintsService', () => {
       const completedSprint = mockSprint({ status: 'completed' });
       sprintRepo.save.mockResolvedValue(completedSprint);
 
-      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
 
       expect(result).toEqual(completedSprint);
     });
@@ -351,7 +385,7 @@ describe('SprintsService', () => {
       const completedSprint = mockSprint({ status: 'completed' });
       sprintRepo.save.mockResolvedValue(completedSprint);
 
-      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
 
       expect(result).toEqual(completedSprint);
     });
@@ -377,10 +411,38 @@ describe('SprintsService', () => {
       const completedSprint = mockSprint({ status: 'completed' });
       sprintRepo.save.mockResolvedValue(completedSprint);
 
-      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID);
+      const result = await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
 
       expect(result).toEqual(completedSprint);
       expect(updateQb.set).toHaveBeenCalledWith({ sprintId: null });
+    });
+
+    it('should notify all project members when sprint completes', async () => {
+      const sprint = mockSprint({ status: 'active', name: 'Sprint 3' });
+      sprintRepo.findOne.mockResolvedValue(sprint);
+      projectsService.findById.mockResolvedValue(mockProject());
+
+      const doneStatus = mockIssueStatus({ id: 'done-status', category: 'done' });
+      statusRepo.find.mockResolvedValue([doneStatus]);
+
+      const incompleteQb = createMockQueryBuilder([]);
+      incompleteQb.getMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder.mockReturnValueOnce(incompleteQb);
+
+      const completedSprint = mockSprint({ status: 'completed', name: 'Sprint 3' });
+      sprintRepo.save.mockResolvedValue(completedSprint);
+      notificationAudience.getProjectMemberUserIds.mockResolvedValue(['member-1']);
+
+      await service.complete(TEST_IDS.SPRINT_ID, TEST_IDS.ORG_ID, undefined, TEST_IDS.USER_ID);
+
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sprint:completed',
+          title: 'Sprint "Sprint 3" completed',
+          recipientUserIds: ['member-1'],
+          actorUserId: TEST_IDS.USER_ID,
+        }),
+      );
     });
   });
 

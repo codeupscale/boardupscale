@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Issue, ProjectType, User } from '@/types'
 import { useCreateIssue } from '@/hooks/useIssues'
+import { useProjectMembers } from '@/hooks/useProjects'
 import { uploadIssueAttachments } from '@/lib/upload-attachments'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
@@ -62,13 +63,14 @@ export function CreateIssueDialog({
   projectType,
   statuses = [],
   sprints = [],
-  users = [],
   defaultValues,
   onSuccess,
 }: CreateIssueDialogProps) {
   const { t } = useTranslation()
   const formRef = useRef<IssueTicketFormHandle>(null)
   const createIssue = useCreateIssue()
+  const { data: projectMembers = [] } = useProjectMembers(projectId)
+  const projectUsers = projectMembers.map((member) => member.user)
   const [formKey, setFormKey] = useState(0)
 
   useEffect(() => {
@@ -221,7 +223,7 @@ export function CreateIssueDialog({
           projectId={projectId}
           statuses={statuses}
           sprints={sprints}
-          users={users}
+          users={projectUsers}
           isKanban={isKanbanProject(projectType)}
           defaultValues={resolvedDefaults}
           onSubmit={handleFormSubmit}

@@ -89,11 +89,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         try {
           const data = JSON.parse(message);
           const userId = data.user_id;
-          if (!userId) return;
+          const organizationId = data.organization_id || data.data?.organizationId;
+          if (!userId || !organizationId) return;
 
-          // Emit notification to user's WebSocket room
           this.emitToUser(userId, 'notification:new', {
             id: data.id,
+            organizationId,
+            userId,
             type: data.type,
             title: data.title,
             body: data.body,
@@ -102,9 +104,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             createdAt: data.created_at,
           });
 
-          // Emit a count update request — the client will use cached count + 1
-          // (avoids a DB query per worker notification on the gateway)
-          this.emitToUser(userId, 'notification:count-increment', {});
+          if (typeof data.unread_count === 'number') {
+            this.emitToUser(userId, 'notification:count', {
+              count: data.unread_count,
+              organizationId,
+            });
+          } else {
+            this.emitToUser(userId, 'notification:count-increment', { organizationId });
+          }
         } catch (err: any) {
           this.logger.warn(`Failed to parse notification message: ${err.message}`);
         }

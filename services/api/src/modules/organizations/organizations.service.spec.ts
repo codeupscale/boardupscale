@@ -8,11 +8,12 @@ import { Organization } from './entities/organization.entity';
 import { OrganizationMember } from './entities/organization-member.entity';
 import { User } from '../users/entities/user.entity';
 import { EmailService } from '../notifications/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { EventsGateway } from '../../websocket/events.gateway';
 import { PermissionsService } from '../permissions/permissions.service';
-import { createMockRepository } from '../../test/test-utils';
+import { createMockRepository, createMockNotificationsService } from '../../test/test-utils';
 import { mockOrganization, mockUser, TEST_IDS } from '../../test/mock-factories';
 
 describe('OrganizationsService', () => {
@@ -20,6 +21,7 @@ describe('OrganizationsService', () => {
   let orgRepo: ReturnType<typeof createMockRepository>;
   let userRepo: ReturnType<typeof createMockRepository>;
   let orgMemberRepo: ReturnType<typeof createMockRepository>;
+  let notificationsService: ReturnType<typeof createMockNotificationsService>;
   const mockEmailService = { sendInvitationEmail: jest.fn().mockResolvedValue(undefined) };
   const mockAuditService = { log: jest.fn() };
   const mockConfigService = { get: jest.fn().mockReturnValue('http://localhost:3000') };
@@ -43,6 +45,7 @@ describe('OrganizationsService', () => {
     orgRepo = createMockRepository();
     userRepo = createMockRepository();
     orgMemberRepo = createMockRepository();
+    notificationsService = createMockNotificationsService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,6 +54,7 @@ describe('OrganizationsService', () => {
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(OrganizationMember), useValue: orgMemberRepo },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: NotificationsService, useValue: notificationsService },
         { provide: AuditService, useValue: mockAuditService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: DataSource, useValue: mockDataSource },

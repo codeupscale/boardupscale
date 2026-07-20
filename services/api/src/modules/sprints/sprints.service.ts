@@ -19,6 +19,9 @@ import { WebhookEventEmitter } from '../webhooks/webhook-event-emitter.service';
 import { WebhookEventType } from '../webhooks/webhook-events.constants';
 import { AutomationEngineService } from '../automation/automation-engine.service';
 import { EventsGateway } from '../../websocket/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification.constants';
 import { SprintHandoffPolicy, buildSprintHandoffBlockedMessage } from '../../common/constants/sprint-handoff-policy';
 import { SPRINT_INELIGIBLE_ISSUE_TYPES } from '../../common/constants/sprint-planning-issue-types';
 
@@ -37,6 +40,8 @@ export class SprintsService {
     private emailService: EmailService,
     private webhookEventEmitter: WebhookEventEmitter,
     private eventsGateway: EventsGateway,
+    private notificationsService: NotificationsService,
+    private notificationAudience: NotificationAudienceService,
     @Optional() @Inject(AutomationEngineService)
     private automationEngine?: AutomationEngineService,
   ) {}
@@ -79,7 +84,12 @@ export class SprintsService {
     return this.sprintRepository.save(sprint);
   }
 
-  async start(id: string, organizationId: string, dto?: { startDate?: string; endDate?: string }): Promise<Sprint> {
+  async start(
+    id: string,
+    organizationId: string,
+    dto?: { startDate?: string; endDate?: string },
+    userId?: string,
+  ): Promise<Sprint> {
     const sprint = await this.findById(id);
     await this.projectsService.findById(sprint.projectId, organizationId);
 
@@ -123,7 +133,7 @@ export class SprintsService {
         return em.save(Sprint, lockedTarget);
       });
 
-      return this.afterSprintStarted(saved, organizationId, id, sprint.projectId);
+      return this.afterSprintStarted(saved, organizationId, id, sprint.projectId, userId);
     }
 
     sprint.status = 'active';
@@ -137,7 +147,7 @@ export class SprintsService {
     }
     const saved = await this.sprintRepository.save(sprint);
 
-    return this.afterSprintStarted(saved, organizationId, id, sprint.projectId);
+    return this.afterSprintStarted(saved, organizationId, id, sprint.projectId, userId);
   }
 
   private async afterSprintStarted(
@@ -145,6 +155,7 @@ export class SprintsService {
     organizationId: string,
     sprintId: string,
     projectId: string,
+    userId?: string,
   ): Promise<Sprint> {
     this.webhookEventEmitter.emit(
       organizationId,
@@ -160,6 +171,23 @@ export class SprintsService {
     if (this.automationEngine) {
       this.automationEngine.processTrigger(projectId, 'sprint.started', {
         sprintId,
+      });
+    }
+
+    if (userId) {
+      const recipientUserIds = await this.notificationAudience.getProjectMemberUserIds(projectId);
+      const projectName = saved.project?.name || 'Project';
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.SPRINT_STARTED,
+        title: `Sprint "${saved.name}" started`,
+        body: projectName,
+        data: {
+          projectId,
+          sprintId: saved.id,
+        },
+        recipientUserIds,
       });
     }
 
@@ -254,7 +282,12 @@ export class SprintsService {
     }));
   }
 
-  async complete(id: string, organizationId: string, moveToSprintId?: string): Promise<Sprint> {
+  async complete(
+    id: string,
+    organizationId: string,
+    moveToSprintId?: string,
+    userId?: string,
+  ): Promise<Sprint> {
     const sprint = await this.findById(id);
     await this.projectsService.findById(sprint.projectId, organizationId);
 
@@ -329,6 +362,28 @@ export class SprintsService {
     if (this.automationEngine) {
       this.automationEngine.processTrigger(sprint.projectId, 'sprint.completed', {
         sprintId: id,
+      });
+    }
+
+    if (userId) {
+      const recipientUserIds = await this.notificationAudience.getProjectMemberUserIds(sprint.projectId);
+      const projectName = saved.project?.name || 'Project';
+      const body =
+        incompleteIssueCount > 0
+          ? `${projectName} — ${incompleteIssueCount} incomplete issue(s) moved`
+          : projectName;
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.SPRINT_COMPLETED,
+        title: `Sprint "${saved.name}" completed`,
+        body,
+        data: {
+          projectId: sprint.projectId,
+          sprintId: saved.id,
+          incompleteIssueCount,
+        },
+        recipientUserIds,
       });
     }
 

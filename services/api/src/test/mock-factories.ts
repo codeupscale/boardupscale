@@ -208,11 +208,12 @@ export function mockNotification(overrides?: Partial<Notification>): Notificatio
   const notification = new Notification();
   Object.assign(notification, {
     id: NOTIFICATION_ID,
+    organizationId: ORG_ID,
     userId: USER_ID,
     type: 'issue:assigned',
     title: 'You have been assigned to TPROJ-1',
     body: 'Test Issue',
-    data: { issueId: ISSUE_ID, projectId: PROJECT_ID },
+    data: { issueId: ISSUE_ID, projectId: PROJECT_ID, organizationId: ORG_ID },
     readAt: null,
     createdAt: new Date('2024-01-01'),
     ...overrides,

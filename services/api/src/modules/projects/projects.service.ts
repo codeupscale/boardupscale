@@ -19,6 +19,9 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { AuditService } from '../audit/audit.service';
 import { EmailService } from '../notifications/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification.constants';
 import { UsersService } from '../users/users.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PROJECT_TEMPLATES, BLANK_STATUSES } from './project-templates';
@@ -47,6 +50,8 @@ export class ProjectsService {
     private organizationRepository: Repository<Organization>,
     private auditService: AuditService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
+    private notificationAudience: NotificationAudienceService,
     private usersService: UsersService,
     private organizationsService: OrganizationsService,
     private configService: ConfigService,
@@ -203,6 +208,18 @@ export class ProjectsService {
 
     void this.searchIndexQueueService.indexProject(saved);
     void this.searchIndexQueueService.refreshMember(organizationId, userId);
+
+    // Project create → notify + sound for the creator (org admin/owner who created it).
+    await this.notificationsService.notify({
+      organizationId,
+      actorUserId: userId,
+      type: NOTIFICATION_TYPES.PROJECT_CREATED,
+      title: `Project ${saved.key} was created`,
+      body: saved.name,
+      data: { projectId: saved.id, projectKey: saved.key },
+      recipientUserIds: [userId],
+      includeActor: true,
+    });
 
     return saved;
   }
@@ -450,6 +467,19 @@ export class ProjectsService {
       key: project.key,
     });
 
+    if (userId) {
+      const orgAdminIds = await this.notificationAudience.getOrgOwnerAdminUserIds(organizationId);
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: userId,
+        type: NOTIFICATION_TYPES.PROJECT_DELETED,
+        title: `Project ${project.key} was archived`,
+        body: project.name,
+        data: { projectId: project.id, projectKey: project.key },
+        recipientUserIds: orgAdminIds,
+      });
+    }
+
     void this.searchIndexQueueService.deleteProject(project.id);
   }
 
@@ -519,6 +549,15 @@ export class ProjectsService {
         this.sendProjectMemberEmail(orgUser.id, project, organizationId, actorId).catch((err) =>
           this.logger.warn(`Failed to send project-member-added email: ${err.message}`),
         );
+        await this.notificationsService.notify({
+          organizationId,
+          actorUserId: actorId,
+          type: NOTIFICATION_TYPES.PROJECT_MEMBER_ADDED,
+          title: `You were added to ${project.key}`,
+          body: project.name,
+          data: { projectId: project.id, projectKey: project.key },
+          recipientUserIds: [orgUser.id],
+        });
       }
 
       void this.searchIndexQueueService.refreshMember(organizationId, orgUser.id);
@@ -562,6 +601,18 @@ export class ProjectsService {
     this.sendProjectMemberEmail(dto.userId, project, organizationId, actorId).catch((err) => {
       this.logger.warn(`Failed to send project-member-added email: ${err.message}`);
     });
+
+    if (actorId) {
+      await this.notificationsService.notify({
+        organizationId,
+        actorUserId: actorId,
+        type: NOTIFICATION_TYPES.PROJECT_MEMBER_ADDED,
+        title: `You were added to ${project.key}`,
+        body: project.name,
+        data: { projectId: project.id, projectKey: project.key },
+        recipientUserIds: [dto.userId],
+      });
+    }
 
     void this.searchIndexQueueService.refreshMember(organizationId, dto.userId);
 

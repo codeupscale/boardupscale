@@ -19,6 +19,7 @@ import { UpdateSprintDto } from './dto/update-sprint.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { OrgId } from '../../common/decorators/org-id.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { ParseUUIDPipe } from '../../common/pipes/parse-uuid.pipe';
 import { ResolveProjectPipe } from '../../common/pipes/resolve-project.pipe';
@@ -74,9 +75,10 @@ export class SprintsController {
   async start(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: { id: string },
     @Body() dto: UpdateSprintDto,
   ) {
-    return this.sprintsService.start(id, organizationId, dto);
+    return this.sprintsService.start(id, organizationId, dto, user.id);
   }
 
   @Post(':id/complete')
@@ -86,9 +88,10 @@ export class SprintsController {
   async complete(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: { id: string },
     @Body() body?: { moveToSprintId?: string },
   ) {
-    return this.sprintsService.complete(id, organizationId, body?.moveToSprintId);
+    return this.sprintsService.complete(id, organizationId, body?.moveToSprintId, user.id);
   }
 
   @Delete(':id')

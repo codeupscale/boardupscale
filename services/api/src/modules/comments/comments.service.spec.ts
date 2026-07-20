@@ -17,10 +17,12 @@ import { FilesService } from '../files/files.service';
 import {
   createMockRepository,
   createMockNotificationsService,
+  createMockNotificationAudienceService,
   createMockEventsGateway,
   createMockConfigService,
   mockUpdateResult,
 } from '../../test/test-utils';
+import { NotificationAudienceService } from '../notifications/notification-audience.service';
 import { mockComment, mockIssue, mockUser, TEST_IDS } from '../../test/mock-factories';
 
 describe('CommentsService', () => {
@@ -28,6 +30,7 @@ describe('CommentsService', () => {
   let commentRepo: ReturnType<typeof createMockRepository>;
   let issueRepo: ReturnType<typeof createMockRepository>;
   let notificationsService: ReturnType<typeof createMockNotificationsService>;
+  let notificationAudience: ReturnType<typeof createMockNotificationAudienceService>;
   let eventsGateway: ReturnType<typeof createMockEventsGateway>;
   let emailService: Record<string, jest.Mock>;
   let usersService: Record<string, jest.Mock>;
@@ -38,6 +41,7 @@ describe('CommentsService', () => {
     commentRepo = createMockRepository();
     issueRepo = createMockRepository();
     notificationsService = createMockNotificationsService();
+    notificationAudience = createMockNotificationAudienceService();
     eventsGateway = createMockEventsGateway();
     permissionsService = { isAdminOrOwner: jest.fn().mockResolvedValue(false), isProjectAdmin: jest.fn().mockResolvedValue(false) };
     filesService = {
@@ -63,6 +67,7 @@ describe('CommentsService', () => {
         { provide: getRepositoryToken(Comment), useValue: commentRepo },
         { provide: getRepositoryToken(Issue), useValue: issueRepo },
         { provide: NotificationsService, useValue: notificationsService },
+        { provide: NotificationAudienceService, useValue: notificationAudience },
         { provide: EmailService, useValue: emailService },
         { provide: UsersService, useValue: usersService },
         { provide: ConfigService, useValue: createMockConfigService({ 'app.frontendUrl': 'http://localhost:3000' }) },
@@ -156,16 +161,17 @@ describe('CommentsService', () => {
         TEST_IDS.ORG_ID,
       );
 
-      expect(notificationsService.create).toHaveBeenCalledWith(
+      expect(notificationsService.notify).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: 'reporter-id',
           type: 'comment:created',
           title: 'New comment on TPROJ-1',
+          recipientUserIds: expect.arrayContaining(['reporter-id']),
+          actorUserId: TEST_IDS.USER_ID,
         }),
       );
     });
 
-    it('should not notify reporter when comment author is the reporter', async () => {
+    it('should still call notify when comment author is the reporter (actor filtered inside)', async () => {
       const issue = mockIssue({ reporterId: TEST_IDS.USER_ID, assigneeId: null });
       issueRepo.findOne.mockResolvedValue(issue);
       const comment = mockComment();
@@ -179,7 +185,13 @@ describe('CommentsService', () => {
         TEST_IDS.ORG_ID,
       );
 
-      expect(notificationsService.create).not.toHaveBeenCalled();
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'comment:created',
+          actorUserId: TEST_IDS.USER_ID,
+          recipientUserIds: [TEST_IDS.USER_ID],
+        }),
+      );
     });
 
     it('should notify assignee when different from author and reporter', async () => {
@@ -200,8 +212,12 @@ describe('CommentsService', () => {
         TEST_IDS.ORG_ID,
       );
 
-      // Should notify both reporter and assignee
-      expect(notificationsService.create).toHaveBeenCalledTimes(2);
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'comment:created',
+          recipientUserIds: expect.arrayContaining(['reporter-id', 'assignee-id']),
+        }),
+      );
     });
 
     it('should not double-notify when assignee is the same as reporter', async () => {
@@ -221,8 +237,13 @@ describe('CommentsService', () => {
         TEST_IDS.ORG_ID,
       );
 
-      // Should only notify once (reporter), not the assignee since they are the same
-      expect(notificationsService.create).toHaveBeenCalledTimes(1);
+      expect(notificationsService.notify).toHaveBeenCalledTimes(1);
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'comment:created',
+          recipientUserIds: ['same-person', 'same-person'],
+        }),
+      );
     });
   });
 
@@ -356,6 +377,55 @@ describe('CommentsService', () => {
 
       expect(commentRepo.update).toHaveBeenCalledWith(TEST_IDS.COMMENT_ID, { deletedAt: expect.any(Date) });
       expect(permissionsService.isProjectAdmin).toHaveBeenCalledWith(TEST_IDS.USER_ID, issue.projectId);
+    });
+  });
+
+  describe('mentions', () => {
+    it('parses TipTap mention HTML and limits recipients to project members', async () => {
+      const mentionedUserId = 'project-member-id';
+      const issue = mockIssue();
+      notificationAudience.filterToProjectMembers.mockResolvedValue([mentionedUserId]);
+      usersService.findById.mockResolvedValue(
+        mockUser({ id: mentionedUserId, email: 'member@example.com' }),
+      );
+
+      await (service as any).processMentions(
+        `<p>Hello <span data-type="mention" class="mention" data-id="${mentionedUserId}" data-label="Project Member">@Project Member</span></p>`,
+        TEST_IDS.USER_ID,
+        issue,
+        TEST_IDS.COMMENT_ID,
+        'Comment Author',
+        TEST_IDS.ORG_ID,
+      );
+
+      expect(notificationAudience.filterToProjectMembers).toHaveBeenCalledWith(
+        issue.projectId,
+        [mentionedUserId],
+      );
+      expect(notificationsService.notify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'mention',
+          recipientUserIds: [mentionedUserId],
+        }),
+      );
+      expect(emailService.sendCommentMentionEmail).toHaveBeenCalled();
+    });
+
+    it('does not notify a rich-text mention that is outside the project', async () => {
+      const outsideUserId = 'outside-project-id';
+      notificationAudience.filterToProjectMembers.mockResolvedValue([]);
+
+      await (service as any).processMentions(
+        `<p><span data-id="${outsideUserId}" data-type="mention">@Outside User</span></p>`,
+        TEST_IDS.USER_ID,
+        mockIssue(),
+        TEST_IDS.COMMENT_ID,
+        'Comment Author',
+        TEST_IDS.ORG_ID,
+      );
+
+      expect(notificationsService.notify).not.toHaveBeenCalled();
+      expect(emailService.sendCommentMentionEmail).not.toHaveBeenCalled();
     });
   });
 });

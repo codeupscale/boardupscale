@@ -5,6 +5,7 @@ import { useMe } from '@/hooks/useAuth'
 import { disconnectSocket } from '@/lib/socket'
 import { useUiStore } from '@/store/ui.store'
 import { useNotificationSocket } from '@/hooks/useNotifications'
+import { unlockNotificationAudio } from '@/lib/notification-sound'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { LoadingPage } from '@/components/ui/spinner'
 import { Sidebar } from './sidebar'
@@ -14,6 +15,7 @@ import { ProjectChat } from '@/components/chat/ProjectChat'
 import { HelpSupportPanel } from '@/components/support/HelpSupportPanel'
 import { MessagingToggleButton } from '@/components/messaging/MessagingToggleButton'
 import { MessagingPanel } from '@/components/messaging/MessagingPanel'
+import { NotificationsPanel } from '@/components/notifications/NotificationsPanel'
 
 export function AppLayout() {
   const { initialize, isAuthenticated, setUser } = useAuthStore()
@@ -39,6 +41,11 @@ export function AppLayout() {
   // Handles: new notifications, count updates, read sync, all-read sync.
   // Reconnect automatically refetches to catch missed events.
   useNotificationSocket()
+
+  // Silent unlock: first click/tap enables notification sounds for the session.
+  useEffect(() => {
+    unlockNotificationAudio()
+  }, [])
 
   // Cleanup socket on logout
   useEffect(() => {
@@ -74,6 +81,7 @@ export function AppLayout() {
       <HelpSupportPanel />
       <MessagingToggleButton />
       <MessagingPanel />
+      <NotificationsPanel />
     </div>
   )
 }

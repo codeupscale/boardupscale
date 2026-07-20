@@ -18,6 +18,8 @@ import { User } from '../users/entities/user.entity';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { EmailService } from '../notifications/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NOTIFICATION_TYPES } from '../notifications/notification.constants';
 import { AuditService } from '../audit/audit.service';
 import { PosthogService } from '../telemetry/posthog.service';
 import { EventsGateway } from '../../websocket/events.gateway';
@@ -33,6 +35,7 @@ export class OrganizationsService {
     @InjectRepository(OrganizationMember)
     private organizationMemberRepository: Repository<OrganizationMember>,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
     private auditService: AuditService,
     private configService: ConfigService,
     private dataSource: DataSource,
@@ -168,6 +171,15 @@ export class OrganizationsService {
           org?.name || 'your organization',
           `${frontendUrl}/login`,
         );
+        await this.notificationsService.notify({
+          organizationId,
+          actorUserId: inviterId,
+          type: NOTIFICATION_TYPES.ORG_MEMBER_ADDED,
+          title: `You were added to ${org?.name || 'an organization'}`,
+          body: org?.name,
+          data: { organizationId },
+          recipientUserIds: [existingUser.id],
+        });
       } else {
         await this.generateAndSendInvitation(existingUser, inviterId, organizationId);
       }

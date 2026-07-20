@@ -97,7 +97,7 @@ export class User {
   @Column({
     name: 'notification_preferences',
     type: 'jsonb',
-    default: () => `'{"email":true,"inApp":true}'`,
+    default: () => `'{"email":true,"inApp":true,"sound":true}'`,
   })
   notificationPreferences: Record<string, boolean>;
 
