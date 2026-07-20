@@ -10,7 +10,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { InjectQueue } from "@nestjs/bullmq";
 import { ConfigService } from "@nestjs/config";
-import { Repository, IsNull, In, Not } from "typeorm";
+import { Repository, IsNull, In } from "typeorm";
 import { Queue } from "bullmq";
 import { Issue } from "./entities/issue.entity";
 import { IssueStatus } from "./entities/issue-status.entity";
@@ -1404,7 +1404,7 @@ export class IssuesService {
       [
         ...bulkParams,
         dto.targetProjectId,
-        targetStatusId ?? null,
+        targetStatusId,
         organizationId,
       ],
     );

@@ -431,7 +431,7 @@ describe("BoardsService", () => {
       statusRepo.create.mockReturnValue(newStatus);
       statusRepo.save.mockResolvedValue(newStatus);
 
-      const result = await service.createStatus(
+      await service.createStatus(
         TEST_IDS.PROJECT_ID,
         TEST_IDS.ORG_ID,
         {
