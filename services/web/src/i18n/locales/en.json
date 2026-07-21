@@ -299,7 +299,14 @@
     "markRead": "Mark as Read",
     "unread": "Unread ({{count}})",
     "earlier": "Earlier",
-    "viewAll": "View all notifications"
+    "viewAll": "View all notifications",
+    "expandComment": "Show comment preview",
+    "collapseComment": "Hide comment preview",
+    "commentUnavailable": "This comment is no longer available",
+    "retry": "Retry",
+    "mentionedInComment": "{{actor}} mentioned you in a comment",
+    "commentedOnTicket": "{{actor}} commented on a ticket",
+    "commentedBy": "Commented by {{actor}} • {{time}}"
   },
   "settings": {
     "title": "Settings",

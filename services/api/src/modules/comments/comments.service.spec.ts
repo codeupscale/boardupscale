@@ -103,6 +103,39 @@ describe('CommentsService', () => {
     });
   });
 
+  describe('findOne', () => {
+    it('should return a comment when it belongs to the organization', async () => {
+      const comment = mockComment();
+      commentRepo.findOne.mockResolvedValue(comment);
+      issueRepo.findOne.mockResolvedValue(mockIssue());
+
+      const result = await service.findOne(TEST_IDS.COMMENT_ID, TEST_IDS.ORG_ID);
+
+      expect(result).toEqual(comment);
+      expect(commentRepo.findOne).toHaveBeenCalledWith({
+        where: { id: TEST_IDS.COMMENT_ID, deletedAt: expect.anything() },
+        relations: ['author'],
+      });
+    });
+
+    it('should throw NotFoundException when comment does not exist', async () => {
+      commentRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne('missing-id', TEST_IDS.ORG_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException when comment issue is outside organization', async () => {
+      commentRepo.findOne.mockResolvedValue(mockComment());
+      issueRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne(TEST_IDS.COMMENT_ID, TEST_IDS.ORG_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
   describe('create', () => {
     it('should create a comment on an issue', async () => {
       const issue = mockIssue({ reporterId: 'reporter-id', assigneeId: null });
@@ -153,7 +186,10 @@ describe('CommentsService', () => {
       const comment = mockComment();
       commentRepo.create.mockReturnValue(comment);
       commentRepo.save.mockResolvedValue(comment);
-      commentRepo.findOne.mockResolvedValue(comment);
+      commentRepo.findOne.mockResolvedValue({
+        ...comment,
+        author: { id: TEST_IDS.USER_ID, displayName: 'Test User' },
+      });
 
       await service.create(
         { issueId: TEST_IDS.ISSUE_ID, content: 'New comment' },
@@ -164,7 +200,12 @@ describe('CommentsService', () => {
       expect(notificationsService.notify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'comment:created',
-          title: 'New comment on TPROJ-1',
+          title: 'Test User commented on TPROJ-1',
+          data: expect.objectContaining({
+            issueTitle: 'Test Issue',
+            actorDisplayName: 'Test User',
+            issueKey: 'TPROJ-1',
+          }),
           recipientUserIds: expect.arrayContaining(['reporter-id']),
           actorUserId: TEST_IDS.USER_ID,
         }),
@@ -406,6 +447,10 @@ describe('CommentsService', () => {
         expect.objectContaining({
           type: 'mention',
           recipientUserIds: [mentionedUserId],
+          data: expect.objectContaining({
+            issueTitle: 'Test Issue',
+            actorDisplayName: 'Comment Author',
+          }),
         }),
       );
       expect(emailService.sendCommentMentionEmail).toHaveBeenCalled();

@@ -13,15 +13,14 @@ import { Notification } from '@/types'
 import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { ListSkeleton } from '@/components/ui/skeleton'
-import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
-  getNotificationIcon,
-  getNotificationIconBg,
   getNotificationLink,
   groupNotificationsByDay,
-  notificationItemClass,
+  isCommentNotification,
 } from '@/components/notifications/notification-utils'
+import { NotificationRow } from '@/components/notifications/NotificationRow'
+import { CommentNotificationRow } from '@/components/notifications/CommentNotificationRow'
 
 function StatCard({
   icon,
@@ -47,48 +46,22 @@ function StatCard({
   )
 }
 
-function NotificationItem({
+function NotificationListItem({
   notification,
-  onMarkRead,
+  onSelect,
 }: {
   notification: Notification
-  onMarkRead: (id: string) => void
+  onSelect: (n: Notification) => void
 }) {
-  const navigate = useNavigate()
-  const link = getNotificationLink(notification)
-
-  const handleClick = () => {
-    if (!notification.read) onMarkRead(notification.id)
-    if (link) navigate(link)
+  if (isCommentNotification(notification.type)) {
+    return <CommentNotificationRow notification={notification} onSelect={onSelect} />
   }
-
-  return (
-    <button type="button" onClick={handleClick} className={notificationItemClass(notification.read, !!link)}>
-      <div
-        className={cn(
-          'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center mt-0.5',
-          getNotificationIconBg(notification.type),
-        )}
-      >
-        {getNotificationIcon(notification.type)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={cn('text-sm', !notification.read ? 'font-semibold text-foreground' : 'text-foreground')}>
-          {notification.title}
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">{formatRelativeTime(notification.createdAt)}</p>
-      </div>
-      {!notification.read && (
-        <div className="flex-shrink-0">
-          <div className="h-2 w-2 rounded-full bg-primary mt-2" />
-        </div>
-      )}
-    </button>
-  )
+  return <NotificationRow notification={notification} onSelect={onSelect} />
 }
 
 export function NotificationsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState<NotificationFilter>('all')
   const { data: notificationsResult, isLoading } = useNotifications({ filter, limit: 50 })
   const { data: unreadData } = useUnreadCount()
@@ -113,6 +86,14 @@ export function NotificationsPage() {
     { id: 'mentions', label: 'Mentions' },
     { id: 'assigned', label: 'Assigned' },
   ]
+
+  const handleSelect = (notification: Notification) => {
+    if (!notification.read) {
+      markRead.mutate(notification.id)
+    }
+    const link = getNotificationLink(notification)
+    if (link) navigate(link)
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -199,10 +180,10 @@ export function NotificationsPage() {
                 </div>
                 <div className="divide-y divide-border">
                   {group.items.map((notification) => (
-                    <NotificationItem
+                    <NotificationListItem
                       key={notification.id}
                       notification={notification}
-                      onMarkRead={(id) => markRead.mutate(id)}
+                      onSelect={handleSelect}
                     />
                   ))}
                 </div>

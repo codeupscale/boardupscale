@@ -16,8 +16,57 @@ import {
   Building2,
   Signal,
 } from 'lucide-react'
-import type { Notification } from '@/types'
+import type { Notification, CommentNotificationData } from '@/types'
 import { cn } from '@/lib/utils'
+
+const COMMENT_NOTIFICATION_TYPES = new Set(['comment:created', 'mention'])
+
+export function isCommentNotification(type: string): boolean {
+  return COMMENT_NOTIFICATION_TYPES.has(type)
+}
+
+export function getCommentNotificationData(
+  notification: Notification,
+): CommentNotificationData | null {
+  const data = notification.data
+  if (!data?.issueId || !data?.commentId) return null
+  return data as CommentNotificationData
+}
+
+export function getCommentIssueKey(notification: Notification): string | null {
+  const data = getCommentNotificationData(notification)
+  return data?.issueKey ?? null
+}
+
+export function getCommentIssueTitle(notification: Notification): string | null {
+  const data = getCommentNotificationData(notification)
+  if (!data) return null
+  return data.issueTitle ?? null
+}
+
+export function getCommentActorName(notification: Notification): string | null {
+  const data = getCommentNotificationData(notification)
+  if (data?.actorDisplayName) return data.actorDisplayName
+  return null
+}
+
+export function getCommentNotificationSummary(
+  notification: Notification,
+  t: (key: string, opts?: Record<string, string>) => string,
+): string {
+  const data = getCommentNotificationData(notification)
+  const actor = data?.actorDisplayName
+
+  if (actor) {
+    if (notification.type === 'mention') {
+      return t('notifications.mentionedInComment', { actor })
+    }
+    return t('notifications.commentedOnTicket', { actor })
+  }
+
+  // Legacy notifications created before enriched payload fields.
+  return notification.title
+}
 
 export function getNotificationIcon(type: string) {
   const map: Record<string, React.ReactNode> = {

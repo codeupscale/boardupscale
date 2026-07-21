@@ -264,7 +264,15 @@
     "noNotificationsDesc": "Sie sind auf dem neuesten Stand! Benachrichtigungen erscheinen hier.",
     "markRead": "Als gelesen markieren",
     "unread": "Ungelesen ({{count}})",
-    "earlier": "Fr\u00fcher"
+    "earlier": "Fr\u00fcher",
+    "viewAll": "Alle Benachrichtigungen anzeigen",
+    "expandComment": "Kommentarvorschau anzeigen",
+    "collapseComment": "Kommentarvorschau ausblenden",
+    "commentUnavailable": "Dieser Kommentar ist nicht mehr verf\u00fcgbar",
+    "retry": "Erneut versuchen",
+    "mentionedInComment": "{{actor}} hat Sie in einem Kommentar erw\u00e4hnt",
+    "commentedOnTicket": "{{actor}} hat einen Kommentar hinterlassen",
+    "commentedBy": "Kommentiert von {{actor}} \u2022 {{time}}"
   },
   "settings": {
     "title": "Einstellungen",

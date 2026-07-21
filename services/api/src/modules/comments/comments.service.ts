@@ -101,6 +101,25 @@ export class CommentsService {
     });
   }
 
+  async findOne(id: string, organizationId: string): Promise<Comment> {
+    const comment = await this.commentRepository.findOne({
+      where: { id, deletedAt: IsNull() },
+      relations: ['author'],
+    });
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    const issue = await this.issueRepository.findOne({
+      where: { id: comment.issueId, organizationId, deletedAt: IsNull() },
+    });
+    if (!issue) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    return comment;
+  }
+
   async create(dto: CreateCommentDto, userId: string, organizationId: string): Promise<Comment> {
     const issue = await this.issueRepository.findOne({
       where: { id: dto.issueId, organizationId, deletedAt: IsNull() },
@@ -161,17 +180,20 @@ export class CommentsService {
       reporterId: issue.reporterId,
       includeWatchers: true,
     });
+    const actorDisplayName = full?.author?.displayName || 'Someone';
     await this.notificationsService.notify({
       organizationId,
       actorUserId: userId,
       type: NOTIFICATION_TYPES.COMMENT_CREATED,
-      title: `New comment on ${issue.key}`,
+      title: `${actorDisplayName} commented on ${issue.key}`,
       body: dto.content.substring(0, 200),
       data: {
         issueId: dto.issueId,
         commentId: saved.id,
         projectId: issue.projectId,
         issueKey: issue.key,
+        issueTitle: issue.title,
+        actorDisplayName,
         priority: issue.priority,
       },
       recipientUserIds: stakeholders,
@@ -397,6 +419,8 @@ export class CommentsService {
         commentId,
         projectId: issue.projectId,
         issueKey: issue.key,
+        issueTitle: issue.title,
+        actorDisplayName: commenterName,
         priority: issue.priority,
       },
       recipientUserIds: projectScopedMentions,

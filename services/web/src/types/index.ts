@@ -259,6 +259,16 @@ export interface Notification {
   createdAt: string
 }
 
+export interface CommentNotificationData {
+  issueId: string
+  commentId: string
+  issueKey?: string
+  issueTitle?: string
+  actorDisplayName?: string
+  actorUserId?: string
+  projectId?: string
+}
+
 export interface WorkLog {
   id: string
   issueId: string

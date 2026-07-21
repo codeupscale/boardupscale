@@ -264,7 +264,15 @@
     "noNotificationsDesc": "Vous \u00eates \u00e0 jour ! Les notifications appara\u00eetront ici.",
     "markRead": "Marquer comme lu",
     "unread": "Non lus ({{count}})",
-    "earlier": "Plus anciens"
+    "earlier": "Plus anciens",
+    "viewAll": "Voir toutes les notifications",
+    "expandComment": "Afficher l'aper\u00e7u du commentaire",
+    "collapseComment": "Masquer l'aper\u00e7u du commentaire",
+    "commentUnavailable": "Ce commentaire n'est plus disponible",
+    "retry": "R\u00e9essayer",
+    "mentionedInComment": "{{actor}} vous a mentionn\u00e9 dans un commentaire",
+    "commentedOnTicket": "{{actor}} a comment\u00e9 un ticket",
+    "commentedBy": "Comment\u00e9 par {{actor}} \u2022 {{time}}"
   },
   "settings": {
     "title": "Param\u00e8tres",
