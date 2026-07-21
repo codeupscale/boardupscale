@@ -264,7 +264,15 @@
     "noNotificationsDesc": "\u00a1Est\u00e1s al d\u00eda! Las notificaciones aparecer\u00e1n aqu\u00ed.",
     "markRead": "Marcar como le\u00eddo",
     "unread": "No le\u00eddos ({{count}})",
-    "earlier": "Anteriores"
+    "earlier": "Anteriores",
+    "viewAll": "Ver todas las notificaciones",
+    "expandComment": "Mostrar vista previa del comentario",
+    "collapseComment": "Ocultar vista previa del comentario",
+    "commentUnavailable": "Este comentario ya no est\u00e1 disponible",
+    "retry": "Reintentar",
+    "mentionedInComment": "{{actor}} te mencion\u00f3 en un comentario",
+    "commentedOnTicket": "{{actor}} coment\u00f3 en un ticket",
+    "commentedBy": "Comentado por {{actor}} \u2022 {{time}}"
   },
   "settings": {
     "title": "Configuraci\u00f3n",

@@ -37,6 +37,14 @@ export class CommentsController {
     return { data: comments };
   }
 
+  @Get(':id')
+  @RequirePermission('comment', 'read')
+  @ApiOperation({ summary: 'Get a single comment by ID' })
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @OrgId() organizationId: string) {
+    const comment = await this.commentsService.findOne(id, organizationId);
+    return { data: comment };
+  }
+
   @Post()
   @RequirePermission('comment', 'create')
   @ApiOperation({ summary: 'Create a comment on an issue' })

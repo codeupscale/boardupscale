@@ -14,6 +14,18 @@ export function useComments(issueId: string) {
   })
 }
 
+export function useComment(commentId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['comment', commentId],
+    queryFn: async () => {
+      const { data } = await api.get(`/comments/${commentId}`)
+      return data.data as Comment
+    },
+    enabled: !!commentId && enabled,
+    staleTime: 60_000,
+  })
+}
+
 export function useCreateComment() {
   const qc = useQueryClient()
   return useMutation({

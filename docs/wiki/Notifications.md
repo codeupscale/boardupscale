@@ -88,13 +88,16 @@ Settings UI: **User Settings → Notifications**.
 
 - Right sheet; does not navigate away from the current page
 - Filters: **All / Unread / Mentions / Assigned**
-- Title + timestamp only (no body preview — avoids rich HTML noise)
-- Mark read on click; link to issue/project when present
+- **Comment & mention rows** (`comment:created`, `mention`):
+  - **Collapsed (default):** concise summary (e.g. “User X commented on TPROJ-1”), issue title, timestamp — no comment body
+  - **Chevron expand:** loads full comment HTML on demand via `GET /comments/:id`; scrollable preview inside the row
+  - **Summary click:** mark read + navigate to issue (chevron does neither)
+- **Other types:** title + timestamp only (no body preview)
 - “View all” → `/notifications`
 
 ### Full page (`/notifications`)
 
-- Same filter tabs as the panel
+- Same filter tabs and comment/mention expand behavior as the panel
 - Summary cards: total / unread / read
 - Grouped by Today / Yesterday / Earlier
 
@@ -156,6 +159,7 @@ Migration: `1748300000000-AddNotificationOrganizationId.ts`
 | --------------- | ------------------------------------- | --------------------------- |
 | `GET`           | `/notifications?filter=&page=&limit=` | Org-scoped list             |
 | `GET`           | `/notifications/unread-count`         | `{ count, organizationId }` |
+| `GET`           | `/comments/:id`                       | Single comment for inbox preview (tenant-scoped) |
 | `GET` / `PATCH` | `/notifications/preferences`          | User prefs                  |
 | `PATCH`         | `/notifications/:id/read`             | Tenant + user scoped        |
 | `POST`          | `/notifications/read-all`             | Active org only             |
@@ -184,4 +188,4 @@ Auth: JWT. All list/read mutations scoped by `@OrgId()`.
 | FE socket/hooks | `services/web/src/hooks/useNotifications.ts`                              |
 | Multi-tab       | `services/web/src/lib/notification-tab-coordinator.ts`                    |
 | Sound           | `services/web/src/lib/notification-sound.ts`                              |
-| Panel / page    | `NotificationsPanel.tsx`, `NotificationsPage.tsx`                         |
+| Panel / page    | `NotificationsPanel.tsx`, `NotificationsPage.tsx`, `CommentNotificationRow.tsx` |
