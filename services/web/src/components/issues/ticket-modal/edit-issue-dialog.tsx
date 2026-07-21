@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useIssue, useUpdateIssue, useDeleteIssue } from '@/hooks/useIssues'
@@ -12,8 +13,11 @@ import { isKanbanProject } from '@/lib/project-workflow'
 import api from '@/lib/api'
 import { toast } from '@/store/ui.store'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { Button } from '@/components/ui/button'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { TicketModal, TicketModalBody } from './ticket-modal'
+import { ticketModalTokens } from './ticket-modal.tokens'
+import { cn } from '@/lib/utils'
 import { TicketModalHeader } from './ticket-modal-header'
 import { TicketModalFooter } from './ticket-modal-footer'
 import {
@@ -95,6 +99,22 @@ export function EditIssueDialog({
     uploadingAttachments ||
     linkingIssues
 
+  const issueUnavailable = !isLoading && (isError || !issue)
+  const showLoading = isLoading && !issue
+
+  const closeDialog = useCallback(() => {
+    if (isBusy) return
+    onOpenChange(false)
+  }, [isBusy, onOpenChange])
+
+  const requestDialogClose = useCallback(() => {
+    if (issue) {
+      formRef.current?.requestClose()
+      return
+    }
+    closeDialog()
+  }, [issue, closeDialog])
+
   useEffect(() => {
     if (open) setFormKey((k) => k + 1)
   }, [open, issueId])
@@ -141,18 +161,18 @@ export function EditIssueDialog({
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
-        formRef.current?.requestClose()
+        requestDialogClose()
         return
       }
       onOpenChange(true)
     },
-    [onOpenChange],
+    [onOpenChange, requestDialogClose],
   )
 
   const handleCancel = useCallback(() => {
     if (isBusy) return
-    onOpenChange(false)
-  }, [isBusy, onOpenChange])
+    requestDialogClose()
+  }, [isBusy, requestDialogClose])
 
   const handleDeleteConfirm = useCallback(() => {
     if (!issue || !canDelete) return
@@ -310,25 +330,43 @@ export function EditIssueDialog({
       preventClose={isBusy}
     >
       <TicketModalHeader
-        title={t('issues.editIssue')}
-        subtitle={t(
-          'issues.editIssueSubtitle',
-          'Update issue details, collaboration, and planning',
-        )}
-        badge={issue?.key ?? (isLoading ? '…' : undefined)}
+        title={
+          issueUnavailable
+            ? t('issues.ticketUnavailableTitle', 'This ticket is no longer available')
+            : showLoading
+              ? t('common.loading', 'Loading...')
+              : t('issues.editIssue')
+        }
+        subtitle={
+          issueUnavailable || showLoading
+            ? undefined
+            : t(
+                'issues.editIssueSubtitle',
+                'Update issue details, collaboration, and planning',
+              )
+        }
+        badge={issue?.key}
       />
 
       <TicketModalBody>
-        {isLoading && !issue && (
-          <div className="py-4">
-            <ListSkeleton rows={6} />
+        {issueUnavailable && (
+          <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
+              <Trash2 className="h-7 w-7 text-destructive" aria-hidden />
+            </div>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              {t(
+                'issues.ticketUnavailableDesc',
+                'It may have been deleted or you no longer have access.',
+              )}
+            </p>
           </div>
         )}
 
-        {isError && !isLoading && (
-          <p className="py-8 text-center text-sm text-destructive">
-            {t('issues.loadFailed', 'Failed to load issue. Please try again.')}
-          </p>
+        {showLoading && (
+          <div className="py-4">
+            <ListSkeleton rows={6} />
+          </div>
         )}
 
         {issue && (
@@ -360,25 +398,27 @@ export function EditIssueDialog({
             />
           </>
         )}
-
-        {!isLoading && !issue && !isError && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {t('issues.issueNotFound')}
-          </p>
-        )}
       </TicketModalBody>
 
-      <TicketModalFooter
-        onCancel={() => formRef.current?.requestClose()}
-        onSubmit={handleSubmit}
-        submitLabel={t('issues.saveChanges', 'Save Changes')}
-        isLoading={updateIssue.isPending || uploadingAttachments || linkingIssues}
-        submitDisabled={!canEdit || !issue}
-        showDelete={canDelete && !!issue}
-        onDelete={() => setShowDeleteConfirm(true)}
-        deleteDisabled={!issue}
-        isDeleting={deleteIssue.isPending}
-      />
+      {issueUnavailable ? (
+        <div className={cn(ticketModalTokens.footer, 'justify-end')}>
+          <Button type="button" variant="secondary" onClick={closeDialog}>
+            {t('issues.goBack', 'Go back')}
+          </Button>
+        </div>
+      ) : showLoading ? null : (
+        <TicketModalFooter
+          onCancel={requestDialogClose}
+          onSubmit={handleSubmit}
+          submitLabel={t('issues.saveChanges', 'Save Changes')}
+          isLoading={updateIssue.isPending || uploadingAttachments || linkingIssues}
+          submitDisabled={!canEdit || !issue}
+          showDelete={canDelete && !!issue}
+          onDelete={() => setShowDeleteConfirm(true)}
+          deleteDisabled={!issue}
+          isDeleting={deleteIssue.isPending}
+        />
+      )}
 
       <ConfirmDialog
         open={showDeleteConfirm}

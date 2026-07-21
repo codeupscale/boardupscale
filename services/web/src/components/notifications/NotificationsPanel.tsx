@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Bell, CheckCheck, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -19,7 +20,10 @@ import {
 } from '@/hooks/useNotifications'
 import type { Notification } from '@/types'
 import { cn } from '@/lib/utils'
+import { toast } from '@/store/ui.store'
+import { fetchIssueOrNull } from '@/lib/issue-navigation'
 import {
+  getNotificationIssueId,
   getNotificationLink,
   groupNotificationsByDay,
   isCommentNotification,
@@ -45,6 +49,7 @@ function NotificationListItem({
 export function NotificationsPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const isOpen = useNotificationsPanelStore((s) => s.isOpen)
   const setOpen = useNotificationsPanelStore((s) => s.setOpen)
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -65,13 +70,31 @@ export function NotificationsPanel() {
     { id: 'assigned', label: 'Assigned' },
   ]
 
-  const handleSelect = (notification: Notification) => {
+  const handleSelect = async (notification: Notification) => {
     if (!notification.read) {
       markRead.mutate(notification.id)
     }
+
     const link = getNotificationLink(notification)
+    if (!link) return
+
+    const issueId = getNotificationIssueId(notification)
+    if (issueId) {
+      const issue = await fetchIssueOrNull(qc, issueId)
+      if (!issue) {
+        toast(
+          t(
+            'issues.ticketUnavailableToast',
+            'This ticket is no longer available — it may have been deleted.',
+          ),
+          'error',
+        )
+        return
+      }
+    }
+
     setOpen(false)
-    if (link) navigate(link)
+    navigate(link)
   }
 
   return (

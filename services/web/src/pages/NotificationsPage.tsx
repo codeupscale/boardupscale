@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Bell, CheckCheck, Inbox, BellRing } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -14,7 +15,10 @@ import { PageHeader } from '@/components/common/page-header'
 import { Button } from '@/components/ui/button'
 import { ListSkeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { toast } from '@/store/ui.store'
+import { fetchIssueOrNull } from '@/lib/issue-navigation'
 import {
+  getNotificationIssueId,
   getNotificationLink,
   groupNotificationsByDay,
   isCommentNotification,
@@ -62,6 +66,7 @@ function NotificationListItem({
 export function NotificationsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [filter, setFilter] = useState<NotificationFilter>('all')
   const { data: notificationsResult, isLoading } = useNotifications({ filter, limit: 50 })
   const { data: unreadData } = useUnreadCount()
@@ -87,12 +92,30 @@ export function NotificationsPage() {
     { id: 'assigned', label: 'Assigned' },
   ]
 
-  const handleSelect = (notification: Notification) => {
+  const handleSelect = async (notification: Notification) => {
     if (!notification.read) {
       markRead.mutate(notification.id)
     }
+
     const link = getNotificationLink(notification)
-    if (link) navigate(link)
+    if (!link) return
+
+    const issueId = getNotificationIssueId(notification)
+    if (issueId) {
+      const issue = await fetchIssueOrNull(qc, issueId)
+      if (!issue) {
+        toast(
+          t(
+            'issues.ticketUnavailableToast',
+            'This ticket is no longer available — it may have been deleted.',
+          ),
+          'error',
+        )
+        return
+      }
+    }
+
+    navigate(link)
   }
 
   return (

@@ -83,3 +83,23 @@ export function prefetchIssue(queryClient: QueryClient, issueId: string) {
     staleTime: 30_000,
   })
 }
+
+/** Returns the issue when it exists; null when missing/deleted/forbidden (e.g. 404). */
+export async function fetchIssueOrNull(
+  queryClient: QueryClient,
+  issueId: string,
+): Promise<Issue | null> {
+  try {
+    return await queryClient.fetchQuery({
+      queryKey: ['issue', issueId],
+      queryFn: async () => {
+        const { data } = await api.get(`/issues/${issueId}`)
+        return data.data as Issue
+      },
+      staleTime: 30_000,
+      retry: false,
+    })
+  } catch {
+    return null
+  }
+}
