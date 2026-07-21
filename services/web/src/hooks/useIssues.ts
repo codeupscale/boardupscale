@@ -144,6 +144,11 @@ export function useIssue(id: string) {
       return data.data as Issue
     },
     enabled: !!id,
+    retry: (failureCount, error: any) => {
+      const status = error?.response?.status
+      if (status === 404 || status === 403) return false
+      return failureCount < 2
+    },
   })
 }
 

@@ -93,6 +93,8 @@ Settings UI: **User Settings → Notifications**.
   - **Chevron expand:** loads full comment HTML on demand via `GET /comments/:id`; scrollable preview inside the row
   - **Summary click:** mark read + navigate to issue (chevron does neither)
 - **Other types:** title + timestamp only (no body preview)
+- **`issue:deleted`:** click marks read only — does **not** navigate to the ticket (target is already gone)
+- **Other issue-linked notifications** (comment, mention, assign, etc.): before navigate, verify the issue still exists; if deleted/missing → toast and stay in inbox (no Edit Ticket modal)
 - “View all” → `/notifications`
 
 ### Full page (`/notifications`)

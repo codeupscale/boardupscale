@@ -113,10 +113,21 @@ export function getNotificationIconBg(type: string) {
 }
 
 export function getNotificationLink(notification: Notification): string | null {
+  // Ticket is already gone — opening /issues/:id only shows "unavailable".
+  // Click still marks read; do not navigate.
+  if (notification.type === 'issue:deleted') return null
+
   const data = notification.data || {}
   if (data.issueId) return `/issues/${data.issueId}`
   if (data.projectId) return `/projects/${data.projectId}/board`
   return null
+}
+
+/** Issue id when the notification deep-links to a ticket (not project-only). */
+export function getNotificationIssueId(notification: Notification): string | null {
+  if (notification.type === 'issue:deleted') return null
+  const issueId = notification.data?.issueId
+  return typeof issueId === 'string' && issueId.length > 0 ? issueId : null
 }
 
 export function groupNotificationsByDay(notifications: Notification[]) {
