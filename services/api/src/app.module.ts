@@ -33,6 +33,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { AiModule } from './modules/ai/ai.module';
 import { GithubModule } from './modules/github/github.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ImportModule } from './modules/import/import.module';
 import { JiraConnection } from './modules/import/entities/jira-connection.entity';
 import { JiraImportJob } from './modules/import/entities/jira-import-job.entity';
@@ -225,6 +226,7 @@ import { SearchReindexJob } from './modules/search/entities/search-reindex-job.e
     AiModule,
     GithubModule,
     BillingModule,
+    DashboardModule,
     ImportModule,
     MigrationModule,
     PagesModule,

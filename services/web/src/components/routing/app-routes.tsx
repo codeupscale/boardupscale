@@ -93,6 +93,11 @@ const MigrationHistoryPage = React.lazy(() =>
 const BillingPage = React.lazy(() =>
   import('@/pages/BillingPage').then((m) => ({ default: m.BillingPage })),
 )
+const OrgOwnerDashboardPage = React.lazy(() =>
+  import('@/pages/OrgOwnerDashboardPage').then((m) => ({
+    default: m.OrgOwnerDashboardPage,
+  })),
+)
 const ProjectPagesPage = React.lazy(() =>
   import('@/pages/ProjectPagesPage').then((m) => ({ default: m.ProjectPagesPage })),
 )
@@ -108,7 +113,13 @@ const PageDetailPage = React.lazy(() =>
 
 function RootRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  const role = useAuthStore((s) => s.user?.role)
+  if (isAuthenticated) {
+    if (role === UserRole.OWNER) {
+      return <Navigate to="/org/dashboard" replace />
+    }
+    return <Navigate to="/dashboard" replace />
+  }
   return <Navigate to="/login" replace />
 }
 
@@ -116,6 +127,14 @@ function ProtectedRoutes() {
   return (
     <Route element={<AppLayout />}>
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route
+        path="/org/dashboard"
+        element={
+          <RoleGuard roles={[UserRole.OWNER]}>
+            <OrgOwnerDashboardPage />
+          </RoleGuard>
+        }
+      />
       <Route path="/projects" element={<ProjectsPage />} />
       <Route path="/projects/:key" element={<ProjectLayout />}>
         <Route index element={<Navigate to="board" replace />} />

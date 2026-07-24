@@ -117,3 +117,5 @@ The personal **Dashboard** (home page after login) shows:
 - Total completed issues
 - Recent projects
 - Sprint intelligence widget — predicted completion % for active sprint
+
+Organization owners also get the **[Organization Owner Dashboard](Organization-Owner-Dashboard.md)** at `/org/dashboard` (composite org KPIs, health charts, activity, and project health table).

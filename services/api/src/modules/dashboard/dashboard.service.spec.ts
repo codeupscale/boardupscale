@@ -1,0 +1,282 @@
+import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
+import { DashboardService } from './dashboard.service';
+import { DashboardScopeResolver } from './dashboard-scope.resolver';
+import { OrgDashboardResponse } from './dto/org-dashboard-response';
+import {
+  encodeProjectHealthCursor,
+  decodeProjectHealthCursor,
+} from './project-health.sql';
+
+describe('DashboardService', () => {
+  let service: DashboardService;
+  let dataSource: { query: jest.Mock };
+  let configService: { get: jest.Mock };
+
+  const emptyKpis = [
+    {
+      total_projects: 0,
+      active_projects: 0,
+      total_members: 0,
+      pending_invites: 0,
+      billing_status: null,
+      billing_plan_name: null,
+      members_added_this_month: 0,
+      pending_created_this_month: 0,
+      invites_accepted_this_month: 0,
+      active_invitations: 0,
+      next_invite_expiry_at: null,
+      role_counts: {},
+    },
+  ];
+
+  beforeEach(() => {
+    dataSource = { query: jest.fn() };
+    configService = { get: jest.fn().mockReturnValue(undefined) };
+
+    service = new DashboardService(
+      dataSource as unknown as DataSource,
+      new DashboardScopeResolver(),
+      configService as unknown as ConfigService,
+    );
+    (service as unknown as { redis: null }).redis = null;
+  });
+
+  it('buildOrgOwnerDashboard issues exactly 4 queries (no N+1)', async () => {
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          total_projects: 2,
+          active_projects: 1,
+          total_members: 5,
+          pending_invites: 1,
+          billing_status: 'active',
+          billing_plan_name: 'Business',
+          members_added_this_month: 2,
+          pending_created_this_month: 1,
+          invites_accepted_this_month: 3,
+          active_invitations: 1,
+          next_invite_expiry_at: '2026-07-26T12:00:00.000Z',
+          role_counts: {
+            org_owner: 1,
+            org_administrator: 1,
+            project_admin: 1,
+            project_member: 1,
+            project_viewer: 0,
+            org_user: 1,
+          },
+        },
+      ])
+      .mockResolvedValueOnce([
+        { health_status: 'active', cnt: 1 },
+        { health_status: 'at_risk', cnt: 1 },
+      ])
+      .mockResolvedValueOnce([{ day: '2026-07-20', count: 3 }])
+      .mockResolvedValueOnce([
+        {
+          id: 'a1',
+          user_id: 'u1',
+          user_display_name: 'Ada',
+          user_avatar_url: null,
+          action: 'created',
+          issue_key: 'ALP-1',
+          issue_title: 'Setup',
+          project_key: 'ALP',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+    const result = await service.buildOrgOwnerDashboard('org-1', '7d');
+
+    expect(dataSource.query).toHaveBeenCalledTimes(4);
+    expect(service.lastQueryCount).toBe(4);
+    expect(result.kpis.totalProjects).toBe(2);
+    expect(result.kpis.securityAlerts.comingSoon).toBe(true);
+    expect(result.projectsByStatus.total).toBe(2);
+    expect(result.projectsByStatus.segments.map((s) => s.key)).toEqual([
+      'active',
+      'at_risk',
+      'blocked',
+      'completed',
+    ]);
+    expect(result.memberSnapshot.countingRule).toBe(
+      'distinct_user_highest_role',
+    );
+    expect(result.memberSnapshot.pendingInvitesTrendDelta).toBe(-2);
+    expect(result.activity.series).toHaveLength(7);
+    expect(result.activity.recent).toHaveLength(1);
+    expect(
+      (result as OrgDashboardResponse & { projectHealth?: unknown })
+        .projectHealth,
+    ).toBeUndefined();
+  });
+
+  it('returns empty-safe payload when org has no data', async () => {
+    dataSource.query
+      .mockResolvedValueOnce(emptyKpis)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.buildOrgOwnerDashboard('org-empty', '7d');
+
+    expect(dataSource.query).toHaveBeenCalledTimes(4);
+    expect(result.kpis.totalProjects).toBe(0);
+    expect(result.projectsByStatus.total).toBe(0);
+    expect(result.memberSnapshot.totalMembers).toBe(0);
+    expect(result.activity.recent).toEqual([]);
+  });
+
+  it('getOrgProjectHealth returns keyset page with nextCursor', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      {
+        project_id: 'p1',
+        name: 'Alpha',
+        key: 'ALP',
+        type: 'scrum',
+        open_tickets: 1,
+        blocked_open_tickets: 0,
+        overdue_tickets: 0,
+        completed_tickets: 9,
+        active_sprint_name: 'S1',
+        health_status: 'active',
+        progress_percent: 90,
+        sort_order: 2,
+        total_count: 40,
+      },
+      {
+        project_id: 'p2',
+        name: 'Beta',
+        key: 'BET',
+        type: 'kanban',
+        open_tickets: 0,
+        blocked_open_tickets: 0,
+        overdue_tickets: 0,
+        completed_tickets: 0,
+        active_sprint_name: null,
+        health_status: 'blocked',
+        progress_percent: 0,
+        sort_order: 0,
+        total_count: 40,
+      },
+    ]);
+
+    const page = await service.getOrgProjectHealth('org-1', {
+      status: 'all',
+      limit: 2,
+    });
+
+    expect(page.items).toHaveLength(2);
+    expect(page.total).toBe(40);
+    expect(page.nextCursor).toBeTruthy();
+    const decoded = decodeProjectHealthCursor(page.nextCursor);
+    expect(decoded?.projectId).toBe('p2');
+  });
+
+  it('getOrgProjectHealth returns empty page with total 0', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      {
+        project_id: null,
+        name: null,
+        key: null,
+        type: null,
+        open_tickets: null,
+        blocked_open_tickets: null,
+        overdue_tickets: null,
+        completed_tickets: null,
+        active_sprint_name: null,
+        health_status: null,
+        progress_percent: null,
+        sort_order: null,
+        total_count: 0,
+      },
+    ]);
+
+    const page = await service.getOrgProjectHealth('org-1', { limit: 25 });
+    expect(page.items).toEqual([]);
+    expect(page.nextCursor).toBeNull();
+    expect(page.total).toBe(0);
+  });
+
+  it('encodes and decodes project health cursors', () => {
+    const encoded = encodeProjectHealthCursor({
+      sortOrder: 1,
+      name: 'Zed',
+      projectId: 'abc',
+    });
+    expect(decodeProjectHealthCursor(encoded)).toEqual({
+      sortOrder: 1,
+      name: 'Zed',
+      projectId: 'abc',
+    });
+    expect(decodeProjectHealthCursor('not-valid')).toBeNull();
+  });
+
+  it('getOrgOwnerDashboard serves cache without DB queries', async () => {
+    const payload = {
+      kpis: {
+        totalProjects: 1,
+        activeProjects: 1,
+        totalMembers: 1,
+        pendingInvites: 0,
+        billingStatus: 'active',
+        billingPlanName: 'Free',
+        securityAlerts: { count: 0, comingSoon: true as const },
+      },
+      memberSnapshot: {
+        totalMembers: 1,
+        membersAddedThisMonth: 0,
+        pendingInvites: 0,
+        pendingInvitesTrendDelta: 0,
+        activeInvitations: 0,
+        activeInvitationsHint: null,
+        roleDistribution: [
+          { key: 'org_owner' as const, count: 1, percent: 100 },
+          { key: 'org_administrator' as const, count: 0, percent: 0 },
+          { key: 'project_admin' as const, count: 0, percent: 0 },
+          { key: 'project_member' as const, count: 0, percent: 0 },
+          { key: 'project_viewer' as const, count: 0, percent: 0 },
+          { key: 'org_user' as const, count: 0, percent: 0 },
+        ],
+        countingRule: 'distinct_user_highest_role' as const,
+      },
+      projectsByStatus: { total: 0, segments: [] },
+      activity: { series: [], recent: [] },
+      meta: {
+        range: '7d' as const,
+        generatedAt: new Date().toISOString(),
+        variant: 'org_owner' as const,
+        cacheHit: false,
+      },
+    } satisfies OrgDashboardResponse;
+
+    (service as unknown as { redis: { get: jest.Mock; setex: jest.Mock } }).redis =
+      {
+        get: jest.fn().mockResolvedValue(JSON.stringify(payload)),
+        setex: jest.fn(),
+      };
+
+    const fromCache = await service.getOrgOwnerDashboard('org-1', '7d');
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(fromCache.meta.cacheHit).toBe(true);
+    expect(fromCache.kpis.totalProjects).toBe(1);
+  });
+
+  it('fails open to DB when Redis get throws', async () => {
+    (service as unknown as { redis: { get: jest.Mock; setex: jest.Mock } }).redis =
+      {
+        get: jest.fn().mockRejectedValue(new Error('redis down')),
+        setex: jest.fn().mockRejectedValue(new Error('redis down')),
+      };
+
+    dataSource.query
+      .mockResolvedValueOnce(emptyKpis)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.getOrgOwnerDashboard('org-1', '7d');
+    expect(dataSource.query).toHaveBeenCalledTimes(4);
+    expect(result.meta.cacheHit).toBe(false);
+  });
+});

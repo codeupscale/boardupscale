@@ -1,11 +1,10 @@
 import { useState, useCallback } from 'react'
 import { Plus, Search, FolderOpen, LayoutGrid, List, Layers, CheckCircle2, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useProjects, useCreateProject } from '@/hooks/useProjects'
+import { useProjects } from '@/hooks/useProjects'
 import { useAuthStore } from '@/store/auth.store'
 import { ProjectCard } from '@/components/projects/project-card'
-import { ProjectForm } from '@/components/projects/project-form'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
 import { Button } from '@/components/ui/button'
 import { CardGridSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/common/page-header'
@@ -79,7 +78,6 @@ export function ProjectsPage() {
   const myProjects = projects.filter((p) => p.ownerId === currentUser?.id).length
 
   const canCreateProject = currentUser?.role === UserRole.OWNER || currentUser?.role === UserRole.ADMINISTRATOR
-  const createProject = useCreateProject()
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
@@ -272,30 +270,7 @@ export function ProjectsPage() {
         )}
       </div>
 
-      {/* Create Project Dialog */}
-      <Dialog open={showCreate} onOpenChange={(isOpen) => !isOpen && setShowCreate(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('projects.createNewProject')}</DialogTitle>
-          </DialogHeader>
-          <ProjectForm
-            onSubmit={(values) =>
-              createProject.mutate(
-                {
-                  name: values.name,
-                  key: values.key,
-                  description: values.description,
-                  type: values.type,
-                  templateType: values.templateType,
-                },
-                { onSuccess: () => setShowCreate(false) },
-              )
-            }
-            onCancel={() => setShowCreate(false)}
-            isLoading={createProject.isPending}
-          />
-        </DialogContent>
-      </Dialog>
+      <CreateProjectDialog open={showCreate} onOpenChange={setShowCreate} />
     </div>
   )
 }

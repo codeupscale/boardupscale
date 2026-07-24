@@ -92,7 +92,11 @@ export function Sidebar() {
   const isOwner = user?.role === UserRole.OWNER
 
   const navItems = [
-    { icon: LayoutGrid, label: t('nav.dashboard'), href: '/dashboard' },
+    {
+      icon: LayoutGrid,
+      label: t('nav.dashboard'),
+      href: isOwner ? '/org/dashboard' : '/dashboard',
+    },
     { icon: Layers, label: t('nav.projects'), href: '/projects' },
     { icon: Timer, label: 'Timesheet', href: '/timesheet' },
     { icon: BellDot, label: t('nav.notifications'), href: '/notifications' },

@@ -71,6 +71,7 @@ export function useInviteMember() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['org-members'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
       toast('Invitation sent')
     },
     onError: (err: any) => {

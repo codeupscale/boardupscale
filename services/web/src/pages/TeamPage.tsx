@@ -1,20 +1,17 @@
-import { useState, useMemo, ComponentType } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Users,
   UserPlus,
   Mail,
-  ShieldCheck,
   UserX,
   RefreshCw,
   Trash2,
   Search,
-  Crown,
   Shield,
-  User2,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Clock,
-  CheckCircle2,
   Pencil,
   AtSign,
   AlertTriangle,
@@ -23,7 +20,6 @@ import { useMe } from '@/hooks/useAuth'
 import {
   useOrgMembers,
   useOrgMembersRealtime,
-  useInviteMember,
   useUpdateMember,
   useUpdateMemberEmail,
   useUpdateMemberRole,
@@ -34,6 +30,14 @@ import {
 import type { MergePreview } from '@/hooks/useOrganization'
 import { useRoles } from '@/hooks/usePermissions'
 import { MergeConfirmationModal } from '@/components/MergeConfirmationModal'
+import { InviteMemberDialog } from '@/components/team/invite-member-dialog'
+import {
+  DEFAULT_ROLE_STYLE,
+  ROLE_STYLE_MAP,
+  RoleCard,
+  getRoleConfig,
+  type RoleCardConfig,
+} from '@/components/team/role-card'
 import { User, UserRole } from '@/types'
 import { toast } from '@/store/ui.store'
 import { PageHeader } from '@/components/common/page-header'
@@ -52,80 +56,6 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
-
-// ─── Role display helpers ─────────────────────────────────────────────────────
-interface RoleCardConfig {
-  value: string
-  label: string
-  description: string
-  icon: ComponentType<{ className?: string }>
-  iconColor: string
-  selectedBg: string
-  defaultBg: string
-  badgeCls: string
-}
-
-const ROLE_STYLE_MAP: Record<string, Omit<RoleCardConfig, 'value' | 'label' | 'description'>> = {
-  owner: {
-    icon: Crown,
-    iconColor: 'text-purple-500',
-    selectedBg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700',
-  },
-  user: {
-    icon: User2,
-    iconColor: 'text-muted-foreground',
-    selectedBg: 'bg-muted border-muted-foreground',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-muted text-foreground border border-border',
-  },
-  admin: {
-    icon: Shield,
-    iconColor: 'text-primary',
-    selectedBg: 'bg-primary/10 border-primary dark:border-primary',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-primary/15 text-primary border border-primary/30 dark:border-primary/40',
-  },
-  manager: {
-    icon: ShieldCheck,
-    iconColor: 'text-blue-500',
-    selectedBg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700',
-  },
-  member: {
-    icon: User2,
-    iconColor: 'text-muted-foreground',
-    selectedBg: 'bg-muted border-muted-foreground',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-muted text-foreground border border-border',
-  },
-  viewer: {
-    icon: Users,
-    iconColor: 'text-muted-foreground',
-    selectedBg: 'bg-muted border-muted-foreground',
-    defaultBg: 'bg-card/50 border-border',
-    badgeCls: 'bg-muted text-foreground border border-border',
-  },
-}
-
-const DEFAULT_ROLE_STYLE: Omit<RoleCardConfig, 'value' | 'label' | 'description'> = {
-  icon: User2,
-  iconColor: 'text-muted-foreground',
-  selectedBg: 'bg-muted border-muted-foreground',
-  defaultBg: 'bg-card/50 border-border',
-  badgeCls: 'bg-muted text-foreground border border-border',
-}
-
-type RoleValue = string
-
-function getRoleConfig(role: string): RoleCardConfig {
-  const key = role.toLowerCase()
-  const style = ROLE_STYLE_MAP[key] ?? DEFAULT_ROLE_STYLE
-  const label = role.charAt(0).toUpperCase() + role.slice(1)
-  return { value: key, label, description: '', ...style }
-}
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 const AVATAR_GRADIENTS = [
@@ -174,50 +104,6 @@ function MemberAvatar({ member, size = 9 }: { member: User; size?: number }) {
         avatarInitials(member.displayName)
       )}
     </div>
-  )
-}
-
-// ─── Role Card ────────────────────────────────────────────────────────────────
-function RoleCard({
-  config,
-  selected,
-  onClick,
-}: {
-  config: RoleCardConfig
-  selected: boolean
-  onClick: () => void
-}) {
-  const Icon = config.icon
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all duration-150',
-        selected ? config.selectedBg : config.defaultBg,
-        'hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:ring-offset-2 focus:ring-offset-background',
-      )}
-    >
-      <div
-        className={cn(
-          'flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center',
-          selected ? 'bg-card/60' : 'bg-muted',
-        )}
-      >
-        <Icon className={cn('h-4 w-4', config.iconColor)} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            {config.label}
-          </span>
-          {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-          {config.description}
-        </p>
-      </div>
-    </button>
   )
 }
 
@@ -309,7 +195,6 @@ export function TeamPage() {
   const { data: me } = useMe()
   const { data: members = [], isLoading } = useOrgMembers()
   useOrgMembersRealtime()
-  const inviteMember = useInviteMember()
   const updateMember = useUpdateMember()
   const updateMemberEmail = useUpdateMemberEmail()
   const updateRole = useUpdateMemberRole()
@@ -320,17 +205,6 @@ export function TeamPage() {
 
   // ── Invite dialog ─────────────────────────────────────────────────────────
   const [showInviteDialog, setShowInviteDialog] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteDisplayName, setInviteDisplayName] = useState('')
-  const [inviteRole, setInviteRole] = useState<string>('user')
-
-  // ── Force-create confirmation (when org has Jira placeholders) ────────────
-  const [showForceCreateConfirm, setShowForceCreateConfirm] = useState(false)
-  const [pendingInvitePayload, setPendingInvitePayload] = useState<{
-    email: string
-    displayName?: string
-    role: string
-  } | null>(null)
 
   // ── Edit member dialog ────────────────────────────────────────────────────
   const [editTarget, setEditTarget] = useState<User | null>(null)
@@ -416,51 +290,6 @@ export function TeamPage() {
   const handleRoleFilter = (v: string) => { setRoleFilter(v); setActivePage(1) }
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleInvite = () => {
-    if (!inviteEmail.trim()) return
-    inviteMember.mutate(
-      { email: inviteEmail.trim(), displayName: inviteDisplayName.trim() || undefined, role: inviteRole },
-      {
-        onSuccess: () => {
-          setShowInviteDialog(false)
-          setInviteEmail('')
-          setInviteDisplayName('')
-          setInviteRole('user')
-        },
-        onError: (err: any) => {
-          if (err?.response?.data?.code === 'JIRA_MERGE_REQUIRED') {
-            setPendingInvitePayload({
-              email: inviteEmail.trim(),
-              displayName: inviteDisplayName.trim() || undefined,
-              role: inviteRole,
-            })
-            setShowForceCreateConfirm(true)
-          }
-        },
-      },
-    )
-  }
-
-  const handleForceCreate = () => {
-    if (!pendingInvitePayload) return
-    inviteMember.mutate(
-      { ...pendingInvitePayload, forceCreate: true },
-      {
-        onSuccess: () => {
-          setShowForceCreateConfirm(false)
-          setShowInviteDialog(false)
-          setPendingInvitePayload(null)
-          setInviteEmail('')
-          setInviteDisplayName('')
-          setInviteRole('user')
-        },
-        onError: () => {
-          setShowForceCreateConfirm(false)
-        },
-      },
-    )
-  }
-
   const openEditDialog = (member: User) => {
     setEditTarget(member)
     setEditName(member.displayName)
@@ -477,7 +306,7 @@ export function TeamPage() {
 
   const openRoleDialog = (member: User) => {
     setRoleTarget(member)
-    setNewRole((member.role as RoleValue) ?? 'member')
+    setNewRole((member.role as string) ?? 'member')
     setShowRoleDialog(true)
   }
 
@@ -930,73 +759,7 @@ export function TeamPage() {
 
       {/* ────────────────────────── Dialogs ─────────────────────────────────── */}
 
-      {/* Invite Member */}
-      <Dialog open={showInviteDialog} onOpenChange={(o) => !o && setShowInviteDialog(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <UserPlus className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <DialogTitle>Invite Team Member</DialogTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  They'll receive an email with a link to join
-                </p>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Email address"
-                type="email"
-                placeholder="colleague@company.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-              />
-              <Input
-                label="Display name (optional)"
-                placeholder="Jane Doe"
-                value={inviteDisplayName}
-                onChange={(e) => setInviteDisplayName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Role
-              </label>
-              <div className="space-y-2">
-                {assignableRoles.map((conf) => (
-                  <RoleCard
-                    key={conf.value}
-                    config={conf}
-                    selected={inviteRole === conf.value}
-                    onClick={() => setInviteRole(conf.value)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleInvite}
-              disabled={!inviteEmail.trim()}
-              isLoading={inviteMember.isPending}
-            >
-              <Mail className="h-4 w-4" />
-              Send Invitation
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InviteMemberDialog open={showInviteDialog} onOpenChange={setShowInviteDialog} />
 
       {/* Edit Member Info */}
       <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
@@ -1225,56 +988,7 @@ export function TeamPage() {
         }}
       />
 
-      {/* Force-create confirmation — shown when org has Jira placeholders */}
-      <Dialog
-        open={showForceCreateConfirm}
-        onOpenChange={(o) => {
-          if (!o) {
-            setShowForceCreateConfirm(false)
-            setPendingInvitePayload(null)
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              </div>
-              <div>
-                <DialogTitle>Jira Placeholder Users Exist</DialogTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  This organisation has unresolved Jira placeholder accounts
-                </p>
-              </div>
-            </div>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Your organisation has Jira placeholder users that haven't been matched to real accounts yet.
-            If <span className="font-medium text-foreground">{pendingInvitePayload?.email}</span> was
-            imported from Jira, consider merging them instead of creating a duplicate account.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Add <span className="font-medium text-foreground">{pendingInvitePayload?.email}</span> as a
-            brand-new member anyway?
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowForceCreateConfirm(false)
-                setPendingInvitePayload(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleForceCreate} isLoading={inviteMember.isPending}>
-              <UserPlus className="h-4 w-4" />
-              Add as New Member
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
     </div>
   )
 }

@@ -55,6 +55,7 @@ export function useCreateProject() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
       toast('Project created successfully')
     },
     onError: (err: any) =>
