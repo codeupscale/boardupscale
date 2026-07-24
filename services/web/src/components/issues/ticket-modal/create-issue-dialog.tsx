@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Issue, ProjectType, User } from '@/types'
 import { useCreateIssue } from '@/hooks/useIssues'
@@ -21,6 +21,7 @@ import type {
 import type { TicketStatusOption, TicketSprintOption } from './ticket-modal.types'
 import { resolveCreateTicketDefaults, extractAttachmentIdsFromHtml } from './ticket-modal.utils'
 import { isKanbanProject } from '@/lib/project-workflow'
+import { useTicketModalClose } from './use-ticket-modal-close'
 
 export interface CreateIssueDialogProps {
   open: boolean
@@ -82,21 +83,11 @@ export function CreateIssueDialog({
 
   const isBusy = createIssue.isPending || uploadingAttachments || linkingIssues
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (!next) {
-        formRef.current?.requestClose()
-        return
-      }
-      onOpenChange(true)
-    },
-    [onOpenChange],
+  const { handleCancel, requestFormClose, handleOpenChange } = useTicketModalClose(
+    formRef,
+    isBusy,
+    onOpenChange,
   )
-
-  const handleCancel = useCallback(() => {
-    if (isBusy) return
-    onOpenChange(false)
-  }, [isBusy, onOpenChange])
 
   const handleSubmit = () => {
     const form = document.getElementById('issue-ticket-form') as HTMLFormElement | null
@@ -233,7 +224,7 @@ export function CreateIssueDialog({
       </TicketModalBody>
 
       <TicketModalFooter
-        onCancel={() => formRef.current?.requestClose()}
+        onCancel={requestFormClose}
         onSubmit={handleSubmit}
         submitLabel={t('issues.createIssue')}
         isLoading={isBusy}
