@@ -34,6 +34,7 @@ import {
   mapTicketStatuses,
   issueToTicketFormValues,
 } from './ticket-modal.utils'
+import { useTicketModalClose } from './use-ticket-modal-close'
 
 export interface EditIssueDialogProps {
   open: boolean
@@ -102,18 +103,11 @@ export function EditIssueDialog({
   const issueUnavailable = !isLoading && (isError || !issue)
   const showLoading = isLoading && !issue
 
-  const closeDialog = useCallback(() => {
-    if (isBusy) return
-    onOpenChange(false)
-  }, [isBusy, onOpenChange])
-
-  const requestDialogClose = useCallback(() => {
-    if (issue) {
-      formRef.current?.requestClose()
-      return
-    }
-    closeDialog()
-  }, [issue, closeDialog])
+  const { handleCancel, requestFormClose, handleOpenChange } = useTicketModalClose(
+    formRef,
+    isBusy,
+    onOpenChange,
+  )
 
   useEffect(() => {
     if (open) setFormKey((k) => k + 1)
@@ -157,22 +151,6 @@ export function EditIssueDialog({
       socket.off('attachment:deleted', handleAttachmentEvent)
     }
   }, [open, issueId, qc])
-
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (!next) {
-        requestDialogClose()
-        return
-      }
-      onOpenChange(true)
-    },
-    [onOpenChange, requestDialogClose],
-  )
-
-  const handleCancel = useCallback(() => {
-    if (isBusy) return
-    requestDialogClose()
-  }, [isBusy, requestDialogClose])
 
   const handleDeleteConfirm = useCallback(() => {
     if (!issue || !canDelete) return
@@ -402,13 +380,13 @@ export function EditIssueDialog({
 
       {issueUnavailable ? (
         <div className={cn(ticketModalTokens.footer, 'justify-end')}>
-          <Button type="button" variant="secondary" onClick={closeDialog}>
+          <Button type="button" variant="secondary" onClick={handleCancel}>
             {t('issues.goBack', 'Go back')}
           </Button>
         </div>
       ) : showLoading ? null : (
         <TicketModalFooter
-          onCancel={requestDialogClose}
+          onCancel={requestFormClose}
           onSubmit={handleSubmit}
           submitLabel={t('issues.saveChanges', 'Save Changes')}
           isLoading={updateIssue.isPending || uploadingAttachments || linkingIssues}
