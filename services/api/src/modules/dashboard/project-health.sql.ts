@@ -16,7 +16,6 @@ project_issue_stats AS (
     p.name,
     p.key,
     p.type,
-    p.status AS project_lifecycle,
     COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL) AS total_tickets,
     COUNT(i.id) FILTER (
       WHERE i.deleted_at IS NULL AND s.category = 'done'
@@ -66,7 +65,6 @@ project_rollups AS (
     pis.name,
     pis.key,
     pis.type,
-    pis.project_lifecycle,
     pis.total_tickets::int AS total_tickets,
     pis.completed_tickets::int AS completed_tickets,
     pis.open_tickets::int AS open_tickets,

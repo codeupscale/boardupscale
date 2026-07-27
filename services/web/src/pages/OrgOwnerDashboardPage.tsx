@@ -33,7 +33,7 @@ import {
 export function OrgOwnerDashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [range] = useState<DashboardRange>('7d')
+  const [range, setRange] = useState<DashboardRange>('7d')
   const [statusFilter, setStatusFilter] = useState<StatusChartFilter>('all')
   const [showCreateProject, setShowCreateProject] = useState(false)
   const [showInviteMember, setShowInviteMember] = useState(false)
@@ -46,6 +46,30 @@ export function OrgOwnerDashboardPage() {
         subtitle={t('orgDashboard.subtitle')}
         actions={
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div
+              className="inline-flex items-center rounded-md border border-input bg-background p-0.5"
+              role="group"
+              aria-label={t('orgDashboard.rangeLabel')}
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={range === '7d' ? 'secondary' : 'ghost'}
+                aria-pressed={range === '7d'}
+                onClick={() => setRange('7d')}
+              >
+                {t('orgDashboard.range7d')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={range === '30d' ? 'secondary' : 'ghost'}
+                aria-pressed={range === '30d'}
+                onClick={() => setRange('30d')}
+              >
+                {t('orgDashboard.range30d')}
+              </Button>
+            </div>
             <Button type="button" onClick={() => setShowCreateProject(true)}>
               <Plus className="h-4 w-4" />
               {t('projects.newProject')}

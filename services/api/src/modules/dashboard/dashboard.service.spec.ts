@@ -16,7 +16,6 @@ describe('DashboardService', () => {
   const emptyKpis = [
     {
       total_projects: 0,
-      active_projects: 0,
       total_members: 0,
       pending_invites: 0,
       billing_status: null,
@@ -47,7 +46,6 @@ describe('DashboardService', () => {
       .mockResolvedValueOnce([
         {
           total_projects: 2,
-          active_projects: 1,
           total_members: 5,
           pending_invites: 1,
           billing_status: 'active',
@@ -91,6 +89,11 @@ describe('DashboardService', () => {
     expect(dataSource.query).toHaveBeenCalledTimes(4);
     expect(service.lastQueryCount).toBe(4);
     expect(result.kpis.totalProjects).toBe(2);
+    // Active Projects KPI must match Projects by Status "active" segment.
+    expect(result.kpis.activeProjects).toBe(1);
+    expect(
+      result.projectsByStatus.segments.find((s) => s.key === 'active')?.count,
+    ).toBe(result.kpis.activeProjects);
     expect(result.kpis.securityAlerts.comingSoon).toBe(true);
     expect(result.projectsByStatus.total).toBe(2);
     expect(result.projectsByStatus.segments.map((s) => s.key)).toEqual([
@@ -196,6 +199,21 @@ describe('DashboardService', () => {
     expect(page.items).toEqual([]);
     expect(page.nextCursor).toBeNull();
     expect(page.total).toBe(0);
+  });
+
+  it('getOrgProjectHealth rejects invalid cursor', async () => {
+    await expect(
+      service.getOrgProjectHealth('org-1', { cursor: '%%%not-base64%%%' }),
+    ).rejects.toThrow('Invalid cursor');
+    expect(dataSource.query).not.toHaveBeenCalled();
+  });
+
+  it('getOrgProjectHealth rejects invalid status', async () => {
+    await expect(
+      service.getOrgProjectHealth('org-1', {
+        status: 'nope' as 'active',
+      }),
+    ).rejects.toThrow('Invalid status filter');
   });
 
   it('encodes and decodes project health cursors', () => {

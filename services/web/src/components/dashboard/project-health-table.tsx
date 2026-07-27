@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { ProjectHealthStatus } from '@/hooks/useOrgDashboard'
 import {
+  flattenProjectHealthPages,
   PROJECT_HEALTH_HEADER_HEIGHT_PX,
   PROJECT_HEALTH_ROW_HEIGHT_PX,
   PROJECT_HEALTH_VIEWPORT_ROWS,
+  resolveProjectHealthViewState,
+  shouldFetchNextProjectHealthPage,
   useOrgProjectHealth,
 } from '@/hooks/useOrgProjectHealth'
 import { HEALTH_STATUS_LABELS } from '@/components/dashboard/dashboard-chart-theme'
@@ -21,7 +24,7 @@ const STATUS_BADGE: Record<
   active: { label: HEALTH_STATUS_LABELS.active, variant: 'success' },
   at_risk: { label: HEALTH_STATUS_LABELS.at_risk, variant: 'warning' },
   blocked: { label: HEALTH_STATUS_LABELS.blocked, variant: 'danger' },
-  completed: { label: 'Completed', variant: 'primary' },
+      completed: { label: HEALTH_STATUS_LABELS.completed, variant: 'primary' },
 }
 
 const COLS = [
@@ -55,10 +58,15 @@ export function ProjectHealthTable({
   } = useOrgProjectHealth(statusFilter)
 
   const rows = useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
+    () => flattenProjectHealthPages(data?.pages),
     [data],
   )
   const total = data?.pages[0]?.total ?? 0
+  const viewState = resolveProjectHealthViewState({
+    isLoading,
+    isError,
+    rowsLength: rows.length,
+  })
 
   const parentRef = useRef<HTMLDivElement>(null)
   const viewportHeight =
@@ -76,10 +84,17 @@ export function ProjectHealthTable({
 
   useEffect(() => {
     const last = virtualItems[virtualItems.length - 1]
-    if (!last) return
-    if (last.index >= rows.length - 5 && hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage()
+    if (
+      !shouldFetchNextProjectHealthPage({
+        lastVisibleIndex: last?.index,
+        rowsLength: rows.length,
+        hasNextPage: !!hasNextPage,
+        isFetchingNextPage,
+      })
+    ) {
+      return
     }
+    void fetchNextPage()
   }, [
     virtualItems,
     rows.length,
@@ -116,12 +131,12 @@ export function ProjectHealthTable({
       </CardHeader>
 
       <CardContent className="p-0">
-        {isLoading ? (
+        {viewState === 'loading' ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading project health…
           </div>
-        ) : isError ? (
+        ) : viewState === 'error' ? (
           <div className="py-10 text-center px-5 space-y-2">
             <p className="text-sm text-muted-foreground">
               Could not load project health.
@@ -134,7 +149,7 @@ export function ProjectHealthTable({
               Retry
             </button>
           </div>
-        ) : rows.length === 0 ? (
+        ) : viewState === 'empty' ? (
           <p className="text-sm text-muted-foreground py-10 text-center px-5">
             {statusFilter === 'all'
               ? 'No projects in this organization yet.'

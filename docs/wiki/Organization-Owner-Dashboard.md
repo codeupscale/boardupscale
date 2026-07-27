@@ -17,7 +17,20 @@ Owner-only overview of organization projects, members, and activity.
 - Payload: KPIs, **Member Management Snapshot**, projects-by-status **counts**, activity series + feed
 - Does **not** embed the full project-health row list (scale)
 - HTTP: `Cache-Control: no-store`
-- App cache: Redis key `dash:org:{orgId}:owner:{range}:v4` TTL 30s (fail-open)
+- App cache: Redis key `dash:org:{orgId}:owner:{range}:v5` TTL 30s (fail-open)
+
+### KPIs
+
+| KPI | Meaning |
+|-----|---------|
+| **Total Projects** | All projects in the org (includes archived) |
+| **Active Projects** | Projects with health status **Active** — **same count** as the Active segment in **Projects by Status** (not lifecycle `projects.status`) |
+| Pending Invites / Members / Billing | From org membership + billing tables |
+| Security Alerts | Deferred (`0`, `comingSoon`) |
+
+> **Important naming note:** Project Settings → **Delete Project** archives the row (`projects.status = 'archived'`). That is **lifecycle** status. The dashboard **Active** KPI / donut segment means **health classification** (open/overdue work, not At Risk). Do not confuse with the Projects page “Active” filter, which uses lifecycle `status === 'active'`.
+
+> Archived projects still count in Total and may appear in health buckets (e.g. Blocked if empty).
 
 ### Project health (infinite scroll)
 
@@ -74,6 +87,8 @@ Indexes (migration `1748400000000-AddOrgDashboardIndexes`): activities, issues (
 | **Completed / Done** | open=0, blocked=0, overdue=0, every ticket done |
 | **At Risk** | open ≥ 5 **and** overdue ≥ 3 |
 | **Active** | Has open and/or overdue work, but not At Risk |
+
+Activity range query param supports `7d|30d`. The org-owner UI exposes a **7 days / 30 days** toggle (default **7d**); it only re-fetches the composite dashboard (KPIs, activity series/feed). Project Health pagination is range-independent.
 
 ## Security alerts
 

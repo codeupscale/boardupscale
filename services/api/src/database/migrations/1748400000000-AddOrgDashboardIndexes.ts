@@ -10,6 +10,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Shared across Activity, Projects by Status, Project Health table, and
  * Member Management Snapshot — not org-health-only.
+ *
+ * NOTE: issue_links index was later replaced by
+ * ReplaceIssueLinksLinkTypeIndex1748500000000 (composites). Keep this
+ * migration as originally applied on production.
  */
 export class AddOrgDashboardIndexes1748400000000 implements MigrationInterface {
   public readonly name = 'AddOrgDashboardIndexes1748400000000';

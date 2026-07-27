@@ -44,7 +44,6 @@ interface StatusCountRow {
 
 interface KpiRow {
   total_projects: string | number;
-  active_projects: string | number;
   total_members: string | number;
   pending_invites: string | number;
   billing_status: string | null;
@@ -132,7 +131,7 @@ export class DashboardService {
   }
 
   private cacheKey(organizationId: string, range: DashboardRange): string {
-    return `dash:org:${organizationId}:owner:${range}:v4`;
+    return `dash:org:${organizationId}:owner:${range}:v5`;
   }
 
   private projectHealthCacheKey(
@@ -227,7 +226,6 @@ export class DashboardService {
 
     const kpi = kpiRows[0] ?? {
       total_projects: 0,
-      active_projects: 0,
       total_members: 0,
       pending_invites: 0,
       billing_status: null,
@@ -241,6 +239,9 @@ export class DashboardService {
     };
 
     const projectsByStatus = this.buildDonutFromCounts(statusCountRows);
+    // Single source of truth with Projects by Status donut (health classification).
+    const activeProjects =
+      projectsByStatus.segments.find((s) => s.key === 'active')?.count ?? 0;
 
     const pendingCreated = toInt(kpi.pending_created_this_month);
     const invitesAccepted = toInt(kpi.invites_accepted_this_month);
@@ -260,7 +261,7 @@ export class DashboardService {
     return {
       kpis: {
         totalProjects: toInt(kpi.total_projects),
-        activeProjects: toInt(kpi.active_projects),
+        activeProjects,
         totalMembers: toInt(kpi.total_members),
         pendingInvites: toInt(kpi.pending_invites),
         billingStatus: kpi.billing_status,
@@ -446,7 +447,6 @@ export class DashboardService {
       )
       SELECT
         (SELECT COUNT(*)::int FROM projects p WHERE p.organization_id = $1) AS total_projects,
-        (SELECT COUNT(*)::int FROM projects p WHERE p.organization_id = $1 AND p.status = 'active') AS active_projects,
         (SELECT COUNT(*)::int FROM org_members) AS total_members,
         (SELECT COUNT(*)::int FROM users u
           WHERE u.invitation_status = 'pending'
@@ -605,21 +605,29 @@ export class DashboardService {
 
     const total = rows.length > 0 ? toInt(rows[0].total_count) : 0;
     const dataRows = rows.filter((r) => r.project_id != null);
-    const items: ProjectHealthRow[] = dataRows.map((row) => ({
-      projectId: row.project_id,
-      name: row.name,
-      key: row.key,
-      type: row.type,
-      openIssues: toInt(row.open_tickets),
-      blockedIssues: toInt(row.blocked_open_tickets),
-      overdueIssues: toInt(row.overdue_tickets),
-      doneIssues: toInt(row.completed_tickets),
-      activeSprintName: row.active_sprint_name,
-      status: isProjectHealthStatus(row.health_status)
+    const items: ProjectHealthRow[] = dataRows.map((row) => {
+      const status = isProjectHealthStatus(row.health_status)
         ? row.health_status
-        : 'active',
-      progressPercent: toInt(row.progress_percent),
-    }));
+        : null;
+      if (!status) {
+        this.logger.warn(
+          `Unknown project health status "${row.health_status}" for project ${row.project_id}; treating as at_risk`,
+        );
+      }
+      return {
+        projectId: row.project_id,
+        name: row.name,
+        key: row.key,
+        type: row.type,
+        openIssues: toInt(row.open_tickets),
+        blockedIssues: toInt(row.blocked_open_tickets),
+        overdueIssues: toInt(row.overdue_tickets),
+        doneIssues: toInt(row.completed_tickets),
+        activeSprintName: row.active_sprint_name,
+        status: status ?? 'at_risk',
+        progressPercent: toInt(row.progress_percent),
+      };
+    });
 
     let nextCursor: string | null = null;
     if (dataRows.length === limit) {
@@ -672,8 +680,12 @@ export class DashboardService {
         a.created_at
       FROM activities a
       LEFT JOIN users u ON u.id = a.user_id
-      LEFT JOIN issues i ON i.id = a.issue_id
-      LEFT JOIN projects p ON p.id = i.project_id
+      LEFT JOIN issues i
+        ON i.id = a.issue_id
+       AND i.organization_id = a.organization_id
+      LEFT JOIN projects p
+        ON p.id = i.project_id
+       AND p.organization_id = a.organization_id
       WHERE a.organization_id = $1
         AND a.action = ANY($2::text[])
       ORDER BY a.created_at DESC
