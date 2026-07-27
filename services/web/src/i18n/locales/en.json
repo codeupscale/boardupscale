@@ -97,6 +97,60 @@
     "noProjectsYet": "No projects yet",
     "createFirstProject": "Create your first project to get started."
   },
+  "orgDashboard": {
+    "title": "Organization Owner Dashboard",
+    "subtitle": "Organization health, projects, members, and activity at a glance.",
+    "newProject": "New Project",
+    "inviteMember": "Invite Member",
+    "viewAuditLogs": "View Audit Logs",
+    "rangeLabel": "Activity range",
+    "range7d": "7 days",
+    "range30d": "30 days",
+    "loadError": "Could not load dashboard",
+    "loadErrorHint": "Check your connection and try again.",
+    "retry": "Retry",
+    "kpi": {
+      "totalProjects": "Total Projects",
+      "totalProjectsHint": "All projects created.",
+      "activeProjects": "Active Projects",
+      "activeProjectsHint": "Same as Projects by Status → Active.",
+      "totalMembers": "Total Members",
+      "totalMembersHint": "Across organization.",
+      "pendingInvites": "Pending Invites",
+      "pendingInvitesHint": "Awaiting acceptance.",
+      "billingStatus": "Billing Status",
+      "noPlan": "No plan",
+      "securityAlerts": "Security Alerts",
+      "securityAlertsHint": "Requires attention."
+    },
+    "charts": {
+      "projectsByStatus": "Projects by Status",
+      "recentActivity": "Recent Organization Activity",
+      "total": "Total",
+      "viewFullReport": "View Full Report",
+      "viewAllProjects": "View All Projects",
+      "viewAllActivity": "View All Activity"
+    },
+    "memberSnapshot": {
+      "title": "Member Management Snapshot",
+      "manageMembers": "Manage Members",
+      "totalMembers": "Total Members",
+      "pendingInvites": "Pending Invites",
+      "activeInvitations": "Active Invitations",
+      "roleDistribution": "Role Distribution",
+      "countingHint": "1 person = 1 role (highest wins)",
+      "emptyRoles": "No members yet.",
+      "noActiveInvites": "No active invites",
+      "roles": {
+        "org_owner": "Org Owners",
+        "org_administrator": "Org Admins",
+        "project_admin": "Project Admins",
+        "project_member": "Project Members",
+        "project_viewer": "Project Viewers",
+        "org_user": "Org Users"
+      }
+    }
+  },
   "projects": {
     "title": "Projects",
     "createProject": "Create Project",
