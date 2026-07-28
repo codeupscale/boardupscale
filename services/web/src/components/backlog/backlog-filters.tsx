@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { IssueTypeIcon } from '@/components/issues/issue-type-icon'
+import {
+  CreatedByFilterControls,
+  countCreatedByFilters,
+} from '@/components/filters/created-by-filter'
 
 interface BacklogQuickFiltersProps {
   filters: IssueFilters
@@ -41,6 +45,7 @@ export function BacklogQuickFilters({
   const activeFilterCount = useMemo(() => {
     let count = 0
     if (filters.assigneeId) count++
+    count += countCreatedByFilters(filters)
     if (filters.type) count++
     if (filters.priority) count++
     if (filters.search) count++
@@ -189,6 +194,27 @@ export function BacklogQuickFilters({
           ))}
         </SelectContent>
       </Select>
+
+      <CreatedByFilterControls
+        members={members}
+        value={{
+          reporterId: filters.reporterId,
+          createdFrom: filters.createdFrom,
+          createdTo: filters.createdTo,
+        }}
+        onChange={(next) => {
+          const merged: IssueFilters = { ...filters, ...next }
+          if (!next.reporterId) {
+            delete merged.reporterId
+            delete merged.createdFrom
+            delete merged.createdTo
+          } else {
+            if (!next.createdFrom) delete merged.createdFrom
+            if (!next.createdTo) delete merged.createdTo
+          }
+          onFiltersChange(merged)
+        }}
+      />
 
       {/* Active filter count + clear */}
       {activeFilterCount > 0 && (

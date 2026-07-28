@@ -22,6 +22,7 @@ import { ActivityService } from "../activity/activity.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { NotificationAudienceService } from "../notifications/notification-audience.service";
 import { NOTIFICATION_TYPES } from "../notifications/notification.constants";
+import { resolveCreatedAtRangeBounds } from "../../common/utils/created-at-range";
 
 @Injectable()
 export class BoardsService {
@@ -57,10 +58,33 @@ export class BoardsService {
   private applyBoardFilters(
     qb: SelectQueryBuilder<Issue>,
     query?: BoardQueryDto,
+    organizationId?: string,
   ): void {
+    if (organizationId) {
+      qb.andWhere("issue.organizationId = :organizationId", {
+        organizationId,
+      });
+    }
     if (query?.assigneeId) {
       qb.andWhere("issue.assigneeId = :assigneeId", {
         assigneeId: query.assigneeId,
+      });
+    }
+    if (query?.reporterId) {
+      qb.andWhere("issue.reporterId = :reporterId", {
+        reporterId: query.reporterId,
+      });
+    }
+    const { createdFromStart, createdToExclusive } = resolveCreatedAtRangeBounds(
+      query?.createdFrom,
+      query?.createdTo,
+    );
+    if (createdFromStart) {
+      qb.andWhere("issue.createdAt >= :createdFromStart", { createdFromStart });
+    }
+    if (createdToExclusive) {
+      qb.andWhere("issue.createdAt < :createdToExclusive", {
+        createdToExclusive,
       });
     }
     if (query?.type) {
@@ -115,7 +139,7 @@ export class BoardsService {
       .where("issue.projectId = :projectId", { projectId })
       .andWhere("issue.deletedAt IS NULL");
 
-    this.applyBoardFilters(qb, query);
+    this.applyBoardFilters(qb, query, organizationId);
     qb.orderBy("issue.position", "ASC");
 
     const allIssues = await qb
@@ -139,7 +163,7 @@ export class BoardsService {
       .where("issue.projectId = :projectId", { projectId })
       .andWhere("issue.deletedAt IS NULL");
 
-    this.applyBoardFilters(countQb, query);
+    this.applyBoardFilters(countQb, query, organizationId);
     countQb.groupBy("issue.statusId");
 
     const countRows: Array<{ statusId: string; total: string }> =
@@ -174,7 +198,7 @@ export class BoardsService {
       .andWhere("issue.statusId = :statusId", { statusId })
       .andWhere("issue.deletedAt IS NULL");
 
-    this.applyBoardFilters(qb, query);
+    this.applyBoardFilters(qb, query, organizationId);
     qb.orderBy("issue.position", "ASC").skip(offset).take(limit);
 
     const [issues, total] = await qb.getManyAndCount();

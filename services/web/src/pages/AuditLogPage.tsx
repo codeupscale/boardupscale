@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Shield } from 'lucide-react'
 import { useAuditLogs } from '@/hooks/useAuditLogs'
+import { useOrgMembers } from '@/hooks/useOrganization'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,12 +15,15 @@ export function AuditLogPage() {
   const [page, setPage] = useState(1)
   const [entityType, setEntityType] = useState('')
   const [action, setAction] = useState('')
+  const [userId, setUserId] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const { data: orgMembers = [] } = useOrgMembers()
 
   const { data, isLoading } = useAuditLogs({
     entityType: entityType || undefined,
     action: action || undefined,
+    userId: userId || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     page,
@@ -69,6 +73,24 @@ export function AuditLogPage() {
             onChange={(e) => { setAction(e.target.value); setPage(1) }}
             className="w-48"
           />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            {t('audit.user')}
+          </label>
+          <Select value={userId || '__all__'} onValueChange={(v) => { setUserId(v === '__all__' ? '' : v); setPage(1) }}>
+            <SelectTrigger className="w-[220px] text-sm">
+              <SelectValue placeholder={t('audit.user')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{t('audit.allUsers', 'All users')}</SelectItem>
+              {orgMembers.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.displayName || member.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">

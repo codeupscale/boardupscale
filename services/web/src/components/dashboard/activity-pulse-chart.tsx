@@ -13,13 +13,26 @@ import type { ActivityFeedItem, ActivitySeriesPoint } from '@/hooks/useOrgDashbo
 import { DashboardPanelCard } from '@/components/dashboard/dashboard-panel-card'
 import { DashboardChartTooltip } from '@/components/dashboard/dashboard-chart-tooltip'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   DASHBOARD_ACCENT,
   DASHBOARD_PANEL,
 } from '@/components/dashboard/dashboard-chart-theme'
+import type { DashboardRange } from '@/hooks/useOrgDashboard'
 
 interface ActivityPulseChartProps {
   series: ActivitySeriesPoint[]
   recent: ActivityFeedItem[]
+  range?: DashboardRange
+  onRangeChange?: (next: DashboardRange) => void
+  rangeLabel?: string
+  range7dLabel?: string
+  range30dLabel?: string
   title?: string
   footerHref?: string
   footerLabel?: string
@@ -46,6 +59,11 @@ function actionLabel(action: string): string {
 export function ActivityPulseChart({
   series,
   recent,
+  range = '7d',
+  onRangeChange,
+  rangeLabel = 'Date range',
+  range7dLabel = '7 days',
+  range30dLabel = '30 days',
   title = 'Recent Organization Activity',
   footerHref = '/admin/audit-logs',
   footerLabel = 'View All Activity',
@@ -59,10 +77,32 @@ export function ActivityPulseChart({
   const feed = recent.slice(0, feedSlots)
   const emptySlots = Math.max(0, feedSlots - feed.length)
   const hasSeries = series.some((p) => p.count > 0)
+  const headerExtra = onRangeChange ? (
+    <Select
+      value={range}
+      onValueChange={(value) => onRangeChange(value as DashboardRange)}
+    >
+      <SelectTrigger
+        className="h-8 w-[120px] text-xs border-border/80 bg-background/60"
+        aria-label={rangeLabel}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="7d" className="text-xs">
+          {range7dLabel}
+        </SelectItem>
+        <SelectItem value="30d" className="text-xs">
+          {range30dLabel}
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  ) : null
 
   return (
     <DashboardPanelCard
       title={title}
+      headerExtra={headerExtra}
       footerHref={footerHref}
       footerLabel={footerLabel}
       className={className}

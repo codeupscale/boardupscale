@@ -9,6 +9,9 @@ export function useBoard(projectId: string, filters?: BoardFilters) {
     queryFn: async () => {
       const params = new URLSearchParams()
       if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId)
+      if (filters?.reporterId) params.set('reporterId', filters.reporterId)
+      if (filters?.createdFrom) params.set('createdFrom', filters.createdFrom)
+      if (filters?.createdTo) params.set('createdTo', filters.createdTo)
       if (filters?.type) params.set('type', filters.type)
       if (filters?.priority) params.set('priority', filters.priority)
       if (filters?.label) params.set('label', filters.label)
@@ -36,6 +39,9 @@ export function useColumnLoadMore(
     queryFn: async () => {
       const params = new URLSearchParams()
       if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId)
+      if (filters?.reporterId) params.set('reporterId', filters.reporterId)
+      if (filters?.createdFrom) params.set('createdFrom', filters.createdFrom)
+      if (filters?.createdTo) params.set('createdTo', filters.createdTo)
       if (filters?.type) params.set('type', filters.type)
       if (filters?.priority) params.set('priority', filters.priority)
       if (filters?.label) params.set('label', filters.label)

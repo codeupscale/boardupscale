@@ -117,6 +117,9 @@ export function useOrgDashboard(range: DashboardRange = '7d') {
       return data.data as OrgDashboardData
     },
     enabled: !!orgId,
+    // Keep the previous range payload visible while the next range loads
+    // to avoid full-page skeleton flicker on first toggle (e.g. 7d -> 30d).
+    placeholderData: (previousData) => previousData,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
   })

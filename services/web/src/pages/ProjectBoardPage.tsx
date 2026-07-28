@@ -35,6 +35,7 @@ import { KanbanSkeleton, ContentFade } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import { BoardData, BoardFilters, ColumnPageResult, SwimlaneGroupBy, Issue } from '@/types'
 import { isKanbanProject } from '@/lib/project-workflow'
+import { matchCreatedRangePreset } from '@/lib/issue-created-range'
 import { toast } from '@/store/ui.store'
 
 const CATEGORY_OPTIONS = [
@@ -84,12 +85,22 @@ export function ProjectBoardPage() {
   const filters: BoardFilters = useMemo(() => {
     const f: BoardFilters = {}
     const assigneeId = searchParams.get('assigneeId')
+    const reporterId = searchParams.get('reporterId')
+    const createdFrom = searchParams.get('createdFrom')
+    const createdTo = searchParams.get('createdTo')
     const type = searchParams.get('type')
     const priority = searchParams.get('priority')
     const label = searchParams.get('label')
     const search = searchParams.get('search')
     const sprintId = searchParams.get('sprintId')
     if (assigneeId) f.assigneeId = assigneeId
+    if (reporterId) {
+      f.reporterId = reporterId
+      if (createdFrom && createdTo && matchCreatedRangePreset(createdFrom, createdTo)) {
+        f.createdFrom = createdFrom
+        f.createdTo = createdTo
+      }
+    }
     if (type) f.type = type
     if (priority) f.priority = priority
     if (label) f.label = label
@@ -102,6 +113,11 @@ export function ProjectBoardPage() {
     (newFilters: BoardFilters) => {
       const params = new URLSearchParams()
       if (newFilters.assigneeId) params.set('assigneeId', newFilters.assigneeId)
+      if (newFilters.reporterId) {
+        params.set('reporterId', newFilters.reporterId)
+        if (newFilters.createdFrom) params.set('createdFrom', newFilters.createdFrom)
+        if (newFilters.createdTo) params.set('createdTo', newFilters.createdTo)
+      }
       if (newFilters.type) params.set('type', newFilters.type)
       if (newFilters.priority) params.set('priority', newFilters.priority)
       if (newFilters.label) params.set('label', newFilters.label)
@@ -122,6 +138,26 @@ export function ProjectBoardPage() {
     setSearchParams(params, { replace: true })
     setExtraIssues({})
   }, [isKanban, searchParams, setSearchParams])
+
+  // Drop orphan / non-preset createdAt params
+  useEffect(() => {
+    const hasReporter = !!searchParams.get('reporterId')
+    const createdFrom = searchParams.get('createdFrom')
+    const createdTo = searchParams.get('createdTo')
+    const hasDates = !!(createdFrom || createdTo)
+    if (!hasDates) return
+    const presetOk =
+      hasReporter &&
+      !!createdFrom &&
+      !!createdTo &&
+      !!matchCreatedRangePreset(createdFrom, createdTo)
+    if (presetOk) return
+    const params = new URLSearchParams(searchParams)
+    params.delete('createdFrom')
+    params.delete('createdTo')
+    setSearchParams(params, { replace: true })
+    setExtraIssues({})
+  }, [searchParams, setSearchParams])
 
   const { hasPermission } = useHasPermission(projectKey)
   const { data: sprints } = useSprints(projectKey!, { enabled: !isKanban })
