@@ -51,6 +51,7 @@ import { ProjectMemberGuard } from '@/components/common/project-member-guard'
 import { useSelectionStore } from '@/store/selection.store'
 import { SprintStatus, Issue, IssueType, IssueStatusCategory, User } from '@/types'
 import { isKanbanProject } from '@/lib/project-workflow'
+import { matchCreatedRangePreset } from '@/lib/issue-created-range'
 import { PageHeader } from '@/components/common/page-header'
 import { ProjectTabNav } from '@/components/layout/project-tab-nav'
 import { BacklogQuickFilters } from '@/components/backlog/backlog-filters'
@@ -921,10 +922,20 @@ export function ProjectBacklogPage() {
   const filters: IssueFilters = useMemo(() => {
     const f: IssueFilters = {}
     const assigneeId = searchParams.get('assigneeId')
+    const reporterId = searchParams.get('reporterId')
+    const createdFrom = searchParams.get('createdFrom')
+    const createdTo = searchParams.get('createdTo')
     const type = searchParams.get('type')
     const priority = searchParams.get('priority')
     const search = searchParams.get('search')
     if (assigneeId) f.assigneeId = assigneeId
+    if (reporterId) {
+      f.reporterId = reporterId
+      if (createdFrom && createdTo && matchCreatedRangePreset(createdFrom, createdTo)) {
+        f.createdFrom = createdFrom
+        f.createdTo = createdTo
+      }
+    }
     if (type) f.type = type
     if (priority) f.priority = priority
     if (search) f.search = search
@@ -935,6 +946,11 @@ export function ProjectBacklogPage() {
     (newFilters: IssueFilters) => {
       const params = new URLSearchParams()
       if (newFilters.assigneeId) params.set('assigneeId', newFilters.assigneeId)
+      if (newFilters.reporterId) {
+        params.set('reporterId', newFilters.reporterId)
+        if (newFilters.createdFrom) params.set('createdFrom', newFilters.createdFrom)
+        if (newFilters.createdTo) params.set('createdTo', newFilters.createdTo)
+      }
       if (newFilters.type) params.set('type', newFilters.type)
       if (newFilters.priority) params.set('priority', newFilters.priority)
       if (newFilters.search) params.set('search', newFilters.search)
@@ -942,6 +958,25 @@ export function ProjectBacklogPage() {
     },
     [setSearchParams],
   )
+
+  // Drop orphan / non-preset createdAt params
+  useEffect(() => {
+    const hasReporter = !!searchParams.get('reporterId')
+    const createdFrom = searchParams.get('createdFrom')
+    const createdTo = searchParams.get('createdTo')
+    const hasDates = !!(createdFrom || createdTo)
+    if (!hasDates) return
+    const presetOk =
+      hasReporter &&
+      !!createdFrom &&
+      !!createdTo &&
+      !!matchCreatedRangePreset(createdFrom, createdTo)
+    if (presetOk) return
+    const params = new URLSearchParams(searchParams)
+    params.delete('createdFrom')
+    params.delete('createdTo')
+    setSearchParams(params, { replace: true })
+  }, [searchParams, setSearchParams])
 
   const { data: project, isLoading: projectLoading } = useProject(projectKey!)
   const { data: projectMembers = [] } = useProjectMembers(project?.id || projectKey!)

@@ -187,6 +187,55 @@ describe('IssuesService', () => {
       expect(qb.andWhere).toHaveBeenCalledWith('issue.status_id = :statusId', { statusId: TEST_IDS.STATUS_ID });
     });
 
+    it('should apply reporterId filter', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        reporterId: TEST_IDS.USER_ID,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.reporter_id = :reporterId', {
+        reporterId: TEST_IDS.USER_ID,
+      });
+    });
+
+    it('should apply createdFrom/createdTo as UTC day bounds', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({
+        organizationId: TEST_IDS.ORG_ID,
+        reporterId: TEST_IDS.USER_ID,
+        createdFrom: '2024-06-01',
+        createdTo: '2024-06-30',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.created_at >= :createdFromStart', {
+        createdFromStart: new Date('2024-06-01T00:00:00.000Z'),
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.created_at < :createdToExclusive', {
+        createdToExclusive: new Date('2024-07-01T00:00:00.000Z'),
+      });
+    });
+
+    it('should reject createdFrom after createdTo', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await expect(
+        service.findAll({
+          organizationId: TEST_IDS.ORG_ID,
+          createdFrom: '2024-06-10',
+          createdTo: '2024-06-01',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('should apply search filter', async () => {
       const qb = createMockQueryBuilder([]);
       qb.getCount.mockResolvedValue(0);

@@ -47,6 +47,9 @@ export class IssuesController {
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'sprintId', required: false })
   @ApiQuery({ name: 'assigneeId', required: false })
+  @ApiQuery({ name: 'reporterId', required: false, description: 'Filter by creator (reporter) user ID' })
+  @ApiQuery({ name: 'createdFrom', required: false, description: 'Inclusive createdAt lower bound (YYYY-MM-DD, UTC)' })
+  @ApiQuery({ name: 'createdTo', required: false, description: 'Inclusive createdAt upper bound (YYYY-MM-DD, UTC)' })
   @ApiQuery({ name: 'type', required: false })
   @ApiQuery({ name: 'priority', required: false })
   @ApiQuery({ name: 'statusId', required: false })
@@ -62,6 +65,9 @@ export class IssuesController {
     @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('sprintId') sprintId?: string,
     @Query('assigneeId') assigneeId?: string,
+    @Query('reporterId', new ParseUUIDPipe({ optional: true })) reporterId?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
     @Query('type') type?: string,
     @Query('priority') priority?: string,
     @Query('statusId') statusId?: string,
@@ -77,6 +83,9 @@ export class IssuesController {
       projectId,
       sprintId,
       assigneeId,
+      reporterId,
+      createdFrom,
+      createdTo,
       type,
       priority,
       statusId,

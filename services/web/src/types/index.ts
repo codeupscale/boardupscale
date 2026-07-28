@@ -300,6 +300,9 @@ export interface ColumnPageResult {
 
 export interface BoardFilters {
   assigneeId?: string
+  reporterId?: string
+  createdFrom?: string
+  createdTo?: string
   type?: string
   priority?: string
   label?: string
@@ -576,6 +579,9 @@ export interface SavedViewFilters {
   priority?: string
   statusId?: string
   assigneeId?: string
+  reporterId?: string
+  createdFrom?: string
+  createdTo?: string
   sprintId?: string
 }
 

@@ -45,6 +45,7 @@ import {
   normalizeSprintIdForIssueType,
   SPRINT_INELIGIBLE_ISSUE_TYPES,
 } from "../../common/constants/sprint-planning-issue-types";
+import { resolveCreatedAtRangeBounds } from "../../common/utils/created-at-range";
 
 @Injectable()
 export class IssuesService {
@@ -140,6 +141,9 @@ export class IssuesService {
     projectId?: string;
     sprintId?: string;
     assigneeId?: string;
+    reporterId?: string;
+    createdFrom?: string;
+    createdTo?: string;
     type?: string;
     priority?: string;
     statusId?: string;
@@ -168,6 +172,9 @@ export class IssuesService {
       projectId,
       sprintId,
       assigneeId,
+      reporterId,
+      createdFrom,
+      createdTo,
       type,
       priority,
       statusId,
@@ -219,6 +226,21 @@ export class IssuesService {
     }
     if (assigneeId) {
       qb.andWhere("issue.assignee_id = :assigneeId", { assigneeId });
+    }
+    if (reporterId) {
+      qb.andWhere("issue.reporter_id = :reporterId", { reporterId });
+    }
+    const { createdFromStart, createdToExclusive } = resolveCreatedAtRangeBounds(
+      createdFrom,
+      createdTo,
+    );
+    if (createdFromStart) {
+      qb.andWhere("issue.created_at >= :createdFromStart", { createdFromStart });
+    }
+    if (createdToExclusive) {
+      qb.andWhere("issue.created_at < :createdToExclusive", {
+        createdToExclusive,
+      });
     }
     if (type) {
       qb.andWhere("issue.type = :type", { type });

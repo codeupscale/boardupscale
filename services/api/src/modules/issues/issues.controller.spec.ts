@@ -77,14 +77,17 @@ describe('IssuesController', () => {
     it('should forward parentless="true" as parentless:true to the service', async () => {
       issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
 
-      // Positional args, last two are the new params:
-      //   ..., deleted, parentless, excludeTypes
+      // Positional args after assigneeId:
+      //   reporterId, createdFrom, createdTo, type, priority, statusId, search, deleted, parentless, ...
       await controller.findAll(
         TEST_IDS.ORG_ID,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined, // sprintId
         undefined, // assigneeId
+        undefined, // reporterId
+        undefined, // createdFrom
+        undefined, // createdTo
         undefined, // type
         undefined, // priority
         undefined, // statusId
@@ -105,6 +108,9 @@ describe('IssuesController', () => {
         TEST_IDS.ORG_ID,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
+        undefined,
+        undefined,
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -135,6 +141,9 @@ describe('IssuesController', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
+        undefined,
         TEST_IDS.ISSUE_ID,
       );
 
@@ -157,6 +166,9 @@ describe('IssuesController', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
+        undefined,
+        undefined,
         undefined, // parentless
         undefined, // parentId
         'epic,subtask', // excludeTypes
@@ -164,6 +176,29 @@ describe('IssuesController', () => {
 
       expect(issuesService.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ excludeTypes: 'epic,subtask' }),
+      );
+    });
+
+    it('should forward reporterId and createdAt range to the service', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(
+        TEST_IDS.ORG_ID,
+        { page: 1, limit: 20 } as any,
+        TEST_IDS.PROJECT_ID,
+        undefined,
+        undefined,
+        TEST_IDS.USER_ID,
+        '2024-01-01',
+        '2024-01-31',
+      );
+
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reporterId: TEST_IDS.USER_ID,
+          createdFrom: '2024-01-01',
+          createdTo: '2024-01-31',
+        }),
       );
     });
   });

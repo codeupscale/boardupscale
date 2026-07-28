@@ -129,7 +129,7 @@ describe("BoardsService", () => {
       expect(result[0].hasMore).toBe(false);
     });
 
-    it("should apply assignee filter", async () => {
+    it('should apply assignee filter', async () => {
       projectsService.findById.mockResolvedValue(mockProject());
       statusRepo.find.mockResolvedValue([mockIssueStatus()]);
       const mainQb = createMockQueryBuilder([]);
@@ -151,6 +151,58 @@ describe("BoardsService", () => {
         "issue.assigneeId = :assigneeId",
         { assigneeId: TEST_IDS.USER_ID },
       );
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        "issue.organizationId = :organizationId",
+        { organizationId: TEST_IDS.ORG_ID },
+      );
+    });
+
+    it('should apply reporterId and createdAt range filters', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+        reporterId: TEST_IDS.USER_ID,
+        createdFrom: '2024-06-01',
+        createdTo: '2024-06-30',
+      });
+
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        "issue.reporterId = :reporterId",
+        { reporterId: TEST_IDS.USER_ID },
+      );
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        "issue.createdAt >= :createdFromStart",
+        { createdFromStart: new Date('2024-06-01T00:00:00.000Z') },
+      );
+      expect(mainQb.andWhere).toHaveBeenCalledWith(
+        "issue.createdAt < :createdToExclusive",
+        { createdToExclusive: new Date('2024-07-01T00:00:00.000Z') },
+      );
+    });
+
+    it('should reject invalid createdAt range on board filters', async () => {
+      projectsService.findById.mockResolvedValue(mockProject());
+      statusRepo.find.mockResolvedValue([mockIssueStatus()]);
+      const mainQb = createMockQueryBuilder([]);
+      const countQb = createMockQueryBuilder([]);
+      countQb.getRawMany.mockResolvedValue([]);
+      issueRepo.createQueryBuilder
+        .mockReturnValueOnce(mainQb)
+        .mockReturnValueOnce(countQb);
+
+      await expect(
+        service.getBoardData(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, {
+          createdFrom: '2024-06-10',
+          createdTo: '2024-06-01',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it("should apply type filter", async () => {

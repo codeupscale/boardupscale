@@ -94,6 +94,9 @@ export interface IssueFilters {
   projectId?: string
   sprintId?: string
   assigneeId?: string
+  reporterId?: string
+  createdFrom?: string
+  createdTo?: string
   type?: string
   priority?: string
   statusId?: string

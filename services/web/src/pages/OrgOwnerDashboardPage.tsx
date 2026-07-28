@@ -46,30 +46,6 @@ export function OrgOwnerDashboardPage() {
         subtitle={t('orgDashboard.subtitle')}
         actions={
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div
-              className="inline-flex items-center rounded-md border border-input bg-background p-0.5"
-              role="group"
-              aria-label={t('orgDashboard.rangeLabel')}
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant={range === '7d' ? 'secondary' : 'ghost'}
-                aria-pressed={range === '7d'}
-                onClick={() => setRange('7d')}
-              >
-                {t('orgDashboard.range7d')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={range === '30d' ? 'secondary' : 'ghost'}
-                aria-pressed={range === '30d'}
-                onClick={() => setRange('30d')}
-              >
-                {t('orgDashboard.range30d')}
-              </Button>
-            </div>
             <Button type="button" onClick={() => setShowCreateProject(true)}>
               <Plus className="h-4 w-4" />
               {t('projects.newProject')}
@@ -171,6 +147,11 @@ export function OrgOwnerDashboardPage() {
                 title={t('orgDashboard.charts.recentActivity')}
                 footerHref="/admin/audit-logs"
                 footerLabel={t('orgDashboard.charts.viewAllActivity')}
+                range={range}
+                onRangeChange={setRange}
+                rangeLabel={t('orgDashboard.rangeLabel')}
+                range7dLabel={t('orgDashboard.range7d')}
+                range30dLabel={t('orgDashboard.range30d')}
                 series={data.activity.series}
                 recent={data.activity.recent}
               />

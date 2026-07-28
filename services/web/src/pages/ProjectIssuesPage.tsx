@@ -37,6 +37,9 @@ import { useSavedViews, useCreateSavedView, useDeleteSavedView } from '@/hooks/u
 import { useAuthStore } from '@/store/auth.store'
 import { useHasPermission } from '@/hooks/useHasPermission'
 import { Pagination } from '@/components/ui/pagination'
+import { CreatedByFilterControls } from '@/components/filters/created-by-filter'
+import { matchCreatedRangePreset } from '@/lib/issue-created-range'
+import type { SavedViewFilters } from '@/types'
 
 export function ProjectIssuesPage() {
   const { t } = useTranslation()
@@ -48,6 +51,9 @@ export function ProjectIssuesPage() {
   const [filterPriority, setFilterPriority] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterAssignee, setFilterAssignee] = useState('')
+  const [filterReporter, setFilterReporter] = useState('')
+  const [filterCreatedFrom, setFilterCreatedFrom] = useState('')
+  const [filterCreatedTo, setFilterCreatedTo] = useState('')
   const [filterSprint, setFilterSprint] = useState('')
   const [page, setPage] = useState(1)
   const [saveViewName, setSaveViewName] = useState('')
@@ -74,6 +80,9 @@ export function ProjectIssuesPage() {
     priority: filterPriority || undefined,
     statusId: filterStatus || undefined,
     assigneeId: filterAssignee || undefined,
+    reporterId: filterReporter || undefined,
+    createdFrom: filterReporter ? filterCreatedFrom || undefined : undefined,
+    createdTo: filterReporter ? filterCreatedTo || undefined : undefined,
     sprintId: filterSprint || undefined,
     excludeTypes: 'epic,subtask',
     page,
@@ -98,14 +107,28 @@ export function ProjectIssuesPage() {
     }
   }
 
-  const hasActiveFilters = !!(search || filterType || filterPriority || filterStatus || filterAssignee || filterSprint)
+  const hasActiveFilters = !!(
+    search ||
+    filterType ||
+    filterPriority ||
+    filterStatus ||
+    filterAssignee ||
+    filterReporter ||
+    filterSprint
+  )
 
-  const applyView = (view: { id: string; filters: { search?: string; type?: string; priority?: string; statusId?: string; assigneeId?: string; sprintId?: string } }) => {
+  const applyView = (view: { id: string; filters: SavedViewFilters }) => {
     setSearch(view.filters.search || '')
     setFilterType(view.filters.type || '')
     setFilterPriority(view.filters.priority || '')
     setFilterStatus(view.filters.statusId || '')
     setFilterAssignee(view.filters.assigneeId || '')
+    setFilterReporter(view.filters.reporterId || '')
+    const presetOk =
+      !!view.filters.reporterId &&
+      !!matchCreatedRangePreset(view.filters.createdFrom, view.filters.createdTo)
+    setFilterCreatedFrom(presetOk ? view.filters.createdFrom || '' : '')
+    setFilterCreatedTo(presetOk ? view.filters.createdTo || '' : '')
     setFilterSprint(view.filters.sprintId || '')
     setActiveViewId(view.id)
     setPage(1)
@@ -113,6 +136,9 @@ export function ProjectIssuesPage() {
 
   const handleSaveView = () => {
     if (!saveViewName.trim()) return
+    const presetOk =
+      !!filterReporter &&
+      !!matchCreatedRangePreset(filterCreatedFrom || undefined, filterCreatedTo || undefined)
     createView.mutate(
       {
         name: saveViewName.trim(),
@@ -122,6 +148,9 @@ export function ProjectIssuesPage() {
           priority: filterPriority || undefined,
           statusId: filterStatus || undefined,
           assigneeId: filterAssignee || undefined,
+          reporterId: filterReporter || undefined,
+          createdFrom: presetOk ? filterCreatedFrom || undefined : undefined,
+          createdTo: presetOk ? filterCreatedTo || undefined : undefined,
           sprintId: filterSprint || undefined,
         },
         isShared: false,
@@ -151,7 +180,19 @@ export function ProjectIssuesPage() {
   // Clear selection when page or filters change
   useEffect(() => {
     clearSelection()
-  }, [page, filterType, filterPriority, filterStatus, filterAssignee, filterSprint, search, clearSelection])
+  }, [
+    page,
+    filterType,
+    filterPriority,
+    filterStatus,
+    filterAssignee,
+    filterReporter,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterSprint,
+    search,
+    clearSelection,
+  ])
 
   // Clear active view indicator when filters are manually changed after applying a view
   useEffect(() => {
@@ -165,11 +206,26 @@ export function ProjectIssuesPage() {
           (f.priority || '') === filterPriority &&
           (f.statusId || '') === filterStatus &&
           (f.assigneeId || '') === filterAssignee &&
+          (f.reporterId || '') === filterReporter &&
+          (f.createdFrom || '') === (filterReporter ? filterCreatedFrom : '') &&
+          (f.createdTo || '') === (filterReporter ? filterCreatedTo : '') &&
           (f.sprintId || '') === filterSprint
         if (!matches) setActiveViewId(null)
       }
     }
-  }, [search, filterType, filterPriority, filterStatus, filterAssignee, filterSprint, activeViewId, savedViews])
+  }, [
+    search,
+    filterType,
+    filterPriority,
+    filterStatus,
+    filterAssignee,
+    filterReporter,
+    filterCreatedFrom,
+    filterCreatedTo,
+    filterSprint,
+    activeViewId,
+    savedViews,
+  ])
 
   useEffect(() => {
     if (searchParams.get('create') === 'true' && canCreateIssue) {
@@ -321,6 +377,22 @@ export function ProjectIssuesPage() {
                 </SelectContent>
               </Select>
             )}
+
+            <CreatedByFilterControls
+              variant="form"
+              members={projectMembers || []}
+              value={{
+                reporterId: filterReporter || undefined,
+                createdFrom: filterCreatedFrom || undefined,
+                createdTo: filterCreatedTo || undefined,
+              }}
+              onChange={(next) => {
+                setFilterReporter(next.reporterId || '')
+                setFilterCreatedFrom(next.reporterId ? next.createdFrom || '' : '')
+                setFilterCreatedTo(next.reporterId ? next.createdTo || '' : '')
+                setPage(1)
+              }}
+            />
           </div>
         </div>
 

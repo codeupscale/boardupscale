@@ -1,12 +1,31 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class BoardQueryDto {
   @ApiPropertyOptional({ description: 'Filter by assignee user ID' })
   @IsOptional()
   @IsUUID()
   assigneeId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by creator (reporter) user ID' })
+  @IsOptional()
+  @IsUUID()
+  reporterId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Inclusive createdAt lower bound (YYYY-MM-DD, UTC)',
+  })
+  @IsOptional()
+  @IsDateString()
+  createdFrom?: string;
+
+  @ApiPropertyOptional({
+    description: 'Inclusive createdAt upper bound (YYYY-MM-DD, UTC)',
+  })
+  @IsOptional()
+  @IsDateString()
+  createdTo?: string;
 
   @ApiPropertyOptional({ description: 'Filter by issue type (epic, story, task, bug)' })
   @IsOptional()
