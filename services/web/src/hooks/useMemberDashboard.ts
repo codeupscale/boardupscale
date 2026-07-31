@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
-import type { ActivityFeedItem, DashboardRange } from '@/hooks/useOrgDashboard'
+import type { DashboardRange } from '@/hooks/useOrgDashboard'
 
 export type IssueStatusBucket = 'todo' | 'in_progress' | 'blocked' | 'done'
 
@@ -65,9 +65,6 @@ export interface MemberDashboardData {
   issueStatus: IssueStatusDonut
   activeSprints: ActiveSprintSummary[]
   teamWorkload: TeamWorkload
-  activity: {
-    recent: ActivityFeedItem[]
-  }
   meta: {
     range: DashboardRange
     generatedAt: string
@@ -87,13 +84,13 @@ export interface MemberScopedProject {
  * Independent, per-widget project filters. Each field narrows one specific
  * widget to a single project the caller owns or is a member of; omit (or
  * leave undefined) to show all of them for that widget. Widgets filter
- * independently of one another.
+ * independently of one another. "Recent Project Activity" is not included
+ * here — it's keyset-paged separately via useMemberActivityFeed.
  */
 export interface MemberDashboardProjectFilters {
   issueStatusProjectId?: string
   activeSprintProjectId?: string
   teamWorkloadProjectId?: string
-  recentActivityProjectId?: string
 }
 
 export function useMemberDashboard(
@@ -101,12 +98,8 @@ export function useMemberDashboard(
   filters: MemberDashboardProjectFilters = {},
 ) {
   const orgId = useAuthStore((s) => s.user?.organizationId)
-  const {
-    issueStatusProjectId,
-    activeSprintProjectId,
-    teamWorkloadProjectId,
-    recentActivityProjectId,
-  } = filters
+  const { issueStatusProjectId, activeSprintProjectId, teamWorkloadProjectId } =
+    filters
 
   return useQuery({
     queryKey: [
@@ -117,7 +110,6 @@ export function useMemberDashboard(
       issueStatusProjectId ?? 'all',
       activeSprintProjectId ?? 'all',
       teamWorkloadProjectId ?? 'all',
-      recentActivityProjectId ?? 'all',
     ],
     queryFn: async () => {
       const { data } = await api.get('/dashboard/member', {
@@ -126,7 +118,6 @@ export function useMemberDashboard(
           issueStatusProjectId,
           activeSprintProjectId,
           teamWorkloadProjectId,
-          recentActivityProjectId,
         },
         headers: { 'Cache-Control': 'no-store' },
       })

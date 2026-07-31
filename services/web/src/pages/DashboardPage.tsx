@@ -11,7 +11,8 @@ import { ActiveSprintOverview } from '@/components/dashboard/active-sprint-overv
 import { TeamWorkload } from '@/components/dashboard/team-workload'
 import { ProjectHealthTable } from '@/components/dashboard/project-health-table'
 import { RecentProjectActivity } from '@/components/dashboard/recent-project-activity'
-import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intelligence-widget'
+// Sprint Intelligence is not ready for production — commented out until it is.
+// import { SprintIntelligenceWidget } from '@/components/dashboard/sprint-intelligence-widget'
 import { useMemberDashboard, useMemberScopedProjects } from '@/hooks/useMemberDashboard'
 import { formatDate } from '@/lib/utils'
 
@@ -30,7 +31,6 @@ export function DashboardPage() {
     issueStatusProjectId,
     activeSprintProjectId,
     teamWorkloadProjectId,
-    recentActivityProjectId,
   })
   const {
     data: scopedProjects,
@@ -47,7 +47,7 @@ export function DashboardPage() {
     return t('dashboard.goodEvening')
   }, [t])
 
-  const firstActiveSprint = data?.activeSprints[0] ?? null
+  // const firstActiveSprint = data?.activeSprints[0] ?? null
 
   return (
     <div className="flex flex-col h-full">
@@ -79,28 +79,24 @@ export function DashboardPage() {
                 icon={<FolderKanban className="h-4 w-4" />}
                 label="Total Projects"
                 value={data.kpis.totalProjects}
-                description="Created by you"
                 iconClassName="bg-violet-500/15 text-violet-400"
               />
               <KpiStatCard
                 icon={<Rocket className="h-4 w-4" />}
                 label="Active Projects"
                 value={data.kpis.activeProjects}
-                description="Created/Added by you"
                 iconClassName="bg-sky-500/15 text-sky-400"
               />
               <KpiStatCard
                 icon={<Clock className="h-4 w-4" />}
                 label="Open Issues"
                 value={data.kpis.openIssues}
-                description="In your projects"
                 iconClassName="bg-amber-500/15 text-amber-400"
               />
               <KpiStatCard
                 icon={<AlertCircle className="h-4 w-4" />}
                 label="Overdue Issues"
                 value={data.kpis.overdueIssues}
-                description="In your projects"
                 iconClassName="bg-red-500/15 text-red-400"
               />
             </div>
@@ -149,9 +145,10 @@ export function DashboardPage() {
               </div>
             </div>
 
+            {/* Sprint Intelligence is not ready for production — commented out until it is.
             {firstActiveSprint && (
               <SprintIntelligenceWidget sprintId={firstActiveSprint.sprintId} />
-            )}
+            )} */}
 
             <div className="grid grid-cols-1 lg:grid-cols-10 gap-3 items-stretch [&>*]:min-w-0 [&>*]:w-full">
               <div className="lg:col-span-6">
@@ -163,7 +160,6 @@ export function DashboardPage() {
               </div>
               <div className="lg:col-span-4">
                 <RecentProjectActivity
-                  recent={data.activity.recent}
                   rowCount={MEMBER_DASHBOARD_ROW_COUNT}
                   projects={scopedProjects}
                   selectedProjectId={recentActivityProjectId}
@@ -171,7 +167,6 @@ export function DashboardPage() {
                   isProjectsLoading={isProjectsLoading}
                   isProjectsError={isProjectsError}
                   onRetryProjects={() => void refetchProjects()}
-                  isRefreshing={isRefreshing}
                 />
               </div>
             </div>

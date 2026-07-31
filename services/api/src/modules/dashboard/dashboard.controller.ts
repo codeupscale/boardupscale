@@ -16,6 +16,7 @@ import {
   OrgDashboardQueryDto,
 } from './dto/org-dashboard-query.dto';
 import { OrgProjectHealthQueryDto } from './dto/org-project-health-query.dto';
+import { MemberActivityQueryDto } from './dto/member-activity-query.dto';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -69,7 +70,7 @@ export class DashboardController {
   @Header('Cache-Control', 'no-store')
   @ApiOperation({
     summary:
-      'Member dashboard (everyone except Owner) — KPIs, issue-status donut, active sprints, team workload, activity, scoped to own + enrolled projects; optionally narrowed to one project via projectId',
+      'Member dashboard (everyone except Owner) — KPIs, issue-status donut, active sprints, team workload, scoped to own + enrolled projects; optionally narrowed per-widget via query params. Recent Project Activity is fetched separately (GET /dashboard/member/activity).',
   })
   async getMemberDashboard(
     @OrgId() organizationId: string,
@@ -85,7 +86,29 @@ export class DashboardController {
         issueStatusProjectId: query.issueStatusProjectId,
         activeSprintProjectId: query.activeSprintProjectId,
         teamWorkloadProjectId: query.teamWorkloadProjectId,
-        recentActivityProjectId: query.recentActivityProjectId,
+      },
+    );
+    return { data };
+  }
+
+  @Get('member/activity')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary:
+      'Keyset-paged "Recent Project Activity" for infinite scroll, scoped to own + enrolled projects, optionally narrowed to one project',
+  })
+  async getMemberActivityFeed(
+    @OrgId() organizationId: string,
+    @CurrentUser('id') userId: string,
+    @Query() query: MemberActivityQueryDto,
+  ) {
+    const data = await this.dashboardService.getMemberActivityFeed(
+      organizationId,
+      userId,
+      {
+        projectId: query.projectId,
+        cursor: query.cursor,
+        limit: query.limit,
       },
     );
     return { data };

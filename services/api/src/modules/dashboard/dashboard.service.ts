@@ -26,6 +26,7 @@ import {
   ActiveSprintSummary,
   IssueStatusBucket,
   IssueStatusDonut,
+  MemberActivityFeedPage,
   MemberDashboardResponse,
   MemberScopedProject,
   TeamWorkload,
@@ -35,6 +36,10 @@ import {
   PROJECT_HEALTH_PAGE_DEFAULT,
   PROJECT_HEALTH_PAGE_MAX,
 } from './dto/org-project-health-query.dto';
+import {
+  MEMBER_ACTIVITY_PAGE_DEFAULT,
+  MEMBER_ACTIVITY_PAGE_MAX,
+} from './dto/member-activity-query.dto';
 import { buildMemberSnapshot } from './member-snapshot.builder';
 import {
   PROJECT_HEALTH_PROGRESS_SQL,
@@ -46,13 +51,17 @@ import {
   isProjectHealthStatus,
 } from './project-health.sql';
 import {
+  ActivityFeedCursorPayload,
+  decodeActivityFeedCursor,
+  encodeActivityFeedCursor,
+} from './activity-feed.sql';
+import {
   MEMBER_PROJECT_HEALTH_ROLLUP_CTE,
   MEMBER_SCOPED_PROJECTS_CTE,
   buildMemberScopedProjectsCte,
 } from './member-scope.sql';
 import {
   MEMBER_ACTIVE_SPRINTS_LIMIT,
-  MEMBER_ACTIVITY_FEED_LIMIT,
   TEAM_WORKLOAD_TOP_BUSIEST_LIMIT,
   classifyWorkloadCapacity,
 } from './team-workload.constants';
@@ -141,12 +150,16 @@ interface MemberScopedProjectRow {
   key: string;
 }
 
-/** Independent per-widget project filters for the member dashboard. */
+/**
+ * Independent per-widget project filters for the member dashboard's
+ * fixed-budget aggregate payload. "Recent Project Activity" is not included
+ * here — it's paged separately via getMemberActivityFeed, which takes its
+ * own projectId param.
+ */
 export interface MemberDashboardProjectFilters {
   issueStatusProjectId?: string;
   activeSprintProjectId?: string;
   teamWorkloadProjectId?: string;
-  recentActivityProjectId?: string;
 }
 
 interface MemberWorkloadRow {
@@ -223,7 +236,6 @@ export class DashboardService {
       filters?.issueStatusProjectId,
       filters?.activeSprintProjectId,
       filters?.teamWorkloadProjectId,
-      filters?.recentActivityProjectId,
     ]
       .map((id) => id ?? 'all')
       .join(':');
@@ -492,12 +504,14 @@ export class DashboardService {
   }
 
   /**
-   * Fixed-budget aggregation: exactly 5 parallel DB round-trips.
+   * Fixed-budget aggregation: exactly 4 parallel DB round-trips.
    * Each of `filters.issueStatusProjectId` / `activeSprintProjectId` /
-   * `teamWorkloadProjectId` / `recentActivityProjectId` independently
-   * narrows its own widget to a single scoped project — the 4 widgets
-   * filter independently of one another. KPIs and the active-project count
-   * always stay org/member-wide.
+   * `teamWorkloadProjectId` independently narrows its own widget to a
+   * single scoped project — those widgets filter independently of one
+   * another. KPIs and the active-project count always stay org/member-wide.
+   * "Recent Project Activity" is intentionally NOT included here — it's
+   * keyset-paged (infinite scroll) via the separate getMemberActivityFeed,
+   * mirroring how project health rows are paged outside this aggregate.
    */
   async buildMemberDashboard(
     organizationId: string,
@@ -507,7 +521,7 @@ export class DashboardService {
   ): Promise<MemberDashboardResponse> {
     this.lastQueryCount = 0;
 
-    const [kpiRows, activeProjectsRows, sprintRows, workloadRows, feedRows] =
+    const [kpiRows, activeProjectsRows, sprintRows, workloadRows] =
       await Promise.all([
         this.queryMemberKpisAndIssueStatus(
           organizationId,
@@ -525,14 +539,9 @@ export class DashboardService {
           userId,
           filters?.teamWorkloadProjectId,
         ),
-        this.queryMemberActivityFeed(
-          organizationId,
-          userId,
-          filters?.recentActivityProjectId,
-        ),
       ]);
 
-    this.lastQueryCount = 5;
+    this.lastQueryCount = 4;
 
     const kpiRow = kpiRows[0] ?? {
       total_projects: 0,
@@ -549,7 +558,6 @@ export class DashboardService {
     const issueStatus = this.buildIssueStatusDonut(kpiRow);
     const activeSprints = sprintRows.map((row) => this.toActiveSprint(row));
     const teamWorkload = this.buildTeamWorkload(workloadRows);
-    const recent = feedRows.map((row) => this.toFeedItem(row));
 
     return {
       kpis: {
@@ -562,7 +570,6 @@ export class DashboardService {
       issueStatus,
       activeSprints,
       teamWorkload,
-      activity: { recent },
       meta: {
         range,
         generatedAt: new Date().toISOString(),
@@ -570,6 +577,49 @@ export class DashboardService {
         cacheHit: false,
       },
     };
+  }
+
+  /**
+   * Keyset-paged "Recent Project Activity" scoped to the caller's own +
+   * enrolled projects, optionally narrowed to a single project. Infinite
+   * scroll, independent of buildMemberDashboard's fixed query budget —
+   * mirrors getMemberProjectHealth's pagination pattern.
+   */
+  async getMemberActivityFeed(
+    organizationId: string,
+    userId: string,
+    options: { projectId?: string; cursor?: string; limit?: number } = {},
+  ): Promise<MemberActivityFeedPage> {
+    const limit = Math.min(
+      MEMBER_ACTIVITY_PAGE_MAX,
+      Math.max(1, options.limit ?? MEMBER_ACTIVITY_PAGE_DEFAULT),
+    );
+    const cursorRaw = options.cursor?.trim() || '';
+    const decoded = decodeActivityFeedCursor(cursorRaw || null);
+    if (cursorRaw && !decoded) {
+      throw new BadRequestException('Invalid cursor');
+    }
+
+    const rows = await this.queryMemberActivityFeedPage(
+      organizationId,
+      userId,
+      options.projectId,
+      decoded,
+      limit,
+    );
+    const items = rows.map((row) => this.toFeedItem(row));
+
+    let nextCursor: string | null = null;
+    if (rows.length === limit) {
+      const last = rows[rows.length - 1];
+      const createdAt =
+        last.created_at instanceof Date
+          ? last.created_at.toISOString()
+          : new Date(last.created_at).toISOString();
+      nextCursor = encodeActivityFeedCursor({ createdAt, id: last.id });
+    }
+
+    return { items, nextCursor };
   }
 
   /**
@@ -884,15 +934,45 @@ export class DashboardService {
     );
   }
 
-  /** Q5 — recent activity feed scoped to member's own + enrolled projects, optionally narrowed to one project (1 round-trip). */
-  private async queryMemberActivityFeed(
+  /**
+   * Keyset-paged recent activity feed scoped to member's own + enrolled
+   * projects, optionally narrowed to one project. Ordered by
+   * (created_at DESC, id DESC) — id is the tiebreaker for rows sharing a
+   * timestamp, keeping pagination stable.
+   */
+  private async queryMemberActivityFeedPage(
     organizationId: string,
     userId: string,
-    projectId?: string,
+    projectId: string | undefined,
+    cursor: ActivityFeedCursorPayload | null,
+    limit: number,
   ): Promise<ActivityFeedRow[]> {
+    const params: unknown[] = [
+      organizationId,
+      userId,
+      [...DASHBOARD_ACTIVITY_ACTIONS],
+    ];
+
+    let cursorClause = '';
+    if (cursor) {
+      params.push(cursor.createdAt, cursor.id);
+      const pId = params.length;
+      const pCreatedAt = pId - 1;
+      cursorClause = `
+        AND (
+          a.created_at < $${pCreatedAt}
+          OR (a.created_at = $${pCreatedAt} AND a.id < $${pId})
+        )`;
+    }
+
+    params.push(limit);
+    const limitParam = `$${params.length}`;
+    params.push(projectId ?? null);
+    const projectIdParam = params.length;
+
     return this.dataSource.query(
       `
-      WITH ${buildMemberScopedProjectsCte(5)}
+      WITH ${buildMemberScopedProjectsCte(projectIdParam)}
       SELECT
         a.id,
         a.user_id,
@@ -914,16 +994,11 @@ export class DashboardService {
        AND p.organization_id = a.organization_id
       WHERE a.organization_id = $1
         AND a.action = ANY($3::text[])
-      ORDER BY a.created_at DESC
-      LIMIT $4
+        ${cursorClause}
+      ORDER BY a.created_at DESC, a.id DESC
+      LIMIT ${limitParam}
       `,
-      [
-        organizationId,
-        userId,
-        [...DASHBOARD_ACTIVITY_ACTIONS],
-        MEMBER_ACTIVITY_FEED_LIMIT,
-        projectId ?? null,
-      ],
+      params,
     );
   }
 

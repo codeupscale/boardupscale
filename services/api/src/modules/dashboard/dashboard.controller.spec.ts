@@ -11,6 +11,7 @@ describe('DashboardController', () => {
     getMemberDashboard: jest.Mock;
     getMemberProjectHealth: jest.Mock;
     getMemberScopedProjects: jest.Mock;
+    getMemberActivityFeed: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -36,6 +37,10 @@ describe('DashboardController', () => {
       getMemberScopedProjects: jest.fn().mockResolvedValue([
         { id: 'p1', name: 'Website Revamp', key: 'WEB' },
       ]),
+      getMemberActivityFeed: jest.fn().mockResolvedValue({
+        items: [],
+        nextCursor: null,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -103,7 +108,6 @@ describe('DashboardController', () => {
         issueStatusProjectId: undefined,
         activeSprintProjectId: undefined,
         teamWorkloadProjectId: undefined,
-        recentActivityProjectId: undefined,
       },
     );
     expect(result).toEqual({
@@ -123,7 +127,6 @@ describe('DashboardController', () => {
         issueStatusProjectId: undefined,
         activeSprintProjectId: undefined,
         teamWorkloadProjectId: undefined,
-        recentActivityProjectId: undefined,
       },
     );
   });
@@ -142,9 +145,23 @@ describe('DashboardController', () => {
         issueStatusProjectId: 'proj-1',
         activeSprintProjectId: undefined,
         teamWorkloadProjectId: 'proj-2',
-        recentActivityProjectId: undefined,
       },
     );
+  });
+
+  it('GET /dashboard/member/activity passes tenant + user + paging args', async () => {
+    const result = await controller.getMemberActivityFeed('org-1', 'user-1', {
+      projectId: 'proj-1',
+      cursor: 'abc',
+      limit: 10,
+    });
+
+    expect(dashboardService.getMemberActivityFeed).toHaveBeenCalledWith(
+      'org-1',
+      'user-1',
+      { projectId: 'proj-1', cursor: 'abc', limit: 10 },
+    );
+    expect(result).toEqual({ data: { items: [], nextCursor: null } });
   });
 
   it('GET /dashboard/member/projects passes orgId + userId to service', async () => {

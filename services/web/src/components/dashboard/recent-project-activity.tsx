@@ -1,10 +1,16 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Avatar } from '@/components/ui/avatar'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { formatRelativeTime } from '@/lib/utils'
 import { ProjectFilterSelect } from '@/components/dashboard/project-filter-select'
-import type { ActivityFeedItem } from '@/hooks/useOrgDashboard'
+import {
+  useMemberActivityFeed,
+  flattenActivityFeedPages,
+  resolveActivityFeedViewState,
+  shouldFetchNextActivityPage,
+} from '@/hooks/useMemberActivityFeed'
 import type { MemberScopedProject } from '@/hooks/useMemberDashboard'
 import {
   PROJECT_HEALTH_HEADER_HEIGHT_PX,
@@ -12,7 +18,6 @@ import {
 } from '@/hooks/useOrgProjectHealth'
 
 interface RecentProjectActivityProps {
-  recent: ActivityFeedItem[]
   /** Must match the row count passed as `viewportRows` to "My Projects Overview". */
   rowCount?: number
   projects?: MemberScopedProject[]
@@ -21,8 +26,6 @@ interface RecentProjectActivityProps {
   isProjectsLoading?: boolean
   isProjectsError?: boolean
   onRetryProjects?: () => void
-  /** True while this widget's filtered data is being refetched (old data stays visible). */
-  isRefreshing?: boolean
 }
 
 /**
@@ -55,11 +58,11 @@ function actionLabel(action: string): string {
 }
 
 /** Member dashboard — activity feed scoped to the viewer's own + enrolled projects.
- *  Each row is fixed at PROJECT_HEALTH_ROW_HEIGHT_PX (same as a "My Projects
- *  Overview" table row) so 8 items naturally reach the same total height as
- *  that table's 8 rows — no CSS stretch/fill trick needed, no gap. */
+ *  Keyset-paged, infinite scroll (like "My Projects Overview"): the visible
+ *  viewport stays fixed at `rowCount` rows tall so card heights keep
+ *  matching, but scrolling past the loaded rows fetches more automatically
+ *  with no upper limit. */
 export function RecentProjectActivity({
-  recent,
   rowCount = 8,
   projects,
   selectedProjectId,
@@ -67,9 +70,54 @@ export function RecentProjectActivity({
   isProjectsLoading,
   isProjectsError,
   onRetryProjects,
-  isRefreshing,
 }: RecentProjectActivityProps) {
   const rowHeight = computeActivityRowHeight(rowCount)
+
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useMemberActivityFeed(selectedProjectId)
+
+  const items = flattenActivityFeedPages(data?.pages)
+  const viewState = resolveActivityFeedViewState({
+    isLoading,
+    isError,
+    itemsLength: items.length,
+  })
+  const isRefreshing = isFetching && !isLoading && !isFetchingNextPage
+
+  const parentRef = useRef<HTMLDivElement>(null)
+  const viewportHeight = rowCount * rowHeight
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => rowHeight,
+    overscan: 8,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1]
+    if (
+      !shouldFetchNextActivityPage({
+        lastVisibleIndex: last?.index,
+        itemsLength: items.length,
+        hasNextPage: !!hasNextPage,
+        isFetchingNextPage,
+      })
+    ) {
+      return
+    }
+    void fetchNextPage()
+  }, [virtualItems, items.length, hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <Card className="w-full h-full min-w-0 border-border/80 bg-card/90 overflow-hidden flex flex-col">
@@ -93,55 +141,81 @@ export function RecentProjectActivity({
             </div>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">Last {recent.length} updates</p>
       </CardHeader>
       <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {recent.length === 0 ? (
-            <div className="flex h-full items-center justify-center px-5 py-10 text-center text-sm text-muted-foreground">
-              No activity in your projects yet.
-            </div>
-          ) : (
-            <ul className="divide-y divide-border/60">
-              {recent.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center gap-2.5 text-sm px-5"
-                  style={{ height: rowHeight }}
-                >
-                  <Avatar
-                    src={item.userAvatarUrl ?? undefined}
-                    name={item.userDisplayName ?? 'User'}
-                    size="xs"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground leading-snug truncate">
-                      <span className="font-medium">{item.userDisplayName ?? 'Someone'}</span>{' '}
-                      <span className="text-muted-foreground">{actionLabel(item.action)}</span>{' '}
-                      <span className="font-medium text-violet-400">
-                        {item.issueKey ? item.issueKey : item.target}
-                      </span>
-                      {item.projectKey ? (
-                        <span className="text-muted-foreground"> in {item.projectKey}</span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatRelativeTime(item.createdAt)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="px-5 py-2.5 border-t border-border/60">
-          <Link
-            to="/issues"
-            className="text-xs font-medium text-violet-400 hover:text-violet-300"
+        {viewState === 'loading' ? (
+          <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading activity…
+          </div>
+        ) : viewState === 'error' ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+            <p>Could not load recent activity.</p>
+            <button
+              type="button"
+              className="text-sm font-medium text-violet-400 hover:text-violet-300"
+              onClick={() => void refetch()}
+            >
+              Retry
+            </button>
+          </div>
+        ) : viewState === 'empty' ? (
+          <div className="flex h-full items-center justify-center px-5 py-10 text-center text-sm text-muted-foreground">
+            No activity in your projects yet.
+          </div>
+        ) : (
+          <div
+            ref={parentRef}
+            className="overflow-y-auto"
+            style={{ height: viewportHeight }}
           >
-            View all activity →
-          </Link>
-        </div>
+            <ul
+              className="relative divide-y divide-border/60"
+              style={{ height: virtualizer.getTotalSize() }}
+            >
+              {virtualItems.map((virtualRow) => {
+                const item = items[virtualRow.index]
+                return (
+                  <li
+                    key={item.id}
+                    className="absolute inset-x-0 flex items-center gap-2.5 text-sm px-5"
+                    style={{
+                      height: virtualRow.size,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <Avatar
+                      src={item.userAvatarUrl ?? undefined}
+                      name={item.userDisplayName ?? 'User'}
+                      size="xs"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-foreground leading-snug truncate">
+                        <span className="font-medium">{item.userDisplayName ?? 'Someone'}</span>{' '}
+                        <span className="text-muted-foreground">{actionLabel(item.action)}</span>{' '}
+                        <span className="font-medium text-violet-400">
+                          {item.issueKey ? item.issueKey : item.target}
+                        </span>
+                        {item.projectKey ? (
+                          <span className="text-muted-foreground"> in {item.projectKey}</span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatRelativeTime(item.createdAt)}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            {isFetchingNextPage && (
+              <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading more…
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -298,7 +298,7 @@ describe('DashboardService', () => {
     expect(result.meta.cacheHit).toBe(false);
   });
 
-  it('buildMemberDashboard issues exactly 5 queries scoped to org + user', async () => {
+  it('buildMemberDashboard issues exactly 4 queries scoped to org + user', async () => {
     dataSource.query
       .mockResolvedValueOnce([
         {
@@ -344,19 +344,6 @@ describe('DashboardService', () => {
           done_count: 1,
           overdue_count: 0,
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'a1',
-          user_id: 'u1',
-          user_display_name: 'Faiz Ahmed',
-          user_avatar_url: null,
-          action: 'created',
-          issue_key: 'WEB-1',
-          issue_title: 'Setup',
-          project_key: 'WEB',
-          created_at: new Date().toISOString(),
-        },
       ]);
 
     const result = await service.buildMemberDashboard(
@@ -365,7 +352,7 @@ describe('DashboardService', () => {
       '7d',
     );
 
-    expect(dataSource.query).toHaveBeenCalledTimes(5);
+    expect(dataSource.query).toHaveBeenCalledTimes(4);
     for (const call of dataSource.query.mock.calls) {
       expect(call[1]).toEqual(
         expect.arrayContaining(['org-1', 'user-1']),
@@ -401,7 +388,6 @@ describe('DashboardService', () => {
       nearCapacity: 0,
       overloaded: 1,
     });
-    expect(result.activity.recent).toHaveLength(1);
     expect(result.meta.variant).toBe('org_user');
   });
 
@@ -421,14 +407,12 @@ describe('DashboardService', () => {
       ])
       .mockResolvedValueOnce([{ active_count: 2 }])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     await service.buildMemberDashboard('org-1', 'user-1', '7d', {
       issueStatusProjectId: 'proj-issues',
       activeSprintProjectId: 'proj-sprints',
       teamWorkloadProjectId: 'proj-workload',
-      recentActivityProjectId: 'proj-activity',
     });
 
     const calls = dataSource.query.mock.calls;
@@ -440,8 +424,6 @@ describe('DashboardService', () => {
     expect(calls[2][1]).toEqual(['org-1', 'user-1', 'proj-sprints']);
     // Q4 (team workload): [org, user, teamWorkloadProjectId]
     expect(calls[3][1]).toEqual(['org-1', 'user-1', 'proj-workload']);
-    // Q5 (activity feed): [org, user, actions[], limit, recentActivityProjectId]
-    expect(calls[4][1][calls[4][1].length - 1]).toBe('proj-activity');
   });
 
   it('getMemberScopedProjects returns the caller\'s own/enrolled projects for the filter dropdown', async () => {
@@ -485,7 +467,6 @@ describe('DashboardService', () => {
       ])
       .mockResolvedValueOnce([{ active_count: 0 }])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     await service.getMemberDashboard('org-1', 'user-1', '7d', {
@@ -526,7 +507,6 @@ describe('DashboardService', () => {
       ])
       .mockResolvedValueOnce([{ active_count: 0 }])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
     const result = await service.buildMemberDashboard(
@@ -544,7 +524,6 @@ describe('DashboardService', () => {
       nearCapacity: 0,
       overloaded: 0,
     });
-    expect(result.activity.recent).toEqual([]);
   });
 
   it('getMemberProjectHealth returns keyset page scoped to org + user', async () => {
@@ -588,6 +567,98 @@ describe('DashboardService', () => {
     ).rejects.toThrow('Invalid status filter');
   });
 
+  it('getMemberActivityFeed returns a keyset page with nextCursor when a full page comes back', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      {
+        id: 'a2',
+        user_id: 'u1',
+        user_display_name: 'Faiz Ahmed',
+        user_avatar_url: null,
+        action: 'created',
+        issue_key: 'WEB-2',
+        issue_title: 'Second',
+        project_key: 'WEB',
+        created_at: '2026-07-30T10:00:00.000Z',
+      },
+      {
+        id: 'a1',
+        user_id: 'u1',
+        user_display_name: 'Faiz Ahmed',
+        user_avatar_url: null,
+        action: 'created',
+        issue_key: 'WEB-1',
+        issue_title: 'First',
+        project_key: 'WEB',
+        created_at: '2026-07-30T09:00:00.000Z',
+      },
+    ]);
+
+    const page = await service.getMemberActivityFeed('org-1', 'user-1', {
+      limit: 2,
+    });
+
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(['org-1', 'user-1']),
+    );
+    expect(page.items).toHaveLength(2);
+    expect(page.items[0].id).toBe('a2');
+    expect(page.nextCursor).toBeTruthy();
+  });
+
+  it('getMemberActivityFeed returns nextCursor null when fewer than limit rows come back (end of list)', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      {
+        id: 'a1',
+        user_id: 'u1',
+        user_display_name: 'Faiz Ahmed',
+        user_avatar_url: null,
+        action: 'created',
+        issue_key: 'WEB-1',
+        issue_title: 'First',
+        project_key: 'WEB',
+        created_at: '2026-07-30T09:00:00.000Z',
+      },
+    ]);
+
+    const page = await service.getMemberActivityFeed('org-1', 'user-1', {
+      limit: 5,
+    });
+
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it('getMemberActivityFeed forwards projectId and cursor into the query params', async () => {
+    dataSource.query.mockResolvedValueOnce([]);
+
+    const cursor = Buffer.from(
+      JSON.stringify({ createdAt: '2026-07-30T09:00:00.000Z', id: 'a1' }),
+      'utf8',
+    ).toString('base64url');
+
+    await service.getMemberActivityFeed('org-1', 'user-1', {
+      projectId: 'proj-1',
+      cursor,
+      limit: 10,
+    });
+
+    const [, params] = dataSource.query.mock.calls[0];
+    expect(params).toContain('proj-1');
+    expect(params).toContain('2026-07-30T09:00:00.000Z');
+    expect(params).toContain('a1');
+    expect(params).toContain(10);
+  });
+
+  it('getMemberActivityFeed rejects an invalid cursor', async () => {
+    await expect(
+      service.getMemberActivityFeed('org-1', 'user-1', {
+        cursor: '%%%not-base64%%%',
+      }),
+    ).rejects.toThrow('Invalid cursor');
+    expect(dataSource.query).not.toHaveBeenCalled();
+  });
+
   it('getMemberDashboard serves cache without DB queries', async () => {
     const payload = {
       kpis: {
@@ -604,7 +675,6 @@ describe('DashboardService', () => {
         topBusiest: [],
         capacitySummary: { available: 0, nearCapacity: 0, overloaded: 0 },
       },
-      activity: { recent: [] },
       meta: {
         range: '7d' as const,
         generatedAt: new Date().toISOString(),

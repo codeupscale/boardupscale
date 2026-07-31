@@ -15,4 +15,3 @@ export function classifyWorkloadCapacity(
 
 export const TEAM_WORKLOAD_TOP_BUSIEST_LIMIT = 5;
 export const MEMBER_ACTIVE_SPRINTS_LIMIT = 5;
-export const MEMBER_ACTIVITY_FEED_LIMIT = 8;

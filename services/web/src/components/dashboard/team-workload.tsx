@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -65,12 +64,6 @@ export function TeamWorkload({
               label="Filter Team Workload by project"
             />
           )}
-          <Link
-            to="/settings/team"
-            className="text-xs font-medium text-violet-400 hover:text-violet-300 whitespace-nowrap"
-          >
-            View all →
-          </Link>
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-4 flex-1 flex flex-col gap-4 min-h-0">

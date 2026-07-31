@@ -18,6 +18,8 @@ export class OrgDashboardQueryDto {
  * top of the shared range param. Each field narrows one specific widget
  * down to one of the caller's own/enrolled projects; omitted means "all of
  * them" for that widget. Widgets filter independently of one another.
+ * "Recent Project Activity" is not included here — it's keyset-paged
+ * separately via MemberActivityQueryDto (GET /dashboard/member/activity).
  */
 export class MemberDashboardQueryDto extends OrgDashboardQueryDto {
   @ApiPropertyOptional({
@@ -40,11 +42,4 @@ export class MemberDashboardQueryDto extends OrgDashboardQueryDto {
   @IsOptional()
   @IsUUID()
   teamWorkloadProjectId?: string;
-
-  @ApiPropertyOptional({
-    description: 'Restrict "Recent Project Activity" to a single project',
-  })
-  @IsOptional()
-  @IsUUID()
-  recentActivityProjectId?: string;
 }

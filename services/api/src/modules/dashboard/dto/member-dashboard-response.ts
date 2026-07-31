@@ -64,14 +64,17 @@ export interface MemberScopedProject {
   key: string;
 }
 
+/** Keyset-paged "Recent Project Activity" — fetched independently via GET /dashboard/member/activity (infinite scroll, not part of the fixed-budget aggregate payload). */
+export interface MemberActivityFeedPage {
+  items: ActivityFeedItem[];
+  nextCursor: string | null;
+}
+
 export interface MemberDashboardResponse {
   kpis: MemberDashboardKpis;
   issueStatus: IssueStatusDonut;
   activeSprints: ActiveSprintSummary[];
   teamWorkload: TeamWorkload;
-  activity: {
-    recent: ActivityFeedItem[];
-  };
   meta: {
     range: DashboardRange;
     generatedAt: string;
