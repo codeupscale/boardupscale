@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import api from '@/lib/api'
+import api, { setLoggingOut } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import { toast } from '@/store/ui.store'
 import { User } from '@/types'
@@ -157,10 +157,21 @@ export function useLogout() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
+      // Set before anything else: a query still in flight can resolve
+      // after tokens are cleared below and 401 — without this flag the
+      // axios interceptor forces a hard `window.location.href` reload on
+      // top of this flow's own React Router navigation, producing a
+      // visible second (unstyled, white) flash of the login page.
+      setLoggingOut(true)
+      await qc.cancelQueries()
       const refreshToken = localStorage.getItem('refreshToken')
       if (refreshToken) await api.post('/auth/logout', { refreshToken })
     },
     onSettled: () => {
+      // Deliberately NOT resetting the logging-out flag here: a slower
+      // stray request can still resolve well after this settles, and it
+      // should keep being suppressed. The flag is only cleared in
+      // auth.store's setTokens, once a new session actually begins.
       logout()
       qc.clear()
       navigate('/login')

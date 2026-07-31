@@ -23,15 +23,23 @@ export {
   type ProjectHealthViewState,
 } from '@/hooks/project-health-query'
 
+export type ProjectHealthScope = 'organization' | 'member'
+
+const PROJECT_HEALTH_ENDPOINT: Record<ProjectHealthScope, string> = {
+  organization: '/dashboard/organization/project-health',
+  member: '/dashboard/member/project-health',
+}
+
 export function useOrgProjectHealth(
   status: ProjectHealthStatus | 'all' = 'all',
+  scope: ProjectHealthScope = 'organization',
 ) {
   const orgId = useAuthStore((s) => s.user?.organizationId)
 
   return useInfiniteQuery({
-    queryKey: ['dashboard', 'organization', 'project-health', orgId, status],
+    queryKey: ['dashboard', scope, 'project-health', orgId, status],
     queryFn: async ({ pageParam }): Promise<OrgProjectHealthPage> => {
-      const { data } = await api.get('/dashboard/organization/project-health', {
+      const { data } = await api.get(PROJECT_HEALTH_ENDPOINT[scope], {
         params: buildProjectHealthRequestParams(status, pageParam),
         headers: { 'Cache-Control': 'no-store' },
       })

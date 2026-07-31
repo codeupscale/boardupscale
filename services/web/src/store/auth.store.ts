@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { User } from '@/types'
 import { identifyUser, resetPostHog } from '@/lib/posthog'
+import { setLoggingOut } from '@/lib/api'
 
 interface AuthState {
   user: User | null
@@ -28,6 +29,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('accessToken', accessToken)
     localStorage.setItem('refreshToken', refreshToken)
     set({ accessToken, refreshToken, isAuthenticated: true })
+    // A new authenticated session has definitively started — safe to let
+    // the interceptor hard-redirect on session-expiry again from here on.
+    setLoggingOut(false)
   },
 
   setUser: (user) => {

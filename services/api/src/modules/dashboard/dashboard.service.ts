@@ -23,6 +23,15 @@ import {
   ProjectHealthRow,
 } from './dto/org-dashboard-response';
 import {
+  ActiveSprintSummary,
+  IssueStatusBucket,
+  IssueStatusDonut,
+  MemberDashboardResponse,
+  MemberScopedProject,
+  TeamWorkload,
+  WorkloadMember,
+} from './dto/member-dashboard-response';
+import {
   PROJECT_HEALTH_PAGE_DEFAULT,
   PROJECT_HEALTH_PAGE_MAX,
 } from './dto/org-project-health-query.dto';
@@ -36,6 +45,17 @@ import {
   encodeProjectHealthCursor,
   isProjectHealthStatus,
 } from './project-health.sql';
+import {
+  MEMBER_PROJECT_HEALTH_ROLLUP_CTE,
+  MEMBER_SCOPED_PROJECTS_CTE,
+  buildMemberScopedProjectsCte,
+} from './member-scope.sql';
+import {
+  MEMBER_ACTIVE_SPRINTS_LIMIT,
+  MEMBER_ACTIVITY_FEED_LIMIT,
+  TEAM_WORKLOAD_TOP_BUSIEST_LIMIT,
+  classifyWorkloadCapacity,
+} from './team-workload.constants';
 
 interface StatusCountRow {
   health_status: string;
@@ -87,6 +107,56 @@ interface ProjectHealthSqlRow {
   progress_percent: string | number;
   sort_order: string | number;
   total_count?: string | number;
+}
+
+interface MemberKpiRow {
+  total_projects: string | number;
+  total_members: string | number;
+  open_issues: string | number;
+  overdue_issues: string | number;
+  todo_count: string | number;
+  in_progress_count: string | number;
+  blocked_count: string | number;
+  done_count: string | number;
+}
+
+interface MemberActiveProjectsRow {
+  active_count: string | number;
+}
+
+interface MemberActiveSprintRow {
+  sprint_id: string;
+  name: string;
+  project_id: string;
+  project_name: string;
+  start_date: string | null;
+  end_date: string | null;
+  total_issues: string | number;
+  done_issues: string | number;
+}
+
+interface MemberScopedProjectRow {
+  id: string;
+  name: string;
+  key: string;
+}
+
+/** Independent per-widget project filters for the member dashboard. */
+export interface MemberDashboardProjectFilters {
+  issueStatusProjectId?: string;
+  activeSprintProjectId?: string;
+  teamWorkloadProjectId?: string;
+  recentActivityProjectId?: string;
+}
+
+interface MemberWorkloadRow {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  active_count: string | number;
+  in_progress_count: string | number;
+  done_count: string | number;
+  overdue_count: string | number;
 }
 
 @Injectable()
@@ -141,6 +211,33 @@ export class DashboardService {
     limit: number,
   ): string {
     return `dash:org:${organizationId}:project-health:v1:${status}:${cursor || '_'}:${limit}`;
+  }
+
+  private memberCacheKey(
+    organizationId: string,
+    userId: string,
+    range: DashboardRange,
+    filters?: MemberDashboardProjectFilters,
+  ): string {
+    const filterKey = [
+      filters?.issueStatusProjectId,
+      filters?.activeSprintProjectId,
+      filters?.teamWorkloadProjectId,
+      filters?.recentActivityProjectId,
+    ]
+      .map((id) => id ?? 'all')
+      .join(':');
+    return `dash:member:${organizationId}:${userId}:v3:${range}:${filterKey}`;
+  }
+
+  private memberProjectHealthCacheKey(
+    organizationId: string,
+    userId: string,
+    status: string,
+    cursor: string,
+    limit: number,
+  ): string {
+    return `dash:member:${organizationId}:${userId}:project-health:v1:${status}:${cursor || '_'}:${limit}`;
   }
 
   async getOrgOwnerDashboard(
@@ -329,6 +426,634 @@ export class DashboardService {
       DASHBOARD_PROJECT_HEALTH_CACHE_TTL_SECONDS,
     );
     return page;
+  }
+
+  /**
+   * Member dashboard (everyone except Owner): "own + enrolled" project
+   * scope, per-user cache key. Mirrors getOrgOwnerDashboard's cache/lock
+   * pattern.
+   */
+  async getMemberDashboard(
+    organizationId: string,
+    userId: string,
+    range: DashboardRange = '7d',
+    filters?: MemberDashboardProjectFilters,
+  ): Promise<MemberDashboardResponse> {
+    this.scopeResolver.resolveProjectScope('org_user');
+
+    const key = this.memberCacheKey(organizationId, userId, range, filters);
+    const cached = await this.readJsonCache<MemberDashboardResponse>(key);
+    if (cached) {
+      return { ...cached, meta: { ...cached.meta, cacheHit: true } };
+    }
+
+    const lockKey = `${key}:lock`;
+    const acquired = await this.tryAcquireLock(lockKey);
+    if (!acquired) {
+      await sleep(120);
+      const afterWait = await this.readJsonCache<MemberDashboardResponse>(key);
+      if (afterWait) {
+        return { ...afterWait, meta: { ...afterWait.meta, cacheHit: true } };
+      }
+    }
+
+    try {
+      const built = await this.buildMemberDashboard(
+        organizationId,
+        userId,
+        range,
+        filters,
+      );
+      await this.writeJsonCache(key, built, DASHBOARD_CACHE_TTL_SECONDS);
+      return built;
+    } finally {
+      if (acquired) {
+        await this.releaseLock(lockKey);
+      }
+    }
+  }
+
+  /** List of the caller's own/enrolled projects, for the dashboard's project filter dropdown. */
+  async getMemberScopedProjects(
+    organizationId: string,
+    userId: string,
+  ): Promise<MemberScopedProject[]> {
+    const rows: MemberScopedProjectRow[] = await this.dataSource.query(
+      `
+      WITH ${MEMBER_SCOPED_PROJECTS_CTE}
+      SELECT p.id, p.name, p.key
+      FROM projects p
+      INNER JOIN member_scoped_projects msp ON msp.project_id = p.id
+      ORDER BY p.name ASC
+      `,
+      [organizationId, userId],
+    );
+    return rows.map((row) => ({ id: row.id, name: row.name, key: row.key }));
+  }
+
+  /**
+   * Fixed-budget aggregation: exactly 5 parallel DB round-trips.
+   * Each of `filters.issueStatusProjectId` / `activeSprintProjectId` /
+   * `teamWorkloadProjectId` / `recentActivityProjectId` independently
+   * narrows its own widget to a single scoped project — the 4 widgets
+   * filter independently of one another. KPIs and the active-project count
+   * always stay org/member-wide.
+   */
+  async buildMemberDashboard(
+    organizationId: string,
+    userId: string,
+    range: DashboardRange,
+    filters?: MemberDashboardProjectFilters,
+  ): Promise<MemberDashboardResponse> {
+    this.lastQueryCount = 0;
+
+    const [kpiRows, activeProjectsRows, sprintRows, workloadRows, feedRows] =
+      await Promise.all([
+        this.queryMemberKpisAndIssueStatus(
+          organizationId,
+          userId,
+          filters?.issueStatusProjectId,
+        ),
+        this.queryMemberActiveProjectsCount(organizationId, userId),
+        this.queryMemberActiveSprints(
+          organizationId,
+          userId,
+          filters?.activeSprintProjectId,
+        ),
+        this.queryMemberTeamWorkload(
+          organizationId,
+          userId,
+          filters?.teamWorkloadProjectId,
+        ),
+        this.queryMemberActivityFeed(
+          organizationId,
+          userId,
+          filters?.recentActivityProjectId,
+        ),
+      ]);
+
+    this.lastQueryCount = 5;
+
+    const kpiRow = kpiRows[0] ?? {
+      total_projects: 0,
+      total_members: 0,
+      open_issues: 0,
+      overdue_issues: 0,
+      todo_count: 0,
+      in_progress_count: 0,
+      blocked_count: 0,
+      done_count: 0,
+    };
+    const activeProjects = toInt(activeProjectsRows[0]?.active_count);
+
+    const issueStatus = this.buildIssueStatusDonut(kpiRow);
+    const activeSprints = sprintRows.map((row) => this.toActiveSprint(row));
+    const teamWorkload = this.buildTeamWorkload(workloadRows);
+    const recent = feedRows.map((row) => this.toFeedItem(row));
+
+    return {
+      kpis: {
+        totalProjects: toInt(kpiRow.total_projects),
+        activeProjects,
+        totalMembers: toInt(kpiRow.total_members),
+        openIssues: toInt(kpiRow.open_issues),
+        overdueIssues: toInt(kpiRow.overdue_issues),
+      },
+      issueStatus,
+      activeSprints,
+      teamWorkload,
+      activity: { recent },
+      meta: {
+        range,
+        generatedAt: new Date().toISOString(),
+        variant: 'org_user',
+        cacheHit: false,
+      },
+    };
+  }
+
+  /**
+   * Keyset-paged project health rows scoped to the caller's own + enrolled
+   * projects (mirrors getOrgProjectHealth).
+   */
+  async getMemberProjectHealth(
+    organizationId: string,
+    userId: string,
+    options: {
+      status?: ProjectHealthStatus | 'all';
+      cursor?: string;
+      limit?: number;
+    } = {},
+  ): Promise<OrgProjectHealthPage> {
+    this.scopeResolver.resolveProjectScope('org_user');
+
+    const status = options.status ?? 'all';
+    if (status !== 'all' && !isProjectHealthStatus(status)) {
+      throw new BadRequestException('Invalid status filter');
+    }
+
+    const limit = Math.min(
+      PROJECT_HEALTH_PAGE_MAX,
+      Math.max(1, options.limit ?? PROJECT_HEALTH_PAGE_DEFAULT),
+    );
+    const cursorRaw = options.cursor?.trim() || '';
+    const decoded = decodeProjectHealthCursor(cursorRaw || null);
+    if (cursorRaw && !decoded) {
+      throw new BadRequestException('Invalid cursor');
+    }
+
+    const cacheKey = this.memberProjectHealthCacheKey(
+      organizationId,
+      userId,
+      status,
+      cursorRaw,
+      limit,
+    );
+    const cached = await this.readJsonCache<OrgProjectHealthPage>(cacheKey);
+    if (cached) return cached;
+
+    const page = await this.queryMemberProjectHealthPage(
+      organizationId,
+      userId,
+      status,
+      decoded,
+      limit,
+    );
+    await this.writeJsonCache(
+      cacheKey,
+      page,
+      DASHBOARD_PROJECT_HEALTH_CACHE_TTL_SECONDS,
+    );
+    return page;
+  }
+
+  private buildIssueStatusDonut(row: MemberKpiRow): IssueStatusDonut {
+    const counts: Record<IssueStatusBucket, number> = {
+      todo: toInt(row.todo_count),
+      in_progress: toInt(row.in_progress_count),
+      blocked: toInt(row.blocked_count),
+      done: toInt(row.done_count),
+    };
+    const order: IssueStatusBucket[] = [
+      'todo',
+      'in_progress',
+      'blocked',
+      'done',
+    ];
+    const total = order.reduce((sum, k) => sum + counts[k], 0);
+    return {
+      total,
+      segments: order.map((key) => ({
+        key,
+        count: counts[key],
+        percent: total > 0 ? Math.round((counts[key] / total) * 100) : 0,
+      })),
+    };
+  }
+
+  private toActiveSprint(row: MemberActiveSprintRow): ActiveSprintSummary {
+    const total = toInt(row.total_issues);
+    const done = toInt(row.done_issues);
+    const progressPercent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    let daysLeft: number | null = null;
+    if (row.end_date) {
+      const end = new Date(row.end_date);
+      const now = new Date();
+      const nowUtc = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+      );
+      const endUtc = Date.UTC(
+        end.getUTCFullYear(),
+        end.getUTCMonth(),
+        end.getUTCDate(),
+      );
+      daysLeft = Math.max(
+        0,
+        Math.round((endUtc - nowUtc) / (24 * 60 * 60 * 1000)),
+      );
+    }
+
+    return {
+      sprintId: row.sprint_id,
+      name: row.name,
+      projectId: row.project_id,
+      projectName: row.project_name,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      totalIssues: total,
+      doneIssues: done,
+      progressPercent,
+      daysLeft,
+    };
+  }
+
+  private buildTeamWorkload(rows: MemberWorkloadRow[]): TeamWorkload {
+    const members: WorkloadMember[] = rows.map((row) => {
+      const activeCount = toInt(row.active_count);
+      return {
+        userId: row.user_id,
+        displayName: row.display_name,
+        avatarUrl: row.avatar_url,
+        activeCount,
+        inProgressCount: toInt(row.in_progress_count),
+        doneCount: toInt(row.done_count),
+        overdueCount: toInt(row.overdue_count),
+        capacity: classifyWorkloadCapacity(activeCount),
+      };
+    });
+
+    const topBusiest = members.slice(0, TEAM_WORKLOAD_TOP_BUSIEST_LIMIT);
+    const capacitySummary = members.reduce(
+      (acc, m) => {
+        if (m.capacity === 'available') acc.available += 1;
+        else if (m.capacity === 'near_capacity') acc.nearCapacity += 1;
+        else acc.overloaded += 1;
+        return acc;
+      },
+      { available: 0, nearCapacity: 0, overloaded: 0 },
+    );
+
+    return { members, topBusiest, capacitySummary };
+  }
+
+  /**
+   * Q1 — KPI scalars + issue-status donut counts (1 round-trip).
+   * `total_projects`/`total_members`/`open_issues`/`overdue_issues` (KPI
+   * cards) always reflect the full member scope; the donut buckets
+   * (`todo_count`/`in_progress_count`/`blocked_count`/`done_count`) respect
+   * `projectId` via the `in_filter` flag so "Open Issues by Status" alone
+   * narrows to the selected project.
+   */
+  private async queryMemberKpisAndIssueStatus(
+    organizationId: string,
+    userId: string,
+    projectId?: string,
+  ): Promise<MemberKpiRow[]> {
+    return this.dataSource.query(
+      `
+      WITH ${MEMBER_SCOPED_PROJECTS_CTE},
+      issue_pool AS (
+        SELECT
+          i.id,
+          i.due_date,
+          i.project_id,
+          s.category,
+          EXISTS (
+            SELECT 1 FROM issue_links l
+            WHERE (
+              (l.source_issue_id = i.id AND l.link_type = 'is_blocked_by')
+              OR (l.target_issue_id = i.id AND l.link_type = 'blocks')
+            )
+          ) AS is_blocked
+        FROM issues i
+        INNER JOIN member_scoped_projects msp ON msp.project_id = i.project_id
+        LEFT JOIN issue_statuses s ON s.id = i.status_id
+        WHERE i.organization_id = $1
+          AND i.deleted_at IS NULL
+      ),
+      status_buckets AS (
+        SELECT
+          CASE
+            WHEN category = 'done' THEN 'done'
+            WHEN is_blocked THEN 'blocked'
+            WHEN category = 'in_progress' THEN 'in_progress'
+            ELSE 'todo'
+          END AS bucket,
+          due_date,
+          category,
+          ($3::uuid IS NULL OR project_id = $3) AS in_filter
+        FROM issue_pool
+      ),
+      member_people AS (
+        SELECT pm.user_id
+        FROM project_members pm
+        INNER JOIN member_scoped_projects msp ON msp.project_id = pm.project_id
+        UNION
+        SELECT p.owner_id
+        FROM projects p
+        INNER JOIN member_scoped_projects msp ON msp.project_id = p.id
+      )
+      SELECT
+        (SELECT COUNT(*)::int FROM member_scoped_projects) AS total_projects,
+        (SELECT COUNT(DISTINCT user_id)::int FROM member_people) AS total_members,
+        (SELECT COUNT(*)::int FROM status_buckets WHERE category IS DISTINCT FROM 'done') AS open_issues,
+        (SELECT COUNT(*)::int FROM status_buckets
+          WHERE category IS DISTINCT FROM 'done' AND due_date < CURRENT_DATE
+        ) AS overdue_issues,
+        (SELECT COUNT(*)::int FROM status_buckets WHERE bucket = 'todo' AND in_filter) AS todo_count,
+        (SELECT COUNT(*)::int FROM status_buckets WHERE bucket = 'in_progress' AND in_filter) AS in_progress_count,
+        (SELECT COUNT(*)::int FROM status_buckets WHERE bucket = 'blocked' AND in_filter) AS blocked_count,
+        (SELECT COUNT(*)::int FROM status_buckets WHERE bucket = 'done' AND in_filter) AS done_count
+      `,
+      [organizationId, userId, projectId ?? null],
+    );
+  }
+
+  /** Q2 — active-project count via the same health classification as the Owner dashboard (1 round-trip). */
+  private async queryMemberActiveProjectsCount(
+    organizationId: string,
+    userId: string,
+  ): Promise<MemberActiveProjectsRow[]> {
+    return this.dataSource.query(
+      `
+      WITH ${MEMBER_SCOPED_PROJECTS_CTE},
+      ${MEMBER_PROJECT_HEALTH_ROLLUP_CTE},
+      classified AS (
+        SELECT (${PROJECT_HEALTH_STATUS_SQL.trim()}) AS health_status
+        FROM project_rollups
+      )
+      SELECT COUNT(*)::int AS active_count
+      FROM classified
+      WHERE health_status = 'active'
+      `,
+      [organizationId, userId],
+    );
+  }
+
+  /** Q3 — active sprints across scoped projects, optionally narrowed to one project (1 round-trip). */
+  private async queryMemberActiveSprints(
+    organizationId: string,
+    userId: string,
+    projectId?: string,
+  ): Promise<MemberActiveSprintRow[]> {
+    return this.dataSource.query(
+      `
+      WITH ${buildMemberScopedProjectsCte(3)}
+      SELECT
+        sp.id AS sprint_id,
+        sp.name,
+        p.id AS project_id,
+        p.name AS project_name,
+        sp.start_date,
+        sp.end_date,
+        COUNT(i.id) FILTER (WHERE i.deleted_at IS NULL) AS total_issues,
+        COUNT(i.id) FILTER (
+          WHERE i.deleted_at IS NULL AND s.category = 'done'
+        ) AS done_issues
+      FROM sprints sp
+      INNER JOIN member_scoped_projects msp ON msp.project_id = sp.project_id
+      INNER JOIN projects p ON p.id = sp.project_id
+      LEFT JOIN issues i ON i.sprint_id = sp.id AND i.organization_id = $1
+      LEFT JOIN issue_statuses s ON s.id = i.status_id
+      WHERE sp.status = 'active'
+      GROUP BY sp.id, sp.name, p.id, p.name, sp.start_date, sp.end_date
+      ORDER BY sp.end_date ASC NULLS LAST
+      LIMIT ${MEMBER_ACTIVE_SPRINTS_LIMIT}
+      `,
+      [organizationId, userId, projectId ?? null],
+    );
+  }
+
+  /** Q4 — per-assignee workload across scoped projects, optionally narrowed to one project (1 round-trip). */
+  private async queryMemberTeamWorkload(
+    organizationId: string,
+    userId: string,
+    projectId?: string,
+  ): Promise<MemberWorkloadRow[]> {
+    return this.dataSource.query(
+      `
+      WITH ${buildMemberScopedProjectsCte(3)},
+      scoped_issues AS (
+        SELECT i.id, i.assignee_id, i.due_date, s.category
+        FROM issues i
+        INNER JOIN member_scoped_projects msp ON msp.project_id = i.project_id
+        LEFT JOIN issue_statuses s ON s.id = i.status_id
+        WHERE i.organization_id = $1
+          AND i.deleted_at IS NULL
+          AND i.assignee_id IS NOT NULL
+      )
+      SELECT
+        u.id AS user_id,
+        u.display_name,
+        u.avatar_url,
+        COUNT(si.id) FILTER (WHERE si.category IS DISTINCT FROM 'done')::int AS active_count,
+        COUNT(si.id) FILTER (WHERE si.category = 'in_progress')::int AS in_progress_count,
+        COUNT(si.id) FILTER (WHERE si.category = 'done')::int AS done_count,
+        COUNT(si.id) FILTER (
+          WHERE si.category IS DISTINCT FROM 'done' AND si.due_date < CURRENT_DATE
+        )::int AS overdue_count
+      FROM scoped_issues si
+      INNER JOIN users u ON u.id = si.assignee_id
+      GROUP BY u.id, u.display_name, u.avatar_url
+      ORDER BY active_count DESC
+      `,
+      [organizationId, userId, projectId ?? null],
+    );
+  }
+
+  /** Q5 — recent activity feed scoped to member's own + enrolled projects, optionally narrowed to one project (1 round-trip). */
+  private async queryMemberActivityFeed(
+    organizationId: string,
+    userId: string,
+    projectId?: string,
+  ): Promise<ActivityFeedRow[]> {
+    return this.dataSource.query(
+      `
+      WITH ${buildMemberScopedProjectsCte(5)}
+      SELECT
+        a.id,
+        a.user_id,
+        u.display_name AS user_display_name,
+        u.avatar_url AS user_avatar_url,
+        a.action,
+        i.key AS issue_key,
+        i.title AS issue_title,
+        p.key AS project_key,
+        a.created_at
+      FROM activities a
+      INNER JOIN issues i
+        ON i.id = a.issue_id
+       AND i.organization_id = a.organization_id
+      INNER JOIN member_scoped_projects msp ON msp.project_id = i.project_id
+      LEFT JOIN users u ON u.id = a.user_id
+      LEFT JOIN projects p
+        ON p.id = i.project_id
+       AND p.organization_id = a.organization_id
+      WHERE a.organization_id = $1
+        AND a.action = ANY($3::text[])
+      ORDER BY a.created_at DESC
+      LIMIT $4
+      `,
+      [
+        organizationId,
+        userId,
+        [...DASHBOARD_ACTIVITY_ACTIONS],
+        MEMBER_ACTIVITY_FEED_LIMIT,
+        projectId ?? null,
+      ],
+    );
+  }
+
+  /** Keyset-paged project health rows, scoped to member's own + enrolled projects. */
+  private async queryMemberProjectHealthPage(
+    organizationId: string,
+    userId: string,
+    status: ProjectHealthStatus | 'all',
+    cursor: ReturnType<typeof decodeProjectHealthCursor>,
+    limit: number,
+  ): Promise<OrgProjectHealthPage> {
+    const params: unknown[] = [organizationId, userId];
+    let statusClause = '';
+    if (status !== 'all') {
+      params.push(status);
+      statusClause = `AND health_status = $${params.length}`;
+    }
+
+    let cursorClause = '';
+    if (cursor) {
+      params.push(cursor.sortOrder, cursor.name, cursor.projectId);
+      const pId = params.length;
+      const pName = pId - 1;
+      const pSort = pId - 2;
+      cursorClause = `
+        AND (
+          sort_order > $${pSort}
+          OR (sort_order = $${pSort} AND name > $${pName})
+          OR (sort_order = $${pSort} AND name = $${pName} AND project_id > $${pId})
+        )`;
+    }
+
+    params.push(limit);
+    const limitParam = `$${params.length}`;
+
+    const rows: ProjectHealthSqlRow[] = await this.dataSource.query(
+      `
+      WITH ${MEMBER_SCOPED_PROJECTS_CTE},
+      ${MEMBER_PROJECT_HEALTH_ROLLUP_CTE},
+      classified AS (
+        SELECT
+          project_id,
+          name,
+          key,
+          type,
+          open_tickets,
+          blocked_open_tickets,
+          overdue_tickets,
+          completed_tickets,
+          active_sprint_name,
+          (${PROJECT_HEALTH_STATUS_SQL.trim()}) AS health_status,
+          (${PROJECT_HEALTH_PROGRESS_SQL.trim()}) AS progress_percent
+        FROM project_rollups
+      ),
+      ranked AS (
+        SELECT
+          c.*,
+          (${PROJECT_HEALTH_SORT_RANK_SQL.trim()}) AS sort_order
+        FROM classified c
+      ),
+      filtered AS (
+        SELECT *
+        FROM ranked
+        WHERE 1=1
+          ${statusClause}
+      ),
+      meta AS (
+        SELECT COUNT(*)::int AS total_count FROM filtered
+      ),
+      paged AS (
+        SELECT *
+        FROM filtered
+        WHERE 1=1
+          ${cursorClause}
+        ORDER BY sort_order ASC, name ASC, project_id ASC
+        LIMIT ${limitParam}
+      )
+      SELECT
+        p.project_id,
+        p.name,
+        p.key,
+        p.type,
+        p.open_tickets,
+        p.blocked_open_tickets,
+        p.overdue_tickets,
+        p.completed_tickets,
+        p.active_sprint_name,
+        p.health_status,
+        p.progress_percent,
+        p.sort_order,
+        m.total_count
+      FROM meta m
+      LEFT JOIN paged p ON TRUE
+      ORDER BY p.sort_order ASC NULLS LAST, p.name ASC NULLS LAST, p.project_id ASC NULLS LAST
+      `,
+      params,
+    );
+
+    const total = rows.length > 0 ? toInt(rows[0].total_count) : 0;
+    const dataRows = rows.filter((r) => r.project_id != null);
+    const items: ProjectHealthRow[] = dataRows.map((row) => {
+      const status = isProjectHealthStatus(row.health_status)
+        ? row.health_status
+        : null;
+      return {
+        projectId: row.project_id,
+        name: row.name,
+        key: row.key,
+        type: row.type,
+        openIssues: toInt(row.open_tickets),
+        blockedIssues: toInt(row.blocked_open_tickets),
+        overdueIssues: toInt(row.overdue_tickets),
+        doneIssues: toInt(row.completed_tickets),
+        activeSprintName: row.active_sprint_name,
+        status: status ?? 'at_risk',
+        progressPercent: toInt(row.progress_percent),
+      };
+    });
+
+    let nextCursor: string | null = null;
+    if (dataRows.length === limit) {
+      const last = dataRows[dataRows.length - 1];
+      nextCursor = encodeProjectHealthCursor({
+        sortOrder: toInt(last.sort_order),
+        name: last.name,
+        projectId: last.project_id,
+      });
+    }
+
+    return { items, nextCursor, total };
   }
 
   private buildDonutFromCounts(rows: StatusCountRow[]): DonutSection {

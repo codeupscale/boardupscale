@@ -297,4 +297,335 @@ describe('DashboardService', () => {
     expect(dataSource.query).toHaveBeenCalledTimes(4);
     expect(result.meta.cacheHit).toBe(false);
   });
+
+  it('buildMemberDashboard issues exactly 5 queries scoped to org + user', async () => {
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          total_projects: 3,
+          total_members: 4,
+          open_issues: 6,
+          overdue_issues: 2,
+          todo_count: 2,
+          in_progress_count: 3,
+          blocked_count: 1,
+          done_count: 5,
+        },
+      ])
+      .mockResolvedValueOnce([{ active_count: 2 }])
+      .mockResolvedValueOnce([
+        {
+          sprint_id: 's1',
+          name: 'Sprint 15',
+          project_id: 'p1',
+          project_name: 'Website Revamp',
+          start_date: '2026-07-01',
+          end_date: '2026-07-31',
+          total_issues: 10,
+          done_issues: 6,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          user_id: 'u1',
+          display_name: 'Faiz Ahmed',
+          avatar_url: null,
+          active_count: 18,
+          in_progress_count: 6,
+          done_count: 5,
+          overdue_count: 2,
+        },
+        {
+          user_id: 'u2',
+          display_name: 'Ali Raza',
+          avatar_url: null,
+          active_count: 2,
+          in_progress_count: 1,
+          done_count: 1,
+          overdue_count: 0,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'a1',
+          user_id: 'u1',
+          user_display_name: 'Faiz Ahmed',
+          user_avatar_url: null,
+          action: 'created',
+          issue_key: 'WEB-1',
+          issue_title: 'Setup',
+          project_key: 'WEB',
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+    const result = await service.buildMemberDashboard(
+      'org-1',
+      'user-1',
+      '7d',
+    );
+
+    expect(dataSource.query).toHaveBeenCalledTimes(5);
+    for (const call of dataSource.query.mock.calls) {
+      expect(call[1]).toEqual(
+        expect.arrayContaining(['org-1', 'user-1']),
+      );
+    }
+
+    expect(result.kpis).toEqual({
+      totalProjects: 3,
+      activeProjects: 2,
+      totalMembers: 4,
+      openIssues: 6,
+      overdueIssues: 2,
+    });
+    expect(result.issueStatus.total).toBe(11);
+    expect(result.issueStatus.segments).toEqual([
+      { key: 'todo', count: 2, percent: Math.round((2 / 11) * 100) },
+      {
+        key: 'in_progress',
+        count: 3,
+        percent: Math.round((3 / 11) * 100),
+      },
+      { key: 'blocked', count: 1, percent: Math.round((1 / 11) * 100) },
+      { key: 'done', count: 5, percent: Math.round((5 / 11) * 100) },
+    ]);
+    expect(result.activeSprints).toHaveLength(1);
+    expect(result.activeSprints[0].progressPercent).toBe(60);
+    expect(result.teamWorkload.members).toHaveLength(2);
+    expect(result.teamWorkload.topBusiest[0].userId).toBe('u1');
+    expect(result.teamWorkload.members[0].capacity).toBe('overloaded');
+    expect(result.teamWorkload.members[1].capacity).toBe('available');
+    expect(result.teamWorkload.capacitySummary).toEqual({
+      available: 1,
+      nearCapacity: 0,
+      overloaded: 1,
+    });
+    expect(result.activity.recent).toHaveLength(1);
+    expect(result.meta.variant).toBe('org_user');
+  });
+
+  it('buildMemberDashboard forwards each per-widget projectId independently, but not to the active-project count', async () => {
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          total_projects: 3,
+          total_members: 4,
+          open_issues: 6,
+          overdue_issues: 2,
+          todo_count: 1,
+          in_progress_count: 1,
+          blocked_count: 0,
+          done_count: 1,
+        },
+      ])
+      .mockResolvedValueOnce([{ active_count: 2 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await service.buildMemberDashboard('org-1', 'user-1', '7d', {
+      issueStatusProjectId: 'proj-issues',
+      activeSprintProjectId: 'proj-sprints',
+      teamWorkloadProjectId: 'proj-workload',
+      recentActivityProjectId: 'proj-activity',
+    });
+
+    const calls = dataSource.query.mock.calls;
+    // Q1 (KPIs + issue-status donut): [org, user, issueStatusProjectId]
+    expect(calls[0][1]).toEqual(['org-1', 'user-1', 'proj-issues']);
+    // Q2 (active-project count): unaffected by any widget filter
+    expect(calls[1][1]).toEqual(['org-1', 'user-1']);
+    // Q3 (active sprints): [org, user, activeSprintProjectId]
+    expect(calls[2][1]).toEqual(['org-1', 'user-1', 'proj-sprints']);
+    // Q4 (team workload): [org, user, teamWorkloadProjectId]
+    expect(calls[3][1]).toEqual(['org-1', 'user-1', 'proj-workload']);
+    // Q5 (activity feed): [org, user, actions[], limit, recentActivityProjectId]
+    expect(calls[4][1][calls[4][1].length - 1]).toBe('proj-activity');
+  });
+
+  it('getMemberScopedProjects returns the caller\'s own/enrolled projects for the filter dropdown', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      { id: 'p1', name: 'Website Revamp', key: 'WEB' },
+      { id: 'p2', name: 'Mobile App', key: 'MOB' },
+    ]);
+
+    const projects = await service.getMemberScopedProjects('org-1', 'user-1');
+
+    expect(dataSource.query).toHaveBeenCalledWith(expect.any(String), [
+      'org-1',
+      'user-1',
+    ]);
+    expect(projects).toEqual([
+      { id: 'p1', name: 'Website Revamp', key: 'WEB' },
+      { id: 'p2', name: 'Mobile App', key: 'MOB' },
+    ]);
+  });
+
+  it('getMemberDashboard cache key varies by per-widget filters (filtered result not served from unfiltered cache)', async () => {
+    (
+      service as unknown as { redis: { get: jest.Mock; setex: jest.Mock } }
+    ).redis = {
+      get: jest.fn().mockResolvedValue(null),
+      setex: jest.fn(),
+    };
+
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          total_projects: 0,
+          total_members: 0,
+          open_issues: 0,
+          overdue_issues: 0,
+          todo_count: 0,
+          in_progress_count: 0,
+          blocked_count: 0,
+          done_count: 0,
+        },
+      ])
+      .mockResolvedValueOnce([{ active_count: 0 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    await service.getMemberDashboard('org-1', 'user-1', '7d', {
+      teamWorkloadProjectId: 'proj-1',
+    });
+
+    const redisGet = (
+      service as unknown as { redis: { get: jest.Mock } }
+    ).redis.get;
+    const [filteredKey] = redisGet.mock.calls[0];
+    expect(filteredKey).toContain('proj-1');
+
+    const unfilteredKey = (
+      service as unknown as {
+        memberCacheKey: (
+          organizationId: string,
+          userId: string,
+          range: '7d' | '30d',
+        ) => string;
+      }
+    ).memberCacheKey('org-1', 'user-1', '7d');
+    expect(filteredKey).not.toBe(unfilteredKey);
+  });
+
+  it('buildMemberDashboard returns empty-safe payload with no scoped projects', async () => {
+    dataSource.query
+      .mockResolvedValueOnce([
+        {
+          total_projects: 0,
+          total_members: 0,
+          open_issues: 0,
+          overdue_issues: 0,
+          todo_count: 0,
+          in_progress_count: 0,
+          blocked_count: 0,
+          done_count: 0,
+        },
+      ])
+      .mockResolvedValueOnce([{ active_count: 0 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.buildMemberDashboard(
+      'org-1',
+      'user-1',
+      '7d',
+    );
+
+    expect(result.kpis.totalProjects).toBe(0);
+    expect(result.issueStatus.total).toBe(0);
+    expect(result.activeSprints).toEqual([]);
+    expect(result.teamWorkload.members).toEqual([]);
+    expect(result.teamWorkload.capacitySummary).toEqual({
+      available: 0,
+      nearCapacity: 0,
+      overloaded: 0,
+    });
+    expect(result.activity.recent).toEqual([]);
+  });
+
+  it('getMemberProjectHealth returns keyset page scoped to org + user', async () => {
+    dataSource.query.mockResolvedValueOnce([
+      {
+        project_id: 'p1',
+        name: 'Website Revamp',
+        key: 'WEB',
+        type: 'scrum',
+        open_tickets: 8,
+        blocked_open_tickets: 0,
+        overdue_tickets: 2,
+        completed_tickets: 1,
+        active_sprint_name: 'Sprint 15',
+        health_status: 'active',
+        progress_percent: 60,
+        sort_order: 2,
+        total_count: 6,
+      },
+    ]);
+
+    const page = await service.getMemberProjectHealth('org-1', 'user-1', {
+      status: 'all',
+      limit: 1,
+    });
+
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(['org-1', 'user-1']),
+    );
+    expect(page.items).toHaveLength(1);
+    expect(page.total).toBe(6);
+    expect(page.nextCursor).toBeTruthy();
+  });
+
+  it('getMemberProjectHealth rejects invalid status', async () => {
+    await expect(
+      service.getMemberProjectHealth('org-1', 'user-1', {
+        status: 'nope' as 'active',
+      }),
+    ).rejects.toThrow('Invalid status filter');
+  });
+
+  it('getMemberDashboard serves cache without DB queries', async () => {
+    const payload = {
+      kpis: {
+        totalProjects: 1,
+        activeProjects: 1,
+        totalMembers: 1,
+        openIssues: 0,
+        overdueIssues: 0,
+      },
+      issueStatus: { total: 0, segments: [] },
+      activeSprints: [],
+      teamWorkload: {
+        members: [],
+        topBusiest: [],
+        capacitySummary: { available: 0, nearCapacity: 0, overloaded: 0 },
+      },
+      activity: { recent: [] },
+      meta: {
+        range: '7d' as const,
+        generatedAt: new Date().toISOString(),
+        variant: 'org_user' as const,
+        cacheHit: false,
+      },
+    };
+
+    (
+      service as unknown as { redis: { get: jest.Mock; setex: jest.Mock } }
+    ).redis = {
+      get: jest.fn().mockResolvedValue(JSON.stringify(payload)),
+      setex: jest.fn(),
+    };
+
+    const fromCache = await service.getMemberDashboard(
+      'org-1',
+      'user-1',
+      '7d',
+    );
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(fromCache.meta.cacheHit).toBe(true);
+  });
 });

@@ -28,6 +28,9 @@ interface DashboardDonutProps {
   centerLabel: string
   size?: DonutSizeToken
   className?: string
+  /** Override segment color/label resolution (default: project-health palette). */
+  getColor?: (key: string) => string
+  getLabel?: (key: string) => string
 }
 
 /**
@@ -39,6 +42,8 @@ export function DashboardDonut({
   centerLabel,
   size = 'lg',
   className,
+  getColor = getHealthStatusColor,
+  getLabel = getHealthStatusLabel,
 }: DashboardDonutProps) {
   const boxPx = DONUT_BOX_PX[size]
   const { outer, inner } = getDonutRadii(boxPx)
@@ -49,7 +54,7 @@ export function DashboardDonut({
         .filter((s) => s.count > 0)
         .map((s) => ({
           key: s.key,
-          name: getHealthStatusLabel(s.key),
+          name: getLabel(s.key),
           count: s.count,
           percent: s.percent,
         }))
@@ -77,7 +82,7 @@ export function DashboardDonut({
               <Cell
                 key={item.key}
                 fill={
-                  hasData ? getHealthStatusColor(item.key) : DASHBOARD_EMPTY_RING_FILL
+                  hasData ? getColor(item.key) : DASHBOARD_EMPTY_RING_FILL
                 }
               />
             ))}

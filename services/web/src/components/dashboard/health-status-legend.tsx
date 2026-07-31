@@ -17,6 +17,9 @@ interface HealthStatusLegendProps {
   /** When set, legend rows are clickable filters. */
   selectedKey?: string | 'all'
   onSelect?: (key: string) => void
+  /** Override segment color/label resolution (default: project-health palette). */
+  getColor?: (key: string) => string
+  getLabel?: (key: string) => string
 }
 
 export function HealthStatusLegend({
@@ -25,6 +28,8 @@ export function HealthStatusLegend({
   compact = false,
   selectedKey,
   onSelect,
+  getColor = getHealthStatusColor,
+  getLabel = getHealthStatusLabel,
 }: HealthStatusLegendProps) {
   const interactive = typeof onSelect === 'function'
 
@@ -40,9 +45,9 @@ export function HealthStatusLegend({
             <span className="flex items-center gap-2 text-muted-foreground truncate min-w-0">
               <span
                 className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: getHealthStatusColor(item.key) }}
+                style={{ backgroundColor: getColor(item.key) }}
               />
-              {getHealthStatusLabel(item.key)}
+              {getLabel(item.key)}
             </span>
             <span className="font-medium text-foreground tabular-nums whitespace-nowrap">
               {item.count}
