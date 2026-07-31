@@ -5,7 +5,9 @@ Owner-only overview of organization projects, members, and activity.
 ## Route
 
 - **Web:** `/org/dashboard` (role: Organization Owner)
+- **Managed Admin dashboard:** `/admin/dashboard` (Org Administrator / Project Admin — see [Organization-Admin-Dashboard.md](./Organization-Admin-Dashboard.md))
 - **Personal dashboard** remains at `/dashboard` for all users
+- **Login / home:** Owners redirect to `/org/dashboard` via `resolveHomePath` (not personal `/dashboard`)
 
 ## API
 

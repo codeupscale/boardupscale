@@ -9,6 +9,16 @@ const api = axios.create({
 let isRefreshing = false
 let refreshQueue: Array<{ resolve: (token: string) => void; reject: (error: any) => void }> = []
 
+// Set while an explicit user-initiated logout is in progress. Any request
+// still in flight at that moment (e.g. a background refetch) can 401 once
+// tokens are cleared; without this flag the interceptor below would force
+// a hard `window.location.href` reload on top of the logout flow's own
+// React Router navigation, producing a visible double-navigation flash.
+let isLoggingOut = false
+export function setLoggingOut(value: boolean): void {
+  isLoggingOut = value
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken')
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -35,7 +45,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken')
       if (!refreshToken) {
         localStorage.clear()
-        window.location.href = '/login'
+        if (!isLoggingOut) window.location.href = '/login'
         return Promise.reject(error)
       }
       try {
@@ -55,7 +65,7 @@ api.interceptors.response.use(
         refreshQueue.forEach((p) => p.reject(error))
         refreshQueue = []
         localStorage.clear()
-        window.location.href = '/login'
+        if (!isLoggingOut) window.location.href = '/login'
         return Promise.reject(error)
       } finally {
         isRefreshing = false

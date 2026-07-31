@@ -53,7 +53,7 @@ export function AppLayout() {
     return () => { disconnectSocket() }
   }, [isAuthenticated])
 
-  if (!isAuthenticated) return null
+  if (!isAuthenticated) return <LoadingPage />
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

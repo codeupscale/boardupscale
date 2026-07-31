@@ -55,6 +55,36 @@ export function getHealthStatusLabel(key: string): string {
   return HEALTH_STATUS_LABELS[key as ProjectHealthStatus] ?? key.replace(/_/g, ' ')
 }
 
+export type IssueStatusBucket = 'todo' | 'in_progress' | 'blocked' | 'done'
+
+/**
+ * Issue-status donut palette (member dashboard "Open Issues by Status").
+ * Kept separate from getHealthStatusColor/Label — 'blocked' is a valid key
+ * in both domains (project health vs. issue status) with different meaning;
+ * sharing one resolver would silently conflate the two.
+ */
+export const ISSUE_STATUS_COLORS: Record<IssueStatusBucket, string> = {
+  todo: '#a78bfa',
+  in_progress: '#38bdf8',
+  blocked: '#ef4444',
+  done: '#22c55e',
+}
+
+export const ISSUE_STATUS_LABELS: Record<IssueStatusBucket, string> = {
+  todo: 'To Do',
+  in_progress: 'In Progress',
+  blocked: 'Blocked',
+  done: 'Done',
+}
+
+export function getIssueStatusColor(key: string): string {
+  return ISSUE_STATUS_COLORS[key as IssueStatusBucket] ?? '#94a3b8'
+}
+
+export function getIssueStatusLabel(key: string): string {
+  return ISSUE_STATUS_LABELS[key as IssueStatusBucket] ?? key.replace(/_/g, ' ')
+}
+
 /**
  * Donut geometry derived from box size (mockup-scale).
  * Radii scale with container so charts stay proportional across breakpoints.

@@ -123,10 +123,19 @@ function RootRoute() {
   return <Navigate to="/login" replace />
 }
 
+/** Owner always lands on /org/dashboard — even on direct/manual navigation to /dashboard. */
+function MemberDashboardRoute() {
+  const role = useAuthStore((s) => s.user?.role)
+  if (role === UserRole.OWNER) {
+    return <Navigate to="/org/dashboard" replace />
+  }
+  return <DashboardPage />
+}
+
 function ProtectedRoutes() {
   return (
     <Route element={<AppLayout />}>
-      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/dashboard" element={<MemberDashboardRoute />} />
       <Route
         path="/org/dashboard"
         element={
