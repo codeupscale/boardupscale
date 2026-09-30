@@ -8,6 +8,15 @@ describe('mcp-format.util', () => {
       );
     });
 
+    it('keeps user-escaped markup as literal text and decodes entities only once', () => {
+      expect(htmlToText('<p>use &lt;div&gt; here</p>')).toBe('use <div> here');
+      expect(htmlToText('<p>&amp;lt;b&amp;gt;</p>')).toBe('&lt;b&gt;');
+    });
+
+    it('removes nested tag fragments completely', () => {
+      expect(htmlToText('<scr<b>ipt>alert(1)</scr</b>ipt>')).not.toMatch(/<\/?script/i);
+    });
+
     it('returns null for empty input and truncates long text', () => {
       expect(htmlToText(null)).toBeNull();
       expect(htmlToText('abcdef', 3)).toBe('abc… [truncated]');
