@@ -22,6 +22,7 @@ import {
   Monitor,
   Check,
   Bell,
+  Bot,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -46,6 +47,7 @@ import { Label } from '@/components/ui/label'
 import { Avatar } from '@/components/ui/avatar'
 import { SettingsSkeleton } from '@/components/ui/skeleton'
 import { SamlConfigForm } from '@/components/settings/saml-config-form'
+import { McpAccessPanel } from '@/components/settings/mcp-access-panel'
 import { PageHeader } from '@/components/common/page-header'
 import { toast } from '@/store/ui.store'
 import { cn } from '@/lib/utils'
@@ -818,6 +820,7 @@ const NAV_ITEMS = [
   { id: 'appearance', label: 'Appearance', description: 'Themes & color schemes', icon: Palette },
   { id: 'notifications', label: 'Notifications', description: 'In-app, email & sound', icon: Bell },
   { id: 'security', label: 'Security', description: 'Two-factor authentication', icon: ShieldCheck },
+  { id: 'mcp', label: 'AI / MCP', description: 'Connect AI assistants', icon: Bot },
 ]
 
 export function UserSettingsPage() {
@@ -826,7 +829,7 @@ export function UserSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabFromUrl = searchParams.get('tab')
   const [activeTab, setActiveTab] = useState(
-    tabFromUrl && ['profile', 'account', 'appearance', 'notifications', 'security', 'sso'].includes(tabFromUrl)
+    tabFromUrl && ['profile', 'account', 'appearance', 'notifications', 'security', 'mcp', 'sso'].includes(tabFromUrl)
       ? tabFromUrl
       : 'profile',
   )
@@ -976,6 +979,15 @@ export function UserSettingsPage() {
             {activeTab === 'appearance' && <AppearanceTab />}
             {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'security' && <SecurityTab />}
+            {activeTab === 'mcp' && (
+              <>
+                <SectionHeader
+                  title="AI / MCP"
+                  description="Personal tokens for AI assistants using the Model Context Protocol"
+                />
+                <McpAccessPanel />
+              </>
+            )}
             {activeTab === 'sso' && isOrgAdmin && (
               <>
                 <SectionHeader

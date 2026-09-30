@@ -1,156 +1,87 @@
 # MCP Server
 
-Boardupscale ships with a **Model Context Protocol (MCP) server** that lets you interact with your projects using natural language from AI coding tools like **Claude Code** and **Cursor**.
+Boardupscale includes a hosted **Model Context Protocol (MCP)** endpoint. AI tools such as **Claude Code** and **Cursor** can use it to read your tickets and add comments. There is nothing to install: every Boardupscale deployment serves MCP at `https://<your-domain>/api/mcp`.
 
 ---
 
 ## What You Can Do
 
-- "Show me all open bugs assigned to me in the PROJ project"
-- "Create a high-priority bug: login page crashes on mobile"
-- "Move PROJ-42 to In Progress and assign it to alice@company.com"
-- "List all issues in the current sprint"
+- "What's assigned to me right now?"
+- "Summarize PROJ-42, including its comments and linked pull requests"
+- "Which PRs are still open in the PROJ project?"
+- "What's on the board for the current sprint?"
 - "Add a comment to PROJ-15: Fixed in PR #123"
 
 ---
 
 ## Setup
 
-### 1. Get an API Key
+### 1. Create a personal MCP token
 
-1. Log into Boardupscale
-2. Go to **User Settings → API Keys**
-3. Click **Generate New Key**
-4. Copy the key (shown once)
+1. Sign in to Boardupscale.
+2. Go to **Settings → AI / MCP**.
+3. Enter a name (for example "Claude Code on laptop"), choose an expiry, then click **Create token**.
+4. Copy the token right away. It starts with `bu_mcp_` and is only shown once.
 
-### 2. Start the MCP Server
+Any organization member can create tokens for themselves. Each token lasts at most one year, and you can revoke it from the same page at any time.
+
+### 2. Connect your AI tool
+
+**Claude Code**
 
 ```bash
-cd services/mcp
-cp .env.example .env
-# Edit .env and set:
-# BOARDUPSCALE_API_URL=http://localhost:4000
-# BOARDUPSCALE_API_KEY=bu_your_api_key_here
-npm install
-npm run build
+claude mcp add --transport http boardupscale https://<your-domain>/api/mcp --header "Authorization: Bearer bu_mcp_…"
 ```
 
-### 3. Configure Claude Code
-
-Add to your Claude Code settings (`~/.claude/settings.json`):
+**Cursor** (`~/.cursor/mcp.json`) and other clients configured with JSON:
 
 ```json
 {
   "mcpServers": {
     "boardupscale": {
-      "command": "node",
-      "args": ["/path/to/boardupscale/services/mcp/dist/index.js"],
-      "env": {
-        "BOARDUPSCALE_API_URL": "http://localhost:4000",
-        "BOARDUPSCALE_API_KEY": "bu_your_api_key_here"
-      }
+      "url": "https://<your-domain>/api/mcp",
+      "headers": { "Authorization": "Bearer bu_mcp_…" }
     }
   }
 }
 ```
 
-Or use npx for zero-install:
+The **AI / MCP** settings page shows these snippets with your server URL already filled in.
 
-```json
-{
-  "mcpServers": {
-    "boardupscale": {
-      "command": "npx",
-      "args": ["@boardupscale/mcp"],
-      "env": {
-        "BOARDUPSCALE_API_URL": "https://your-boardupscale-url",
-        "BOARDUPSCALE_API_KEY": "bu_your_api_key_here"
-      }
-    }
-  }
-}
-```
-
-### 4. Configure Cursor
-
-Add to Cursor's MCP settings (`.cursor/mcp.json` in your project):
-
-```json
-{
-  "mcpServers": {
-    "boardupscale": {
-      "command": "node",
-      "args": ["/path/to/boardupscale/services/mcp/dist/index.js"],
-      "env": {
-        "BOARDUPSCALE_API_URL": "http://localhost:4000",
-        "BOARDUPSCALE_API_KEY": "bu_your_api_key_here"
-      }
-    }
-  }
-}
-```
+For local development the URL is `http://localhost/api/mcp` through nginx, or `http://localhost:4000/api/mcp` when you call the API directly.
 
 ---
 
 ## Available Tools
 
-The MCP server exposes these tools to the AI:
-
 | Tool | Description |
 |------|-------------|
-| `list_projects` | List all projects in your organisation |
-| `list_issues` | List issues with optional filters |
-| `get_issue` | Get full detail for a specific issue by key |
-| `create_issue` | Create a new issue |
-| `update_issue` | Update fields on an existing issue |
-| `add_comment` | Post a comment on an issue |
-| `list_sprints` | List sprints for a project |
-| `get_current_sprint` | Get the active sprint for a project |
-| `search_issues` | Full-text search across issues |
-| `list_members` | List organisation members |
+| `whoami` | The user and organization the token acts as |
+| `list_projects` | Projects you can access |
+| `list_my_issues` | Issues assigned to you (unfinished by default) |
+| `search_issues` | Search by title/key with type, priority and status filters |
+| `get_issue` | Full issue detail: description, subtasks, links, comments, attachments, work logs, linked PRs |
+| `list_comments` | All comments on an issue |
+| `add_comment` | Post a comment as yourself (plain text) |
+| `list_sprints` | Sprints in a project |
+| `get_board` | Board columns and their issues |
+| `list_pull_requests` | GitHub PRs linked to an issue or a project |
+
+Pull request data comes from the project's GitHub integration: title, state, branch, author and URL. To review a PR's diff, use it together with GitHub's own MCP server.
 
 ---
 
-## Example Usage in Claude Code
+## Security Model
 
-```
-> Show me all critical bugs in the PROJ project
-
-I'll search for critical bugs in PROJ.
-
-[Uses list_issues with project=PROJ, type=bug, priority=critical]
-
-Found 3 critical bugs:
-
-1. PROJ-7 — Login crashes on mobile Safari (assigned: unassigned)
-2. PROJ-12 — Payment gateway timeout on checkout (assigned: alice@company.com, due: Mar 15)
-3. PROJ-18 — Email verification link expires too early (assigned: bob@company.com)
-
-Would you like me to take any action on these?
-```
-
-```
-> Create a task to add dark mode support, assign it to me, set priority high
-
-[Uses create_issue]
-
-Created PROJ-24: "Add dark mode support"
-- Type: Task
-- Priority: High
-- Assignee: You (adnan@company.com)
-- Status: To Do
-
-Link: https://your-domain/projects/PROJ/issues/PROJ-24
-```
+- **Same access as the browser.** A token only reaches projects where you are a member. Org owners and administrators can reach every project. Issues in other projects are reported as "not found".
+- **Read access plus comments only.** Tokens cannot create, edit, move or delete issues. Comments also need `comment:create` permission in the project, and every comment made through MCP is recorded in the audit log.
+- **Scoped to one organization.** A token belongs to the organization it was created in. Your membership is checked on every request, so removing a user from the organization cuts off their MCP access immediately.
+- **MCP only.** MCP tokens are rejected by the REST API, and they cannot be used to create more tokens.
+- **Stored as hashes.** Only a SHA-256 hash of each token is stored. Tokens always expire, and you can revoke them at any time.
+- **Rate limited** to 120 requests per minute.
 
 ---
 
-## Running as a Standalone Service
+## Legacy stdio package
 
-For team-wide access, run the MCP server as a persistent service:
-
-```bash
-docker compose up mcp -d
-```
-
-The MCP server is included in `docker-compose.yml` and listens on port `3100` via SSE (Server-Sent Events transport).
+`services/mcp` is an older stdio server that calls the REST API with an organization API key. It is superseded by the hosted endpoint above and is no longer maintained.
