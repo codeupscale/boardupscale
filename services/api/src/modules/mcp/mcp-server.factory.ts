@@ -232,17 +232,14 @@ export class McpServerFactory {
         const orgId = ctx.organizationId;
         const [children, links, comments, attachments, workLogs, prEvents] = await Promise.all([
           this.issuesService.getChildren(issue.id, orgId),
-          this.issuesService.getLinks(issue.id, orgId),
+          this.issuesService.getLinks(issue.id, orgId, ctx.userId, ctx.orgRole),
           this.commentsService.findAll(issue.id, orgId),
           this.filesService.findByIssue(issue.id),
           this.issuesService.getWorkLogs(issue.id, orgId),
           this.githubService.getEventsForIssue(issue.id, orgId),
         ]);
         // getLinks returns { linkType, label, issue } with `issue` being the other side
-        // (inward linkType is already inverted). Links may cross projects, so drop any
-        // whose other side is in a project the caller cannot see.
-        const visible = await this.access.visibleProjectIds(ctx);
-        const canSee = (l: any) => !!l.issue && (visible === null || visible.includes(l.issue.projectId));
+        // (inward linkType is already inverted), already filtered to visible projects.
         const linkView = (l: any, dir: 'outward' | 'inward') => ({
           type: l.linkType,
           label: l.label,
@@ -260,8 +257,8 @@ export class McpServerFactory {
           createdAt: issue.createdAt,
           subtasks: children.map(summarizeIssue),
           links: [
-            ...links.outward.filter(canSee).map((l) => linkView(l, 'outward')),
-            ...links.inward.filter(canSee).map((l) => linkView(l, 'inward')),
+            ...links.outward.map((l) => linkView(l, 'outward')),
+            ...links.inward.map((l) => linkView(l, 'inward')),
           ],
           comments: comments.slice(-30).map((c) => ({
             author: c.author?.displayName ?? null,

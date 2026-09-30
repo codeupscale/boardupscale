@@ -170,22 +170,9 @@ describe('McpServerFactory (via MCP protocol)', () => {
     ]);
   });
 
-  it('get_issue omits links to issues in projects the caller cannot see', async () => {
-    issuesService.getLinks.mockResolvedValue({
-      outward: [
-        { id: 'l1', linkType: 'relates_to', label: 'relates to', issue: { key: 'SECRET-1', title: 'Hidden', projectId: 'proj-hidden' } },
-      ],
-      inward: [
-        { id: 'l2', linkType: 'relates_to', label: 'relates to', issue: { key: 'PROJ-4', title: 'Visible', projectId: VISIBLE } },
-      ],
-    });
-    const body = JSON.parse((await call('get_issue', { key: 'PROJ-1' })).text);
-    expect(body.links.map((l: any) => l.key)).toEqual(['PROJ-4']);
-    expect(JSON.stringify(body)).not.toContain('SECRET-1');
-
-    access.visibleProjectIds.mockResolvedValue(null);
-    const adminBody = JSON.parse((await call('get_issue', { key: 'PROJ-1' })).text);
-    expect(adminBody.links.map((l: any) => l.key)).toEqual(['SECRET-1', 'PROJ-4']);
+  it('get_issue filters links by the caller\'s project visibility', async () => {
+    await call('get_issue', { key: 'PROJ-1' });
+    expect(issuesService.getLinks).toHaveBeenCalledWith('issue-1', 'org-1', 'user-1', 'user');
   });
 
   it('returns a tool error (not a crash) for inaccessible issues', async () => {
