@@ -1083,7 +1083,14 @@ describe('IssuesService', () => {
           },
         ]);
 
-      const result = await service.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      projectsService.findVisibleProjectIds.mockResolvedValue(null);
+
+      const result = await service.getLinks(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'admin',
+      );
 
       expect(result.outward).toHaveLength(1);
       expect(result.outward[0]).toMatchObject({
@@ -1099,6 +1106,55 @@ describe('IssuesService', () => {
         label: 'is blocked by',
         issue: inwardSource,
       });
+    });
+
+    it('getLinks should hide links whose other-side issue is in a project the viewer cannot see', async () => {
+      const hiddenProjectId = 'hidden-project';
+      const sourceIssue = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      const hiddenTarget = mockIssue({ id: 'target-hidden', key: 'SECRET-1', projectId: hiddenProjectId });
+      const visibleTarget = mockIssue({ id: 'target-visible', key: 'PROJ-2' });
+      const hiddenSource = mockIssue({ id: 'source-hidden', key: 'SECRET-2', projectId: hiddenProjectId });
+      const visibleSource = mockIssue({ id: 'source-visible', key: 'PROJ-3' });
+
+      issueRepo.findOne.mockResolvedValue(sourceIssue);
+      issueLinkRepo.find
+        .mockResolvedValueOnce([
+          { id: 'out-hidden', linkType: 'blocks', targetIssue: hiddenTarget },
+          { id: 'out-visible', linkType: 'blocks', targetIssue: visibleTarget },
+        ])
+        .mockResolvedValueOnce([
+          { id: 'in-hidden', linkType: 'relates_to', sourceIssue: hiddenSource },
+          { id: 'in-visible', linkType: 'relates_to', sourceIssue: visibleSource },
+        ]);
+      projectsService.findVisibleProjectIds.mockResolvedValue([TEST_IDS.PROJECT_ID]);
+
+      const result = await service.getLinks(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'member',
+      );
+
+      expect(projectsService.findVisibleProjectIds).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'member',
+      );
+      expect(result.outward.map((l) => l.id)).toEqual(['out-visible']);
+      expect(result.inward.map((l) => l.id)).toEqual(['in-visible']);
+      expect(JSON.stringify(result)).not.toContain('SECRET');
+    });
+
+    it('getLinks should return no links when the viewer is in no projects', async () => {
+      issueRepo.findOne.mockResolvedValue(mockIssue({ id: TEST_IDS.ISSUE_ID }));
+      issueLinkRepo.find
+        .mockResolvedValueOnce([{ id: 'out', linkType: 'blocks', targetIssue: mockIssue({ id: 't' }) }])
+        .mockResolvedValueOnce([{ id: 'in', linkType: 'blocks', sourceIssue: mockIssue({ id: 's' }) }]);
+      projectsService.findVisibleProjectIds.mockResolvedValue([]);
+
+      const result = await service.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'member');
+
+      expect(result).toEqual({ outward: [], inward: [] });
     });
 
     it('createLink should persist link between two issues', async () => {

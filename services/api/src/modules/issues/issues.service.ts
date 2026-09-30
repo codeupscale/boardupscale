@@ -1169,21 +1169,37 @@ export class IssuesService {
     });
   }
 
+  /**
+   * Links may cross projects within an org, so links whose other-side issue is
+   * in a project the viewer cannot see are dropped (null = org-wide access).
+   */
   async getLinks(
     issueId: string,
     organizationId: string,
+    userId: string,
+    orgRole: string | undefined,
   ): Promise<{ outward: any[]; inward: any[] }> {
     await this.findById(issueId, organizationId);
 
-    const outward = await this.issueLinkRepository.find({
-      where: { sourceIssueId: issueId },
-      relations: ["targetIssue", "targetIssue.status"],
-    });
-
-    const inward = await this.issueLinkRepository.find({
-      where: { targetIssueId: issueId },
-      relations: ["sourceIssue", "sourceIssue.status"],
-    });
+    const [outwardAll, inwardAll, visible] = await Promise.all([
+      this.issueLinkRepository.find({
+        where: { sourceIssueId: issueId },
+        relations: ["targetIssue", "targetIssue.status"],
+      }),
+      this.issueLinkRepository.find({
+        where: { targetIssueId: issueId },
+        relations: ["sourceIssue", "sourceIssue.status"],
+      }),
+      this.projectsService.findVisibleProjectIds(
+        organizationId,
+        userId,
+        orgRole,
+      ),
+    ]);
+    const canSee = (other?: Issue) =>
+      !!other && (visible === null || visible.includes(other.projectId));
+    const outward = outwardAll.filter((l) => canSee(l.targetIssue));
+    const inward = inwardAll.filter((l) => canSee(l.sourceIssue));
 
     return {
       outward: outward.map((l) => ({

@@ -367,6 +367,23 @@ describe('IssuesController', () => {
     });
   });
 
+  describe('GET /issues/:id/links', () => {
+    it('should scope links to the current user\'s visible projects', async () => {
+      const links = { outward: [], inward: [] };
+      issuesService.getLinks.mockResolvedValue(links);
+
+      const result = await controller.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, USER);
+
+      expect(result).toEqual({ data: links });
+      expect(issuesService.getLinks).toHaveBeenCalledWith(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'user',
+      );
+    });
+  });
+
   describe('PATCH /issues/bulk-update', () => {
     it('should call bulkUpdate with org and dto', async () => {
       const dto = { issueIds: [TEST_IDS.ISSUE_ID], priority: 'high' };
