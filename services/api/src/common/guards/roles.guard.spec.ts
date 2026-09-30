@@ -11,7 +11,7 @@ describe('RolesGuard', () => {
   beforeEach(() => {
     reflector = new Reflector();
     mockPermissionsService = {
-      checkPermission: jest.fn().mockResolvedValue(true),
+      checkPermissionForHints: jest.fn().mockResolvedValue(true),
     };
     guard = new RolesGuard(reflector, mockPermissionsService);
   });
@@ -22,10 +22,11 @@ describe('RolesGuard', () => {
     permission?: { resource: string; action: string } | null,
     params?: any,
     body?: any,
+    query?: any,
   ): ExecutionContext {
     const mockContext = {
       switchToHttp: () => ({
-        getRequest: () => ({ user, params: params || {}, query: {}, body: body || {} }),
+        getRequest: () => ({ user, params: params || {}, query: query || {}, body: body || {} }),
       }),
       getHandler: () => ({}),
       getClass: () => ({}),
@@ -88,11 +89,11 @@ describe('RolesGuard', () => {
         { resource: 'issue', action: 'create' },
         { projectId: 'project-123' },
       );
-      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(true);
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
-      expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
-        'user-id', 'project-123', 'issue', 'create', undefined,
+      expect(mockPermissionsService.checkPermissionForHints).toHaveBeenCalledWith(
+        'user-id', ['project-123'], 'issue', 'create', undefined, [],
       );
     });
 
@@ -103,11 +104,11 @@ describe('RolesGuard', () => {
         { resource: 'issue', action: 'delete' },
         { projectId: 'project-123' },
       );
-      mockPermissionsService.checkPermission.mockResolvedValue(false);
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(false);
       await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
     });
 
-    it('should resolve project hint from issueIds[0] for bulk operations', async () => {
+    it('should pass every bulk issueId (not just the first) to the permission check', async () => {
       const issueId = '44444444-4444-4444-4444-444444444444';
       const context = createMockExecutionContext(
         { id: 'user-id', organizationId: 'org-123' },
@@ -116,11 +117,11 @@ describe('RolesGuard', () => {
         {},
         { issueIds: [issueId, 'other-uuid'] },
       );
-      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(true);
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
-      expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
-        'user-id', issueId, 'issue', 'update', 'org-123',
+      expect(mockPermissionsService.checkPermissionForHints).toHaveBeenCalledWith(
+        'user-id', [], 'issue', 'update', 'org-123', [issueId, 'other-uuid'],
       );
     });
 
@@ -133,7 +134,7 @@ describe('RolesGuard', () => {
         { issueIds: [] },
       );
       mockPermissionsService.checkOrgLevelPermission = jest.fn().mockResolvedValue(true);
-      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(true);
       // Empty array means no hint — guard takes org-level path
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
@@ -148,15 +149,39 @@ describe('RolesGuard', () => {
         {},
         { projectId },
       );
-      mockPermissionsService.checkPermission.mockResolvedValue(true);
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(true);
       const result = await guard.canActivate(context);
       expect(result).toBe(true);
-      expect(mockPermissionsService.checkPermission).toHaveBeenCalledWith(
+      expect(mockPermissionsService.checkPermissionForHints).toHaveBeenCalledWith(
         'user-id',
-        projectId,
+        [projectId],
         'attachment',
         'create',
         'org-123',
+        [],
+      );
+    });
+
+    it('should check the route :id together with ?projectId so the query cannot override it', async () => {
+      const issueInOtherProject = '55555555-5555-5555-5555-555555555555';
+      const context = createMockExecutionContext(
+        { id: 'user-id', organizationId: 'org-123' },
+        undefined,
+        { resource: 'issue', action: 'read' },
+        { id: issueInOtherProject },
+        {},
+        { projectId: 'my-project' },
+      );
+      mockPermissionsService.checkPermissionForHints.mockResolvedValue(false);
+
+      await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+      expect(mockPermissionsService.checkPermissionForHints).toHaveBeenCalledWith(
+        'user-id',
+        ['my-project', issueInOtherProject],
+        'issue',
+        'read',
+        'org-123',
+        [],
       );
     });
   });

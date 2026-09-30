@@ -237,6 +237,11 @@ export class AuthService {
       });
       if (membership) {
         role = membership.role;
+      } else if (organizationId !== user.organizationId) {
+        // users.role describes the user's default org only. Never pair it with
+        // a caller-supplied org (e.g. POST /auth/refresh { organizationId })
+        // the user does not belong to — that would mint a foreign-org token.
+        throw new UnauthorizedException('Not a member of this organization');
       }
     } else {
       // Fallback: users.organization_id can be NULL for invited users whose

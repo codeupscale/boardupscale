@@ -17,13 +17,14 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     }
 
     const keyRecord = await this.apiKeysService.validate(apiKey);
+    const role = await this.apiKeysService.resolveOrgRole(keyRecord);
 
     // Return user-like object consistent with JWT strategy output
     return {
       id: keyRecord.user.id,
       email: keyRecord.user.email,
       organizationId: keyRecord.orgId,
-      role: keyRecord.user.role,
+      role,
       displayName: keyRecord.user.displayName,
       apiKeyId: keyRecord.id,
       apiKeyScopes: keyRecord.scopes,

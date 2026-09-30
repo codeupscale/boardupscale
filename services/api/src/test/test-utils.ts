@@ -187,6 +187,9 @@ export function createMockProjectsService() {
   return {
     findAll: jest.fn(),
     findById: jest.fn(),
+    findVisibleById: jest.fn(),
+    findVisibleProjectIds: jest.fn(),
+    isProjectVisible: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     archive: jest.fn(),

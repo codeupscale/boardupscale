@@ -85,12 +85,13 @@ export class ProjectsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get project by ID' })
   @ApiResponse({ status: 200, description: 'Project found' })
-  @ApiResponse({ status: 404, description: 'Project not found' })
+  @ApiResponse({ status: 404, description: 'Project not found (or not visible to the caller)' })
   async findOne(
     @Param('id', ResolveProjectPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.projectsService.findById(id, organizationId);
+    return this.projectsService.findVisibleById(id, organizationId, user.id, user.role);
   }
 
   @Patch(':id')
@@ -120,6 +121,7 @@ export class ProjectsController {
   }
 
   @Get(':id/members')
+  @RequirePermission('member', 'read')
   @ApiOperation({ summary: 'Get project members' })
   @ApiResponse({ status: 200, description: 'List of members' })
   async getMembers(

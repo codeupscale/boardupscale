@@ -145,6 +145,62 @@ export class ProjectsService {
     return qb;
   }
 
+  /**
+   * IDs of every project (including archived) the caller may read content from.
+   *
+   * Returns `null` for Owner/Administrator — they have org-wide access (O21),
+   * so callers must not apply a project filter. Everyone else gets the
+   * projects they hold an explicit project_members row in (possibly empty).
+   */
+  async findVisibleProjectIds(
+    organizationId: string,
+    userId: string,
+    orgRole: string | undefined,
+  ): Promise<string[] | null> {
+    if (hasOrgWideAccess(orgRole)) return null;
+
+    const rows = await this.projectMemberRepository
+      .createQueryBuilder('pm')
+      .innerJoin('pm.project', 'project')
+      .select('project.id', 'id')
+      .where('pm.userId = :userId', { userId })
+      .andWhere('project.organizationId = :organizationId', { organizationId })
+      .getRawMany<{ id: string }>();
+
+    return rows.map((r) => r.id);
+  }
+
+  /**
+   * Same as findById, but throws 404 (not 403) when the caller cannot see the
+   * project, so non-members cannot probe for project existence.
+   */
+  async findVisibleById(
+    id: string,
+    organizationId: string,
+    userId: string,
+    orgRole: string | undefined,
+  ): Promise<Project> {
+    const project = await this.findById(id, organizationId);
+    if (!(await this.isProjectVisible(project.id, userId, orgRole))) {
+      throw new NotFoundException('Project not found');
+    }
+    return project;
+  }
+
+  /** Single-project form of findVisibleProjectIds (caller must org-scope projectId). */
+  async isProjectVisible(
+    projectId: string,
+    userId: string,
+    orgRole: string | undefined,
+  ): Promise<boolean> {
+    if (hasOrgWideAccess(orgRole)) return true;
+    const member = await this.projectMemberRepository.findOne({
+      where: { projectId, userId },
+      select: ['id'],
+    });
+    return !!member;
+  }
+
   async findById(id: string, organizationId: string): Promise<Project> {
     const project = await this.projectRepository.findOne({
       where: { id, organizationId },

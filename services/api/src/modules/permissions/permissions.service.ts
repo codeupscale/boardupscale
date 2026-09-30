@@ -444,10 +444,19 @@ export class PermissionsService {
    * and organization UUID in a single safe query. Never passes a non-UUID
    * value into a UUID column — builds the WHERE clause conditionally.
    *
+   * When `organizationId` is given, KEY lookups are scoped to that org and
+   * also resolve through historical key aliases (mirrors ResolveProjectPipe).
+   * Project keys are only unique per org, so an unscoped key lookup could
+   * evaluate permissions against another tenant's project. UUID lookups stay
+   * unscoped on purpose: a foreign project UUID must resolve (and then be
+   * rejected by the cross-org check) rather than fall through to the
+   * org admin/owner fallback.
+   *
    * Returns null when the project does not exist.
    */
   private async resolveProject(
     projectIdOrKey: string,
+    organizationId?: string,
   ): Promise<{ id: string; organizationId: string } | null> {
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
@@ -463,11 +472,26 @@ export class PermissionsService {
       if (isUuid) {
         qb.where('p.id = :v', { v: projectIdOrKey });
       } else {
-        qb.where('p.key = :v', { v: projectIdOrKey });
+        qb.where('p.key = :v', { v: projectIdOrKey.toUpperCase() });
+      }
+      if (!isUuid && organizationId) {
+        qb.andWhere('p.organization_id = :orgId', { orgId: organizationId });
       }
 
       const row = await qb.getRawOne<{ id: string; organizationId: string }>();
-      return row ?? null;
+      if (row || isUuid || !organizationId) return row ?? null;
+
+      const alias = await this.projectMemberRepo.manager
+        .createQueryBuilder()
+        .select('a.project_id', 'id')
+        .addSelect('a.organization_id', 'organizationId')
+        .from('project_key_aliases', 'a')
+        .where('a.organization_id = :orgId AND a.old_key = :v', {
+          orgId: organizationId,
+          v: projectIdOrKey.toUpperCase(),
+        })
+        .getRawOne<{ id: string; organizationId: string }>();
+      return alias ?? null;
     } catch {
       return null;
     }
@@ -502,29 +526,100 @@ export class PermissionsService {
     action: string,
     fallbackOrgId?: string,
   ): Promise<boolean> {
-    // 1. Try hint as a project slug/UUID (covers project-prefixed routes).
-    let project = await this.resolveProject(projectHint);
+    return this.checkPermissionForHints(userId, [projectHint], resource, action, fallbackOrgId);
+  }
 
-    // 2. If not a project, derive from the resource's own table
-    //    (covers routes like PATCH /issues/:id where params.id is an issue UUID).
-    if (!project) {
-      project = await this.resolveProjectFromResource(resource, projectHint);
+  /**
+   * Multi-hint form used by RolesGuard. A request can carry several project
+   * hints (route :id, ?projectId, body.projectId, body.issueId …). Every hint
+   * that resolves to a project must grant the permission — otherwise a caller
+   * could pair `?projectId=<my project>` with `:id` of a resource in a project
+   * they cannot access. Hints that resolve to nothing (e.g. a board UUID) are
+   * ignored; if none resolve, fall back to the org admin/owner check.
+   *
+   * `issueIds` (bulk routes) are resolved in one batched query and every
+   * project they span must grant the permission too.
+   */
+  async checkPermissionForHints(
+    userId: string,
+    projectHints: string[],
+    resource: string,
+    action: string,
+    fallbackOrgId?: string,
+    issueIds: string[] = [],
+  ): Promise<boolean> {
+    const projects = new Map<string, { id: string; organizationId: string }>();
+    for (const hint of new Set(projectHints.filter(Boolean))) {
+      const project = await this.resolveProjectHint(hint, resource, fallbackOrgId);
+      if (project) projects.set(project.id, project);
+    }
+    for (const project of await this.resolveIssueProjects(issueIds)) {
+      projects.set(project.id, project);
     }
 
-    // 3. Still nothing — last resort: admin/owner bypass via fallback org.
-    //    Org-level resources (webhooks, roles) land here too.
-    if (!project) {
+    // Nothing resolvable — last resort: admin/owner bypass via fallback org.
+    // Org-level resources (webhooks, roles) land here too.
+    if (projects.size === 0) {
       if (fallbackOrgId) return this.isAdminOrOwner(userId, fallbackOrgId);
       return false;
     }
 
-    // 2. Org Owner: unconditional full access regardless of project membership.
-    if (await this.isOrgOwner(userId, project.organizationId)) return true;
+    for (const project of projects.values()) {
+      if (!(await this.checkProjectPermission(userId, project, resource, action, fallbackOrgId))) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-    // Legacy global role fallback (pre-membership-row users).
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) return false;
-    if (user.role === 'owner') return true;
+  /** Distinct projects spanned by the given (non-deleted) issue UUIDs. */
+  private async resolveIssueProjects(
+    issueIds: string[],
+  ): Promise<{ id: string; organizationId: string }[]> {
+    const uuids = [...new Set(issueIds)].filter((id) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    );
+    if (uuids.length === 0) return [];
+    return this.projectMemberRepo.manager
+      .createQueryBuilder()
+      .select('DISTINCT p.id', 'id')
+      .addSelect('p.organization_id', 'organizationId')
+      .from('issues', 'i')
+      .innerJoin('projects', 'p', 'p.id = i.project_id')
+      .where('i.id IN (:...uuids) AND i.deleted_at IS NULL', { uuids })
+      .getRawMany<{ id: string; organizationId: string }>();
+  }
+
+  private async resolveProjectHint(
+    hint: string,
+    resource: string,
+    organizationId?: string,
+  ): Promise<{ id: string; organizationId: string } | null> {
+    // 1. Try hint as a project slug/UUID (covers project-prefixed routes).
+    // 2. If not a project, derive from the resource's own table
+    //    (covers routes like PATCH /issues/:id where params.id is an issue UUID).
+    return (
+      (await this.resolveProject(hint, organizationId)) ??
+      (await this.resolveProjectFromResource(resource, hint))
+    );
+  }
+
+  private async checkProjectPermission(
+    userId: string,
+    project: { id: string; organizationId: string },
+    resource: string,
+    action: string,
+    fallbackOrgId?: string,
+  ): Promise<boolean> {
+    // Never evaluate a resource that belongs to a different tenant than the
+    // caller's active org — membership there must not grant access here.
+    if (fallbackOrgId && project.organizationId !== fallbackOrgId) return false;
+
+    // 2. Org Owner: unconditional full access regardless of project membership.
+    //    isOrgOwner already falls back to users.role for legacy rows that have
+    //    no organization_members entry; users.role alone is NOT checked here
+    //    because it reflects the user's default org, not this project's org.
+    if (await this.isOrgOwner(userId, project.organizationId)) return true;
 
     // 3. Org Administrator: full project bypass per CSV O21
     //    (auto-grants Project Admin rights without requiring explicit membership).
@@ -575,14 +670,6 @@ export class PermissionsService {
 
     // Owner: full access regardless of project membership.
     if (await this.isOrgOwner(userId, project.organizationId)) {
-      const allPerms = await this.permissionRepo.find();
-      return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
-    }
-
-    // Legacy global role fallback (pre-membership-row users).
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) return [];
-    if (user.role === 'owner') {
       const allPerms = await this.permissionRepo.find();
       return allPerms.map((p) => ({ resource: p.resource, action: p.action }));
     }
