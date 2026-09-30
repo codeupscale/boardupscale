@@ -1147,9 +1147,23 @@ export class IssuesService {
     organizationId: string,
     dto: CreateIssueLinkDto,
     userId: string,
+    orgRole: string | undefined,
   ): Promise<IssueLink> {
     await this.findById(issueId, organizationId);
-    await this.findById(dto.targetIssueId, organizationId);
+    const target = await this.findById(dto.targetIssueId, organizationId);
+
+    // Links may cross projects: the target must be in a project the caller can
+    // see, else the response (and the link itself) would leak it. 404, not 403,
+    // so the target's existence isn't revealed.
+    if (
+      !(await this.projectsService.isProjectVisible(
+        target.projectId,
+        userId,
+        orgRole,
+      ))
+    ) {
+      throw new NotFoundException("Issue not found");
+    }
 
     if (issueId === dto.targetIssueId) {
       throw new BadRequestException("Cannot link an issue to itself");

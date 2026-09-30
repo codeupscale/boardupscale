@@ -343,6 +343,34 @@ describe('IssuesController', () => {
     });
   });
 
+  describe('POST /issues/:id/links', () => {
+    const dto = { targetIssueId: '55555555-5555-5555-5555-555555555555', linkType: 'relates_to' } as any;
+
+    it('should create a link, passing the caller id and org role for the visibility check', async () => {
+      const link = { id: 'link-1', sourceIssueId: TEST_IDS.ISSUE_ID, targetIssueId: '55555555-5555-5555-5555-555555555555' };
+      issuesService.createLink.mockResolvedValue(link);
+
+      const result = await controller.createLink(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, USER, dto);
+
+      expect(issuesService.createLink).toHaveBeenCalledWith(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        dto,
+        USER.id,
+        USER.role,
+      );
+      expect(result).toEqual(link);
+    });
+
+    it('should propagate 404 when the target issue is not visible to the caller', async () => {
+      issuesService.createLink.mockRejectedValue(new NotFoundException('Issue not found'));
+
+      await expect(
+        controller.createLink(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, USER, dto),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('POST /issues/:id/work-log', () => {
     it('should create a work log', async () => {
       const workLog = mockWorkLog();

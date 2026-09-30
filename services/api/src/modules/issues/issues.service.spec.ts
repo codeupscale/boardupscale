@@ -1103,7 +1103,7 @@ describe('IssuesService', () => {
 
     it('createLink should persist link between two issues', async () => {
       const source = mockIssue({ id: TEST_IDS.ISSUE_ID });
-      const target = mockIssue({ id: 'target-1' });
+      const target = mockIssue({ id: 'target-1', projectId: 'project-2' });
       const savedLink = {
         id: 'link-1',
         sourceIssueId: TEST_IDS.ISSUE_ID,
@@ -1114,6 +1114,7 @@ describe('IssuesService', () => {
       issueRepo.findOne
         .mockResolvedValueOnce(source)
         .mockResolvedValueOnce(target);
+      projectsService.isProjectVisible.mockResolvedValue(true);
       issueLinkRepo.create.mockReturnValue(savedLink);
       issueLinkRepo.save.mockResolvedValue(savedLink);
       issueLinkRepo.findOne.mockResolvedValue({
@@ -1127,8 +1128,14 @@ describe('IssuesService', () => {
         TEST_IDS.ORG_ID,
         { targetIssueId: 'target-1', linkType: 'relates_to' },
         TEST_IDS.USER_ID,
+        'member',
       );
 
+      expect(projectsService.isProjectVisible).toHaveBeenCalledWith(
+        'project-2',
+        TEST_IDS.USER_ID,
+        'member',
+      );
       expect(issueLinkRepo.create).toHaveBeenCalledWith({
         sourceIssueId: TEST_IDS.ISSUE_ID,
         targetIssueId: 'target-1',
@@ -1138,9 +1145,38 @@ describe('IssuesService', () => {
       expect(result).toMatchObject({ id: 'link-1' });
     });
 
+    it('createLink should 404 when the target issue is in a project the caller cannot see', async () => {
+      const source = mockIssue({ id: TEST_IDS.ISSUE_ID });
+      const target = mockIssue({ id: 'target-1', projectId: 'hidden-project' });
+      issueRepo.findOne
+        .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce(target);
+      projectsService.isProjectVisible.mockResolvedValue(false);
+
+      await expect(
+        service.createLink(
+          TEST_IDS.ISSUE_ID,
+          TEST_IDS.ORG_ID,
+          { targetIssueId: 'target-1', linkType: 'relates_to' },
+          TEST_IDS.USER_ID,
+          'member',
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(projectsService.isProjectVisible).toHaveBeenCalledWith(
+        'hidden-project',
+        TEST_IDS.USER_ID,
+        'member',
+      );
+      expect(issueLinkRepo.create).not.toHaveBeenCalled();
+      expect(issueLinkRepo.save).not.toHaveBeenCalled();
+      expect(issueLinkRepo.findOne).not.toHaveBeenCalled();
+    });
+
     it('createLink should reject self-links', async () => {
       const issue = mockIssue({ id: TEST_IDS.ISSUE_ID });
       issueRepo.findOne.mockResolvedValue(issue);
+      projectsService.isProjectVisible.mockResolvedValue(true);
 
       await expect(
         service.createLink(
@@ -1148,6 +1184,7 @@ describe('IssuesService', () => {
           TEST_IDS.ORG_ID,
           { targetIssueId: TEST_IDS.ISSUE_ID, linkType: 'relates_to' },
           TEST_IDS.USER_ID,
+          'member',
         ),
       ).rejects.toThrow(BadRequestException);
     });
