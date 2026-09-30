@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "build": "nest build",
-    "start": "node dist/main",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
+    "start": "node api.js && node dist/main",
+    "start:dev": "node api.js && nest start --watch",
+    "start:debug": "node api.js && nest start --debug --watch",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

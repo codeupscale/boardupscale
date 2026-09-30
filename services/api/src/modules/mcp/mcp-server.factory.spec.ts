@@ -137,6 +137,11 @@ describe('McpServerFactory (via MCP protocol)', () => {
     expect(body.pullRequests).toEqual([expect.objectContaining({ number: 3, state: 'open' })]);
   });
 
+  it('get_issue filters links by the caller\'s project visibility', async () => {
+    await call('get_issue', { key: 'PROJ-1' });
+    expect(issuesService.getLinks).toHaveBeenCalledWith('issue-1', 'org-1', 'user-1', 'user');
+  });
+
   it('returns a tool error (not a crash) for inaccessible issues', async () => {
     access.resolveIssue.mockRejectedValue(new NotFoundException('Issue "SECRET-1" not found'));
     const res = await call('get_issue', { key: 'SECRET-1' });

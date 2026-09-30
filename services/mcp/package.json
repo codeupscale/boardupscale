@@ -1,15 +1,15 @@
 {
   "name": "@boardupscale/mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Boardupscale — use from Claude Code, Cursor, or any MCP-compatible AI tool",
+  "description": "MCP server for Boardupscale \u2014 use from Claude Code, Cursor, or any MCP-compatible AI tool",
   "type": "module",
   "bin": {
     "boardupscale-mcp": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "start": "node api.js && node dist/index.js",
+    "dev": "node api.js && tsx src/index.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",

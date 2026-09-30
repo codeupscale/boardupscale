@@ -232,7 +232,7 @@ export class McpServerFactory {
         const orgId = ctx.organizationId;
         const [children, links, comments, attachments, workLogs, prEvents] = await Promise.all([
           this.issuesService.getChildren(issue.id, orgId),
-          this.issuesService.getLinks(issue.id, orgId),
+          this.issuesService.getLinks(issue.id, orgId, ctx.userId, ctx.orgRole),
           this.commentsService.findAll(issue.id, orgId),
           this.filesService.findByIssue(issue.id),
           this.issuesService.getWorkLogs(issue.id, orgId),
