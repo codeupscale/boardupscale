@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
 import { DataSource } from 'typeorm';
@@ -8,6 +9,8 @@ import { ResolveProjectBodyInterceptor } from '../../common/interceptors/resolve
 import { REQUEST } from '@nestjs/core';
 import { mockIssue, mockWorkLog, TEST_IDS } from '../../test/mock-factories';
 
+const USER = { id: TEST_IDS.USER_ID, organizationId: TEST_IDS.ORG_ID, role: 'user' };
+
 describe('IssuesController', () => {
   let controller: IssuesController;
   let issuesService: Record<string, jest.Mock>;
@@ -16,6 +19,8 @@ describe('IssuesController', () => {
     issuesService = {
       findAll: jest.fn(),
       findById: jest.fn(),
+      findVisibleById: jest.fn(),
+      resolveReadableProjectIds: jest.fn().mockResolvedValue(undefined),
       create: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
@@ -56,6 +61,7 @@ describe('IssuesController', () => {
 
       const result = await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
       );
@@ -69,7 +75,7 @@ describe('IssuesController', () => {
     it('should calculate totalPages correctly', async () => {
       issuesService.findAll.mockResolvedValue({ items: [], total: 55, page: 1, limit: 10 });
 
-      const result = await controller.findAll(TEST_IDS.ORG_ID, { page: 1, limit: 10 } as any);
+      const result = await controller.findAll(TEST_IDS.ORG_ID, USER, { page: 1, limit: 10 } as any);
 
       expect(result.meta.totalPages).toBe(6); // ceil(55/10)
     });
@@ -81,6 +87,7 @@ describe('IssuesController', () => {
       //   reporterId, createdFrom, createdTo, type, priority, statusId, search, deleted, parentless, ...
       await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined, // sprintId
@@ -106,6 +113,7 @@ describe('IssuesController', () => {
 
       await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined,
@@ -131,6 +139,7 @@ describe('IssuesController', () => {
 
       await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined,
@@ -157,6 +166,7 @@ describe('IssuesController', () => {
 
       await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined,
@@ -184,6 +194,7 @@ describe('IssuesController', () => {
 
       await controller.findAll(
         TEST_IDS.ORG_ID,
+        USER,
         { page: 1, limit: 20 } as any,
         TEST_IDS.PROJECT_ID,
         undefined,
@@ -203,6 +214,50 @@ describe('IssuesController', () => {
     });
   });
 
+  describe('GET /issues — project visibility scoping', () => {
+    it('should resolve the readable scope for the caller and forward projectIds', async () => {
+      const visible = [TEST_IDS.PROJECT_ID];
+      issuesService.resolveReadableProjectIds.mockResolvedValue(visible);
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(TEST_IDS.ORG_ID, USER, { page: 1, limit: 20 } as any);
+
+      expect(issuesService.resolveReadableProjectIds).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'user',
+        undefined,
+      );
+      expect(issuesService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ projectIds: visible }),
+      );
+    });
+
+    it('should pass the explicit projectId to the scope check', async () => {
+      issuesService.findAll.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+
+      await controller.findAll(TEST_IDS.ORG_ID, USER, { page: 1, limit: 20 } as any, TEST_IDS.PROJECT_ID);
+
+      expect(issuesService.resolveReadableProjectIds).toHaveBeenCalledWith(
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'user',
+        TEST_IDS.PROJECT_ID,
+      );
+    });
+
+    it('should return 403 and not query issues when the caller cannot read the project', async () => {
+      issuesService.resolveReadableProjectIds.mockRejectedValue(
+        new ForbiddenException('Insufficient permissions'),
+      );
+
+      await expect(
+        controller.findAll(TEST_IDS.ORG_ID, USER, { page: 1, limit: 20 } as any, TEST_IDS.PROJECT_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(issuesService.findAll).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /issues', () => {
     it('should create a new issue', async () => {
       const issue = mockIssue();
@@ -218,13 +273,27 @@ describe('IssuesController', () => {
   });
 
   describe('GET /issues/:id', () => {
-    it('should return a single issue', async () => {
+    it('should return a single issue via the caller-scoped lookup', async () => {
       const issue = mockIssue();
-      issuesService.findById.mockResolvedValue(issue);
+      issuesService.findVisibleById.mockResolvedValue(issue);
 
-      const result = await controller.findOne(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      const result = await controller.findOne(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, USER);
 
       expect(result).toEqual(issue);
+      expect(issuesService.findVisibleById).toHaveBeenCalledWith(
+        TEST_IDS.ISSUE_ID,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+      );
+      expect(issuesService.findById).not.toHaveBeenCalled();
+    });
+
+    it('should propagate 404 when the issue is not visible to the caller', async () => {
+      issuesService.findVisibleById.mockRejectedValue(new NotFoundException('Issue not found'));
+
+      await expect(
+        controller.findOne(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, USER),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

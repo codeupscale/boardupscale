@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { ApiKey } from './entities/api-key.entity';
+import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { CreateApiKeyDto } from './dto/create-api-key.dto';
 
 export const MCP_TOKEN_PREFIX = 'bu_mcp_';
@@ -24,6 +25,8 @@ export class ApiKeysService {
   constructor(
     @InjectRepository(ApiKey)
     private apiKeyRepository: Repository<ApiKey>,
+    @InjectRepository(OrganizationMember)
+    private orgMemberRepository: Repository<OrganizationMember>,
   ) {}
 
   /**
@@ -167,6 +170,26 @@ export class ApiKeysService {
     this.apiKeyRepository.update(apiKey.id, { lastUsedAt: new Date() }).catch(() => {});
 
     return apiKey;
+  }
+
+  /**
+   * The key owner's role in the key's org (organization_members), mirroring
+   * how AuthService derives the JWT role. users.role is only trusted for
+   * legacy rows when the key's org is the user's default org — it describes
+   * that org, not arbitrary others. Rejects keys whose owner has left the org.
+   */
+  async resolveOrgRole(apiKey: ApiKey): Promise<string> {
+    const membership = await this.orgMemberRepository.findOne({
+      where: { userId: apiKey.user.id, organizationId: apiKey.orgId },
+      select: ['id', 'role'],
+    });
+    if (membership) return membership.role;
+
+    if (apiKey.user.organizationId === apiKey.orgId && apiKey.user.role) {
+      return apiKey.user.role;
+    }
+
+    throw new UnauthorizedException('API key owner is not a member of this organization');
   }
 
   private generateRawKey(prefix = 'pf_'): string {

@@ -47,22 +47,26 @@ export class RolesGuard implements CanActivate {
     );
 
     if (requiredPermission) {
-      // Build a project-context hint from all request sources.
-      // Ordering matters: explicit projectId params win; params.id comes last
-      // because it may be a resource UUID (issue, sprint, comment …) rather than
-      // a project UUID. body.issueId is included for attachment upload routes
-      // that carry no explicit project context.
-      // checkPermission handles all three cases via resolveProjectFromResource.
-      const projectHint: string | undefined =
-        request.params?.projectId ||
-        request.query?.projectId ||
-        request.body?.projectId ||
-        request.params?.id ||
-        request.body?.issueId || // attachment upload / confirm-upload routes
-        request.query?.issueId || // GET /files?issueId= and similar read routes
-        (Array.isArray(request.body?.issueIds) ? request.body.issueIds[0] : undefined); // bulk operation routes
+      // Collect every project-context hint the request carries. params.id may
+      // be a resource UUID (issue, sprint, comment …) rather than a project
+      // UUID; body.issueId covers attachment upload routes. checkPermissionForHints
+      // resolves each one and requires ALL resolvable hints to pass, so a
+      // ?projectId=<accessible project> cannot override the route's :id.
+      const projectHints: string[] = [
+        request.params?.projectId,
+        request.query?.projectId,
+        request.body?.projectId,
+        request.params?.id,
+        request.body?.issueId, // attachment upload / confirm-upload routes
+        request.query?.issueId, // GET /files?issueId= and similar read routes
+      ].filter((h): h is string => typeof h === 'string' && h.length > 0);
+      // Bulk operation routes: EVERY issue's project must grant the permission,
+      // not just the first one's.
+      const bulkIssueIds: string[] = Array.isArray(request.body?.issueIds)
+        ? request.body.issueIds.filter((h: unknown): h is string => typeof h === 'string' && h.length > 0)
+        : [];
 
-      if (!projectHint) {
+      if (projectHints.length === 0 && bulkIssueIds.length === 0) {
         // No resource context at all — purely org-level check.
         const allowed = await this.permissionsService.checkOrgLevelPermission(
           user.id,
@@ -76,12 +80,13 @@ export class RolesGuard implements CanActivate {
         return true;
       }
 
-      const hasPermission = await this.permissionsService.checkPermission(
+      const hasPermission = await this.permissionsService.checkPermissionForHints(
         user.id,
-        projectHint,
+        projectHints,
         requiredPermission.resource,
         requiredPermission.action,
         user.organizationId, // fallback for non-project resource routes
+        bulkIssueIds,
       );
 
       if (!hasPermission) {

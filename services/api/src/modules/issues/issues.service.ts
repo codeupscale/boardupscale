@@ -137,10 +137,49 @@ export class IssuesService {
     }
   }
 
+  /**
+   * Resolve which projects the caller may list issues from.
+   *
+   * - With `projectId`: enforces `issue:read` in that project (403 otherwise)
+   *   and returns no extra restriction.
+   * - Without `projectId`: returns the caller's visible project IDs, or
+   *   `undefined` for org-wide roles (Owner/Administrator).
+   */
+  async resolveReadableProjectIds(
+    organizationId: string,
+    userId: string,
+    orgRole: string | undefined,
+    projectId?: string,
+  ): Promise<string[] | undefined> {
+    if (projectId) {
+      const allowed = await this.permissionsService.checkPermission(
+        userId,
+        projectId,
+        "issue",
+        "read",
+        organizationId,
+      );
+      if (!allowed) {
+        throw new ForbiddenException("Insufficient permissions");
+      }
+      return undefined;
+    }
+
+    const visible = await this.projectsService.findVisibleProjectIds(
+      organizationId,
+      userId,
+      orgRole,
+    );
+    return visible ?? undefined;
+  }
+
   async findAll(filters: {
     organizationId: string;
     projectId?: string;
-    /** Restrict to these projects. An empty array matches nothing. */
+    /**
+     * Restrict results to these projects (tenant/membership scoping).
+     * An empty array yields no results; undefined applies no restriction.
+     */
     projectIds?: string[];
     /** Filter by status category: todo | in_progress | done. */
     statusCategory?: string;
@@ -195,6 +234,10 @@ export class IssuesService {
       noLimit,
     } = filters;
 
+    if (projectIds && projectIds.length === 0) {
+      return { items: [], total: 0, page, limit: noLimit ? 0 : limit };
+    }
+
     const qb = this.issueRepository
       .createQueryBuilder("issue")
       .leftJoinAndSelect("issue.status", "status")
@@ -227,11 +270,7 @@ export class IssuesService {
       qb.andWhere("issue.project_id = :projectId", { projectId });
     }
     if (projectIds) {
-      if (projectIds.length === 0) {
-        qb.andWhere("1 = 0");
-      } else {
-        qb.andWhere("issue.project_id IN (:...projectIds)", { projectIds });
-      }
+      qb.andWhere("issue.project_id IN (:...projectIds)", { projectIds });
     }
     if (statusCategory) {
       qb.andWhere("status.category = :statusCategory", { statusCategory });
@@ -350,6 +389,30 @@ export class IssuesService {
       ],
     });
     if (!issue) {
+      throw new NotFoundException("Issue not found");
+    }
+    return issue;
+  }
+
+  /**
+   * findById for a specific caller: responds 404 (not 403) when the caller
+   * lacks `issue:read` in the issue's project, so issue existence in
+   * projects they cannot see is not disclosed.
+   */
+  async findVisibleById(
+    id: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<Issue> {
+    const issue = await this.findById(id, organizationId);
+    const allowed = await this.permissionsService.checkPermission(
+      userId,
+      issue.projectId,
+      "issue",
+      "read",
+      organizationId,
+    );
+    if (!allowed) {
       throw new NotFoundException("Issue not found");
     }
     return issue;

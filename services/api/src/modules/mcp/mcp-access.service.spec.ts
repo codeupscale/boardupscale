@@ -6,7 +6,11 @@ const VISIBLE = '11111111-1111-4111-8111-111111111111';
 const HIDDEN = '22222222-2222-4222-8222-222222222222';
 
 describe('McpAccessService', () => {
-  let projectsService: { findVisibleProjectIds: jest.Mock; resolveProjectId: jest.Mock };
+  let projectsService: {
+    findVisibleProjectIds: jest.Mock;
+    resolveProjectId: jest.Mock;
+    findById: jest.Mock;
+  };
   let issuesService: { findByKey: jest.Mock };
   let permissionsService: { checkPermission: jest.Mock };
   let service: McpAccessService;
@@ -16,6 +20,7 @@ describe('McpAccessService', () => {
     projectsService = {
       findVisibleProjectIds: jest.fn().mockResolvedValue([VISIBLE]),
       resolveProjectId: jest.fn(),
+      findById: jest.fn(async (id: string) => ({ id })),
     };
     issuesService = { findByKey: jest.fn() };
     permissionsService = { checkPermission: jest.fn().mockResolvedValue(true) };
@@ -48,6 +53,20 @@ describe('McpAccessService', () => {
     projectsService.resolveProjectId.mockResolvedValue(HIDDEN);
     await expect(service.resolveProjectId(ctx, 'SECRET')).rejects.toThrow(NotFoundException);
     await expect(service.resolveProjectId(ctx, HIDDEN)).rejects.toThrow(NotFoundException);
+  });
+
+  it('looks up project UUIDs within the caller org only', async () => {
+    projectsService.findById.mockRejectedValue(new NotFoundException());
+    await expect(service.resolveProjectId(ctx, VISIBLE)).rejects.toThrow(NotFoundException);
+    expect(projectsService.findById).toHaveBeenCalledWith(VISIBLE, 'org-1');
+  });
+
+  it('lets org owners/admins (null visibility) reach any project in their org', async () => {
+    projectsService.findVisibleProjectIds.mockResolvedValue(null);
+    projectsService.resolveProjectId.mockResolvedValue(HIDDEN);
+    await expect(service.resolveProjectId(ctx, 'OTHER')).resolves.toBe(HIDDEN);
+    issuesService.findByKey.mockResolvedValue({ id: 'i', projectId: HIDDEN });
+    await expect(service.resolveIssue(ctx, 'OTHER-1')).resolves.toEqual({ id: 'i', projectId: HIDDEN });
   });
 
   it('reports issues in hidden projects exactly like missing issues', async () => {

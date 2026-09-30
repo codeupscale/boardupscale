@@ -119,6 +119,14 @@ describe('McpServerFactory (via MCP protocol)', () => {
     );
   });
 
+  it('org admins (null visibility) search the whole org without a project filter', async () => {
+    access.visibleProjectIds.mockResolvedValue(null);
+    await call('search_issues', { query: 'login' });
+    expect(issuesService.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org-1', projectIds: undefined }),
+    );
+  });
+
   it('get_issue returns details with plain-text description and linked PRs', async () => {
     const { isError, text } = await call('get_issue', { key: 'PROJ-1' });
     expect(isError).toBe(false);

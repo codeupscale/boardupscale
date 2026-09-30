@@ -163,7 +163,7 @@ export class McpServerFactory {
       async ({ project, statusCategory, type, limit }) => {
         const projectIds = project
           ? [await this.access.resolveProjectId(ctx, project)]
-          : await this.access.visibleProjectIds(ctx);
+          : ((await this.access.visibleProjectIds(ctx)) ?? undefined);
         const categories = statusCategory ? [statusCategory] : ['todo', 'in_progress'];
         const results = await Promise.all(
           categories.map((category) =>
@@ -203,7 +203,7 @@ export class McpServerFactory {
       async (args) => {
         const projectIds = args.project
           ? [await this.access.resolveProjectId(ctx, args.project)]
-          : await this.access.visibleProjectIds(ctx);
+          : ((await this.access.visibleProjectIds(ctx)) ?? undefined);
         const result = await this.issuesService.findAll({
           organizationId: ctx.organizationId,
           projectIds,

@@ -14,7 +14,7 @@ import { McpContext } from './mcp.types';
  */
 @Injectable()
 export class McpAccessService {
-  private visibleCache = new WeakMap<McpContext, Promise<string[]>>();
+  private visibleCache = new WeakMap<McpContext, Promise<string[] | null>>();
 
   constructor(
     private projectsService: ProjectsService,
@@ -22,7 +22,11 @@ export class McpAccessService {
     private permissionsService: PermissionsService,
   ) {}
 
-  visibleProjectIds(ctx: McpContext): Promise<string[]> {
+  /**
+   * Project IDs the caller may read, or `null` for org owners/admins, who
+   * have org-wide access (queries must still be scoped by organizationId).
+   */
+  visibleProjectIds(ctx: McpContext): Promise<string[] | null> {
     let ids = this.visibleCache.get(ctx);
     if (!ids) {
       ids = this.projectsService.findVisibleProjectIds(ctx.organizationId, ctx.userId, ctx.orgRole);
@@ -31,11 +35,19 @@ export class McpAccessService {
     return ids;
   }
 
+  private async canSee(ctx: McpContext, projectId: string): Promise<boolean> {
+    const visible = await this.visibleProjectIds(ctx);
+    return visible === null || visible.includes(projectId);
+  }
+
   async resolveProjectId(ctx: McpContext, keyOrId: string): Promise<string> {
     const projectId = isUUID(keyOrId)
-      ? keyOrId
+      ? await this.projectsService
+          .findById(keyOrId, ctx.organizationId)
+          .then((p) => p.id)
+          .catch(() => null)
       : await this.projectsService.resolveProjectId(keyOrId, ctx.organizationId);
-    if (!projectId || !(await this.visibleProjectIds(ctx)).includes(projectId)) {
+    if (!projectId || !(await this.canSee(ctx, projectId))) {
       throw new NotFoundException(`Project "${keyOrId}" not found`);
     }
     return projectId;
@@ -43,7 +55,7 @@ export class McpAccessService {
 
   async resolveIssue(ctx: McpContext, key: string): Promise<Issue> {
     const issue = await this.issuesService.findByKey(key, ctx.organizationId);
-    if (!issue || !(await this.visibleProjectIds(ctx)).includes(issue.projectId)) {
+    if (!issue || !(await this.canSee(ctx, issue.projectId))) {
       throw new NotFoundException(`Issue "${key}" not found`);
     }
     return issue;

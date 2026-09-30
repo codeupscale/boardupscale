@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
 import { DataSource } from 'typeorm';
@@ -68,13 +69,30 @@ describe('ProjectsController', () => {
   });
 
   describe('GET /projects/:id', () => {
-    it('should return a single project', async () => {
-      const project = mockProject();
-      projectsService.findById.mockResolvedValue(project);
+    const user = { id: TEST_IDS.USER_ID, role: 'user' };
 
-      const result = await controller.findOne(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID);
+    it('should return a single project via the caller-scoped lookup', async () => {
+      const project = mockProject();
+      projectsService.findVisibleById.mockResolvedValue(project);
+
+      const result = await controller.findOne(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, user);
 
       expect(result).toEqual(project);
+      expect(projectsService.findVisibleById).toHaveBeenCalledWith(
+        TEST_IDS.PROJECT_ID,
+        TEST_IDS.ORG_ID,
+        TEST_IDS.USER_ID,
+        'user',
+      );
+      expect(projectsService.findById).not.toHaveBeenCalled();
+    });
+
+    it('should propagate 404 when the project is not visible to the caller', async () => {
+      projectsService.findVisibleById.mockRejectedValue(new NotFoundException('Project not found'));
+
+      await expect(
+        controller.findOne(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, user),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
