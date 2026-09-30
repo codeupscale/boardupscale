@@ -2,7 +2,6 @@ import { NotFoundException } from '@nestjs/common';
 import { of } from 'rxjs';
 import { ResolveProjectBodyInterceptor } from './resolve-project-body.interceptor';
 import { Project } from '../../modules/projects/entities/project.entity';
-import { ProjectKeyAlias } from '../../modules/projects/entities/project-key-alias.entity';
 import { TEST_IDS } from '../../test/mock-factories';
 
 describe('ResolveProjectBodyInterceptor', () => {
