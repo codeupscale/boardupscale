@@ -44,6 +44,7 @@ export class IssuesController {
   @ApiOperation({ summary: 'List issues with filters' })
   @ApiResponse({ status: 200, description: 'Paginated list of issues' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Caller cannot read issues in the given project' })
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'sprintId', required: false })
   @ApiQuery({ name: 'assigneeId', required: false })
@@ -61,6 +62,7 @@ export class IssuesController {
   @ApiQuery({ name: 'noLimit', required: false, description: 'When "true", bypasses LIMIT/OFFSET and returns every matching row. Used by the Backlog page; other callers should keep pagination.' })
   async findAll(
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
     @Query() pagination: PaginationDto,
     @Query('projectId', ResolveProjectPipe) projectId?: string,
     @Query('sprintId') sprintId?: string,
@@ -78,9 +80,18 @@ export class IssuesController {
     @Query('excludeTypes') excludeTypes?: string,
     @Query('noLimit') noLimit?: string,
   ) {
+    // Membership scoping: 403 for an explicit project the caller cannot read,
+    // otherwise restrict to the caller's visible projects.
+    const projectIds = await this.issuesService.resolveReadableProjectIds(
+      organizationId,
+      user.id,
+      user.role,
+      projectId,
+    );
     const result = await this.issuesService.findAll({
       organizationId,
       projectId,
+      projectIds,
       sprintId,
       assigneeId,
       reporterId,
@@ -179,12 +190,13 @@ export class IssuesController {
   @Get(':id')
   @ApiOperation({ summary: 'Get issue by ID' })
   @ApiResponse({ status: 200, description: 'Issue found' })
-  @ApiResponse({ status: 404, description: 'Issue not found' })
+  @ApiResponse({ status: 404, description: 'Issue not found (or not visible to the caller)' })
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.issuesService.findById(id, organizationId);
+    return this.issuesService.findVisibleById(id, organizationId, user.id);
   }
 
   @Patch(':id')
@@ -226,6 +238,7 @@ export class IssuesController {
   }
 
   @Get(':id/links')
+  @RequirePermission('issue', 'read')
   @ApiOperation({ summary: 'Get issue links' })
   async getLinks(
     @Param('id', ParseUUIDPipe) id: string,
@@ -256,6 +269,7 @@ export class IssuesController {
   // ── Issue Watchers ──
 
   @Post(':id/watch')
+  @RequirePermission('issue', 'read')
   @ApiOperation({ summary: 'Toggle watch/unwatch an issue' })
   async toggleWatch(
     @Param('id', ParseUUIDPipe) id: string,
@@ -266,6 +280,7 @@ export class IssuesController {
   }
 
   @Get(':id/watchers')
+  @RequirePermission('issue', 'read')
   @ApiOperation({ summary: 'Get issue watchers' })
   async getWatchers(
     @Param('id', ParseUUIDPipe) id: string,
@@ -276,6 +291,7 @@ export class IssuesController {
   }
 
   @Get(':id/children')
+  @RequirePermission('issue', 'read')
   @ApiOperation({ summary: 'Get subtasks/children of an issue' })
   async getChildren(
     @Param('id', ParseUUIDPipe) id: string,

@@ -30,7 +30,10 @@ import { mockUser, mockOrganization, mockRefreshToken, TEST_IDS } from '../../te
 jest.mock('bcryptjs');
 jest.mock('uuid', () => ({ v4: () => 'mock-uuid-value' }));
 
+const OTHER_ORG = '00000000-0000-4000-8000-0000000000dd';
+
 describe('AuthService', () => {
+  let orgMemberRepo: ReturnType<typeof createMockRepository>;
   let service: AuthService;
   let refreshTokenRepo: ReturnType<typeof createMockRepository>;
   let organizationRepo: ReturnType<typeof createMockRepository>;
@@ -43,7 +46,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     refreshTokenRepo = createMockRepository();
     organizationRepo = createMockRepository();
-    const orgMemberRepo = createMockRepository();
+    orgMemberRepo = createMockRepository();
 
     usersService = {
       findByEmail: jest.fn(),
@@ -288,6 +291,31 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('mock-access-token');
       expect(result.refreshToken).toBe('mock-uuid-value');
       expect(result.expiresIn).toBe(900);
+    });
+
+    it('should use the organization_members role for the requested org', async () => {
+      const user = mockUser({ role: 'owner' });
+      orgMemberRepo.findOne.mockResolvedValue({ role: 'user' });
+      refreshTokenRepo.create.mockReturnValue({});
+      refreshTokenRepo.save.mockResolvedValue({});
+
+      await service.generateTokens(user, '127.0.0.1', 'agent', OTHER_ORG);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId: OTHER_ORG, role: 'user' }),
+        expect.anything(),
+      );
+    });
+
+    it('should refuse to mint a token for an org the user is not a member of', async () => {
+      // e.g. POST /auth/refresh { organizationId: <victim org> } by an owner of another org
+      const user = mockUser({ role: 'owner' });
+      orgMemberRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.generateTokens(user, '127.0.0.1', 'agent', OTHER_ORG),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(jwtService.sign).not.toHaveBeenCalled();
     });
   });
 

@@ -105,6 +105,127 @@ describe('IssuesService', () => {
     jest.clearAllMocks();
   });
 
+  describe('project visibility (non-member vs org admin)', () => {
+    const OTHER_PROJECT_ID = '00000000-0000-4000-8000-0000000000aa';
+
+    describe('resolveReadableProjectIds', () => {
+      it('throws 403 when a non-member asks for an explicit project', async () => {
+        permissionsService.checkPermission.mockResolvedValue(false);
+
+        await expect(
+          service.resolveReadableProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'user', OTHER_PROJECT_ID),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(permissionsService.checkPermission).toHaveBeenCalledWith(
+          TEST_IDS.USER_ID,
+          OTHER_PROJECT_ID,
+          'issue',
+          'read',
+          TEST_IDS.ORG_ID,
+        );
+      });
+
+      it('allows an explicit project when issue:read is granted (member or org admin)', async () => {
+        permissionsService.checkPermission.mockResolvedValue(true);
+
+        await expect(
+          service.resolveReadableProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator', OTHER_PROJECT_ID),
+        ).resolves.toBeUndefined();
+      });
+
+      it('restricts an unscoped list to the caller\'s visible projects', async () => {
+        projectsService.findVisibleProjectIds.mockResolvedValue([TEST_IDS.PROJECT_ID]);
+
+        const result = await service.resolveReadableProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'user');
+
+        expect(result).toEqual([TEST_IDS.PROJECT_ID]);
+        expect(projectsService.findVisibleProjectIds).toHaveBeenCalledWith(
+          TEST_IDS.ORG_ID,
+          TEST_IDS.USER_ID,
+          'user',
+        );
+      });
+
+      it('applies no restriction for org-wide roles (owner/administrator)', async () => {
+        projectsService.findVisibleProjectIds.mockResolvedValue(null);
+
+        await expect(
+          service.resolveReadableProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator'),
+        ).resolves.toBeUndefined();
+      });
+    });
+
+    describe('findAll projectIds filter', () => {
+      it('restricts the query to the given project IDs', async () => {
+        const qb = createMockQueryBuilder([]);
+        qb.getCount.mockResolvedValue(0);
+        issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+        await service.findAll({ organizationId: TEST_IDS.ORG_ID, projectIds: [TEST_IDS.PROJECT_ID] });
+
+        expect(qb.andWhere).toHaveBeenCalledWith('issue.project_id IN (:...projectIds)', {
+          projectIds: [TEST_IDS.PROJECT_ID],
+        });
+      });
+
+      it('returns nothing without querying when the caller has no visible projects', async () => {
+        const result = await service.findAll({ organizationId: TEST_IDS.ORG_ID, projectIds: [] });
+
+        expect(result).toEqual({ items: [], total: 0, page: 1, limit: 20 });
+        expect(issueRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+
+      it('does not add a project restriction when projectIds is undefined', async () => {
+        const qb = createMockQueryBuilder([]);
+        qb.getCount.mockResolvedValue(0);
+        issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+        await service.findAll({ organizationId: TEST_IDS.ORG_ID });
+
+        expect(qb.andWhere).not.toHaveBeenCalledWith(
+          'issue.project_id IN (:...projectIds)',
+          expect.anything(),
+        );
+      });
+    });
+
+    describe('findVisibleById', () => {
+      it('returns 404 (not 403) when the caller cannot read the issue\'s project', async () => {
+        issueRepo.findOne.mockResolvedValue(mockIssue({ projectId: OTHER_PROJECT_ID }));
+        permissionsService.checkPermission.mockResolvedValue(false);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(permissionsService.checkPermission).toHaveBeenCalledWith(
+          TEST_IDS.USER_ID,
+          OTHER_PROJECT_ID,
+          'issue',
+          'read',
+          TEST_IDS.ORG_ID,
+        );
+      });
+
+      it('returns the issue for an org admin / project member', async () => {
+        const issue = mockIssue();
+        issueRepo.findOne.mockResolvedValue(issue);
+        permissionsService.checkPermission.mockResolvedValue(true);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID),
+        ).resolves.toBe(issue);
+      });
+
+      it('returns 404 without a permission check when the issue does not exist in the org', async () => {
+        issueRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(permissionsService.checkPermission).not.toHaveBeenCalled();
+      });
+    });
+  });
+
   describe('findAll', () => {
     it('should return paginated issues with default pagination', async () => {
       const issues = [mockIssue()];

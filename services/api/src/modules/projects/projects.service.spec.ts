@@ -86,6 +86,86 @@ describe('ProjectsService', () => {
     jest.clearAllMocks();
   });
 
+  describe('project visibility (non-member vs org admin)', () => {
+    describe('findVisibleProjectIds', () => {
+      it.each(['owner', 'administrator'])(
+        'returns null (no restriction) for org role %s without querying memberships',
+        async (role) => {
+          await expect(
+            service.findVisibleProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, role),
+          ).resolves.toBeNull();
+          expect(memberRepo.createQueryBuilder).not.toHaveBeenCalled();
+        },
+      );
+
+      it('returns only org-scoped membership project IDs for a plain org user', async () => {
+        const qb = createMockQueryBuilder();
+        qb.getRawMany.mockResolvedValue([{ id: TEST_IDS.PROJECT_ID }]);
+        memberRepo.createQueryBuilder.mockReturnValue(qb);
+
+        const result = await service.findVisibleProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'user');
+
+        expect(result).toEqual([TEST_IDS.PROJECT_ID]);
+        expect(qb.where).toHaveBeenCalledWith('pm.userId = :userId', { userId: TEST_IDS.USER_ID });
+        expect(qb.andWhere).toHaveBeenCalledWith('project.organizationId = :organizationId', {
+          organizationId: TEST_IDS.ORG_ID,
+        });
+      });
+
+      it('returns an empty list for a user with no memberships', async () => {
+        memberRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder());
+
+        await expect(
+          service.findVisibleProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, undefined),
+        ).resolves.toEqual([]);
+      });
+    });
+
+    describe('findVisibleById', () => {
+      it('returns 404 for a plain org user who is not a project member', async () => {
+        projectRepo.findOne.mockResolvedValue(mockProject());
+        memberRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'user'),
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(memberRepo.findOne).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { projectId: TEST_IDS.PROJECT_ID, userId: TEST_IDS.USER_ID },
+          }),
+        );
+      });
+
+      it('returns the project for a project member', async () => {
+        const project = mockProject();
+        projectRepo.findOne.mockResolvedValue(project);
+        memberRepo.findOne.mockResolvedValue(mockProjectMember());
+
+        await expect(
+          service.findVisibleById(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'user'),
+        ).resolves.toBe(project);
+      });
+
+      it('returns the project for an org administrator without membership', async () => {
+        const project = mockProject();
+        projectRepo.findOne.mockResolvedValue(project);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'administrator'),
+        ).resolves.toBe(project);
+        expect(memberRepo.findOne).not.toHaveBeenCalled();
+      });
+
+      it('returns 404 when the project is not in the caller\'s org', async () => {
+        projectRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.findVisibleById(TEST_IDS.PROJECT_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner'),
+        ).rejects.toBeInstanceOf(NotFoundException);
+      });
+    });
+  });
+
   describe('findAll', () => {
     it('should return projects with aggregate counts for organization member (non-admin)', async () => {
       const projects = [mockProject()];
