@@ -238,15 +238,16 @@ export class McpServerFactory {
           this.issuesService.getWorkLogs(issue.id, orgId),
           this.githubService.getEventsForIssue(issue.id, orgId),
         ]);
-        const linkView = (l: any, dir: 'outward' | 'inward') => {
-          const other = dir === 'outward' ? l.targetIssue : l.sourceIssue;
-          return {
-            type: l.linkType,
-            direction: dir,
-            key: other?.key,
-            title: other?.title,
-          };
-        };
+        // getLinks returns { linkType, label, issue } with `issue` being the other side
+        // (inward linkType is already inverted), already filtered to visible projects.
+        const linkView = (l: any, dir: 'outward' | 'inward') => ({
+          type: l.linkType,
+          label: l.label,
+          direction: dir,
+          key: l.issue.key,
+          title: l.issue.title,
+          status: l.issue.status?.name ?? null,
+        });
         return {
           ...summarizeIssue(issue),
           project: issue.project ? { key: issue.project.key, name: issue.project.name } : null,

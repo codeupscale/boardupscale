@@ -137,6 +137,39 @@ describe('McpServerFactory (via MCP protocol)', () => {
     expect(body.pullRequests).toEqual([expect.objectContaining({ number: 3, state: 'open' })]);
   });
 
+  it('get_issue exposes the other side of outward and inward links', async () => {
+    issuesService.getLinks.mockResolvedValue({
+      outward: [
+        {
+          id: 'l1',
+          linkType: 'blocks',
+          label: 'blocks',
+          issue: { key: 'PROJ-2', title: 'Session store', projectId: VISIBLE, status: { name: 'To Do' } },
+        },
+      ],
+      inward: [
+        {
+          id: 'l2',
+          linkType: 'is_blocked_by',
+          label: 'is blocked by',
+          issue: { key: 'PROJ-3', title: 'Auth refactor', projectId: VISIBLE, status: { name: 'Done' } },
+        },
+      ],
+    });
+    const body = JSON.parse((await call('get_issue', { key: 'PROJ-1' })).text);
+    expect(body.links).toEqual([
+      { type: 'blocks', label: 'blocks', direction: 'outward', key: 'PROJ-2', title: 'Session store', status: 'To Do' },
+      {
+        type: 'is_blocked_by',
+        label: 'is blocked by',
+        direction: 'inward',
+        key: 'PROJ-3',
+        title: 'Auth refactor',
+        status: 'Done',
+      },
+    ]);
+  });
+
   it('get_issue filters links by the caller\'s project visibility', async () => {
     await call('get_issue', { key: 'PROJ-1' });
     expect(issuesService.getLinks).toHaveBeenCalledWith('issue-1', 'org-1', 'user-1', 'user');
