@@ -234,7 +234,13 @@ export class IssuesController {
     @CurrentUser() user: any,
     @Body() dto: CreateIssueLinkDto,
   ) {
-    return this.issuesService.createLink(id, organizationId, dto, user.id);
+    return this.issuesService.createLink(
+      id,
+      organizationId,
+      dto,
+      user.id,
+      user.role,
+    );
   }
 
   @Get(':id/links')
