@@ -175,6 +175,26 @@ export class GithubService {
   }
 
   /**
+   * Return PR/commit events for every issue in a project, newest first.
+   */
+  async getEventsForProject(
+    projectId: string,
+    organizationId: string,
+    limit = 500,
+  ): Promise<GitHubEvent[]> {
+    return this.eventRepository
+      .createQueryBuilder('event')
+      .innerJoin('event.connection', 'connection')
+      .leftJoin('event.issue', 'issue')
+      .addSelect(['issue.id', 'issue.key'])
+      .where('connection.projectId = :projectId', { projectId })
+      .andWhere('connection.organizationId = :organizationId', { organizationId })
+      .orderBy('event.createdAt', 'DESC')
+      .take(limit)
+      .getMany();
+  }
+
+  /**
    * Process an incoming webhook event from GitHub.
    */
   async processWebhookEvent(

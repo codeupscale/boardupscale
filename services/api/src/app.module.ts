@@ -28,6 +28,7 @@ import { EventsModule } from './websocket/events.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AutomationModule } from './modules/automation/automation.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { McpModule } from './modules/mcp/mcp.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -221,6 +222,7 @@ import { SearchReindexJob } from './modules/search/entities/search-reindex-job.e
     WebhooksModule,
     AutomationModule,
     ApiKeysModule,
+    McpModule,
     ActivityModule,
     AuditModule,
     AiModule,

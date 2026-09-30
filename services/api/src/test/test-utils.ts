@@ -198,6 +198,7 @@ export function createMockProjectsService() {
     removeMember: jest.fn(),
     isMember: jest.fn(),
     getNextIssueNumber: jest.fn(),
+    resolveProjectId: jest.fn(),
   };
 }
 
