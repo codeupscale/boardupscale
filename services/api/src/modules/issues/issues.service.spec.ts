@@ -374,6 +374,87 @@ describe('IssuesService', () => {
     });
   });
 
+  describe('findAll (MCP scoping filters)', () => {
+    it('restricts to the given projectIds', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({ organizationId: TEST_IDS.ORG_ID, projectIds: ['p1', 'p2'] });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('issue.project_id IN (:...projectIds)', {
+        projectIds: ['p1', 'p2'],
+      });
+    });
+
+    it('matches nothing when projectIds is empty', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({ organizationId: TEST_IDS.ORG_ID, projectIds: [] });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('1 = 0');
+    });
+
+    it('filters by status category', async () => {
+      const qb = createMockQueryBuilder([]);
+      qb.getCount.mockResolvedValue(0);
+      issueRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.findAll({ organizationId: TEST_IDS.ORG_ID, statusCategory: 'done' });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('status.category = :statusCategory', {
+        statusCategory: 'done',
+      });
+    });
+  });
+
+  describe('findByKey', () => {
+    it('returns null for strings that are not issue keys', async () => {
+      await expect(service.findByKey('not a key', TEST_IDS.ORG_ID)).resolves.toBeNull();
+      expect(issueRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('resolves a current key within the org', async () => {
+      const issue = mockIssue();
+      issueRepo.findOne.mockResolvedValueOnce({ id: TEST_IDS.ISSUE_ID }).mockResolvedValueOnce(issue);
+
+      await expect(service.findByKey('proj-1', TEST_IDS.ORG_ID)).resolves.toEqual(issue);
+      expect(issueRepo.findOne).toHaveBeenNthCalledWith(1, {
+        where: { key: 'PROJ-1', organizationId: TEST_IDS.ORG_ID, deletedAt: expect.anything() },
+        select: ['id'],
+      });
+    });
+
+    it('falls back to former project keys by issue number', async () => {
+      const issue = mockIssue();
+      projectsService.resolveProjectId.mockResolvedValue(TEST_IDS.PROJECT_ID);
+      issueRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: TEST_IDS.ISSUE_ID })
+        .mockResolvedValueOnce(issue);
+
+      await expect(service.findByKey('OLD-7', TEST_IDS.ORG_ID)).resolves.toEqual(issue);
+      expect(projectsService.resolveProjectId).toHaveBeenCalledWith('OLD', TEST_IDS.ORG_ID);
+      expect(issueRepo.findOne).toHaveBeenNthCalledWith(2, {
+        where: {
+          projectId: TEST_IDS.PROJECT_ID,
+          number: 7,
+          organizationId: TEST_IDS.ORG_ID,
+          deletedAt: expect.anything(),
+        },
+        select: ['id'],
+      });
+    });
+
+    it('returns null when the project key is unknown in this org', async () => {
+      projectsService.resolveProjectId.mockResolvedValue(null);
+      issueRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.findByKey('NOPE-1', TEST_IDS.ORG_ID)).resolves.toBeNull();
+    });
+  });
+
   describe('findById', () => {
     it('should return issue with relations', async () => {
       const issue = mockIssue();

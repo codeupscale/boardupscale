@@ -46,6 +46,7 @@ import {
   SPRINT_INELIGIBLE_ISSUE_TYPES,
 } from "../../common/constants/sprint-planning-issue-types";
 import { resolveCreatedAtRangeBounds } from "../../common/utils/created-at-range";
+import { parseIssueKeyQuery } from "../search/search-issue-key.utils";
 
 @Injectable()
 export class IssuesService {
@@ -139,6 +140,10 @@ export class IssuesService {
   async findAll(filters: {
     organizationId: string;
     projectId?: string;
+    /** Restrict to these projects. An empty array matches nothing. */
+    projectIds?: string[];
+    /** Filter by status category: todo | in_progress | done. */
+    statusCategory?: string;
     sprintId?: string;
     assigneeId?: string;
     reporterId?: string;
@@ -170,6 +175,8 @@ export class IssuesService {
     const {
       organizationId,
       projectId,
+      projectIds,
+      statusCategory,
       sprintId,
       assigneeId,
       reporterId,
@@ -218,6 +225,16 @@ export class IssuesService {
 
     if (projectId) {
       qb.andWhere("issue.project_id = :projectId", { projectId });
+    }
+    if (projectIds) {
+      if (projectIds.length === 0) {
+        qb.andWhere("1 = 0");
+      } else {
+        qb.andWhere("issue.project_id IN (:...projectIds)", { projectIds });
+      }
+    }
+    if (statusCategory) {
+      qb.andWhere("status.category = :statusCategory", { statusCategory });
     }
     if (sprintId === "backlog") {
       qb.andWhere("issue.sprint_id IS NULL");
@@ -289,6 +306,33 @@ export class IssuesService {
     // When pagination is bypassed the returned `limit` reflects the actual
     // page size so callers reading the response shape don't get a stale 20.
     return { items, total, page, limit: noLimit ? items.length : limit };
+  }
+
+  /**
+   * Resolve an issue by its key (e.g. PROJ-42), falling back to former project
+   * keys after a rename. Returns null when no live issue matches in the org.
+   */
+  async findByKey(key: string, organizationId: string): Promise<Issue | null> {
+    const parsed = parseIssueKeyQuery(key);
+    if (!parsed) return null;
+
+    const direct = await this.issueRepository.findOne({
+      where: { key: parsed.formerKey, organizationId, deletedAt: IsNull() },
+      select: ["id"],
+    });
+    if (direct) return this.findById(direct.id, organizationId);
+
+    const projectId = await this.projectsService.resolveProjectId(
+      parsed.prefix,
+      organizationId,
+    );
+    if (!projectId) return null;
+
+    const byNumber = await this.issueRepository.findOne({
+      where: { projectId, number: parsed.number, organizationId, deletedAt: IsNull() },
+      select: ["id"],
+    });
+    return byNumber ? this.findById(byNumber.id, organizationId) : null;
   }
 
   async findById(id: string, organizationId: string): Promise<Issue> {

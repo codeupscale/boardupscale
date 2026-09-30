@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-custom';
 import { Request } from 'express';
-import { ApiKeysService } from '../api-keys.service';
+import { ApiKeysService, isMcpKey } from '../api-keys.service';
 
 @Injectable()
 export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
@@ -17,6 +17,11 @@ export class ApiKeyStrategy extends PassportStrategy(Strategy, 'api-key') {
     }
 
     const keyRecord = await this.apiKeysService.validate(apiKey);
+
+    // MCP tokens are only valid on the /mcp endpoint, never on the REST API.
+    if (isMcpKey(keyRecord.scopes)) {
+      throw new UnauthorizedException('MCP tokens cannot be used with the REST API');
+    }
 
     // Return user-like object consistent with JWT strategy output
     return {

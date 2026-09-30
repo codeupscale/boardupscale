@@ -112,6 +112,21 @@ export class ProjectsService {
     return { items, total, page, limit };
   }
 
+  /**
+   * IDs of every non-archived project the member can see — same visibility
+   * rules as `findAll` (org owners/admins see all, others need membership).
+   */
+  async findVisibleProjectIds(
+    organizationId: string,
+    userId: string,
+    orgRole?: string,
+  ): Promise<string[]> {
+    const rows = await this.buildVisibleProjectsQuery(organizationId, userId, orgRole)
+      .select('project.id', 'id')
+      .getRawMany<{ id: string }>();
+    return rows.map((r) => r.id);
+  }
+
   private buildVisibleProjectsQuery(
     organizationId: string,
     userId: string,
