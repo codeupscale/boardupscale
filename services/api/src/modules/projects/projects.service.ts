@@ -668,6 +668,29 @@ export class ProjectsService {
     void this.searchIndexQueueService.refreshMember(organizationId, userId);
   }
 
+  /**
+   * Project IDs the caller may see in this org.
+   * Returns null for owner/administrator (unrestricted, O21); otherwise the
+   * projects where the user has an explicit membership row.
+   */
+  async findVisibleProjectIds(
+    organizationId: string,
+    userId: string,
+    orgRole?: string,
+  ): Promise<string[] | null> {
+    if (hasOrgWideAccess(orgRole)) return null;
+
+    const rows = await this.projectMemberRepository
+      .createQueryBuilder('pm')
+      .innerJoin('projects', 'p', 'p.id = pm.project_id')
+      .where('pm.user_id = :userId', { userId })
+      .andWhere('p.organization_id = :organizationId', { organizationId })
+      .select('pm.project_id', 'projectId')
+      .getRawMany<{ projectId: string }>();
+
+    return rows.map((row) => row.projectId);
+  }
+
   async isMember(projectId: string, userId: string): Promise<boolean> {
     const member = await this.projectMemberRepository.findOne({
       where: { projectId, userId },

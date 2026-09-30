@@ -230,8 +230,14 @@ export class IssuesController {
   async getLinks(
     @Param('id', ParseUUIDPipe) id: string,
     @OrgId() organizationId: string,
+    @CurrentUser() user: any,
   ) {
-    const links = await this.issuesService.getLinks(id, organizationId);
+    const links = await this.issuesService.getLinks(
+      id,
+      organizationId,
+      user.id,
+      user.role,
+    );
     return { data: links };
   }
 

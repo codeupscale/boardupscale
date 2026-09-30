@@ -194,6 +194,7 @@ export function createMockProjectsService() {
     addMember: jest.fn(),
     removeMember: jest.fn(),
     isMember: jest.fn(),
+    findVisibleProjectIds: jest.fn().mockResolvedValue(null),
     getNextIssueNumber: jest.fn(),
   };
 }

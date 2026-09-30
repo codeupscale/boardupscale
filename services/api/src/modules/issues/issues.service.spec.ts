@@ -903,7 +903,7 @@ describe('IssuesService', () => {
           },
         ]);
 
-      const result = await service.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID);
+      const result = await service.getLinks(TEST_IDS.ISSUE_ID, TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'owner');
 
       expect(result.outward).toHaveLength(1);
       expect(result.outward[0]).toMatchObject({
@@ -918,6 +918,90 @@ describe('IssuesService', () => {
         linkType: 'is_blocked_by',
         label: 'is blocked by',
         issue: inwardSource,
+      });
+    });
+
+    describe('getLinks cross-project visibility', () => {
+      const OTHER_PROJECT_ID = 'project-b';
+      const sameProjectTarget = mockIssue({ id: 'target-a', key: 'TPROJ-2' });
+      const otherProjectTarget = mockIssue({
+        id: 'target-b',
+        key: 'SECRET-1',
+        projectId: OTHER_PROJECT_ID,
+      });
+      const otherProjectSource = mockIssue({
+        id: 'source-b',
+        key: 'SECRET-2',
+        projectId: OTHER_PROJECT_ID,
+      });
+
+      beforeEach(() => {
+        issueRepo.findOne.mockResolvedValue(mockIssue({ id: TEST_IDS.ISSUE_ID }));
+        issueLinkRepo.find
+          .mockResolvedValueOnce([
+            { id: 'link-same', linkType: 'relates_to', targetIssue: sameProjectTarget },
+            { id: 'link-other', linkType: 'blocks', targetIssue: otherProjectTarget },
+          ])
+          .mockResolvedValueOnce([
+            { id: 'link-in-other', linkType: 'blocks', sourceIssue: otherProjectSource },
+          ]);
+      });
+
+      it('hides linked issues in projects the member cannot see (both directions)', async () => {
+        projectsService.findVisibleProjectIds.mockResolvedValue([TEST_IDS.PROJECT_ID]);
+
+        const result = await service.getLinks(
+          TEST_IDS.ISSUE_ID,
+          TEST_IDS.ORG_ID,
+          TEST_IDS.USER_ID,
+          'member',
+        );
+
+        expect(projectsService.findVisibleProjectIds).toHaveBeenCalledWith(
+          TEST_IDS.ORG_ID,
+          TEST_IDS.USER_ID,
+          'member',
+        );
+        expect(result.outward.map((l) => l.id)).toEqual(['link-same']);
+        expect(result.inward).toEqual([]);
+        expect(JSON.stringify(result)).not.toContain('SECRET');
+      });
+
+      it('shows cross-project linked issues to an org administrator', async () => {
+        projectsService.findVisibleProjectIds.mockResolvedValue(null);
+
+        const result = await service.getLinks(
+          TEST_IDS.ISSUE_ID,
+          TEST_IDS.ORG_ID,
+          TEST_IDS.USER_ID,
+          'administrator',
+        );
+
+        expect(result.outward.map((l) => l.id)).toEqual(['link-same', 'link-other']);
+        expect(result.inward.map((l) => l.id)).toEqual(['link-in-other']);
+      });
+
+      it('hides linked issues belonging to another organization even with org-wide access', async () => {
+        issueLinkRepo.find.mockReset();
+        issueLinkRepo.find
+          .mockResolvedValueOnce([
+            {
+              id: 'link-foreign',
+              linkType: 'blocks',
+              targetIssue: mockIssue({ id: 'foreign', organizationId: 'other-org' }),
+            },
+          ])
+          .mockResolvedValueOnce([]);
+        projectsService.findVisibleProjectIds.mockResolvedValue(null);
+
+        const result = await service.getLinks(
+          TEST_IDS.ISSUE_ID,
+          TEST_IDS.ORG_ID,
+          TEST_IDS.USER_ID,
+          'owner',
+        );
+
+        expect(result.outward).toEqual([]);
       });
     });
 
