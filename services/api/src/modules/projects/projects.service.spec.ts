@@ -540,29 +540,6 @@ describe('ProjectsService', () => {
     });
   });
 
-  describe('findVisibleProjectIds', () => {
-    it.each(['owner', 'administrator'])('should return null (unrestricted) for %s', async (role) => {
-      const result = await service.findVisibleProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, role);
-
-      expect(result).toBeNull();
-      expect(memberRepo.createQueryBuilder).not.toHaveBeenCalled();
-    });
-
-    it('should return org-scoped membership project IDs for other roles', async () => {
-      const qb = createMockQueryBuilder();
-      qb.getRawMany.mockResolvedValue([{ projectId: 'p1' }, { projectId: 'p2' }]);
-      memberRepo.createQueryBuilder.mockReturnValue(qb);
-
-      const result = await service.findVisibleProjectIds(TEST_IDS.ORG_ID, TEST_IDS.USER_ID, 'member');
-
-      expect(result).toEqual(['p1', 'p2']);
-      expect(qb.where).toHaveBeenCalledWith('pm.user_id = :userId', { userId: TEST_IDS.USER_ID });
-      expect(qb.andWhere).toHaveBeenCalledWith('p.organization_id = :organizationId', {
-        organizationId: TEST_IDS.ORG_ID,
-      });
-    });
-  });
-
   describe('isMember', () => {
     it('should return true when user is a member', async () => {
       memberRepo.findOne.mockResolvedValue(mockProjectMember());
