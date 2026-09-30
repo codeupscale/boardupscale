@@ -1,18 +1,29 @@
 const MAX_TEXT = 4000;
 
+function stripHtmlTagsFully(value: string): string {
+  let previous: string;
+  let current = value;
+  do {
+    previous = current;
+    current = current.replace(/<[^>]+>/g, '');
+  } while (current !== previous);
+  return current;
+}
+
 /** Convert stored rich-text HTML into compact plain text for LLM consumption. */
 export function htmlToText(html: string | null | undefined, max = MAX_TEXT): string | null {
   if (!html) return null;
-  const text = html
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/<(br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '- ')
-    .replace(/<[^>]+>/g, '')
+  const text = stripHtmlTagsFully(
+    html
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/<(br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '- ')
+  )
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   return text.length > max ? `${text.slice(0, max)}… [truncated]` : text;
