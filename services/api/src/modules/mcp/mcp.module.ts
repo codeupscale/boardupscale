@@ -6,6 +6,7 @@ import { BoardsModule } from '../boards/boards.module';
 import { CommentsModule } from '../comments/comments.module';
 import { FilesModule } from '../files/files.module';
 import { GithubModule } from '../github/github.module';
+import { IssueStatus } from '../issues/entities/issue-status.entity';
 import { IssuesModule } from '../issues/issues.module';
 import { OrganizationMember } from '../organizations/entities/organization-member.entity';
 import { PermissionsModule } from '../permissions/permissions.module';
@@ -19,7 +20,7 @@ import { McpController } from './mcp.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OrganizationMember]),
+    TypeOrmModule.forFeature([OrganizationMember, IssueStatus]),
     ApiKeysModule,
     AuditModule,
     BoardsModule,

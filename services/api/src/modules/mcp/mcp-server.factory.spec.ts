@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServerFactory } from './mcp-server.factory';
@@ -47,12 +47,20 @@ describe('McpServerFactory (via MCP protocol)', () => {
       resolveProjectId: jest.fn().mockResolvedValue(VISIBLE),
       resolveIssue: jest.fn().mockResolvedValue(issue),
       assertCanComment: jest.fn().mockResolvedValue(undefined),
+      assertCanWriteIssue: jest.fn().mockResolvedValue(undefined),
+      listStatuses: jest.fn().mockResolvedValue([{ name: 'To Do', category: 'todo' }]),
+      resolveStatusId: jest.fn().mockResolvedValue('status-done'),
+      resolveAssigneeId: jest.fn().mockResolvedValue('user-2'),
+      resolveSprintId: jest.fn().mockResolvedValue('sprint-1'),
+      resolveParentId: jest.fn().mockResolvedValue('parent-1'),
     };
     issuesService = {
       findAll: jest.fn().mockResolvedValue({ items: [issue], total: 1, page: 1, limit: 25 }),
       getChildren: jest.fn().mockResolvedValue([]),
       getLinks: jest.fn().mockResolvedValue({ outward: [], inward: [] }),
       getWorkLogs: jest.fn().mockResolvedValue([]),
+      create: jest.fn().mockResolvedValue({ ...issue, id: 'issue-2', key: 'PROJ-2' }),
+      update: jest.fn().mockResolvedValue(issue),
     };
     commentsService = {
       findAll: jest.fn().mockResolvedValue([{ id: 'c1', content: '<p>hi</p>', author: { displayName: 'Bob' } }]),
@@ -69,9 +77,19 @@ describe('McpServerFactory (via MCP protocol)', () => {
     const factory = new McpServerFactory(
       access as any,
       issuesService as any,
-      { findAll: jest.fn().mockResolvedValue({ items: [] }) } as any,
+      {
+        findAll: jest.fn().mockResolvedValue({ items: [] }),
+        getMembers: jest
+          .fn()
+          .mockResolvedValue([{ user: { displayName: 'Bob', email: 'bob@example.com' } }]),
+      } as any,
       commentsService as any,
-      { findAll: jest.fn().mockResolvedValue([]) } as any,
+      {
+        findAll: jest.fn().mockResolvedValue([
+          { id: 's1', name: 'Old', status: 'completed' },
+          { id: 's2', name: 'Now', status: 'active' },
+        ]),
+      } as any,
       { getBoardData: jest.fn().mockResolvedValue([]) } as any,
       { findByIssue: jest.fn().mockResolvedValue([]) } as any,
       githubService as any,
@@ -85,18 +103,21 @@ describe('McpServerFactory (via MCP protocol)', () => {
 
   afterEach(() => client.close());
 
-  it('exposes read tools and only one write tool (add_comment)', async () => {
+  it('exposes read tools plus comment and issue write tools', async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
       'add_comment',
+      'create_issue',
       'get_board',
       'get_issue',
+      'get_project_fields',
       'list_comments',
       'list_my_issues',
       'list_projects',
       'list_pull_requests',
       'list_sprints',
       'search_issues',
+      'update_issue',
       'whoami',
     ]);
   });
@@ -212,6 +233,114 @@ describe('McpServerFactory (via MCP protocol)', () => {
     const res = await call('add_comment', { key: 'PROJ-1', body: 'hi' });
     expect(res.isError).toBe(true);
     expect(commentsService.create).not.toHaveBeenCalled();
+  });
+
+  it('get_project_fields lists statuses, members and open sprints only', async () => {
+    const body = JSON.parse((await call('get_project_fields', { project: 'PROJ' })).text);
+    expect(access.resolveProjectId).toHaveBeenCalledWith(ctx, 'PROJ');
+    expect(body.statuses).toEqual([{ name: 'To Do', category: 'todo' }]);
+    expect(body.members).toEqual([{ displayName: 'Bob', email: 'bob@example.com' }]);
+    expect(body.sprints).toEqual([{ id: 's2', name: 'Now', status: 'active' }]);
+  });
+
+  it('create_issue checks permission, resolves names, escapes description, and audits', async () => {
+    const res = await call('create_issue', {
+      project: 'PROJ',
+      title: 'New bug',
+      description: '<b>boom</b>',
+      type: 'bug',
+      status: 'Done',
+      assignee: 'bob@example.com',
+      sprint: 'Now',
+      parent: 'PROJ-1',
+      dueDate: '2026-12-01',
+    });
+    expect(res.isError).toBe(false);
+    expect(JSON.parse(res.text)).toEqual(expect.objectContaining({ ok: true, key: 'PROJ-2' }));
+    expect(access.assertCanWriteIssue).toHaveBeenCalledWith(ctx, VISIBLE, 'create');
+    expect(access.resolveAssigneeId).toHaveBeenCalledWith(ctx, VISIBLE, 'bob@example.com');
+    expect(issuesService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: VISIBLE,
+        title: 'New bug',
+        description: '<p>&lt;b&gt;boom&lt;/b&gt;</p>',
+        type: 'bug',
+        statusId: 'status-done',
+        assigneeId: 'user-2',
+        sprintId: 'sprint-1',
+        parentId: 'parent-1',
+        dueDate: '2026-12-01',
+      }),
+      'org-1',
+      'user-1',
+    );
+    expect(auditService.log).toHaveBeenCalledWith(
+      'org-1',
+      'user-1',
+      'mcp.issue.created',
+      'issue',
+      'issue-2',
+      expect.objectContaining({ issueKey: 'PROJ-2', tokenId: 'tok' }),
+    );
+  });
+
+  it('create_issue does not write when permission is denied', async () => {
+    access.assertCanWriteIssue.mockRejectedValue(new ForbiddenException('no write'));
+    const res = await call('create_issue', { project: 'PROJ', title: 'x', status: 'Done' });
+    expect(res).toEqual({ isError: true, text: 'Error: no write' });
+    expect(access.resolveStatusId).not.toHaveBeenCalled();
+    expect(issuesService.create).not.toHaveBeenCalled();
+  });
+
+  it('create_issue cannot target an inaccessible project', async () => {
+    access.resolveProjectId.mockRejectedValue(new NotFoundException('Project "SECRET" not found'));
+    const res = await call('create_issue', { project: 'SECRET', title: 'x' });
+    expect(res.isError).toBe(true);
+    expect(issuesService.create).not.toHaveBeenCalled();
+  });
+
+  it('update_issue only sends passed fields, clears with null, and audits', async () => {
+    const res = await call('update_issue', {
+      key: 'PROJ-1',
+      priority: 'low',
+      status: 'Done',
+      assignee: null,
+      sprint: null,
+    });
+    expect(res.isError).toBe(false);
+    expect(access.assertCanWriteIssue).toHaveBeenCalledWith(ctx, VISIBLE, 'update');
+    expect(issuesService.update).toHaveBeenCalledWith(
+      'issue-1',
+      'org-1',
+      { priority: 'low', statusId: 'status-done', assigneeId: null, sprintId: null },
+      'user-1',
+    );
+    expect(access.resolveAssigneeId).not.toHaveBeenCalled();
+    expect(auditService.log).toHaveBeenCalledWith(
+      'org-1',
+      'user-1',
+      'mcp.issue.updated',
+      'issue',
+      'issue-1',
+      expect.objectContaining({
+        issueKey: 'PROJ-1',
+        fields: ['priority', 'statusId', 'assigneeId', 'sprintId'],
+      }),
+    );
+  });
+
+  it('update_issue rejects an empty update', async () => {
+    const res = await call('update_issue', { key: 'PROJ-1' });
+    expect(res.isError).toBe(true);
+    expect(issuesService.update).not.toHaveBeenCalled();
+  });
+
+  it('update_issue does not write when permission is denied or issue is hidden', async () => {
+    access.assertCanWriteIssue.mockRejectedValue(new ForbiddenException('no write'));
+    expect((await call('update_issue', { key: 'PROJ-1', title: 'x' })).isError).toBe(true);
+    access.resolveIssue.mockRejectedValue(new NotFoundException('Issue "SECRET-1" not found'));
+    expect((await call('update_issue', { key: 'SECRET-1', title: 'x' })).isError).toBe(true);
+    expect(issuesService.update).not.toHaveBeenCalled();
   });
 
   it('list_pull_requests requires exactly one of issue or project', async () => {

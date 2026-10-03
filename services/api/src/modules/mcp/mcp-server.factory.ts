@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
 import { BoardsService } from '../boards/boards.service';
 import { BoardQueryDto } from '../boards/dto/board-query.dto';
+import { UpdateIssueDto } from '../issues/dto/update-issue.dto';
 import { CommentsService } from '../comments/comments.service';
 import { FilesService } from '../files/files.service';
 import { GithubService } from '../github/github.service';
@@ -12,7 +13,7 @@ import { IssuesService } from '../issues/issues.service';
 import { ProjectsService } from '../projects/projects.service';
 import { SprintsService } from '../sprints/sprints.service';
 import { McpAccessService } from './mcp-access.service';
-import { htmlToText, plainTextToCommentHtml, summarizePullRequests } from './mcp-format.util';
+import { htmlToText, plainTextToHtml, summarizePullRequests } from './mcp-format.util';
 import { McpContext } from './mcp.types';
 
 type ToolResult = {
@@ -26,6 +27,48 @@ const STATUS_CATEGORIES = ['todo', 'in_progress', 'done'] as const;
 
 const issueKey = z.string().min(1).max(40).describe("Issue key, e.g. 'PROJ-42'");
 const projectKey = z.string().min(1).max(64).describe("Project key, e.g. 'PROJ'");
+
+const WRITE_NOTE = 'Requires a token with write access and issue permission in the project.';
+
+const issueFields = {
+  description: z
+    .string()
+    .max(50000)
+    .optional()
+    .describe('Plain text; blank lines separate paragraphs. Replaces the existing description.'),
+  type: z.enum(ISSUE_TYPES).optional(),
+  priority: z.enum(PRIORITIES).optional(),
+  status: z.string().min(1).max(100).optional().describe("Status name, e.g. 'In Progress'"),
+  labels: z
+    .array(z.string().min(1).max(50))
+    .max(20)
+    .optional()
+    .describe('Replaces the existing labels'),
+};
+
+// Fields that can be cleared with null when updating.
+const assignee = z.string().min(1).max(320).describe("Project member's email, or 'me'");
+const sprint = z.string().min(1).max(200).describe('Sprint name or id (not completed)');
+const parent = issueKey.describe("Parent issue key, e.g. 'PROJ-10'");
+const storyPoints = z.number().int().min(0).max(1000);
+const dueDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+  .describe('YYYY-MM-DD');
+
+type IssueWriteArgs = {
+  title?: string;
+  description?: string;
+  type?: string;
+  priority?: string;
+  status?: string;
+  labels?: string[];
+  assignee?: string | null;
+  sprint?: string | null;
+  parent?: string | null;
+  storyPoints?: number | null;
+  dueDate?: string | null;
+};
 
 function summarizeIssue(issue: Issue) {
   return {
@@ -63,6 +106,42 @@ export class McpServerFactory {
     private githubService: GithubService,
     private auditService: AuditService,
   ) {}
+
+  /** Translate tool arguments (names, keys, emails) into issue DTO fields scoped to one project. */
+  private async toIssueFields(
+    ctx: McpContext,
+    projectId: string,
+    args: IssueWriteArgs,
+  ): Promise<UpdateIssueDto> {
+    const dto: UpdateIssueDto = {};
+    if (args.title !== undefined) dto.title = args.title;
+    if (args.description !== undefined) {
+      dto.description = args.description.trim() ? plainTextToHtml(args.description) : '';
+    }
+    if (args.type !== undefined) dto.type = args.type;
+    if (args.priority !== undefined) dto.priority = args.priority;
+    if (args.labels !== undefined) dto.labels = args.labels;
+    if (args.storyPoints !== undefined) dto.storyPoints = args.storyPoints;
+    if (args.dueDate !== undefined) dto.dueDate = args.dueDate;
+    if (args.status !== undefined) {
+      dto.statusId = await this.access.resolveStatusId(projectId, args.status);
+    }
+    if (args.assignee !== undefined) {
+      dto.assigneeId =
+        args.assignee === null
+          ? null
+          : await this.access.resolveAssigneeId(ctx, projectId, args.assignee);
+    }
+    if (args.sprint !== undefined) {
+      dto.sprintId =
+        args.sprint === null ? null : await this.access.resolveSprintId(ctx, projectId, args.sprint);
+    }
+    if (args.parent !== undefined) {
+      dto.parentId =
+        args.parent === null ? null : await this.access.resolveParentId(ctx, projectId, args.parent);
+    }
+    return dto;
+  }
 
   create(ctx: McpContext): McpServer {
     const server = new McpServer({ name: 'boardupscale', version: '1.0.0' });
@@ -301,7 +380,7 @@ export class McpServerFactory {
         const issue = await this.access.resolveIssue(ctx, key);
         await this.access.assertCanComment(ctx, issue.projectId);
         const comment = await this.commentsService.create(
-          { issueId: issue.id, content: plainTextToCommentHtml(body) },
+          { issueId: issue.id, content: plainTextToHtml(body) },
           ctx.userId,
           ctx.organizationId,
         );
@@ -317,6 +396,114 @@ export class McpServerFactory {
           },
         );
         return { ok: true, issue: issue.key, commentId: comment.id };
+      },
+    );
+
+    tool(
+      'get_project_fields',
+      'List the valid statuses, members (for assignee) and open sprints of a project — use before create_issue / update_issue.',
+      { project: projectKey },
+      async ({ project }) => {
+        const projectId = await this.access.resolveProjectId(ctx, project);
+        const [statuses, members, sprints] = await Promise.all([
+          this.access.listStatuses(projectId),
+          this.projectsService.getMembers(projectId, ctx.organizationId),
+          this.sprintsService.findAll(projectId, ctx.organizationId),
+        ]);
+        return {
+          statuses: statuses.map((s) => ({ name: s.name, category: s.category })),
+          members: members.map((m) => ({
+            displayName: m.user?.displayName ?? null,
+            email: m.user?.email ?? null,
+          })),
+          sprints: sprints
+            .filter((s) => s.status !== 'completed')
+            .map((s) => ({ id: s.id, name: s.name, status: s.status })),
+          issueTypes: ISSUE_TYPES,
+          priorities: PRIORITIES,
+        };
+      },
+    );
+
+    tool(
+      'create_issue',
+      `Create an issue in a project. You become the reporter. ${WRITE_NOTE}`,
+      {
+        project: projectKey,
+        title: z.string().min(1).max(500),
+        ...issueFields,
+        assignee: assignee.optional(),
+        sprint: sprint.optional(),
+        parent: parent.optional(),
+        storyPoints: storyPoints.optional(),
+        dueDate: dueDate.optional(),
+      },
+      async ({ project, ...args }) => {
+        const projectId = await this.access.resolveProjectId(ctx, project);
+        await this.access.assertCanWriteIssue(ctx, projectId, 'create');
+        const fields = await this.toIssueFields(ctx, projectId, args);
+        const issue = await this.issuesService.create(
+          {
+            ...fields,
+            projectId,
+            title: args.title,
+            assigneeId: fields.assigneeId ?? undefined,
+            sprintId: fields.sprintId ?? undefined,
+            parentId: fields.parentId ?? undefined,
+            dueDate: fields.dueDate ?? undefined,
+            storyPoints: fields.storyPoints ?? undefined,
+          },
+          ctx.organizationId,
+          ctx.userId,
+        );
+        await this.auditService.log(
+          ctx.organizationId,
+          ctx.userId,
+          'mcp.issue.created',
+          'issue',
+          issue.id,
+          { issueKey: issue.key, tokenId: ctx.tokenId },
+        );
+        return { ok: true, ...summarizeIssue(issue) };
+      },
+    );
+
+    tool(
+      'update_issue',
+      `Edit an issue: title, description, type, priority, status, assignee, sprint, parent, story points, due date or labels. Only the fields you pass change; pass null to clear assignee, sprint, parent, storyPoints or dueDate. ${WRITE_NOTE}`,
+      {
+        key: issueKey,
+        title: z.string().min(1).max(500).optional(),
+        ...issueFields,
+        assignee: assignee.nullable().optional(),
+        sprint: sprint.nullable().optional(),
+        parent: parent.nullable().optional(),
+        storyPoints: storyPoints.nullable().optional(),
+        dueDate: dueDate.nullable().optional(),
+      },
+      async ({ key, ...args }) => {
+        const issue = await this.access.resolveIssue(ctx, key);
+        await this.access.assertCanWriteIssue(ctx, issue.projectId, 'update');
+        const fields = await this.toIssueFields(ctx, issue.projectId, args);
+        const changed = Object.keys(fields);
+        if (changed.length === 0) {
+          throw new BadRequestException('Nothing to update — pass at least one field');
+        }
+        const updated = await this.issuesService.update(
+          issue.id,
+          ctx.organizationId,
+          fields,
+          ctx.userId,
+        );
+        await this.auditService.log(
+          ctx.organizationId,
+          ctx.userId,
+          'mcp.issue.updated',
+          'issue',
+          issue.id,
+          { issueKey: issue.key, fields: changed, tokenId: ctx.tokenId },
+        );
+        return { ok: true, ...summarizeIssue(updated) };
       },
     );
 
