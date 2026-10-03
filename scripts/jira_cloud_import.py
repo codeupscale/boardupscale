@@ -52,6 +52,7 @@ python3 scripts/jira_cloud_import.py --project-keys AM CGC DEV DROM DUH ILG PCGA
 
 from __future__ import annotations
 
+import utils.session
 import argparse
 import json
 import os

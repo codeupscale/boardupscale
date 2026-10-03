@@ -48,8 +48,6 @@ Thumbs.db
 *.swo
 *~
 .idea/
-.vscode/settings.json
-.vscode/launch.json
 
 # ── Claude Code ───────────────────────────────────────────────────────────────
 .claude/
