@@ -41,6 +41,7 @@ export class McpTokensController {
         id: t.id,
         name: t.name,
         keyPrefix: t.keyPrefix,
+        scopes: t.scopes,
         lastUsedAt: t.lastUsedAt,
         expiresAt: t.expiresAt,
         createdAt: t.createdAt,
@@ -59,12 +60,14 @@ export class McpTokensController {
       orgId,
       dto.name,
       dto.expiresInDays ?? DEFAULT_EXPIRY_DAYS,
+      dto.allowWrite ?? false,
     );
     return {
       data: {
         id: apiKey.id,
         name: apiKey.name,
         keyPrefix: apiKey.keyPrefix,
+        scopes: apiKey.scopes,
         expiresAt: apiKey.expiresAt,
         createdAt: apiKey.createdAt,
         token: rawKey,

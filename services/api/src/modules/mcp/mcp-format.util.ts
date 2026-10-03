@@ -48,10 +48,10 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Turn plain/markdown text from an AI client into safe comment HTML.
+ * Turn plain/markdown text from an AI client into safe comment/description HTML.
  * Everything is escaped — no caller-supplied markup reaches the stored HTML.
  */
-export function plainTextToCommentHtml(text: string): string {
+export function plainTextToHtml(text: string): string {
   return text
     .trim()
     .split(/\n{2,}/)
