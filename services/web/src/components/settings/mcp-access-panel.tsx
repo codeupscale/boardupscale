@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Copy, KeyRound, Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { useCreateMcpToken, useMcpTokens, useRevokeMcpToken } from '@/hooks/useMcpTokens'
 import { formatDate, formatRelativeTime } from '@/lib/utils'
 import { toast } from '@/store/ui.store'
@@ -72,6 +74,7 @@ export function McpAccessPanel() {
 
   const [name, setName] = useState('')
   const [expiresInDays, setExpiresInDays] = useState('90')
+  const [allowWrite, setAllowWrite] = useState(false)
   const [newToken, setNewToken] = useState<string | null>(null)
 
   const url = mcpUrl()
@@ -81,11 +84,12 @@ export function McpAccessPanel() {
     e.preventDefault()
     if (!name.trim()) return
     createToken.mutate(
-      { name: name.trim(), expiresInDays: Number(expiresInDays) },
+      { name: name.trim(), expiresInDays: Number(expiresInDays), allowWrite },
       {
         onSuccess: (data) => {
           setNewToken(data.token)
           setName('')
+          setAllowWrite(false)
         },
       },
     )
@@ -101,7 +105,8 @@ export function McpAccessPanel() {
       <p className="text-sm text-muted-foreground">
         Connect AI assistants such as Claude Code or Cursor to Boardupscale over MCP.
         Tokens can read the projects, issues, sprints, boards and linked pull requests you can already
-        see, and post comments as you. They cannot change issues or reach projects you are not a member of.
+        see, and post comments as you. Tokens with write access can also create and edit issues — only
+        where your project role allows it. Tokens never reach projects you are not a member of.
       </p>
 
       {/* Create */}
@@ -135,6 +140,13 @@ export function McpAccessPanel() {
           <Plus className="h-4 w-4" />
           Create token
         </Button>
+        <div className="flex w-full items-center gap-3">
+          <Switch id="mcp-token-write" checked={allowWrite} onCheckedChange={setAllowWrite} />
+          <Label htmlFor="mcp-token-write" className="font-normal">
+            Allow creating &amp; editing tickets{' '}
+            <span className="text-muted-foreground">(limited to your project permissions)</span>
+          </Label>
+        </div>
       </form>
 
       {newToken && (
@@ -163,7 +175,14 @@ export function McpAccessPanel() {
               <li key={t.id} className="flex items-center gap-3 px-4 py-3">
                 <KeyRound className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
+                    {t.scopes?.includes('mcp:write') ? (
+                      <Badge variant="warning">Read + write</Badge>
+                    ) : (
+                      <Badge>Read + comment</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     <span className="font-mono">{t.keyPrefix}…</span> · expires {formatDate(t.expiresAt)} ·{' '}
                     {t.lastUsedAt ? `last used ${formatRelativeTime(t.lastUsedAt)}` : 'never used'}

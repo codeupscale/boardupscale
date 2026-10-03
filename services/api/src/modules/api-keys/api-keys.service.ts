@@ -13,6 +13,7 @@ import { CreateApiKeyDto } from './dto/create-api-key.dto';
 export const MCP_TOKEN_PREFIX = 'bu_mcp_';
 export const MCP_SCOPE_READ = 'mcp:read';
 export const MCP_SCOPE_COMMENT = 'mcp:comment';
+export const MCP_SCOPE_WRITE = 'mcp:write';
 export const MCP_TOKEN_MAX_DAYS = 365;
 
 /** True when the key is a personal MCP token (only valid on the /mcp endpoint). */
@@ -81,12 +82,15 @@ export class ApiKeysService {
   /**
    * Create a personal MCP token for the calling user. MCP tokens always expire
    * and grant read + comment access only to what the user can already see.
+   * `allowWrite` additionally lets the token create and edit issues, still
+   * bounded by the user's project permissions.
    */
   async createMcpToken(
     userId: string,
     orgId: string,
     name: string,
     expiresInDays: number,
+    allowWrite = false,
   ): Promise<{ apiKey: ApiKey; rawKey: string }> {
     const days = Math.min(Math.max(1, Math.floor(expiresInDays)), MCP_TOKEN_MAX_DAYS);
     const rawKey = this.generateRawKey(MCP_TOKEN_PREFIX);
@@ -97,7 +101,7 @@ export class ApiKeysService {
       name,
       keyHash: this.hashKey(rawKey),
       keyPrefix: rawKey.substring(0, 10),
-      scopes: [MCP_SCOPE_READ, MCP_SCOPE_COMMENT],
+      scopes: [MCP_SCOPE_READ, MCP_SCOPE_COMMENT, ...(allowWrite ? [MCP_SCOPE_WRITE] : [])],
       expiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
       isActive: true,
     });

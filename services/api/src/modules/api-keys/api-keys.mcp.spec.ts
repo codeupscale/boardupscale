@@ -28,6 +28,11 @@ describe('ApiKeysService (MCP tokens)', () => {
     expect(days).toBeLessThan(30.1);
   });
 
+  it('adds the mcp:write scope only when write access is requested', async () => {
+    const { apiKey } = await service.createMcpToken('user-1', 'org-1', 'agent', 30, true);
+    expect(apiKey.scopes).toEqual(['mcp:read', 'mcp:comment', 'mcp:write']);
+  });
+
   it('caps expiry at 365 days', async () => {
     const { apiKey } = await service.createMcpToken('user-1', 'org-1', 'x', 10_000);
     expect((apiKey.expiresAt.getTime() - Date.now()) / 86_400_000).toBeLessThanOrEqual(365);
