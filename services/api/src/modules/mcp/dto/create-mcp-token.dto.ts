@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { MCP_TOKEN_MAX_DAYS } from '../../api-keys/api-keys.service';
 
 export class CreateMcpTokenDto {
@@ -18,4 +18,12 @@ export class CreateMcpTokenDto {
   @Min(1)
   @Max(MCP_TOKEN_MAX_DAYS)
   expiresInDays?: number;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Allow the token to create and edit issues (within your project permissions).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowWrite?: boolean;
 }

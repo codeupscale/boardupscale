@@ -1,4 +1,4 @@
-import { htmlToText, plainTextToCommentHtml, summarizePullRequests } from './mcp-format.util';
+import { htmlToText, plainTextToHtml, summarizePullRequests } from './mcp-format.util';
 
 describe('mcp-format.util', () => {
   describe('htmlToText', () => {
@@ -23,15 +23,15 @@ describe('mcp-format.util', () => {
     });
   });
 
-  describe('plainTextToCommentHtml', () => {
+  describe('plainTextToHtml', () => {
     it('escapes markup so AI clients cannot inject HTML', () => {
-      expect(plainTextToCommentHtml('<img src=x onerror=alert(1)>')).toBe(
+      expect(plainTextToHtml('<img src=x onerror=alert(1)>')).toBe(
         '<p>&lt;img src=x onerror=alert(1)&gt;</p>',
       );
     });
 
     it('turns blank lines into paragraphs and newlines into <br>', () => {
-      expect(plainTextToCommentHtml('a\nb\n\nc')).toBe('<p>a<br>b</p><p>c</p>');
+      expect(plainTextToHtml('a\nb\n\nc')).toBe('<p>a<br>b</p><p>c</p>');
     });
   });
 

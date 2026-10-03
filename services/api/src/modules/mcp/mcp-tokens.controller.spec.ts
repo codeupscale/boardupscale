@@ -25,8 +25,18 @@ describe('McpTokensController', () => {
 
   it('creates with a 90-day default and returns the raw token once', async () => {
     const { data } = await controller.create({ name: 'n' }, user, 'org-1');
-    expect(apiKeysService.createMcpToken).toHaveBeenCalledWith('user-1', 'org-1', 'n', 90);
+    expect(apiKeysService.createMcpToken).toHaveBeenCalledWith('user-1', 'org-1', 'n', 90, false);
     expect(data.token).toBe('bu_mcp_raw');
+  });
+
+  it('forwards allowWrite and returns scopes', async () => {
+    apiKeysService.createMcpToken.mockResolvedValue({
+      apiKey: { id: 't', name: 'n', scopes: ['mcp:read', 'mcp:comment', 'mcp:write'] },
+      rawKey: 'bu_mcp_raw',
+    });
+    const { data } = await controller.create({ name: 'n', allowWrite: true }, user, 'org-1');
+    expect(apiKeysService.createMcpToken).toHaveBeenCalledWith('user-1', 'org-1', 'n', 90, true);
+    expect(data.scopes).toContain('mcp:write');
   });
 
   it('revokes scoped to the caller', async () => {

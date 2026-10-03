@@ -6,6 +6,7 @@ export interface McpToken {
   id: string
   name: string
   keyPrefix: string
+  scopes: string[]
   lastUsedAt: string | null
   expiresAt: string
   createdAt: string
@@ -32,7 +33,7 @@ export function useMcpTokens() {
 export function useCreateMcpToken() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { name: string; expiresInDays: number }) => {
+    mutationFn: async (payload: { name: string; expiresInDays: number; allowWrite: boolean }) => {
       const { data } = await api.post('/mcp/tokens', payload)
       return data.data as CreatedMcpToken
     },
